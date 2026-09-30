@@ -1,13 +1,15 @@
 //! Repositories and pull requests. Every pull request the filters match is
 //! listed: ticket-tui showed only repositories with a clone on the machine.
 
-use agent_cli_core::{Ctx, Effect, Exit, Failure, Method, command};
+use agent_cli_core::{Ctx, Effect, Exit, Failure, Method, When, command};
 use anyhow::{Context, Result};
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Value, json};
 
-use crate::client::{Ado, PREVIEW_API, full_ref, list, query_value, segment, short_branch, text};
+use crate::client::{
+    Ado, Kind, PREVIEW_API, full_ref, list, query_value, segment, short_branch, stamp, text,
+};
 use crate::markdown::CommentBody;
 use crate::workitem::add_artifact_link;
 
@@ -204,7 +206,7 @@ fn pr_row(ado: &Ado, pr: &Value) -> PrRow {
         target: pr["targetRefName"].as_str().map(short_branch),
         merge_status: text(&pr["mergeStatus"]),
         auto_complete: text(&pr["autoCompleteSetBy"]["displayName"]),
-        created: text(&pr["creationDate"]),
+        created: stamp(&pr["creationDate"]),
         reviewers: list(&pr["reviewers"])
             .iter()
             .filter_map(|reviewer| {
@@ -251,6 +253,12 @@ pub struct PrListArgs {
     /// True for drafts only, false for none
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     draft: Option<bool>,
+    /// Opened after this
+    #[arg(long)]
+    since: Option<When>,
+    /// Opened before this
+    #[arg(long)]
+    until: Option<When>,
     /// Most rows to return
     #[arg(long, default_value_t = 50)]
     limit: usize,
@@ -289,6 +297,14 @@ fn pr_list(ctx: &Ctx, args: PrListArgs) -> Result<Vec<PrRow>> {
             criteria.push_str(&format!(
                 "&searchCriteria.{key}={}",
                 query_value(&full_ref(branch))
+            ));
+        }
+    }
+    for (key, when) in [("minTime", args.since), ("maxTime", args.until)] {
+        if let Some(when) = when {
+            criteria.push_str(&format!(
+                "&searchCriteria.{key}={}",
+                query_value(&when.utc())
             ));
         }
     }
@@ -339,8 +355,8 @@ command! {
 
 #[derive(clap::Args)]
 pub struct PrGetArgs {
-    /// The pull request's id
-    id: i64,
+    /// The pull request's id: 431, #431 or its web URL
+    id: String,
     /// How many of the latest open threads to include
     #[arg(long, default_value_t = 5)]
     comments: usize,
@@ -423,9 +439,10 @@ fn pr_work_items(ctx: &Ctx, ado: &Ado, repo_id: &str, id: i64) -> Result<Vec<i64
 
 fn pr_get(ctx: &Ctx, args: PrGetArgs) -> Result<PullRequest> {
     let ado = Ado::load(ctx)?;
-    let pr = fetch_pr(ctx, &ado, args.id)?;
+    let id = ado.id(Kind::PullRequest, &args.id)?;
+    let pr = fetch_pr(ctx, &ado, id)?;
     let (repo_id, project_id) = pr_home(&pr)?;
-    let work_items = pr_work_items(ctx, &ado, &repo_id, args.id)?;
+    let work_items = pr_work_items(ctx, &ado, &repo_id, id)?;
     let evaluations = ado.get(
         ctx,
         &ado.api(
@@ -435,7 +452,7 @@ fn pr_get(ctx: &Ctx, args: PrGetArgs) -> Result<PullRequest> {
                 "artifactId={}",
                 query_value(&format!(
                     "vstfs:///CodeReview/CodeReviewId/{project_id}/{}",
-                    args.id
+                    id
                 ))
             ),
             PREVIEW_API,
@@ -457,10 +474,7 @@ fn pr_get(ctx: &Ctx, args: PrGetArgs) -> Result<PullRequest> {
     let threads = ado.get(
         ctx,
         &ado.code(
-            &format!(
-                "git/repositories/{repo_id}/pullRequests/{}/threads",
-                args.id
-            ),
+            &format!("git/repositories/{repo_id}/pullRequests/{}/threads", id),
             "",
         ),
     )?;
@@ -492,7 +506,7 @@ fn pr_get(ctx: &Ctx, args: PrGetArgs) -> Result<PullRequest> {
                 author: text(&first["author"]["displayName"]),
                 file: text(&context["filePath"]),
                 line: context["rightFileStart"]["line"].as_i64(),
-                date: text(&thread["lastUpdatedDate"]),
+                date: stamp(&thread["lastUpdatedDate"]),
                 text: text(&first["content"]),
                 replies: list(&thread["comments"]).len().saturating_sub(1),
             }
@@ -666,19 +680,7 @@ fn pr_create(ctx: &Ctx, args: PrCreateArgs) -> Result<PrCreated> {
         .filter(|work_item| !linked.contains(work_item))
         .map(ToString::to_string)
         .collect();
-    if !missing.is_empty() {
-        return Err(Failure::new(
-            Exit::Failed,
-            format!(
-                "pull request {id} is open at {} but work item {} did not link",
-                row.url.as_deref().unwrap_or_default(),
-                missing.join(", ")
-            ),
-        )
-        .hint("run the same command again to repair the links")
-        .into());
-    }
-    Ok(PrCreated {
+    let made = PrCreated {
         id,
         url: row.url,
         repo: repo.name,
@@ -688,7 +690,21 @@ fn pr_create(ctx: &Ctx, args: PrCreateArgs) -> Result<PrCreated> {
         is_draft: row.is_draft,
         created,
         work_items: linked,
-    })
+    };
+    if !missing.is_empty() {
+        // The pull request is real either way, so it prints either way.
+        return Err(Failure::new(
+            Exit::Failed,
+            format!(
+                "pull request {id} is open, but work item {} did not link",
+                missing.join(", ")
+            ),
+        )
+        .hint("run the same command again to repair the links")
+        .with_data(made)
+        .into());
+    }
+    Ok(made)
 }
 
 command! {
@@ -712,8 +728,8 @@ enum Vote {
 
 #[derive(clap::Args)]
 pub struct VoteArgs {
-    /// The pull request's id
-    id: i64,
+    /// The pull request's id: 431, #431 or its web URL
+    id: String,
     /// Your vote (none withdraws it)
     #[arg(value_enum)]
     vote: Vote,
@@ -728,6 +744,7 @@ pub struct Voted {
 
 fn pr_vote(ctx: &Ctx, args: VoteArgs) -> Result<Voted> {
     let ado = Ado::load(ctx)?;
+    let id = ado.id(Kind::PullRequest, &args.id)?;
     let value: i64 = match args.vote {
         Vote::Approve => 10,
         Vote::Suggest => 5,
@@ -735,14 +752,14 @@ fn pr_vote(ctx: &Ctx, args: VoteArgs) -> Result<Voted> {
         Vote::Reject => -10,
         Vote::None => 0,
     };
-    let pr = fetch_pr(ctx, &ado, args.id)?;
+    let pr = fetch_pr(ctx, &ado, id)?;
     let (repo_id, _) = pr_home(&pr)?;
     let me = ado.me(ctx)?;
     // Voting on a pull request you do not review adds you as a reviewer.
     let url = ado.code(
         &format!(
             "git/repositories/{repo_id}/pullrequests/{}/reviewers/{}",
-            args.id, me.id
+            id, me.id
         ),
         "",
     );
@@ -754,7 +771,7 @@ fn pr_vote(ctx: &Ctx, args: VoteArgs) -> Result<Voted> {
         json!({"vote": value}),
     )?;
     Ok(Voted {
-        id: args.id,
+        id,
         vote: vote_word(value),
     })
 }
@@ -777,8 +794,8 @@ enum Toggle {
 
 #[derive(clap::Args)]
 pub struct PrUpdateArgs {
-    /// The pull request's id
-    id: i64,
+    /// The pull request's id: 431, #431 or its web URL
+    id: String,
     /// Complete it by itself once policies pass
     #[arg(long, value_enum)]
     autocomplete: Option<Toggle>,
@@ -795,6 +812,7 @@ pub struct PrUpdateArgs {
 
 fn pr_update(ctx: &Ctx, args: PrUpdateArgs) -> Result<PrRow> {
     let ado = Ado::load(ctx)?;
+    let id = ado.id(Kind::PullRequest, &args.id)?;
     let mut body = serde_json::Map::new();
     if let Some(draft) = args.draft {
         body.insert("isDraft".into(), draft.into());
@@ -807,10 +825,10 @@ fn pr_update(ctx: &Ctx, args: PrUpdateArgs) -> Result<PrRow> {
     }
     if body.is_empty() && args.autocomplete.is_none() {
         return Err(Failure::usage("nothing to change")
-            .hint(format!("pass --autocomplete on|off, --draft true|false, --title or --description, e.g. agent-cli ado pr update {} --autocomplete on", args.id))
+            .hint(format!("pass --autocomplete on|off, --draft true|false, --title or --description, e.g. agent-cli ado pr update {} --autocomplete on", id))
             .into());
     }
-    let pr = fetch_pr(ctx, &ado, args.id)?;
+    let pr = fetch_pr(ctx, &ado, id)?;
     let (repo_id, _) = pr_home(&pr)?;
     match args.autocomplete {
         Some(Toggle::On) => {
@@ -826,7 +844,7 @@ fn pr_update(ctx: &Ctx, args: PrUpdateArgs) -> Result<PrRow> {
         None => {}
     }
     let url = ado.code(
-        &format!("git/repositories/{repo_id}/pullrequests/{}", args.id),
+        &format!("git/repositories/{repo_id}/pullrequests/{}", id),
         "",
     );
     let updated = ado.change(ctx, Effect::Write, Method::Patch, &url, Value::Object(body))?;
@@ -845,8 +863,8 @@ command! {
 
 #[derive(clap::Args)]
 pub struct PrLinkArgs {
-    /// The pull request's id
-    id: i64,
+    /// The pull request's id: 431, #431 or its web URL
+    id: String,
     /// The work item to link
     #[arg(long)]
     workitem: i64,
@@ -862,11 +880,12 @@ pub struct PrLinked {
 
 fn pr_link(ctx: &Ctx, args: PrLinkArgs) -> Result<PrLinked> {
     let ado = Ado::load(ctx)?;
-    let pr = fetch_pr(ctx, &ado, args.id)?;
+    let id = ado.id(Kind::PullRequest, &args.id)?;
+    let pr = fetch_pr(ctx, &ado, id)?;
     let (repo_id, project_id) = pr_home(&pr)?;
-    let wrote = link_pr(ctx, &ado, &project_id, &repo_id, args.id, args.workitem)?;
+    let wrote = link_pr(ctx, &ado, &project_id, &repo_id, id, args.workitem)?;
     Ok(PrLinked {
-        pr: args.id,
+        pr: id,
         work_item: args.workitem,
         already_linked: !wrote,
     })
@@ -884,8 +903,8 @@ command! {
 
 #[derive(clap::Args)]
 pub struct PrCommentArgs {
-    /// The pull request's id
-    id: i64,
+    /// The pull request's id: 431, #431 or its web URL
+    id: String,
     /// Markdown, or - to read stdin (posted as a code block, 64 KiB max)
     #[arg(allow_hyphen_values = true)]
     text: String,
@@ -900,13 +919,11 @@ pub struct PrCommented {
 fn pr_comment(ctx: &Ctx, args: PrCommentArgs) -> Result<PrCommented> {
     let body = CommentBody::from_arg(&args.text)?;
     let ado = Ado::load(ctx)?;
-    let pr = fetch_pr(ctx, &ado, args.id)?;
+    let id = ado.id(Kind::PullRequest, &args.id)?;
+    let pr = fetch_pr(ctx, &ado, id)?;
     let (repo_id, _) = pr_home(&pr)?;
     let url = ado.code(
-        &format!(
-            "git/repositories/{repo_id}/pullRequests/{}/threads",
-            args.id
-        ),
+        &format!("git/repositories/{repo_id}/pullRequests/{}/threads", id),
         "",
     );
     let thread = ado.change(
@@ -920,7 +937,7 @@ fn pr_comment(ctx: &Ctx, args: PrCommentArgs) -> Result<PrCommented> {
         }),
     )?;
     Ok(PrCommented {
-        pr: args.id,
+        pr: id,
         thread_id: thread["id"].as_i64(),
     })
 }
@@ -944,8 +961,8 @@ enum Strategy {
 
 #[derive(clap::Args)]
 pub struct CompleteArgs {
-    /// The pull request's id
-    id: i64,
+    /// The pull request's id: 431, #431 or its web URL
+    id: String,
     /// How it lands on the target
     #[arg(long, value_enum, default_value = "squash")]
     strategy: Strategy,
@@ -974,7 +991,8 @@ fn active_pr(ctx: &Ctx, ado: &Ado, id: i64) -> Result<(Value, String)> {
 
 fn pr_complete(ctx: &Ctx, args: CompleteArgs) -> Result<PrRow> {
     let ado = Ado::load(ctx)?;
-    let (pr, repo_id) = active_pr(ctx, &ado, args.id)?;
+    let id = ado.id(Kind::PullRequest, &args.id)?;
+    let (pr, repo_id) = active_pr(ctx, &ado, id)?;
     let strategy = match args.strategy {
         Strategy::Squash => "squash",
         Strategy::Merge => "noFastForward",
@@ -992,7 +1010,7 @@ fn pr_complete(ctx: &Ctx, args: CompleteArgs) -> Result<PrRow> {
         },
     });
     let url = ado.code(
-        &format!("git/repositories/{repo_id}/pullrequests/{}", args.id),
+        &format!("git/repositories/{repo_id}/pullrequests/{}", id),
         "",
     );
     let done = ado.change(ctx, Effect::Destructive, Method::Patch, &url, body)?;
@@ -1009,15 +1027,16 @@ command! {
 
 #[derive(clap::Args)]
 pub struct AbandonArgs {
-    /// The pull request's id
-    id: i64,
+    /// The pull request's id: 431, #431 or its web URL
+    id: String,
 }
 
 fn pr_abandon(ctx: &Ctx, args: AbandonArgs) -> Result<PrRow> {
     let ado = Ado::load(ctx)?;
-    let (_, repo_id) = active_pr(ctx, &ado, args.id)?;
+    let id = ado.id(Kind::PullRequest, &args.id)?;
+    let (_, repo_id) = active_pr(ctx, &ado, id)?;
     let url = ado.code(
-        &format!("git/repositories/{repo_id}/pullrequests/{}", args.id),
+        &format!("git/repositories/{repo_id}/pullrequests/{}", id),
         "",
     );
     let done = ado.change(
@@ -1188,6 +1207,27 @@ mod tests {
                 "{CODE}/git/repositories/web/pullrequests?searchCriteria.status=all&$top=2&$skip=0&api-version=7.1"
             )]
         );
+
+        let (outcome, transport) = ado(
+            &[
+                "ado",
+                "pr",
+                "list",
+                "--since",
+                "2026-09-01",
+                "--until",
+                "2026-09-02",
+            ],
+            vec![page(vec![])],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert!(
+            urls(&transport)[0].contains(
+                "&searchCriteria.minTime=2026-09-01T00%3A00%3A00Z&searchCriteria.maxTime=2026-09-02T00%3A00%3A00Z&"
+            ),
+            "{:?}",
+            urls(&transport)
+        );
     }
 
     #[test]
@@ -1355,8 +1395,12 @@ mod tests {
             ],
         );
         assert_eq!(outcome.code, 1, "{outcome:?}");
+        assert_eq!(outcome.json()["id"], 17, "the pull request prints anyway");
+        assert!(outcome.json().get("work_items").is_none());
         assert!(
-            outcome.stderr.contains("pull request 17 is open at"),
+            outcome
+                .stderr
+                .contains("pull request 17 is open, but work item 42 did not link"),
             "{}",
             outcome.stderr
         );

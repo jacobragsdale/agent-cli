@@ -85,7 +85,7 @@ impl Ado {
             || az_defaults(az_config_path()),
             ctx.config().path(),
         )?;
-        ado.pat = pat_from_env();
+        ado.pat = ctx.env("AZURE_DEVOPS_EXT_PAT").map(|pat| basic(pat.trim()));
         Ok(ado)
     }
 
@@ -307,6 +307,68 @@ impl Ado {
         )
     }
 
+    /// A work item, pull request or run id as an agent was handed it:
+    /// `1207`, `#1207`, `AB#1207`, or its web URL in this organization. A URL
+    /// is read, never fetched; one in another organization, or naming another
+    /// kind of thing, is exit 2.
+    pub(crate) fn id(&self, kind: Kind, raw: &str) -> Result<i64> {
+        let raw = raw.trim();
+        let wrong = |why: String| -> anyhow::Error {
+            Failure::usage(why)
+                .hint(format!(
+                    "pass the {}'s number, e.g. 1207, #1207 or its {} URL",
+                    kind.noun(),
+                    self.base()
+                ))
+                .into()
+        };
+        let Some(rest) = raw.strip_prefix("https://") else {
+            let number = raw
+                .strip_prefix("AB#")
+                .or_else(|| raw.strip_prefix('#'))
+                .unwrap_or(raw);
+            return number
+                .parse::<i64>()
+                .ok()
+                .filter(|id| *id > 0)
+                .ok_or_else(|| wrong(format!("{raw:?} is not a {} id", kind.noun())));
+        };
+        let (host, path) = rest.split_once('/').unwrap_or((rest, ""));
+        let host = host.to_ascii_lowercase();
+        let (org, path) = match host.strip_suffix(".visualstudio.com") {
+            Some(org) => (org.to_owned(), path),
+            None if host == "dev.azure.com" => {
+                let (org, path) = path.split_once('/').unwrap_or((path, ""));
+                (org.to_ascii_lowercase(), path)
+            }
+            None => return Err(wrong(format!("{raw} is not an Azure DevOps URL"))),
+        };
+        if org != self.org.to_ascii_lowercase() {
+            return Err(wrong(format!(
+                "{raw} is in organization {org}, and [ado] org is {}",
+                self.org
+            )));
+        }
+        let (path, query) = path.split_once('?').unwrap_or((path, ""));
+        let segments: Vec<&str> = path.split('/').collect();
+        let after = |marker: &str| {
+            segments
+                .iter()
+                .position(|segment| segment.eq_ignore_ascii_case(marker))
+                .and_then(|at| segments.get(at + 1))
+                .and_then(|id| id.parse::<i64>().ok())
+        };
+        let found = match kind {
+            Kind::WorkItem => after("edit").filter(|_| path.contains("/_workitems/")),
+            Kind::PullRequest => after("pullrequest"),
+            Kind::Run => query
+                .split('&')
+                .find_map(|pair| pair.strip_prefix("buildId="))
+                .and_then(|id| id.parse().ok()),
+        };
+        found.ok_or_else(|| wrong(format!("{raw} is not a {} URL", kind.noun())))
+    }
+
     fn cache_key(&self, what: &str) -> String {
         format!("ado:{}:{what}", self.org.to_ascii_lowercase())
     }
@@ -508,6 +570,24 @@ impl Ado {
     }
 }
 
+/// What an id argument names.
+#[derive(Clone, Copy)]
+pub(crate) enum Kind {
+    WorkItem,
+    PullRequest,
+    Run,
+}
+
+impl Kind {
+    fn noun(self) -> &'static str {
+        match self {
+            Self::WorkItem => "work item",
+            Self::PullRequest => "pull request",
+            Self::Run => "run",
+        }
+    }
+}
+
 /// What a request carries.
 pub(crate) enum Body {
     None,
@@ -569,20 +649,8 @@ fn signed_out(error: anyhow::Error) -> anyhow::Error {
     }
 }
 
-/// `Basic` credentials from `AZURE_DEVOPS_EXT_PAT`, the variable the Azure
-/// DevOps CLI extension reads too.
-fn pat_from_env() -> Option<Secret> {
-    // Fixture tests must never start `az` or read a real credential.
-    if cfg!(test) {
-        return Some(basic("fixture-pat"));
-    }
-    std::env::var("AZURE_DEVOPS_EXT_PAT")
-        .ok()
-        .map(|pat| pat.trim().to_owned())
-        .filter(|pat| !pat.is_empty())
-        .map(|pat| basic(&pat))
-}
-
+/// `Basic` credentials from a personal access token: `AZURE_DEVOPS_EXT_PAT`,
+/// the variable the Azure DevOps CLI extension reads too.
 fn basic(pat: &str) -> Secret {
     // Made a Secret so redaction also masks the bare value.
     let _ = Secret::new(pat);
@@ -671,6 +739,11 @@ pub(crate) fn text(value: &Value) -> Option<String> {
         .map(str::trim)
         .filter(|text| !text.is_empty())
         .map(str::to_owned)
+}
+
+/// A timestamp as every command prints one: RFC 3339, UTC, whole seconds.
+pub(crate) fn stamp(value: &Value) -> Option<String> {
+    text(value).map(|raw| agent_cli_core::utc(&raw))
 }
 
 /// A JSON array's items, or none.
@@ -846,6 +919,67 @@ mod tests {
         let error = ado.get(&ctx, "https://evil.example/_apis/x").unwrap_err();
         assert!(error.to_string().contains("refusing"), "{error}");
         assert!(transport.sent().is_empty());
+    }
+
+    #[test]
+    fn an_id_is_a_number_a_hash_or_a_web_url_in_this_organization() {
+        let ado = Ado::resolve(
+            section("[ado]\norg=\"contoso\"\nproject=\"Fabrikam\"\n"),
+            || (None, None),
+            Path::new("c"),
+        )
+        .unwrap();
+        for (kind, raw, want) in [
+            (Kind::WorkItem, "1207", 1207),
+            (Kind::WorkItem, "#1207", 1207),
+            (Kind::WorkItem, " AB#1207 ", 1207),
+            (
+                Kind::WorkItem,
+                "https://dev.azure.com/contoso/Fabrikam/_workitems/edit/1207/",
+                1207,
+            ),
+            (
+                Kind::WorkItem,
+                "https://contoso.visualstudio.com/Fabrikam/_workitems/edit/1207",
+                1207,
+            ),
+            (
+                Kind::PullRequest,
+                "https://dev.azure.com/Contoso/Fabrikam/_git/api/pullrequest/431?_a=files",
+                431,
+            ),
+            (
+                Kind::Run,
+                "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8812&view=logs",
+                8812,
+            ),
+        ] {
+            assert_eq!(ado.id(kind, raw).unwrap(), want, "{raw}");
+        }
+        for (kind, raw, want) in [
+            (Kind::WorkItem, "twelve", "\"twelve\" is not a work item id"),
+            (Kind::Run, "0", "\"0\" is not a run id"),
+            (
+                Kind::Run,
+                "https://dev.azure.com/fabrikam/Web/_build/results?buildId=1",
+                "is in organization fabrikam, and [ado] org is contoso",
+            ),
+            (
+                Kind::Run,
+                "https://dev.azure.com/contoso/Fabrikam/_git/api/pullrequest/431",
+                "is not a run URL",
+            ),
+            (
+                Kind::PullRequest,
+                "https://evil.example/pullrequest/4",
+                "is not an Azure DevOps URL",
+            ),
+        ] {
+            let error = ado.id(kind, raw).unwrap_err();
+            let failure = error.downcast_ref::<Failure>().unwrap();
+            assert_eq!(failure.exit, Exit::Usage);
+            assert!(failure.message.contains(want), "{}", failure.message);
+        }
     }
 
     #[test]

@@ -4,13 +4,15 @@
 
 use std::collections::HashMap;
 
-use agent_cli_core::{Ctx, Effect, Exit, Failure, Method, command};
+use agent_cli_core::{Ctx, Effect, Exit, Failure, Method, When, command};
 use anyhow::{Context, Result};
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Value, json};
 
-use crate::client::{Ado, COMMENTS_API, RepoRef, list, query_value, segment, short_branch, text};
+use crate::client::{
+    Ado, COMMENTS_API, Kind, RepoRef, list, query_value, segment, short_branch, stamp, text,
+};
 use crate::markdown::{CommentBody, html_to_markdown, markdown_to_html};
 
 /// The fields a list row carries. The batch endpoint returns only these, so
@@ -55,6 +57,28 @@ pub struct WorkItemRow {
     rev: Option<i64>,
 }
 
+/// A work item named by something else (a run, a pull request): enough to
+/// say what it is, with the id `ado workitem get` takes.
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct WorkItemRef {
+    id: i64,
+    #[serde(rename = "type")]
+    kind: Option<String>,
+    title: Option<String>,
+    state: Option<String>,
+}
+
+impl From<&WorkItemRow> for WorkItemRef {
+    fn from(row: &WorkItemRow) -> Self {
+        Self {
+            id: row.id,
+            kind: row.kind.clone(),
+            title: row.title.clone(),
+            state: row.state.clone(),
+        }
+    }
+}
+
 fn row(item: &Value) -> WorkItemRow {
     let fields = &item["fields"];
     let field = |name: &str| text(&fields[name]);
@@ -79,7 +103,7 @@ fn row(item: &Value) -> WorkItemRow {
                     .collect()
             })
             .unwrap_or_default(),
-        changed: field("System.ChangedDate"),
+        changed: stamp(&fields["System.ChangedDate"]),
         rev: item["rev"].as_i64(),
     }
 }
@@ -134,9 +158,12 @@ pub struct ListArgs {
     /// Words in the title or description
     #[arg(long)]
     text: Option<String>,
-    /// Changed within N days (7d) or since a date (2026-09-01)
+    /// Changed after this
     #[arg(long)]
-    changed_since: Option<String>,
+    since: Option<When>,
+    /// Changed before this
+    #[arg(long)]
+    until: Option<When>,
     /// Children of this work item
     #[arg(long)]
     parent: Option<i64>,
@@ -150,7 +177,7 @@ pub struct ListArgs {
 
 /// The WHERE clause the flags spell, newest change first. `iteration` is the
 /// iteration condition already worked out, since `@current` may need a read.
-fn wiql(args: &ListArgs, iteration: Option<String>) -> Result<String> {
+fn wiql(args: &ListArgs, iteration: Option<String>) -> String {
     let mut conditions = vec!["[System.TeamProject] = @project".to_owned()];
     if let Some(who) = &args.assignee {
         conditions.push(if who.trim().eq_ignore_ascii_case("@me") {
@@ -178,8 +205,12 @@ fn wiql(args: &ListArgs, iteration: Option<String>) -> Result<String> {
             quoted(words)
         ));
     }
-    if let Some(since) = &args.changed_since {
-        conditions.push(changed_since(since)?);
+    // Compared to the second, with timePrecision on the request.
+    if let Some(since) = args.since {
+        conditions.push(format!("[System.ChangedDate] >= '{}'", since.utc()));
+    }
+    if let Some(until) = args.until {
+        conditions.push(format!("[System.ChangedDate] <= '{}'", until.utc()));
     }
     if let Some(parent) = args.parent {
         conditions.push(format!("[System.Parent] = {parent}"));
@@ -187,33 +218,10 @@ fn wiql(args: &ListArgs, iteration: Option<String>) -> Result<String> {
     if let Some(raw) = &args.wiql {
         conditions.push(format!("({raw})"));
     }
-    Ok(format!(
+    format!(
         "SELECT [System.Id] FROM WorkItems WHERE {} ORDER BY [System.ChangedDate] DESC",
         conditions.join(" AND ")
-    ))
-}
-
-/// `7d` or `7` as days back from today, or a `YYYY-MM-DD` date.
-fn changed_since(raw: &str) -> Result<String> {
-    let raw = raw.trim();
-    if let Ok(days) = raw.strip_suffix('d').unwrap_or(raw).parse::<u32>() {
-        return Ok(format!("[System.ChangedDate] >= @Today - {days}"));
-    }
-    let date = raw.len() == 10
-        && raw.char_indices().all(|(at, c)| {
-            if at == 4 || at == 7 {
-                c == '-'
-            } else {
-                c.is_ascii_digit()
-            }
-        });
-    if date {
-        return Ok(format!("[System.ChangedDate] >= '{raw}'"));
-    }
-    Err(Failure::usage(format!(
-        "--changed-since takes days (7d) or a date (2026-09-01), not {raw:?}"
-    ))
-    .into())
+    )
 }
 
 /// `--iteration` as a WIQL condition, and the team whose URL the query must
@@ -273,7 +281,7 @@ fn iteration_condition(
 
 /// The rows for `ids`, in the order given: the batch endpoint does not
 /// promise the WIQL's order.
-fn rows(ctx: &Ctx, ado: &Ado, ids: &[i64]) -> Result<Vec<WorkItemRow>> {
+pub(crate) fn rows(ctx: &Ctx, ado: &Ado, ids: &[i64]) -> Result<Vec<WorkItemRow>> {
     let mut rows = Vec::with_capacity(ids.len());
     for chunk in ids.chunks(BATCH) {
         let answer = ado.query(
@@ -296,8 +304,11 @@ fn rows(ctx: &Ctx, ado: &Ado, ids: &[i64]) -> Result<Vec<WorkItemRow>> {
 fn workitem_list(ctx: &Ctx, args: ListArgs) -> Result<Vec<WorkItemRow>> {
     let ado = Ado::load(ctx)?;
     let (iteration, team) = iteration_condition(ctx, &ado, args.iteration.as_deref())?;
-    let query = wiql(&args, iteration)?;
-    let top = format!("$top={WIQL_TOP}");
+    let query = wiql(&args, iteration);
+    let mut top = format!("$top={WIQL_TOP}");
+    if args.since.is_some() || args.until.is_some() {
+        top.push_str("&timePrecision=true");
+    }
     let url = match team {
         Some(team) => ado.team(&team, "wit/wiql", &top),
         None => ado.work("wit/wiql", &top),
@@ -330,8 +341,8 @@ command! {
 
 #[derive(clap::Args)]
 pub struct GetArgs {
-    /// The work item's id
-    id: i64,
+    /// The work item's id: 1207, #1207, AB#1207 or its web URL
+    id: String,
     /// How many of the latest comments to include
     #[arg(long, default_value_t = 5)]
     comments: usize,
@@ -427,7 +438,7 @@ fn linked_id(url: &str) -> Option<i64> {
 
 fn workitem_get(ctx: &Ctx, args: GetArgs) -> Result<WorkItem> {
     let ado = Ado::load(ctx)?;
-    let id = args.id;
+    let id = ado.id(Kind::WorkItem, &args.id)?;
     let item = ado.get(
         ctx,
         &ado.api(
@@ -502,7 +513,7 @@ fn workitem_get(ctx: &Ctx, args: GetArgs) -> Result<WorkItem> {
                 (!text.is_empty()).then(|| Comment {
                     id: comment["id"].as_i64().unwrap_or_default(),
                     author: person(&comment["createdBy"]),
-                    date: crate::client::text(&comment["createdDate"]),
+                    date: stamp(&comment["createdDate"]),
                     text,
                 })
             })
@@ -674,8 +685,8 @@ command! {
 
 #[derive(clap::Args)]
 pub struct UpdateArgs {
-    /// The work item's id
-    id: i64,
+    /// The work item's id: 1207, #1207, AB#1207 or its web URL
+    id: String,
     /// A new title
     #[arg(long)]
     title: Option<String>,
@@ -688,7 +699,7 @@ pub struct UpdateArgs {
 
 fn workitem_update(ctx: &Ctx, args: UpdateArgs) -> Result<WorkItemRow> {
     let ado = Ado::load(ctx)?;
-    let id = args.id;
+    let id = ado.id(Kind::WorkItem, &args.id)?;
     let changes = field_ops(ctx, &ado, args.title.as_deref(), &args.fields)?;
     if changes.is_empty() {
         return Err(Failure::usage("nothing to change")
@@ -749,8 +760,8 @@ command! {
 
 #[derive(clap::Args)]
 pub struct CommentArgs {
-    /// The work item's id
-    id: i64,
+    /// The work item's id: 1207, #1207, AB#1207 or its web URL
+    id: String,
     /// Markdown, or - to read stdin (posted as a code block, 64 KiB max)
     #[arg(allow_hyphen_values = true)]
     text: String,
@@ -767,9 +778,10 @@ pub struct CommentPosted {
 fn workitem_comment(ctx: &Ctx, args: CommentArgs) -> Result<CommentPosted> {
     let body = CommentBody::from_arg(&args.text)?;
     let ado = Ado::load(ctx)?;
+    let id = ado.id(Kind::WorkItem, &args.id)?;
     let url = ado.api(
         Some(&ado.project),
-        &format!("wit/workItems/{}/comments", args.id),
+        &format!("wit/workItems/{}/comments", id),
         "",
         COMMENTS_API,
     );
@@ -781,9 +793,9 @@ fn workitem_comment(ctx: &Ctx, args: CommentArgs) -> Result<CommentPosted> {
         json!({"text": body.html()}),
     )?;
     Ok(CommentPosted {
-        work_item: args.id,
+        work_item: id,
         id: posted["id"].as_i64(),
-        date: text(&posted["createdDate"]),
+        date: stamp(&posted["createdDate"]),
     })
 }
 
@@ -799,8 +811,8 @@ command! {
 
 #[derive(clap::Args)]
 pub struct LinkArgs {
-    /// The work item's id
-    id: i64,
+    /// The work item's id: 1207, #1207, AB#1207 or its web URL
+    id: String,
     /// The repository, by name
     #[arg(long)]
     repo: String,
@@ -896,19 +908,20 @@ pub(crate) fn add_artifact_link(
 
 fn workitem_link(ctx: &Ctx, args: LinkArgs) -> Result<BranchLinked> {
     let ado = Ado::load(ctx)?;
+    let id = ado.id(Kind::WorkItem, &args.id)?;
     let repo = ado.repo(ctx, &args.repo)?;
     let branch = match &args.branch {
         Some(branch) => short_branch(branch.trim()),
         None => {
             let url = ado.api(
                 None,
-                &format!("wit/workitems/{}", args.id),
+                &format!("wit/workitems/{}", id),
                 "fields=System.Title",
                 crate::client::API,
             );
             let item = ado.get(ctx, &url)?;
             branch_name(
-                args.id,
+                id,
                 &text(&item["fields"]["System.Title"]).unwrap_or_default(),
             )
         }
@@ -956,9 +969,9 @@ fn workitem_link(ctx: &Ctx, args: LinkArgs) -> Result<BranchLinked> {
         repo.id,
         branch.replace('/', "%2F")
     );
-    let linked = add_artifact_link(ctx, &ado, args.id, &url, "Branch")?;
+    let linked = add_artifact_link(ctx, &ado, id, &url, "Branch")?;
     Ok(BranchLinked {
-        work_item: args.id,
+        work_item: id,
         repo: repo.name,
         branch,
         branch_created,
@@ -1086,8 +1099,8 @@ mod tests {
                 "p1",
                 "--text",
                 "log in",
-                "--changed-since",
-                "7d",
+                "--since",
+                "2026-09-22",
                 "--parent",
                 "7",
                 "--wiql",
@@ -1119,7 +1132,7 @@ mod tests {
         );
         assert_eq!(
             sent[0].url,
-            format!("{BASE}/Fabrikam/_apis/wit/wiql?$top=20000&api-version=7.1")
+            format!("{BASE}/Fabrikam/_apis/wit/wiql?$top=20000&timePrecision=true&api-version=7.1")
         );
         assert_eq!(
             query_of(&transport, 0),
@@ -1128,7 +1141,7 @@ mod tests {
              AND [System.WorkItemType] = 'Bug' AND [System.AreaPath] UNDER 'Fabrikam\\Web' \
              AND [System.Tags] CONTAINS 'ui' AND [System.Tags] CONTAINS 'p1' \
              AND ([System.Title] CONTAINS 'log in' OR [System.Description] CONTAINS WORDS 'log in') \
-             AND [System.ChangedDate] >= @Today - 7 AND [System.Parent] = 7 \
+             AND [System.ChangedDate] >= '2026-09-22T00:00:00Z' AND [System.Parent] = 7 \
              AND ([System.Reason] <> 'Obsolete') ORDER BY [System.ChangedDate] DESC"
         );
         assert_eq!(
@@ -1138,7 +1151,8 @@ mod tests {
         assert_eq!(sent[1].body.as_ref().unwrap()["ids"], json!([30, 10]));
         assert_eq!(
             sent[1].authorization.as_deref(),
-            Some("Basic OmZpeHR1cmUtcGF0")
+            Some("Bearer token@499b84ac-1321-427f-aa17-267ca6975798"),
+            "an az token for Azure DevOps's own resource"
         );
     }
 
@@ -1222,17 +1236,33 @@ mod tests {
         );
         assert!(transport.sent().is_empty());
 
-        let (outcome, _) = ado(
-            &["ado", "workitem", "list", "--changed-since", "last week"],
-            vec![],
-        );
+        let (outcome, _) = ado(&["ado", "workitem", "list", "--since", "last week"], vec![]);
         assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("expected a time: 15m"),
+            "{}",
+            outcome.stderr
+        );
         let (outcome, transport) = ado(
-            &["ado", "workitem", "list", "--changed-since", "2026-09-01"],
+            &[
+                "ado",
+                "workitem",
+                "list",
+                "--since",
+                "2026-09-01T12:00:00+02:00",
+                "--until",
+                "2026-09-02",
+            ],
             vec![wiql(&[])],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
-        assert!(query_of(&transport, 0).contains("[System.ChangedDate] >= '2026-09-01'"));
+        let query = query_of(&transport, 0);
+        assert!(
+            query.contains(
+                "[System.ChangedDate] >= '2026-09-01T10:00:00Z' AND [System.ChangedDate] <= '2026-09-02T00:00:00Z'"
+            ),
+            "{query}"
+        );
     }
 
     #[test]

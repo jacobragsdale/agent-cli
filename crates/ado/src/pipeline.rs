@@ -6,15 +6,17 @@
 
 use std::time::{Duration, Instant};
 
-use agent_cli_core::{Ctx, Effect, Exit, Failure, Method, command};
+use agent_cli_core::{Ctx, Effect, Exit, Failure, Method, When, command};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Map, Value, json};
 
 use crate::client::{
-    Ado, Body, PREVIEW_API, full_ref, list, query_value, rate_limit_pause, short_branch, text,
+    Ado, Body, Kind, PREVIEW_API, full_ref, list, query_value, rate_limit_pause, short_branch,
+    stamp, text,
 };
+use crate::workitem::{self, WorkItemRef};
 
 /// How often `run wait` asks, which is how often ticket-tui's watcher did.
 const POLL: Duration = Duration::from_secs(15);
@@ -86,7 +88,7 @@ fn pipeline_list(ctx: &Ctx, args: PipelineListArgs) -> Result<Vec<PipelineRow>> 
                     status: text(&latest["status"]),
                     result: text(&latest["result"]),
                     branch: latest["sourceBranch"].as_str().map(short_branch),
-                    finished: text(&latest["finishTime"]),
+                    finished: stamp(&latest["finishTime"]),
                 }),
                 url: text(&definition["_links"]["web"]["href"]),
             })
@@ -145,9 +147,9 @@ fn run_row(build: &Value) -> RunRow {
         commit: text(&build["sourceVersion"]),
         requested_by: text(&build["requestedFor"]["displayName"]),
         reason: text(&build["reason"]),
-        queued: text(&build["queueTime"]),
-        started: text(&build["startTime"]),
-        finished: text(&build["finishTime"]),
+        queued: stamp(&build["queueTime"]),
+        started: stamp(&build["startTime"]),
+        finished: stamp(&build["finishTime"]),
         url: text(&build["_links"]["web"]["href"]),
     }
 }
@@ -180,9 +182,15 @@ pub struct RunListArgs {
     /// Pipeline name or id
     #[arg(long)]
     pipeline: Option<String>,
-    /// The branch it built
+    /// The branch or tag it built: main, v1.4.2, refs/heads/main, refs/tags/v1.4.2
     #[arg(long)]
     branch: Option<String>,
+    /// Queued after this
+    #[arg(long)]
+    since: Option<When>,
+    /// Queued before this
+    #[arg(long)]
+    until: Option<When>,
     /// Runs in this state
     #[arg(long, value_enum)]
     status: Option<RunStatus>,
@@ -200,8 +208,10 @@ fn run_list(ctx: &Ctx, args: RunListArgs) -> Result<Vec<RunRow>> {
     if let Some(pipeline) = &args.pipeline {
         query.push_str(&format!("&definitions={}", ado.pipeline_id(ctx, pipeline)?));
     }
-    if let Some(branch) = &args.branch {
-        query.push_str(&format!("&branchName={}", query_value(&full_ref(branch))));
+    for (key, when) in [("minTime", args.since), ("maxTime", args.until)] {
+        if let Some(when) = when {
+            query.push_str(&format!("&{key}={}", query_value(&when.utc())));
+        }
     }
     if let Some(status) = args.status {
         let status = match status {
@@ -222,12 +232,29 @@ fn run_list(ctx: &Ctx, args: RunListArgs) -> Result<Vec<RunRow>> {
         };
         query.push_str(&format!("&resultFilter={result}"));
     }
-    let answer = ado.get(ctx, &ado.code("build/builds", &query))?;
-    let mut rows: Vec<RunRow> = list(&answer["value"]).iter().map(run_row).collect();
+    // A bare name is a branch or a tag (images are tagged with the git tag
+    // that built them): the branch first, the tag when no branch has runs.
+    let refs: Vec<Option<String>> = match args.branch.as_deref().map(str::trim) {
+        None => vec![None],
+        Some(full) if full.starts_with("refs/") => vec![Some(full.to_owned())],
+        Some(name) => vec![Some(full_ref(name)), Some(format!("refs/tags/{name}"))],
+    };
+    let mut rows: Vec<RunRow> = Vec::new();
+    for reference in refs {
+        let mut query = query.clone();
+        if let Some(reference) = reference {
+            query.push_str(&format!("&branchName={}", query_value(&reference)));
+        }
+        let answer = ado.get(ctx, &ado.code("build/builds", &query))?;
+        rows = list(&answer["value"]).iter().map(run_row).collect();
+        if !rows.is_empty() {
+            break;
+        }
+    }
     if rows.len() > args.limit {
         rows.truncate(args.limit);
         ctx.note(format!(
-            "[latest {}; --limit N, or narrow with --pipeline --branch]",
+            "[latest {}; --limit N, or narrow with --pipeline --branch --since]",
             args.limit
         ));
     }
@@ -238,7 +265,7 @@ command! {
     pub RUN_LIST = ["ado", "run", "list"], Read,
     "List pipeline runs (builds), newest first",
     keywords: ["builds", "history", "recent", "latest", "failed", "status", "ci"],
-    example: "ado run list --pipeline web-ci --branch main --fields id,status,result,finished",
+    example: "ado run list --branch refs/tags/v1.4.2 --fields id,pipeline,status,result,finished",
     run: run_list,
 }
 
@@ -246,18 +273,30 @@ command! {
 
 #[derive(clap::Args)]
 pub struct RunIdArgs {
-    /// The run's id
-    id: i64,
+    /// The run's id: 8812, #8812 or its web URL
+    id: String,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct RunDetail {
     #[serde(flatten)]
     run: RunRow,
+    /// The pull request it built, or the one that merged its commit.
+    pr: Option<PrRef>,
+    /// The work items Azure DevOps associates with the run.
+    workitems: Vec<WorkItemRef>,
     /// Tasks running now.
     running: Vec<String>,
     /// What failed: tasks first; jobs or stages only when no task did.
     failed: Vec<FailedStep>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct PrRef {
+    /// What `ado pr get` takes.
+    id: i64,
+    title: Option<String>,
+    status: Option<String>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -293,10 +332,78 @@ fn log_id(record: &Value) -> Option<i64> {
     record["log"]["id"].as_i64().filter(|id| *id > 0)
 }
 
+/// The pull request behind a run: the one whose merge commit it built (a CI
+/// or tag build of a merged change, or a PR build's own merge), else the
+/// number a PR build was triggered for.
+fn run_pr(ctx: &Ctx, ado: &Ado, build: &Value) -> Result<Option<PrRef>> {
+    let repo = &build["repository"];
+    if let (Some(repo_id), Some(commit), Some("TfsGit")) = (
+        text(&repo["id"]),
+        text(&build["sourceVersion"]),
+        repo["type"].as_str(),
+    ) {
+        let url = ado.code(&format!("git/repositories/{repo_id}/pullrequestquery"), "");
+        let body = json!({"queries": [{"type": "lastMergeCommit", "items": [commit]}]});
+        let answer = ado.query(ctx, &url, body)?;
+        if let Some(pr) = list(&answer["results"])
+            .iter()
+            .flat_map(|result| list(&result[commit.as_str()]))
+            .next()
+            && let Some(id) = pr["pullRequestId"].as_i64()
+        {
+            return Ok(Some(PrRef {
+                id,
+                title: text(&pr["title"]),
+                status: text(&pr["status"]),
+            }));
+        }
+    }
+    let triggered = build["triggerInfo"]["pr.number"]
+        .as_str()
+        .and_then(|number| number.parse().ok())
+        .filter(|_| build["reason"].as_str() == Some("pullRequest"));
+    Ok(triggered.map(|id| PrRef {
+        id,
+        title: None,
+        status: None,
+    }))
+}
+
+/// The work items linked to a run, with their titles and states.
+fn run_workitems(ctx: &Ctx, ado: &Ado, id: i64) -> Result<Vec<WorkItemRef>> {
+    let linked = ado.get(ctx, &ado.code(&format!("build/builds/{id}/workitems"), ""))?;
+    let ids: Vec<i64> = list(&linked["value"])
+        .iter()
+        .filter_map(|item| {
+            item["id"]
+                .as_str()
+                .and_then(|id| id.parse().ok())
+                .or_else(|| item["id"].as_i64())
+        })
+        .collect();
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    Ok(workitem::rows(ctx, ado, &ids)?
+        .iter()
+        .map(WorkItemRef::from)
+        .collect())
+}
+
 fn run_get(ctx: &Ctx, args: RunIdArgs) -> Result<RunDetail> {
     let ado = Ado::load(ctx)?;
-    let build = ado.get(ctx, &build_url(&ado, args.id))?;
-    let records = timeline(ctx, &ado, args.id)?;
+    let id = ado.id(Kind::Run, &args.id)?;
+    let build = ado.get(ctx, &build_url(&ado, id))?;
+    let records = timeline(ctx, &ado, id)?;
+    // What produced the run is worth having, not worth failing over.
+    let workitems = run_workitems(ctx, &ado, id).unwrap_or_else(|error| {
+        ctx.note(format!("[work items not read: {error:#}]"));
+        Vec::new()
+    });
+    let pr = run_pr(ctx, &ado, &build).unwrap_or_else(|error| {
+        ctx.note(format!("[pull request not read: {error:#}]"));
+        None
+    });
     let failed_of = |kind: Option<&str>| -> Vec<FailedStep> {
         records
             .iter()
@@ -320,6 +427,8 @@ fn run_get(ctx: &Ctx, args: RunIdArgs) -> Result<RunDetail> {
     }
     Ok(RunDetail {
         run: run_row(&build),
+        pr,
+        workitems,
         running: records
             .iter()
             .filter(|record| is(record, "Task") && record["state"].as_str() == Some("inProgress"))
@@ -331,9 +440,9 @@ fn run_get(ctx: &Ctx, args: RunIdArgs) -> Result<RunDetail> {
 
 command! {
     pub RUN_GET = ["ado", "run", "get"], Read,
-    "Show a run: status, result, branch, commit, timing, and what failed",
-    keywords: ["build", "why", "failed", "broken", "status", "result", "timeline", "errors"],
-    example: "ado run get 1234 --fields status,result,failed",
+    "Show a run: status, commit, timing, what failed, its pull request and work items",
+    keywords: ["build", "why", "failed", "broken", "status", "result", "timeline", "errors", "shipped", "deployed", "release"],
+    example: "ado run get 1234 --fields status,result,commit,pr,workitems,failed",
     run: run_get,
 }
 
@@ -341,8 +450,8 @@ command! {
 
 #[derive(clap::Args)]
 pub struct LogsArgs {
-    /// The run's id
-    id: i64,
+    /// The run's id: 8812, #8812 or its web URL
+    id: String,
     /// A job's log, by name
     #[arg(long, conflicts_with = "task")]
     job: Option<String>,
@@ -453,14 +562,12 @@ fn chosen_logs(
 
 fn run_logs(ctx: &Ctx, args: LogsArgs) -> Result<RunLogs> {
     let ado = Ado::load(ctx)?;
-    let records = timeline(ctx, &ado, args.id)?;
-    let chosen = chosen_logs(args.id, &records, args.job.as_deref(), args.task.as_deref())?;
+    let id = ado.id(Kind::Run, &args.id)?;
+    let records = timeline(ctx, &ado, id)?;
+    let chosen = chosen_logs(id, &records, args.job.as_deref(), args.task.as_deref())?;
     // The line counts say where each tail starts, so a long log is not read
     // whole to keep its last lines.
-    let counts = ado.get(
-        ctx,
-        &ado.code(&format!("build/builds/{}/logs", args.id), ""),
-    )?;
+    let counts = ado.get(ctx, &ado.code(&format!("build/builds/{}/logs", id), ""))?;
     let mut parts = Vec::new();
     for (name, log) in &chosen {
         let lines = list(&counts["value"])
@@ -470,7 +577,7 @@ fn run_logs(ctx: &Ctx, args: LogsArgs) -> Result<RunLogs> {
             .and_then(|count| usize::try_from(count).ok());
         let start = lines.map_or(0, |count| count.saturating_sub(args.tail));
         let url = ado.code(
-            &format!("build/builds/{}/logs/{log}", args.id),
+            &format!("build/builds/{}/logs/{log}", id),
             &format!("startLine={start}"),
         );
         let answer = ado.get(ctx, &url)?;
@@ -488,7 +595,7 @@ fn run_logs(ctx: &Ctx, args: LogsArgs) -> Result<RunLogs> {
         });
     }
     Ok(RunLogs {
-        run: args.id,
+        run: id,
         logs: chosen.into_iter().map(|(name, _)| name).collect(),
         text: parts.join("\n"),
     })
@@ -547,7 +654,7 @@ fn run_create(ctx: &Ctx, args: RunCreateArgs) -> Result<RunRow> {
         commit: None,
         requested_by: None,
         reason: None,
-        queued: text(&run["createdDate"]),
+        queued: stamp(&run["createdDate"]),
         started: None,
         finished: None,
         url: text(&run["_links"]["web"]["href"]),
@@ -566,7 +673,7 @@ command! {
 
 fn run_wait(ctx: &Ctx, args: RunIdArgs) -> Result<RunRow> {
     let ado = Ado::load(ctx)?;
-    let id = args.id;
+    let id = ado.id(Kind::Run, &args.id)?;
     let url = build_url(&ado, id);
     let started = Instant::now();
     loop {
@@ -621,12 +728,13 @@ command! {
 
 fn run_cancel(ctx: &Ctx, args: RunIdArgs) -> Result<RunRow> {
     let ado = Ado::load(ctx)?;
+    let id = ado.id(Kind::Run, &args.id)?;
     let body = json!({"status": "cancelling"});
     let run = ado.change(
         ctx,
         Effect::Destructive,
         Method::Patch,
-        &build_url(&ado, args.id),
+        &build_url(&ado, id),
         body,
     )?;
     Ok(run_row(&run))
@@ -642,7 +750,8 @@ command! {
 
 fn run_retry(ctx: &Ctx, args: RunIdArgs) -> Result<RunRow> {
     let ado = Ado::load(ctx)?;
-    let url = ado.code(&format!("build/builds/{}", args.id), "retry=true");
+    let id = ado.id(Kind::Run, &args.id)?;
+    let url = ado.code(&format!("build/builds/{}", id), "retry=true");
     let run = ado.change(ctx, Effect::Write, Method::Patch, &url, json!({}))?;
     Ok(run_row(&run))
 }
@@ -701,7 +810,7 @@ fn approval_list(ctx: &Ctx, args: ApprovalListArgs) -> Result<Vec<ApprovalRow>> 
                 run_id: owner["id"].as_i64(),
                 run: text(&owner["name"]),
                 instructions: text(&approval["instructions"]),
-                created: text(&approval["createdOn"]),
+                created: stamp(&approval["createdOn"]),
                 approvers: list(&approval["steps"])
                     .iter()
                     .map(|step| Approver {
@@ -935,7 +1044,7 @@ mod tests {
         assert_eq!(
             sent[1],
             format!(
-                "{CODE}/build/builds?queryOrder=queueTimeDescending&$top=2&definitions=12&branchName=refs%2Fheads%2Fmain&statusFilter=completed&resultFilter=partiallySucceeded&api-version=7.1"
+                "{CODE}/build/builds?queryOrder=queueTimeDescending&$top=2&definitions=12&statusFilter=completed&resultFilter=partiallySucceeded&branchName=refs%2Fheads%2Fmain&api-version=7.1"
             )
         );
 
@@ -954,12 +1063,152 @@ mod tests {
     }
 
     #[test]
+    fn a_bare_name_is_a_branch_then_a_tag_and_a_window_is_minimum_and_maximum_time() {
+        let mut tagged = build(8812, "completed", Some("succeeded"));
+        tagged["sourceBranch"] = json!("refs/tags/v1.4.2");
+        let (outcome, transport) = ado(
+            &[
+                "ado",
+                "run",
+                "list",
+                "--branch",
+                "v1.4.2",
+                "--since",
+                "2026-09-28",
+                "--until",
+                "2026-09-29T12:00:00+02:00",
+            ],
+            vec![page(vec![]), page(vec![tagged.clone()])],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json()[0]["branch"],
+            "refs/tags/v1.4.2",
+            "a tag keeps its refs/tags/, so it pastes back into --branch"
+        );
+        let window = "minTime=2026-09-28T00%3A00%3A00Z&maxTime=2026-09-29T10%3A00%3A00Z";
+        assert_eq!(
+            urls(&transport),
+            [
+                format!(
+                    "{CODE}/build/builds?queryOrder=queueTimeDescending&$top=51&{window}&branchName=refs%2Fheads%2Fv1.4.2&api-version=7.1"
+                ),
+                format!(
+                    "{CODE}/build/builds?queryOrder=queueTimeDescending&$top=51&{window}&branchName=refs%2Ftags%2Fv1.4.2&api-version=7.1"
+                ),
+            ]
+        );
+
+        let (outcome, transport) = ado(
+            &["ado", "run", "list", "--branch", "refs/tags/v1.4.2"],
+            vec![page(vec![tagged])],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(transport.sent().len(), 1, "a full ref is asked for once");
+    }
+
+    #[test]
+    fn run_get_says_which_pull_request_and_work_items_produced_it() {
+        let mut built = build(8812, "completed", Some("succeeded"));
+        built["sourceBranch"] = json!("refs/tags/v1.4.2");
+        built["sourceVersion"] = json!("4be1c0d");
+        built["repository"] = json!({"id": "r-1", "type": "TfsGit", "name": "api"});
+        let item = |id: i64, title: &str| {
+            json!({"id": id, "rev": 3, "fields": {"System.WorkItemType": "User Story",
+                "System.Title": title, "System.State": "Resolved"}})
+        };
+        let (outcome, transport) = ado(
+            &[
+                "ado",
+                "run",
+                "get",
+                "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8812&view=results",
+            ],
+            vec![
+                Answer::json(&built),
+                Answer::json(&json!({"records": []})),
+                page(vec![
+                    json!({"id": "1207", "url": "x"}),
+                    json!({"id": "1210", "url": "x"}),
+                ]),
+                page(vec![
+                    item(1210, "Log the retry count"),
+                    item(1207, "Throttle handling"),
+                ]),
+                Answer::json(&json!({"results": [{"4be1c0d": [
+                    {"pullRequestId": 431, "title": "Retry on 429", "status": "completed"}]}]})),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let got = outcome.json();
+        assert_eq!(got["id"], 8812);
+        assert_eq!(got["commit"], "4be1c0d");
+        assert_eq!(
+            got["pr"],
+            json!({"id": 431, "title": "Retry on 429", "status": "completed"})
+        );
+        assert_eq!(
+            got["workitems"],
+            json!([
+                {"id": 1207, "type": "User Story", "title": "Throttle handling", "state": "Resolved"},
+                {"id": 1210, "type": "User Story", "title": "Log the retry count", "state": "Resolved"}
+            ])
+        );
+        let sent = transport.sent();
+        assert_eq!(
+            sent[2].url,
+            format!("{CODE}/build/builds/8812/workitems?api-version=7.1")
+        );
+        assert_eq!(
+            sent[4].url,
+            format!("{CODE}/git/repositories/r-1/pullrequestquery?api-version=7.1")
+        );
+        assert!(sent[4].method.is_read(), "a query that only reads");
+        assert_eq!(
+            sent[4].body.as_ref().unwrap(),
+            &json!({"queries": [{"type": "lastMergeCommit", "items": ["4be1c0d"]}]})
+        );
+
+        let mut triggered = build(8813, "completed", Some("failed"));
+        triggered["reason"] = json!("pullRequest");
+        triggered["triggerInfo"] = json!({"pr.number": "432"});
+        let (outcome, _) = ado(
+            &["ado", "run", "get", "#8813"],
+            vec![
+                Answer::json(&triggered),
+                Answer::json(&json!({"records": []})),
+                Answer::status(500, r#"{"message":"work items unavailable"}"#),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()["pr"], json!({"id": 432}));
+        assert!(
+            outcome.stderr.contains("[work items not read:"),
+            "{}",
+            outcome.stderr
+        );
+
+        let (outcome, transport) = ado(
+            &[
+                "ado",
+                "run",
+                "get",
+                "https://dev.azure.com/fabrikam/X/_build/results?buildId=1",
+            ],
+            vec![],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(transport.sent().is_empty());
+    }
+
+    #[test]
     fn run_get_names_the_failed_tasks_and_their_errors() {
         let (outcome, transport) = ado(
             &["ado", "run", "get", "991"],
             vec![
                 Answer::json(&build(991, "completed", Some("failed"))),
                 timeline(),
+                page(vec![]),
             ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
@@ -983,6 +1232,7 @@ mod tests {
             vec![
                 Answer::json(&build(992, "notStarted", None)),
                 Answer::ok(""),
+                page(vec![]),
             ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
