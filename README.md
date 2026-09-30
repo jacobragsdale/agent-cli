@@ -102,8 +102,8 @@ can only read.
   [add a domain](docs/how-to/add-a-domain.md),
   [run agent trials](docs/how-to/run-agent-trials.md),
   [the first live run against Azure](docs/first-live-run.md).
-- Reference: [every command](docs/reference/commands.md), generated from the
-  registry; [config.example.toml](config.example.toml).
+- Reference: [every command](docs/reference/README.md), one page per domain,
+  generated from the registry; [config.example.toml](config.example.toml).
 - Explanation: [why the interface is shaped this way](docs/explanation/design.md).
 - Contributors and agents working on this repository: [AGENTS.md](AGENTS.md).
 

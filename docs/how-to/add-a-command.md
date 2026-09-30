@@ -408,8 +408,9 @@ bodies for `POST`s).
 
 ## 10. Regenerate the reference and run the checks
 
-`docs/reference/commands.md` is rendered from the registry, and a test fails
-while it is stale, so regenerate it first (and again after changing a
+`docs/reference/` is rendered from the registry, a page per domain
+(`docs/reference/ado.md` here), and a test fails while a page is stale, so
+regenerate it first (and again after changing a
 summary, an argument or an example), then run the checks:
 
 ```sh
@@ -464,5 +465,5 @@ same rules as the contract.
 | Deadlines | Nothing waits past `ctx.deadline()`; a blocking call outside HTTP and child processes takes `ctx.remaining()` | review |
 
 For every command and its arguments, see the
-[command reference](../reference/commands.md). For why these rules exist, see
+[command reference](../reference/README.md). For why these rules exist, see
 [The design of agent-cli](../explanation/design.md).

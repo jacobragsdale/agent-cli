@@ -162,8 +162,8 @@ cargo test --workspace --features agent-cli/fixtures
 They include the registry invariants (`check_registry`), the search gates
 (top-1 at least 80%, top-5 at least 95%), read-only refusal of every non-read
 command, the overview budget with every domain configured, the 1,000-command
-perf gates, and two docs tests: `docs/reference/commands.md` must match the
-registry (`UPDATE_DOCS=1 cargo test -p agent-cli reference` rewrites it), and
+perf gates, and two docs tests: `docs/reference/` must match the registry
+(`UPDATE_DOCS=1 cargo test -p agent-cli reference` rewrites it), and
 every `agent-cli …` in the docs' `sh` blocks and prose must parse.
 
 The `fixtures` feature (off by default, never in a release) compiles in the

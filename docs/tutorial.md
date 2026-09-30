@@ -251,4 +251,4 @@ cloud account. To add a command of your own, see
 did here, see [How to run agent trials](how-to/run-agent-trials.md). To
 understand why ids, `--fields` and hints look the way they do, read
 [The design of agent-cli](explanation/design.md). Every command is listed in
-the [command reference](reference/commands.md).
+the [command reference](reference/README.md).

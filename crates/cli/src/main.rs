@@ -36,29 +36,38 @@ mod tests {
 
     const REPO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
 
-    /// `docs/reference/commands.md`, rendered from the registry: every
-    /// command's help, as `agent-cli <path> --help` prints it.
-    fn reference() -> String {
+    /// `docs/reference/`, rendered from the registry: `README.md`, the index,
+    /// and one `<domain>.md` per domain holding every command's help, as
+    /// `agent-cli <path> --help` prints it. Pairs of file name and text.
+    fn reference() -> Vec<(String, String)> {
         let total: usize = DOMAINS.iter().map(|domain| domain.commands.len()).sum();
-        let mut out = format!(
+        let mut index = format!(
             "# Command reference\n\n\
              Generated from the registry by `crates/cli` (`UPDATE_DOCS=1 cargo test -p agent-cli \
-             reference`); a test fails when it is stale. Each block is what \
-             `agent-cli <domain> <resource> <verb> --help` prints: arguments (`*` required), \
-             `Returns:`, the effect, and an example.\n\n\
+             reference`); a test fails when it is stale. Each domain's page holds, for every \
+             command, what `agent-cli <domain> <resource> <verb> --help` prints: arguments (`*` \
+             required), `Returns:`, the effect, and an example.\n\n\
              {total} commands in {} domains. Every command also takes the globals `--fields a,b.c`, \
              `--raw`, `--dry-run`, `--yes`, `--reveal`, `--timeout S`, `--output FILE` and \
              `--no-cache`. Exit codes: 0 ok, 1 failed, 2 fix the call, 3 needs setup, 4 not found, \
-             5 conflict, 124 timed out.\n",
+             5 conflict, 124 timed out.\n\n\
+             | Domain | Summary | Commands |\n|---|---|---|\n",
             DOMAINS.len()
         );
+        let mut files = Vec::new();
         for domain in DOMAINS {
-            out.push_str(&format!(
-                "\n## {} \u{2014} {} ({} commands)\n\n| Command | Effect | Summary |\n|---|---|---|\n",
+            index.push_str(&format!(
+                "| [{0}]({0}.md) | {1} | {2} |\n",
                 domain.name,
                 domain.summary,
                 domain.commands.len()
             ));
+            let mut out = format!(
+                "# {} \u{2014} {} ({} commands)\n\n| Command | Effect | Summary |\n|---|---|---|\n",
+                domain.name,
+                domain.summary,
+                domain.commands.len()
+            );
             for command in domain.commands {
                 let path = command.path.join(" ");
                 let effect = match command.effect {
@@ -81,36 +90,56 @@ mod tests {
                     command_help(command)
                 ));
             }
+            files.push((format!("{}.md", domain.name), out));
         }
-        out
+        files.push(("README.md".to_owned(), index));
+        files
     }
 
+    /// Every page is fresh, and no page in `docs/reference/` is one the
+    /// registry no longer produces. `UPDATE_DOCS` rewrites them and removes
+    /// the strays.
     #[test]
     fn the_command_reference_matches_the_registry() {
-        let path = Path::new(REPO).join("docs/reference/commands.md");
+        let dir = Path::new(REPO).join("docs/reference");
         let fresh = reference();
-        if std::env::var_os("UPDATE_DOCS").is_some() {
-            std::fs::write(&path, &fresh).unwrap();
+        let update = std::env::var_os("UPDATE_DOCS").is_some();
+        let mut stale = Vec::new();
+        for (name, text) in &fresh {
+            let path = dir.join(name);
+            if update {
+                std::fs::write(&path, text).unwrap();
+            }
+            if std::fs::read_to_string(&path).unwrap_or_default() != *text {
+                stale.push(name.clone());
+            }
         }
-        let written = std::fs::read_to_string(&path).unwrap_or_default();
+        for entry in std::fs::read_dir(&dir).unwrap().flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name.ends_with(".md") && !fresh.iter().any(|(fresh, _)| *fresh == name) {
+                if update {
+                    std::fs::remove_file(entry.path()).unwrap();
+                } else {
+                    stale.push(format!("{name} (no domain produces it)"));
+                }
+            }
+        }
         assert!(
-            written == fresh,
-            "docs/reference/commands.md is stale: run UPDATE_DOCS=1 cargo test -p agent-cli reference"
+            stale.is_empty(),
+            "docs/reference is stale: {stale:?}; run UPDATE_DOCS=1 cargo test -p agent-cli reference"
         );
     }
 
     /// The Markdown a reader follows: README, AGENTS.md, docs/ and the
-    /// world's README. Not the plans, which name commands not built yet, nor
+    /// world's README and facts. Not the plans, which name commands not built yet, nor
     /// the generated reference, whose examples `check_registry` parses.
     fn documents() -> Vec<PathBuf> {
         fn walk(dir: &Path, found: &mut Vec<PathBuf>) {
             for entry in std::fs::read_dir(dir).unwrap().flatten() {
                 let path = entry.path();
-                if path.is_dir() && !path.ends_with("plans") {
+                if path.is_dir() && !path.ends_with("plans") && !path.ends_with("reference") {
                     walk(&path, found);
-                } else if path.extension().is_some_and(|ext| ext == "md")
-                    && !path.ends_with("reference/commands.md")
-                {
+                } else if path.extension().is_some_and(|ext| ext == "md") {
                     found.push(path);
                 }
             }
