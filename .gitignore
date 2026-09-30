@@ -1,5 +1,7 @@
 /target
-/.claude/
+/.claude/*
+!/.claude/skills/
+!/.claude/settings.json
 /.port-notes/
 config.toml
 !/fixtures/world/config.toml
