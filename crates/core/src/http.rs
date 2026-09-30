@@ -386,7 +386,7 @@ fn checked(method: Method, response: Response) -> Result<Response> {
         }
         _ => failure_message(&response.body),
     };
-    let failure = Failure::new(
+    let mut failure = Failure::new(
         exit,
         format!(
             "{} {} answered {status}: {reason}",
@@ -394,6 +394,7 @@ fn checked(method: Method, response: Response) -> Result<Response> {
             response.url
         ),
     );
+    failure.status = Some(status);
     Err(match status {
         401 => failure.hint("the credential was refused: sign in again or check its scopes; `agent-cli doctor` shows what is set up"),
         429 | 503 => failure.hint("the service is still throttling; run it again later"),
@@ -431,11 +432,16 @@ pub fn host_under(url: &str, suffix: &str) -> bool {
 
 /// What a service says when it refuses. ARM and Key Vault write it under
 /// `error.message` (with the actionable part in `error.details`), a registry
-/// under `errors[0].message`, Azure DevOps under `message`; anything else is
-/// worth the front of its body rather than nothing.
+/// under `errors[0].message`, Azure DevOps under `message`, FastAPI (Airflow)
+/// under `detail` (a string, or a 422's list of `{loc, msg}`), Datadog as
+/// `errors: ["…"]`; anything else is worth the front of its body rather than
+/// nothing. Core redacts it on the way out, like every error.
 #[must_use]
 pub fn failure_message(text: &str) -> String {
     let parsed = serde_json::from_str::<Value>(text).unwrap_or(Value::Null);
+    if let Some(said) = listed_failures(&parsed) {
+        return said;
+    }
     let details: Vec<&str> = parsed["error"]["details"]
         .as_array()
         .into_iter()
@@ -463,8 +469,56 @@ pub fn failure_message(text: &str) -> String {
     }
 }
 
-/// How long to leave a throttled answer alone: `Retry-After`, or Resource
-/// Graph's `x-ms-user-quota-resets-after` clock, or the default.
+/// FastAPI's `detail` and Datadog's `errors` of strings, joined; `None` when
+/// the body is in neither shape.
+fn listed_failures(parsed: &Value) -> Option<String> {
+    if let Some(detail) = parsed["detail"].as_str() {
+        return Some(detail.to_owned());
+    }
+    let said: Vec<String> = if let Some(details) = parsed["detail"].as_array() {
+        details
+            .iter()
+            .filter_map(|detail| {
+                let message = detail["msg"].as_str()?;
+                let at: Vec<String> = detail["loc"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .map(|part| {
+                        part.as_str()
+                            .map_or_else(|| part.to_string(), str::to_owned)
+                    })
+                    .collect();
+                Some(if at.is_empty() {
+                    message.to_owned()
+                } else {
+                    format!("{}: {message}", at.join("."))
+                })
+            })
+            .collect()
+    } else {
+        // Datadog's v1 errors are strings; its v2 (JSON:API) ones objects
+        // with a `detail` or `title`.
+        parsed["errors"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|error| {
+                error
+                    .as_str()
+                    .or_else(|| error["detail"].as_str())
+                    .or_else(|| error["title"].as_str())
+            })
+            .map(str::to_owned)
+            .collect()
+    };
+    (!said.is_empty()).then(|| said.join("; "))
+}
+
+/// How long to leave a throttled answer alone: `Retry-After`, Resource
+/// Graph's `x-ms-user-quota-resets-after` clock, `X-RateLimit-Reset`
+/// (Datadog's seconds to wait, or an epoch second as some services write
+/// it), or the default. The caller caps it by the deadline.
 #[must_use]
 pub fn throttle_wait(response: &Response, now: OffsetDateTime) -> Duration {
     if let Some(header) = response.header("Retry-After") {
@@ -474,6 +528,19 @@ pub fn throttle_wait(response: &Response, now: OffsetDateTime) -> Duration {
         .header("x-ms-user-quota-resets-after")
         .and_then(hms_seconds)
     {
+        return retry_after(Some(&seconds.to_string()), now);
+    }
+    if let Some(reset) = response
+        .header("X-RateLimit-Reset")
+        .and_then(|raw| raw.trim().parse::<f64>().ok())
+        .filter(|reset| reset.is_finite())
+    {
+        // No wait is a billion seconds long; a number that large is a clock.
+        let seconds = if reset > 1e9 {
+            reset - now.unix_timestamp() as f64
+        } else {
+            reset
+        };
         return retry_after(Some(&seconds.to_string()), now);
     }
     DEFAULT_RETRY_AFTER
@@ -615,6 +682,17 @@ mod tests {
             ..Response::default()
         };
         assert_eq!(throttle_wait(&quota, now), Duration::from_secs(4));
+        let reset = |value: &str| Response {
+            headers: vec![("X-RateLimit-Reset".into(), value.into())],
+            ..Response::default()
+        };
+        assert_eq!(throttle_wait(&reset("12"), now), Duration::from_secs(12));
+        assert_eq!(
+            throttle_wait(&reset("1700000009"), now),
+            Duration::from_secs(9),
+            "an epoch second counts forward from now"
+        );
+        assert_eq!(throttle_wait(&reset("soon"), now), DEFAULT_RETRY_AFTER);
     }
 
     #[test]
@@ -631,6 +709,26 @@ mod tests {
         assert_eq!(
             failure_message(r#"{"error":{"message":"bad","details":[{"message":"why"}]}}"#),
             "bad \u{2014} why"
+        );
+        assert_eq!(
+            failure_message(r#"{"detail":"The DAG with dag_id: `x` was not found"}"#),
+            "The DAG with dag_id: `x` was not found"
+        );
+        assert_eq!(
+            failure_message(
+                r#"{"detail":[{"type":"missing","loc":["body","logical_date"],"msg":"Field required"},{"loc":["query",0],"msg":"bad"}]}"#
+            ),
+            "body.logical_date: Field required; query.0: bad"
+        );
+        assert_eq!(
+            failure_message(r#"{"errors":["Forbidden","Missing scope monitors_read"]}"#),
+            "Forbidden; Missing scope monitors_read"
+        );
+        assert_eq!(
+            failure_message(
+                r#"{"errors":[{"status":"404","title":"Not found","detail":"no monitor 4711"}]}"#
+            ),
+            "no monitor 4711"
         );
         assert_eq!(failure_message("  plain text  "), "plain text");
         assert_eq!(failure_message(""), "(no body)");
@@ -679,6 +777,7 @@ mod tests {
             .unwrap_err();
         let (exit, message, hint) = describe(&error);
         assert_eq!(exit, Exit::Setup);
+        assert_eq!(crate::error::status_of(&error), Some(401));
         assert_eq!(message, "GET https://h.example/x answered 401: expired");
         assert!(hint.unwrap().contains("sign in"));
 
@@ -720,7 +819,7 @@ mod tests {
     fn a_throttle_longer_than_the_deadline_fails_now_with_124() {
         let transport = FakeTransport::answering(vec![Answer::status(503, "{}")]);
         let globals = Globals {
-            timeout: Duration::from_secs(5),
+            timeout: Some(Duration::from_secs(5)),
             ..Globals::default()
         };
         let ctx = Ctx::new(globals, Setup::fake(transport.clone()), "agent-cli");

@@ -6,6 +6,9 @@
 
 use std::fmt;
 
+use serde::Serialize;
+use serde_json::Value;
+
 use crate::secret::redact;
 
 /// The process exit codes, and what each one asks the caller to do.
@@ -43,6 +46,12 @@ pub struct Failure {
     pub exit: Exit,
     pub message: String,
     pub hint: Option<String>,
+    /// The HTTP status a service refused with, when one did.
+    pub status: Option<u16>,
+    /// An answer worth printing anyway: core writes it to stdout, as it would
+    /// a success, and still exits with `exit`. A wait that ended badly prints
+    /// the run it waited on.
+    pub data: Option<Box<Value>>,
 }
 
 impl Failure {
@@ -52,6 +61,8 @@ impl Failure {
             exit,
             message: message.into(),
             hint: None,
+            status: None,
+            data: None,
         }
     }
 
@@ -86,6 +97,30 @@ impl Failure {
         self.hint = Some(hint.into());
         self
     }
+
+    /// Printed on stdout like a success, with this failure's exit code.
+    #[must_use]
+    pub fn with_data(mut self, data: impl Serialize) -> Self {
+        self.data = serde_json::to_value(data).ok().map(Box::new);
+        self
+    }
+}
+
+/// The HTTP status a failure anywhere in `error`'s chain was refused with.
+#[must_use]
+pub fn status_of(error: &anyhow::Error) -> Option<u16> {
+    failure_in(error)?.status
+}
+
+fn failure_in(error: &anyhow::Error) -> Option<&Failure> {
+    error
+        .chain()
+        .find_map(|cause| cause.downcast_ref::<Failure>())
+}
+
+/// What a failure asked to print on stdout, if it asked.
+pub(crate) fn data_of(error: &anyhow::Error) -> Option<Value> {
+    failure_in(error)?.data.as_deref().cloned()
 }
 
 impl fmt::Display for Failure {
@@ -101,9 +136,7 @@ impl std::error::Error for Failure {}
 /// The message is the whole chain, so context a handler added ("reading work
 /// item 42") stays in front of the reason.
 pub(crate) fn describe(error: &anyhow::Error) -> (Exit, String, Option<String>) {
-    let failure = error
-        .chain()
-        .find_map(|cause| cause.downcast_ref::<Failure>());
+    let failure = failure_in(error);
     let exit = failure.map_or(Exit::Failed, |failure| failure.exit);
     let hint = failure.and_then(|failure| failure.hint.as_deref().map(redact));
     (exit, redact(&format!("{error:#}")), hint)

@@ -268,6 +268,8 @@ pub struct SchemaListArgs {
     /// Connection name from `sql connection list`
     #[arg(long)]
     conn: String,
+    #[arg(long, default_value_t = 50)]
+    limit: usize,
 }
 
 /// Schema names: on SQL Server all but the system ones; on Oracle every
@@ -284,7 +286,12 @@ fn schema_list(ctx: &Ctx, args: SchemaListArgs) -> Result<Vec<String>> {
         Kind::Oracle => format!("select username from all_users where {OWNERS} order by username"),
     };
     let rows = ctx.read(catalog_read(ctx, &sql, spec, "schemas", query))?;
-    Ok(rows.iter().map(|row| text(row, 0)).collect())
+    let mut schemas: Vec<String> = rows.iter().map(|row| text(row, 0)).collect();
+    if schemas.len() > args.limit {
+        ctx.note(format!("[{} of {}; --limit N]", args.limit, schemas.len()));
+        schemas.truncate(args.limit);
+    }
+    Ok(schemas)
 }
 
 command! {

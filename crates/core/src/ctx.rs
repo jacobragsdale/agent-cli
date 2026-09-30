@@ -23,7 +23,7 @@ use crate::registry::Effect;
 use crate::secret::{Secret, redact_value};
 
 /// The flags every command accepts, anywhere on the line.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Globals {
     pub fields: Option<String>,
     pub raw: bool,
@@ -32,27 +32,14 @@ pub struct Globals {
     pub reveal: bool,
     pub no_cache: bool,
     pub help: bool,
-    pub timeout: Duration,
+    /// `--timeout`; `None` is the command's own default, else [`DEFAULT_TIMEOUT`].
+    pub timeout: Option<Duration>,
     pub output: Option<PathBuf>,
 }
 
-impl Default for Globals {
-    fn default() -> Self {
-        Self {
-            fields: None,
-            raw: false,
-            dry_run: false,
-            yes: false,
-            reveal: false,
-            no_cache: false,
-            help: false,
-            // Claude Code's shell tool gives up at two minutes; this leaves
-            // room for the agent to read the error and try again.
-            timeout: Duration::from_secs(60),
-            output: None,
-        }
-    }
-}
+/// Claude Code's shell tool gives up at two minutes; this leaves room for the
+/// agent to read the error and try again.
+pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Everything a run needs from its surroundings. [`Setup::from_env`] is the
 /// real one; tests build one around a fake transport and a config string.
@@ -62,6 +49,12 @@ pub struct Setup {
     pub read_only: bool,
     /// `None` turns the cache off.
     pub cache_dir: Option<PathBuf>,
+    /// The environment [`Ctx::env`] reads: `None` is the process's own; tests
+    /// pass only what they set, since edition 2024 makes `set_var` unsafe.
+    pub env: Option<Vec<(String, String)>>,
+    /// A stand-in for every `az` token, so tests never start `az`: see
+    /// [`Ctx::az_token`].
+    pub token: Option<String>,
 }
 
 impl Setup {
@@ -69,12 +62,17 @@ impl Setup {
     pub fn from_env() -> Self {
         let read_only = std::env::var("AGENT_CLI_READ_ONLY")
             .is_ok_and(|value| matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes"));
-        Self {
+        let setup = Self {
             config: Config::load(),
             transport: Box::new(Https::default()),
             read_only,
             cache_dir: crate::cache::default_dir(),
-        }
+            env: None,
+            token: None,
+        };
+        #[cfg(feature = "fixtures")]
+        let setup = crate::replay::from_env(setup);
+        setup
     }
 }
 
@@ -117,6 +115,8 @@ pub struct Ctx {
     cache: Cache,
     transport: Box<dyn Transport>,
     read_only: bool,
+    env: Option<Vec<(String, String)>>,
+    pub(crate) token: Option<String>,
     /// The command line as typed, for "run it again with --yes".
     command_line: String,
     plans: Mutex<Vec<Value>>,
@@ -129,12 +129,14 @@ impl Ctx {
     pub fn new(globals: Globals, setup: Setup, command_line: impl Into<String>) -> Self {
         let cache_dir = setup.cache_dir.filter(|_| !globals.no_cache);
         Self {
-            deadline: Instant::now() + globals.timeout,
+            deadline: Instant::now() + globals.timeout.unwrap_or(DEFAULT_TIMEOUT),
             globals,
             config: setup.config,
             cache: Cache::new(cache_dir),
             transport: setup.transport,
             read_only: setup.read_only,
+            env: setup.env,
+            token: setup.token,
             command_line: command_line.into(),
             plans: Mutex::new(Vec::new()),
             notes: Mutex::new(Vec::new()),
@@ -170,6 +172,20 @@ impl Ctx {
     #[must_use]
     pub fn cache(&self) -> &Cache {
         &self.cache
+    }
+
+    /// An environment variable, set and not blank. Every read of one goes
+    /// through here, so tests set it with `Setup::with_env`.
+    #[must_use]
+    pub fn env(&self, name: &str) -> Option<String> {
+        let value = match &self.env {
+            None => std::env::var(name).ok(),
+            Some(pairs) => pairs
+                .iter()
+                .find(|(key, _)| key == name)
+                .map(|(_, value)| value.clone()),
+        };
+        value.filter(|value| !value.trim().is_empty())
     }
 
     /// A line for stderr after the output, such as `[50 of 312; --limit N]`.

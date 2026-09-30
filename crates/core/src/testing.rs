@@ -140,7 +140,8 @@ impl Transport for FakeTransport {
 }
 
 impl Setup {
-    /// No config, no cache, not read-only, over `transport`.
+    /// No config, no cache, not read-only, an empty environment and stand-in
+    /// `az` tokens (`token@<resource>`), over `transport`.
     #[must_use]
     pub fn fake(transport: impl Transport + 'static) -> Self {
         Self {
@@ -148,7 +149,26 @@ impl Setup {
             transport: Box::new(transport),
             read_only: false,
             cache_dir: None,
+            env: Some(Vec::new()),
+            token: Some("token".to_owned()),
         }
+    }
+
+    /// One environment variable the run sees (`Ctx::env`).
+    #[must_use]
+    pub fn with_env(mut self, name: &str, value: &str) -> Self {
+        self.env
+            .get_or_insert_with(Vec::new)
+            .push((name.to_owned(), value.to_owned()));
+        self
+    }
+
+    /// Every `az` token is `{token}@{resource}` (`{token}-fresh@…` when
+    /// minted again after a 401); no `az` runs.
+    #[must_use]
+    pub fn with_token(mut self, token: &str) -> Self {
+        self.token = Some(token.to_owned());
+        self
     }
 
     /// The config file's text, as if it were at `config.toml`.
@@ -188,17 +208,76 @@ impl Outcome {
     }
 }
 
+/// Commands whose output is someone else's data, passed through as it is:
+/// their timestamps are the database's, not ours to rewrite.
+const PASSTHROUGH: &[&str] = &["sql query run", "sql query bench"];
+
 /// Runs `argv` (without the program name) in process, stdout not a terminal.
+///
+/// # Panics
+/// When the run broke a rule every command keeps, so every fixture test
+/// checks them for free: each `agent-cli …` line printed on stderr (a hint,
+/// a note) must parse against `domains`, and every timestamp on stdout must
+/// be RFC 3339 in UTC, ending in `Z`.
 #[must_use]
 pub fn run(domains: &[Domain], argv: &[&str], setup: Setup) -> Outcome {
     let argv: Vec<String> = argv.iter().map(|arg| (*arg).to_owned()).collect();
     let (mut out, mut err) = (Vec::new(), Vec::new());
     let code = run_with(domains, &argv, setup, &mut out, &mut err, false);
-    Outcome {
+    let outcome = Outcome {
         code,
         stdout: String::from_utf8_lossy(&out).into_owned(),
         stderr: String::from_utf8_lossy(&err).into_owned(),
+    };
+    let problems = printed_command_problems(domains, &outcome.stderr);
+    assert!(
+        problems.is_empty(),
+        "a printed command line does not parse: {problems:#?}\n{outcome:?}"
+    );
+    let path = argv.iter().take(3).cloned().collect::<Vec<_>>().join(" ");
+    if !PASSTHROUGH.contains(&path.as_str())
+        && let Ok(printed) = serde_json::from_str::<Value>(&outcome.stdout)
+    {
+        let local = non_utc_times(&printed);
+        assert!(
+            local.is_empty(),
+            "printed times must be RFC 3339 in UTC, ending in Z: {local:?}\n{outcome:?}"
+        );
     }
+    outcome
+}
+
+/// Every string in `value` that is an RFC 3339 time not written in UTC.
+#[must_use]
+pub fn non_utc_times(value: &Value) -> Vec<String> {
+    match value {
+        Value::String(text) => {
+            let is_time =
+                time::OffsetDateTime::parse(text, &time::format_description::well_known::Rfc3339)
+                    .is_ok();
+            if is_time && !text.ends_with('Z') {
+                vec![text.clone()]
+            } else {
+                Vec::new()
+            }
+        }
+        Value::Array(items) => items.iter().flat_map(non_utc_times).collect(),
+        Value::Object(map) => map.values().flat_map(non_utc_times).collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// Each `agent-cli …` command line in `text` that does not parse against
+/// `domains`, with why. See [`crate::registry::printed_command_problem`].
+#[must_use]
+pub fn printed_command_problems(domains: &[Domain], text: &str) -> Vec<String> {
+    crate::registry::printed_commands(text)
+        .into_iter()
+        .filter_map(|line| {
+            crate::registry::printed_command_problem(domains, &line)
+                .map(|problem| format!("`agent-cli {line}`: {problem}"))
+        })
+        .collect()
 }
 
 /// Runs `argv --dry-run` over `answers` (the reads before its first change)

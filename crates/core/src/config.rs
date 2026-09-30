@@ -142,6 +142,38 @@ impl Config {
     }
 }
 
+/// The configured item `wanted` names, or the only one when nothing is
+/// named: the one rule for every scope flag (`--cluster`, `--conn`, an
+/// instance or site). An unknown name, or a choice left open among several,
+/// is exit 2 listing what is configured; nothing configured is exit 3.
+pub fn pick<'a, T>(
+    noun: &str,
+    flag: &str,
+    wanted: Option<&str>,
+    items: &'a [T],
+    name: impl Fn(&T) -> &str,
+) -> Result<&'a T, Failure> {
+    let names = || items.iter().map(&name).collect::<Vec<_>>().join(", ");
+    match (wanted, items) {
+        (_, []) => Err(Failure::setup(format!("no {noun} is configured"))
+            .hint("config.example.toml shows the keys; `agent-cli doctor` checks them")),
+        (Some(wanted), _) => items
+            .iter()
+            .find(|item| name(item) == wanted)
+            .ok_or_else(|| {
+                Failure::usage(format!(
+                    "no {noun} {wanted:?}; {flag} takes one of: {}",
+                    names()
+                ))
+            }),
+        (None, [only]) => Ok(only),
+        (None, _) => Err(Failure::usage(format!(
+            "more than one {noun} is configured; name one with {flag}: {}",
+            names()
+        ))),
+    }
+}
+
 fn env_prefix(section: &str) -> String {
     format!(
         "AGENT_CLI_{}_",
@@ -230,6 +262,43 @@ mod tests {
             .iter()
             .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
             .collect()
+    }
+
+    #[test]
+    fn a_scope_defaults_to_the_only_one_and_otherwise_names_the_choices() {
+        let one = ["prod"];
+        let two = ["dev", "prod"];
+        fn name<'a>(item: &'a &str) -> &'a str {
+            item
+        }
+        assert_eq!(
+            pick("scope", "--cluster", None, &one, name).unwrap(),
+            &"prod"
+        );
+        assert_eq!(
+            pick("scope", "--cluster", Some("dev"), &two, name).unwrap(),
+            &"dev"
+        );
+        let open = pick("scope", "--cluster", None, &two, name).unwrap_err();
+        assert_eq!(
+            (open.exit, open.message.as_str()),
+            (
+                Exit::Usage,
+                "more than one scope is configured; name one with --cluster: dev, prod"
+            )
+        );
+        let unknown = pick("scope", "--cluster", Some("qa"), &two, name).unwrap_err();
+        assert_eq!(
+            unknown.message,
+            "no scope \"qa\"; --cluster takes one of: dev, prod"
+        );
+        let none: [&str; 0] = [];
+        assert_eq!(
+            pick("scope", "--cluster", None, &none, name)
+                .unwrap_err()
+                .exit,
+            Exit::Setup
+        );
     }
 
     #[test]

@@ -12,6 +12,12 @@ publish = false
 name = "agent-cli"
 path = "src/main.rs"
 
+[features]
+# Trials on recorded worlds: AGENT_CLI_FIXTURES=<dir> replays <dir>/http/*.json
+# instead of the network (see fixtures/world/README.md). Off by default and
+# never in a release install.
+fixtures = ["agent-cli-core/fixtures"]
+
 [dependencies]
 agent-cli-ado.workspace = true
 agent-cli-core.workspace = true

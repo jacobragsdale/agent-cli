@@ -21,15 +21,18 @@ const MIN_KNOWN: usize = 6;
 /// it was spliced into a message.
 static KNOWN: Mutex<Vec<String>> = Mutex::new(Vec::new());
 /// Keys whose value is masked in text: `key=value`, `key: value`, `"key":"value"`.
-const TEXT_KEYS: [&str; 11] = [
+/// `-key` and `_key` cover every `*-key` header (`DD-API-KEY`,
+/// `DD-APPLICATION-KEY`, `X-Functions-Key`) and `*_key` setting.
+const TEXT_KEYS: [&str; 12] = [
     "password",
     "passwd",
     "pwd",
     "secret",
     "token",
-    "api_key",
     "apikey",
-    "api-key",
+    "-key",
+    "_key",
+    "app-key",
     "sig",
     "authorization",
     "cookie",
@@ -135,12 +138,16 @@ pub fn redact_value(value: Value) -> Value {
     }
 }
 
-/// True for a header or field name whose value is a credential.
+/// True for a header or field name whose value is a credential: anything
+/// named like a password, secret, token, authorization or cookie, and every
+/// `*-key` or `*_key` (`DD-API-KEY`, `DD-APPLICATION-KEY`, `api_key`).
 #[must_use]
 pub fn sensitive_key(name: &str) -> bool {
     let name = name.to_ascii_lowercase();
     name == "pwd"
         || name == "sig"
+        || name.ends_with("-key")
+        || name.ends_with("_key")
         || [
             "password",
             "passwd",
@@ -149,8 +156,9 @@ pub fn sensitive_key(name: &str) -> bool {
             "authorization",
             "cookie",
             "apikey",
-            "api_key",
             "api-key",
+            "app-key",
+            "application-key",
         ]
         .iter()
         .any(|word| name.contains(word))
@@ -298,5 +306,33 @@ mod tests {
             })
         );
         assert!(sensitive_key("X-Api-Key") && sensitive_key("SIG") && !sensitive_key("assignee"));
+    }
+
+    #[test]
+    fn key_and_token_headers_are_masked_by_name_in_plans_and_in_text() {
+        for name in [
+            "DD-API-KEY",
+            "DD-APPLICATION-KEY",
+            "X-Functions-Key",
+            "app_key",
+            "X-Auth-Token",
+            "Proxy-Authorization",
+        ] {
+            assert!(sensitive_key(name), "{name}");
+        }
+        for name in ["key", "keys", "monkey", "Accept", "Content-Type"] {
+            assert!(!sensitive_key(name), "{name}");
+        }
+        let plan = json!({"headers": {
+            "DD-API-KEY": "0123abcd", "DD-APPLICATION-KEY": "4567efgh", "Accept": "application/json"
+        }});
+        assert_eq!(
+            redact_value(plan),
+            json!({"headers": {"DD-API-KEY": "***", "DD-APPLICATION-KEY": "***", "Accept": "application/json"}})
+        );
+        assert_eq!(
+            redact("sent DD-API-KEY: 0123abcd and DD-APPLICATION-KEY=4567efgh; x-auth-token: t1"),
+            "sent DD-API-KEY: *** and DD-APPLICATION-KEY=***; x-auth-token: ***"
+        );
     }
 }

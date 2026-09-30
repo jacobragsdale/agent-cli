@@ -5,7 +5,7 @@
 
 use std::collections::BTreeMap;
 
-use agent_cli_core::{Ctx, command};
+use agent_cli_core::{Ctx, When, command};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -381,9 +381,9 @@ pub struct PodLogsArgs {
     /// The run before the last restart: where a crash loop says why
     #[arg(long)]
     previous: bool,
-    /// Only lines newer than this: 30s, 5m, 1h
+    /// Only lines logged after this
     #[arg(long)]
-    since: Option<String>,
+    since: Option<When>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -406,7 +406,9 @@ fn pod_logs(ctx: &Ctx, args: PodLogsArgs) -> Result<Logs> {
     if args.previous {
         argv.push("-p");
     }
-    let since = args.since.as_ref().map(|since| format!("--since={since}"));
+    let since = args
+        .since
+        .map(|since| format!("--since-time={}", since.utc()));
     if let Some(since) = &since {
         argv.push(since);
     }

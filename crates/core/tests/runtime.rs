@@ -8,7 +8,7 @@ use std::io::Write;
 use agent_cli_core::testing::{
     Answer, FakeTransport, assert_dry_run, assert_read_only_refuses, assert_search_quality, run,
 };
-use agent_cli_core::{Ctx, Domain, Setup, check_registry, command, run_with};
+use agent_cli_core::{Ctx, Domain, Exit, Failure, Setup, When, check_registry, command, run_with};
 use anyhow::Result;
 use common::{DOMAINS, LABELED};
 use schemars::JsonSchema;
@@ -626,4 +626,228 @@ fn the_checker_names_each_violation() {
             "missing {want:?} in {problems:#?}"
         );
     }
+}
+
+// ---------- the conventions every domain keeps ----------
+
+#[derive(clap::Args)]
+struct Loose {
+    /// When it began
+    #[arg(long)]
+    from: Option<String>,
+    #[arg(long)]
+    ns: Option<String>,
+    /// Changed after this
+    #[arg(long)]
+    changed: Option<When>,
+    /// A day, as text
+    #[arg(long)]
+    since: Option<String>,
+    /// Who it is for
+    #[arg(long)]
+    assignee: Option<String>,
+}
+
+#[derive(clap::Args)]
+struct Endless {
+    #[arg(long)]
+    follow: bool,
+}
+
+fn loose(_: &Ctx, _: Loose) -> Result<Vec<Row>> {
+    Ok(Vec::new())
+}
+
+fn endless(_: &Ctx, _: Endless) -> Result<Row> {
+    Ok(Row { id: 1 })
+}
+
+command! {
+    LOOSE = ["conv", "item", "list"], Read,
+    "List items",
+    keywords: [],
+    example: "conv item list --fields id",
+    run: loose,
+}
+
+command! {
+    ENDLESS = ["conv", "item", "logs"], Read,
+    "Follow an item's log",
+    keywords: [],
+    example: "conv item logs",
+    run: endless,
+}
+
+#[test]
+fn the_checker_holds_every_domain_to_the_shared_flag_conventions() {
+    const CONV: &[Domain] = &[
+        Domain {
+            name: "conv",
+            summary: "Conventions",
+            commands: &[LOOSE, ENDLESS],
+            synonyms: &[("ticket", &["item"])],
+            status: |_| String::new(),
+            doctor: |_| Vec::new(),
+        },
+        Domain {
+            name: "other",
+            summary: "Other",
+            commands: &[NO_FIELDS_OK_PARSE_OTHER],
+            synonyms: &[],
+            status: |_| String::new(),
+            doctor: |_| Vec::new(),
+        },
+    ];
+    let problems = check_registry(CONV);
+    let expected = [
+        "conv item list: --from is a synonym: name it --since",
+        "conv item list: --ns is a synonym: name it --namespace",
+        "conv item list: --changed takes a time, which only --since and --until do",
+        "conv item list: --since must take a time (core's When)",
+        "conv item list: --assignee names a person, so its help must say @me works",
+        "conv item list: a list takes --limit (int, default 50)",
+        "conv item logs: logs take --tail",
+        "conv item logs: logs never --follow: a command must end",
+        "conv's synonym \"ticket\" is a other resource",
+    ];
+    for want in expected {
+        assert!(
+            problems.iter().any(|problem| problem.starts_with(want)),
+            "missing {want:?} in {problems:#?}"
+        );
+    }
+    assert_eq!(problems.len(), expected.len(), "{problems:#?}");
+}
+
+command! {
+    NO_FIELDS_OK_PARSE_OTHER = ["other", "ticket", "run"], Read,
+    "Run tickets",
+    keywords: [],
+    example: "other ticket run --limit 5 --fields id",
+    run: plain,
+}
+
+// ---------- an answer alongside a failing exit, and a command's own deadline ----------
+
+#[derive(clap::Args)]
+struct JobId {
+    id: u64,
+}
+
+#[derive(Serialize, JsonSchema)]
+struct Job {
+    id: u64,
+    state: String,
+    /// Whole seconds of deadline the command was given.
+    budget: u64,
+}
+
+fn job_wait(ctx: &Ctx, args: JobId) -> Result<Job> {
+    let job = Job {
+        id: args.id,
+        state: "failed".into(),
+        budget: ctx.remaining()?.as_secs_f64().round() as u64,
+    };
+    Err(
+        Failure::new(Exit::Failed, format!("job {} failed", args.id))
+            .hint(format!("agent-cli jobs job get {}", args.id))
+            .with_data(job)
+            .into(),
+    )
+}
+
+fn job_get(_: &Ctx, args: JobId) -> Result<Job> {
+    Ok(Job {
+        id: args.id,
+        state: "failed".into(),
+        budget: 0,
+    })
+}
+
+command! {
+    JOB_WAIT = ["jobs", "job", "wait"], Read,
+    "Wait for a job to finish",
+    keywords: [],
+    example: "jobs job wait 7",
+    timeout: 100,
+    run: job_wait,
+}
+
+command! {
+    JOB_GET = ["jobs", "job", "get"], Read,
+    "Show a job",
+    keywords: [],
+    example: "jobs job get 7",
+    run: job_get,
+}
+
+const JOBS: &[Domain] = &[Domain {
+    name: "jobs",
+    summary: "Jobs",
+    commands: &[JOB_WAIT, JOB_GET],
+    synonyms: &[],
+    status: |_| String::new(),
+    doctor: |_| Vec::new(),
+}];
+
+#[test]
+fn a_failure_can_carry_its_answer_and_a_command_its_own_default_timeout() {
+    assert_eq!(check_registry(JOBS), Vec::<String>::new());
+    let outcome = run(JOBS, &["jobs", "job", "wait", "7"], fake(Vec::new()).0);
+    assert_eq!(outcome.code, 1, "{outcome:?}");
+    assert_eq!(
+        outcome.json(),
+        json!({"id": 7, "state": "failed", "budget": 100})
+    );
+    assert_eq!(
+        outcome.stderr,
+        "error: job 7 failed\nhint: agent-cli jobs job get 7\n"
+    );
+
+    let projected = run(
+        JOBS,
+        &[
+            "jobs",
+            "job",
+            "wait",
+            "7",
+            "--timeout",
+            "5",
+            "--fields",
+            "budget",
+        ],
+        fake(Vec::new()).0,
+    );
+    assert_eq!(projected.code, 1);
+    assert_eq!(
+        projected.json(),
+        json!({"budget": 5}),
+        "--timeout wins, --fields applies"
+    );
+
+    let help = run(JOBS, &["jobs", "job", "wait", "--help"], fake(Vec::new()).0);
+    assert!(
+        help.stdout
+            .contains("Globals: --fields --raw --timeout (default 100s) --output"),
+        "{}",
+        help.stdout
+    );
+}
+
+#[test]
+fn printed_command_lines_must_parse_and_printed_times_must_be_utc() {
+    use agent_cli_core::testing::{non_utc_times, printed_command_problems};
+    let text = "hint: agent-cli tracker ticket get ID --fields id, or agent-cli tracker ticket get --bogus\n\
+                hint: agent-cli tracker tikcet list; agent-cli <domain> <resource>; agent-cli doctor tracker\n\
+                hint: agent-cli elsewhere thing get 1";
+    assert_eq!(
+        printed_command_problems(DOMAINS, text),
+        [
+            "`agent-cli tracker ticket get --bogus`: unexpected argument '--bogus' found; tip: to pass '--bogus' as a value, use '-- --bogus'",
+            "`agent-cli tracker tikcet list`: tracker has no resource \"tikcet\"",
+        ]
+    );
+    let printed = json!({"at": "2026-09-29T14:00:00Z", "rows": [{"t": "2026-09-29T16:00:00+02:00"}],
+        "text": "2026-09-29T16:00:00+02:00 is inside prose", "naive": "2026-09-29T14:00:00"});
+    assert_eq!(non_utc_times(&printed), ["2026-09-29T16:00:00+02:00"]);
 }

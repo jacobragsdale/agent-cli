@@ -36,6 +36,37 @@ pub const GLOBAL_FLAGS: &[&str] = &[
     "fields", "raw", "dry-run", "yes", "reveal", "timeout", "output", "no-cache", "help",
 ];
 
+/// Flag names agents reach for that mean a canonical one. Declaring one is
+/// refused, naming the canonical flag, so each idea keeps one name across
+/// every domain (and a spec generator must rename `from`/`to`, `$top` …).
+pub const SYNONYM_FLAGS: &[(&str, &str)] = &[
+    ("from", "since"),
+    ("after", "since"),
+    ("start", "since"),
+    ("to", "until"),
+    ("before", "until"),
+    ("end", "until"),
+    ("count", "limit"),
+    ("top", "limit"),
+    ("max", "limit"),
+    ("lines", "tail"),
+    ("ns", "namespace"),
+    ("context", "cluster"),
+    ("connection", "conn"),
+];
+
+/// Flags that name a person; their help must say `@me` works.
+const IDENTITY_FLAGS: &[&str] = &["assignee", "author", "reviewer", "creator", "owner"];
+
+/// Words that are one domain's synonym and another's resource, each with
+/// labeled queries for both readings in `search.toml`. Anything else that
+/// collides is refused: search would weigh the two readings the same.
+pub const SHARED_WORDS: &[&str] = &[];
+
+/// The longest status line the overview shows for a domain; longer ones are
+/// cut. What keeps the overview under 1 KB with every domain configured.
+pub(crate) const STATUS_MAX: usize = 22;
+
 /// What running a command can do. Help and search show it, and core checks
 /// it before the handler runs.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -62,6 +93,10 @@ pub struct Command {
     pub keywords: &'static [&'static str],
     /// A runnable line starting with the path; a test parses it.
     pub example: &'static str,
+    /// Seconds the command gets when `--timeout` is not given; `None` is
+    /// core's 60. For waits, which should use most of an agent shell's two
+    /// minutes.
+    pub timeout: Option<u64>,
     pub args: fn() -> clap::Command,
     pub returns: fn() -> Schema,
     pub run: fn(&Ctx, &ArgMatches) -> Result<Value>,
@@ -125,6 +160,7 @@ impl Check {
 ///     "List work items matching filters",
 ///     keywords: ["ticket", "bug", "backlog"],
 ///     example: "ado workitem list --state Active --fields id,title",
+///     timeout: 100, // optional: seconds when --timeout is not given
 ///     run: list,
 /// }
 /// fn list(ctx: &Ctx, args: ListArgs) -> anyhow::Result<Vec<WorkItemRow>> { … }
@@ -139,6 +175,7 @@ macro_rules! command {
         $summary:literal,
         keywords: [$($keyword:literal),* $(,)?],
         example: $example:literal,
+        $(timeout: $timeout:literal,)?
         run: $handler:path $(,)?
     ) => {
         $vis const $name: $crate::Command = {
@@ -160,6 +197,12 @@ macro_rules! command {
                 effect: $crate::Effect::$effect,
                 keywords: &[$($keyword),*],
                 example: $example,
+                timeout: {
+                    #[allow(unused_mut, unused_assignments)]
+                    let mut timeout: Option<u64> = None;
+                    $(timeout = Some($timeout);)?
+                    timeout
+                },
                 args,
                 returns,
                 run,
@@ -240,13 +283,39 @@ pub fn check_registry(domains: &[Domain]) -> Vec<String> {
             }
         }
         problems.extend(check_listings(domain));
+        problems.extend(check_synonyms(domain, domains));
     }
     let overview = discover::overview(domains, &Config::empty());
-    if overview.len() > 1024 {
-        problems.push(format!(
-            "the overview is {} bytes (max 1024)",
-            overview.len()
-        ));
+    let crowded = discover::overview_at_most(domains);
+    for (text, when) in [
+        (overview, "with no config"),
+        (crowded, "with every domain configured"),
+    ] {
+        if text.len() > 1024 {
+            problems.push(format!(
+                "the overview is {} bytes {when} (max 1024)",
+                text.len()
+            ));
+        }
+    }
+    problems
+}
+
+/// A domain synonym that is another domain's resource ties the two in
+/// search, unless it is a [`SHARED_WORDS`] word with queries for both.
+fn check_synonyms(domain: &Domain, domains: &[Domain]) -> Vec<String> {
+    let mut problems = Vec::new();
+    for (key, _) in domain.synonyms {
+        for other in domains.iter().filter(|other| other.name != domain.name) {
+            if other.commands.iter().any(|command| command.path[1] == *key)
+                && !SHARED_WORDS.contains(key)
+            {
+                problems.push(format!(
+                    "{}'s synonym {key:?} is a {} resource; add it to SHARED_WORDS with labeled queries for both readings, or drop it",
+                    domain.name, other.name
+                ));
+            }
+        }
     }
     problems
 }
@@ -298,11 +367,143 @@ fn check_command(domain: &Domain, command: &Command) -> Vec<String> {
             problems.push("-h shadows --help".to_owned());
         }
     }
+    problems.extend(check_conventions(command));
     let help = discover::command_help(command);
     if help.len() > 2048 {
         problems.push(format!("help is {} bytes (max 2048)", help.len()));
     }
     problems
+}
+
+/// The cross-domain flag conventions: canonical names, times only as
+/// `--since`/`--until`, `@me` for people, `--limit` on lists and `--tail` on
+/// logs.
+fn check_conventions(command: &Command) -> Vec<String> {
+    let mut problems = Vec::new();
+    let args = (command.args)();
+    let flag = |name: &str| {
+        args.get_arguments()
+            .find(|arg| !arg.is_positional() && arg.get_long() == Some(name))
+    };
+    for arg in args.get_arguments().filter(|arg| !arg.is_positional()) {
+        let Some(long) = arg.get_long() else { continue };
+        if let Some((_, canonical)) = SYNONYM_FLAGS.iter().find(|(name, _)| *name == long) {
+            problems.push(format!("--{long} is a synonym: name it --{canonical}"));
+        }
+        let time = discover::arg_kind(arg) == "time";
+        let named = matches!(long, "since" | "until");
+        if time && !named {
+            problems.push(format!(
+                "--{long} takes a time, which only --since and --until do"
+            ));
+        }
+        if named && !time {
+            problems.push(format!("--{long} must take a time (core's When)"));
+        }
+        let help = arg.get_help().map(ToString::to_string).unwrap_or_default();
+        if IDENTITY_FLAGS.contains(&long) && !help.contains("@me") {
+            problems.push(format!(
+                "--{long} names a person, so its help must say @me works"
+            ));
+        }
+    }
+    // A list with no arguments at all reads config, not a service.
+    let bounded = args.get_arguments().next().is_none()
+        || flag("limit").is_some_and(|limit| {
+            discover::arg_kind(limit) == "int"
+                && limit.get_default_values().first().and_then(|v| v.to_str()) == Some("50")
+        });
+    if command.path[2] == "list" && !bounded {
+        problems.push("a list takes --limit (int, default 50)".to_owned());
+    }
+    if command.path[2] == "logs" {
+        if flag("tail").is_none() {
+            problems.push("logs take --tail".to_owned());
+        }
+        for endless in ["follow", "watch"] {
+            if flag(endless).is_some() {
+                problems.push(format!("logs never --{endless}: a command must end"));
+            }
+        }
+    }
+    problems
+}
+
+/// The command lines after each `agent-cli ` in `text` (a hint, a note, an
+/// example), each cut where the prose resumes: a backtick, a bracket, `;`,
+/// `, `, two spaces, ` (`, or the end of the line.
+pub(crate) fn printed_commands(text: &str) -> Vec<String> {
+    const STOPS: [&str; 8] = ["\n", "`", ")", "]", ";", ", ", "  ", " ("];
+    text.match_indices("agent-cli ")
+        .filter_map(|(at, marker)| {
+            let rest = &text[at + marker.len()..];
+            let end = STOPS
+                .iter()
+                .filter_map(|stop| rest.find(stop))
+                .min()
+                .unwrap_or(rest.len());
+            let line = rest[..end].trim().trim_end_matches(['.', ',']);
+            (!line.is_empty()).then(|| line.to_owned())
+        })
+        .collect()
+}
+
+/// Why a printed `agent-cli …` line would not run, if it would not. An
+/// ALL-CAPS word (`ID`, `NAME`, `N`) is a placeholder and stands in for a
+/// value; a usage pattern (`<domain>`, `[<verb>]`) is not a call. A domain
+/// `domains` does not hold cannot be checked here and passes.
+pub(crate) fn printed_command_problem(domains: &[Domain], line: &str) -> Option<String> {
+    let words = match shell_words(line) {
+        Ok(words) => words,
+        Err(error) => return Some(error),
+    };
+    if words
+        .iter()
+        .any(|word| word.contains(['<', '[', '\u{2026}']) || word == "...")
+    {
+        return None;
+    }
+    let words: Vec<String> = words
+        .into_iter()
+        .map(|word| {
+            let placeholder = word.starts_with(|c: char| c.is_ascii_uppercase())
+                && word
+                    .chars()
+                    .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_');
+            if placeholder { "1".to_owned() } else { word }
+        })
+        .collect();
+    let (globals, words) = match split_globals(&words) {
+        Ok(split) => split,
+        Err(failure) => return Some(failure.message),
+    };
+    let first = words.first()?;
+    if BUILTINS.contains(&first.as_str()) {
+        return None;
+    }
+    let domain = domains.iter().find(|domain| domain.name == first)?;
+    let resource = words.get(1)?;
+    if !domain
+        .commands
+        .iter()
+        .any(|command| command.path[1] == resource)
+    {
+        return Some(format!("{} has no resource {resource:?}", domain.name));
+    }
+    let verb = words.get(2)?;
+    let Some(command) = domain
+        .commands
+        .iter()
+        .find(|command| command.path[1] == resource && command.path[2] == verb)
+    else {
+        return Some(format!("{} {resource} has no verb {verb:?}", domain.name));
+    };
+    if globals.help {
+        return None;
+    }
+    parse_leaf(command, &words[3..])
+        .err()
+        .map(|failure| failure.message)
 }
 
 /// Why the example does not run as written, if it does not.
@@ -374,6 +575,25 @@ fn is_kebab(word: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn printed_command_lines_are_cut_where_the_prose_resumes() {
+        let text = "error: x\nhint: agent-cli ado run get 991 --fields failed, then agent-cli ado run logs 991\n\
+                    hint: agent-cli k8s pod delete p --yes   (or --dry-run to see it first)\n\
+                    hint: re-read it (agent-cli ado workitem get 42 --fields rev), or `agent-cli doctor ado` \n\
+                    [first 50; agent-cli <domain> <resource>]";
+        assert_eq!(
+            printed_commands(text),
+            [
+                "ado run get 991 --fields failed",
+                "ado run logs 991",
+                "k8s pod delete p --yes",
+                "ado workitem get 42 --fields rev",
+                "doctor ado",
+                "<domain> <resource>"
+            ]
+        );
+    }
 
     #[test]
     fn kebab_words_are_lowercase_letters_digits_and_single_hyphens() {

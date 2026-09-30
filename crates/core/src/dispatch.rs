@@ -17,7 +17,7 @@ use serde_json::{Value, json};
 use crate::config::Config;
 use crate::ctx::{Ctx, Globals, Setup};
 use crate::discover::{self, did_you_mean};
-use crate::error::{Exit, Failure, describe};
+use crate::error::{Exit, Failure, data_of, describe};
 use crate::output::{self, dumps};
 use crate::registry::{Command, Domain, Effect};
 use crate::search;
@@ -158,14 +158,23 @@ fn dispatch(
     }
     let matches: ArgMatches = parse_leaf(command, &words[3..])?;
     precheck(command, &globals, setup.read_only, &command_line)?;
+    globals.timeout = globals.timeout.or(command.timeout.map(Duration::from_secs));
     let ctx = Ctx::new(globals, setup, command_line);
     let result = (command.run)(&ctx, &matches);
     let plans = ctx.take_plans();
+    let keep_tail = command.path[2] == "logs";
     let emitted = if plans.is_empty() {
-        result.and_then(|value| {
-            let keep_tail = command.path[2] == "logs";
-            output::emit(value, ctx.globals(), keep_tail, out, err, tty)
-        })
+        match result {
+            Ok(value) => output::emit(value, ctx.globals(), keep_tail, out, err, tty),
+            // A failure with an answer (a wait that ended badly) prints it
+            // as a success would, then exits with its own code.
+            Err(error) => match data_of(&error) {
+                Some(data) => {
+                    output::emit(data, ctx.globals(), keep_tail, out, err, tty).and(Err(error))
+                }
+                None => Err(error),
+            },
+        }
     } else {
         // The handler stopped at its first change; whatever it made of that
         // error, what it would have done is the answer.
@@ -215,7 +224,7 @@ pub(crate) fn split_globals(argv: &[String]) -> Result<(Globals, Vec<String>), F
                                 "--timeout needs a whole number of seconds, not {value:?}"
                             ))
                         })?;
-                        globals.timeout = Duration::from_secs(seconds);
+                        globals.timeout = Some(Duration::from_secs(seconds));
                     }
                 }
                 continue;
@@ -526,7 +535,7 @@ mod tests {
         let (globals, rest) = split_globals(&argv).unwrap();
         assert!(globals.dry_run && globals.yes && !globals.raw);
         assert_eq!(globals.fields.as_deref(), Some("id,title"));
-        assert_eq!(globals.timeout, Duration::from_secs(9));
+        assert_eq!(globals.timeout, Some(Duration::from_secs(9)));
         assert_eq!(globals.output, Some(PathBuf::from("out.json")));
         assert_eq!(rest, strings(&["ado", "pr", "get", "42", "--", "--raw"]));
     }

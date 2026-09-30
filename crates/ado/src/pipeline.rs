@@ -2,7 +2,7 @@
 //! Read live: ticket-tui listed only pipelines with a local clone, swallowed
 //! timeline errors, and exited 2 or 3 from `runs wait` in a way that clashed
 //! with usage errors. Here a wait's outcome is exit 0 (succeeded), 1 (did
-//! not) or 124 (still going at the deadline).
+//! not) or 124 (still going at the deadline), with the run on stdout each way.
 
 use std::time::{Duration, Instant};
 
@@ -564,19 +564,6 @@ command! {
 
 // ---------- ado run wait ----------
 
-/// One poll's run, compact enough to sit in an error line.
-fn summary(run: &RunRow) -> String {
-    serde_json::to_string(&json!({
-        "id": run.id,
-        "pipeline": run.pipeline,
-        "status": run.status,
-        "result": run.result,
-        "branch": run.branch,
-        "url": run.url,
-    }))
-    .unwrap_or_default()
-}
-
 fn run_wait(ctx: &Ctx, args: RunIdArgs) -> Result<RunRow> {
     let ado = Ado::load(ctx)?;
     let id = args.id;
@@ -592,27 +579,27 @@ fn run_wait(ctx: &Ctx, args: RunIdArgs) -> Result<RunRow> {
             return Err(Failure::new(
                 Exit::Failed,
                 format!(
-                    "run {id} finished {}: {}",
-                    run.result.as_deref().unwrap_or("without a result"),
-                    summary(&run)
+                    "run {id} finished {}",
+                    run.result.as_deref().unwrap_or("without a result")
                 ),
             )
             .hint(format!(
                 "agent-cli ado run get {id} --fields failed, then agent-cli ado run logs {id}"
             ))
+            .with_data(run)
             .into());
         }
         let left = ctx.deadline().saturating_duration_since(Instant::now());
         if left <= MARGIN {
             return Err(Failure::timed_out(format!(
-                "run {id} is still {} after {}s: {}",
+                "run {id} is still {} after {}s",
                 run.status.as_deref().unwrap_or("going"),
-                started.elapsed().as_secs(),
-                summary(&run)
+                started.elapsed().as_secs()
             ))
             .hint(format!(
-                "agent-cli ado run wait {id} --timeout 110 keeps waiting (stay under your shell's 2-minute limit)"
+                "run it again to keep waiting (it stays under your shell's 2-minute limit): agent-cli ado run wait {id}"
             ))
+            .with_data(run)
             .into());
         }
         // A spent rate-limit budget asks for longer than the usual poll.
@@ -625,7 +612,8 @@ command! {
     pub RUN_WAIT = ["ado", "run", "wait"], Read,
     "Wait for a run to finish: exit 0 if it succeeded, 1 if not, 124 if still going",
     keywords: ["until", "done", "finish", "complete", "block", "poll", "watch", "build"],
-    example: "ado run wait 1234 --timeout 110",
+    example: "ado run wait 1234 --fields id,status,result",
+    timeout: 100,
     run: run_wait,
 }
 
@@ -1169,11 +1157,11 @@ mod tests {
             vec![Answer::json(&build(991, "completed", Some("failed")))],
         );
         assert_eq!(outcome.code, 1, "{outcome:?}");
-        assert!(outcome.stdout.is_empty());
+        assert_eq!(outcome.json()["result"], "failed", "the run it waited on");
         assert!(
             outcome
                 .stderr
-                .starts_with("error: run 991 finished failed: {\"id\":991,"),
+                .starts_with("error: run 991 finished failed\n"),
             "{}",
             outcome.stderr
         );
@@ -1212,15 +1200,11 @@ mod tests {
             "{}",
             outcome.stderr
         );
-        assert!(
-            outcome.stderr.contains("\"status\":\"inProgress\""),
-            "{}",
-            outcome.stderr
-        );
+        assert_eq!(outcome.json()["status"], "inProgress", "its current state");
         assert!(
             outcome
                 .stderr
-                .contains("hint: agent-cli ado run wait 991 --timeout 110"),
+                .contains("to keep waiting (it stays under your shell's 2-minute limit): agent-cli ado run wait 991\n"),
             "{}",
             outcome.stderr
         );

@@ -24,7 +24,15 @@ const AZ_CAP: Duration = Duration::from_secs(30);
 impl Ctx {
     /// An access token for `resource` (for example `https://management.azure.com/`),
     /// minted by `az` on first use and again when `fresh` is set after a `401`.
+    ///
+    /// Under `Setup::with_token(t)` no `az` runs: the token is `t@resource`,
+    /// or `t-fresh@resource` when minted again, so a test can assert which
+    /// audience and which mint signed each call.
     pub fn az_token(&self, resource: &str, fresh: bool) -> Result<Secret> {
+        if let Some(token) = &self.token {
+            let again = if fresh { "-fresh" } else { "" };
+            return Ok(Secret::new(format!("{token}{again}@{resource}")));
+        }
         if !fresh && let Some(held) = locked(&self.tokens).get(resource) {
             return Ok(held.clone());
         }

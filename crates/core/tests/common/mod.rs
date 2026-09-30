@@ -707,6 +707,8 @@ pub struct SecretList {
     query: Option<String>,
     #[arg(long)]
     vault: Option<String>,
+    #[arg(long, default_value_t = 50)]
+    limit: usize,
 }
 
 #[derive(Serialize, JsonSchema)]
@@ -868,6 +870,8 @@ pub struct TableList {
     conn: String,
     /// a LIKE pattern over schema.name
     pattern: Option<String>,
+    #[arg(long, default_value_t = 50)]
+    limit: usize,
 }
 
 #[derive(Serialize, JsonSchema)]
@@ -979,6 +983,8 @@ pub const DB: Domain = Domain {
 pub struct Scope {
     #[arg(long)]
     namespace: Option<String>,
+    #[arg(long, default_value_t = 50)]
+    limit: usize,
 }
 
 #[derive(Serialize, JsonSchema)]
@@ -1033,11 +1039,24 @@ command! {
     run: pod_get,
 }
 
-fn pod_logs(_: &Ctx, args: PodName) -> Result<Text> {
-    let text: String = (0..2000)
+#[derive(clap::Args)]
+pub struct PodLogs {
+    name: String,
+    #[arg(long)]
+    namespace: Option<String>,
+    /// how many lines from the end
+    #[arg(long, default_value_t = 2000)]
+    tail: usize,
+}
+
+fn pod_logs(_: &Ctx, args: PodLogs) -> Result<Text> {
+    let text: String = (0..args.tail)
         .map(|i| format!("{} request {i} served in 3ms\n", args.name))
         .collect();
-    Ok(Text { text, lines: 2000 })
+    Ok(Text {
+        text,
+        lines: args.tail,
+    })
 }
 
 command! {

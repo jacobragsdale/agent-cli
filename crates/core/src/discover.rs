@@ -12,13 +12,17 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgAction};
 use serde_json::{Map, Value};
-use time::OffsetDateTime;
 use time::macros::format_description;
 
 use crate::config::Config;
-use crate::registry::{Command, Domain, Effect};
+use crate::registry::{Command, Domain, Effect, STATUS_MAX};
 use crate::search::STOP;
+use crate::when::{SPAN_FORMS, Span, TIME_FORMS, When};
 
+/// The most the overview's `Config:` line gives the status lines, in bytes:
+/// eight domains at [`STATUS_MAX`] fit, and a registry of more still keeps
+/// the overview under 1 KB.
+const CONFIG_MAX: usize = 210;
 /// Above this many entries a listing prints names only.
 pub(crate) const BIG_LISTING: usize = 40;
 /// How deep `Returns:` shows nested fields before it shows names only.
@@ -26,6 +30,54 @@ const SHAPE_DEPTH: usize = 3;
 const WRAP: usize = 100;
 
 pub(crate) fn overview(domains: &[Domain], config: &Config) -> String {
+    let mut statuses: Vec<String> = domains
+        .iter()
+        .map(|domain| status_line(&(domain.status)(config)))
+        .filter(|status| !status.is_empty())
+        .collect();
+    if config.problem().is_some() {
+        statuses.insert(0, "config file unreadable".to_owned());
+    }
+    render_overview(domains, statuses)
+}
+
+/// The overview with every domain's status line at [`STATUS_MAX`], the
+/// longest it can print: what the 1 KB budget must hold.
+pub(crate) fn overview_at_most(domains: &[Domain]) -> String {
+    let statuses = domains
+        .iter()
+        .map(|domain| status_line(&format!("{} {}", domain.name, "x".repeat(STATUS_MAX))))
+        .collect();
+    render_overview(domains, statuses)
+}
+
+/// The status lines joined, cut at a separator once they pass
+/// [`CONFIG_MAX`] bytes: doctor has the rest.
+fn config_line(statuses: &[String]) -> String {
+    let mut line = String::new();
+    for status in statuses {
+        let separator = if line.is_empty() { "" } else { " \u{b7} " };
+        if line.len() + separator.len() + status.len() > CONFIG_MAX {
+            line.push_str(" \u{b7} \u{2026}");
+            break;
+        }
+        line.push_str(separator);
+        line.push_str(status);
+    }
+    line
+}
+
+/// A status line cut to [`STATUS_MAX`] characters.
+fn status_line(status: &str) -> String {
+    let status = status.trim();
+    if status.chars().count() <= STATUS_MAX {
+        return status.to_owned();
+    }
+    let kept: String = status.chars().take(STATUS_MAX - 1).collect();
+    format!("{kept}\u{2026}")
+}
+
+fn render_overview(domains: &[Domain], mut statuses: Vec<String>) -> String {
     let total: usize = domains.iter().map(|domain| domain.commands.len()).sum();
     let summaries: Vec<&str> = domains.iter().map(|domain| domain.summary).collect();
     let title = match summaries.join(", ") {
@@ -42,24 +94,10 @@ pub(crate) fn overview(domains: &[Domain], config: &Config) -> String {
             domains.len()
         ),
     };
-    let mut statuses: Vec<String> = domains
-        .iter()
-        .map(|domain| {
-            (domain.status)(config)
-                .trim()
-                .chars()
-                .take(40)
-                .collect::<String>()
-        })
-        .filter(|status| !status.is_empty())
-        .collect();
-    if config.problem().is_some() {
-        statuses.insert(0, "config file unreadable".to_owned());
-    }
     if statuses.is_empty() {
         statuses.push("nothing to set up".to_owned());
     }
-    let now = OffsetDateTime::now_utc()
+    let now = crate::when::now()
         .format(format_description!("[year]-[month]-[day]T[hour]:[minute]Z"))
         .unwrap_or_default();
     let counts: Vec<String> = domains
@@ -75,7 +113,7 @@ pub(crate) fn overview(domains: &[Domain], config: &Config) -> String {
         "Browse:      agent-cli <domain> [<resource>]    Details: agent-cli <domain> <resource> <verb> --help".to_owned(),
         "Flags:       --fields a,b.c  --raw  --dry-run  --yes  --reveal  --timeout S (60)  --output FILE  --no-cache".to_owned(),
         "Exit:        0 ok \u{b7} 1 failed \u{b7} 2 fix the call \u{b7} 3 needs setup (run doctor) \u{b7} 4 not found \u{b7} 5 conflict \u{b7} 124 timed out".to_owned(),
-        format!("Config:      {}    Live check: agent-cli doctor", statuses.join(" \u{b7} ")),
+        format!("Config:      {}    Live check: agent-cli doctor", config_line(&statuses)),
         format!("Now:         {now}"),
     ];
     if counts.is_empty() {
@@ -268,14 +306,22 @@ pub(crate) fn command_help(command: &Command) -> String {
                 .to_owned(),
         );
     }
+    for (kind, forms) in [("time", TIME_FORMS), ("duration", SPAN_FORMS)] {
+        if shown.iter().any(|arg| arg_kind(arg) == kind) {
+            lines.push(format!("A {kind} is {forms}."));
+        }
+    }
     lines.push(format!("Returns: {}", returns_shape(&(command.returns)())));
     let required = if shown.iter().any(|arg| arg.is_required_set()) {
         "* required. "
     } else {
         ""
     };
+    let timeout = command
+        .timeout
+        .map_or_else(String::new, |seconds| format!(" (default {seconds}s)"));
     lines.push(format!(
-        "{} {required}Globals: --fields --raw --timeout --output",
+        "{} {required}Globals: --fields --raw --timeout{timeout} --output",
         command.effect.sentence()
     ));
     lines.push(format!("e.g. agent-cli {}", command.example));
@@ -296,13 +342,18 @@ fn arg_left(arg: &Arg) -> String {
     }
 }
 
-/// What `search` shows after a command's path: its positionals and required flags.
+/// What `search` shows after a command's path: its positionals, and its
+/// required flags each with a placeholder value (`--conn CONN`), so the line
+/// reads as a call to fill in.
 pub(crate) fn required_args(command: &Command) -> String {
     let args = (command.args)();
     args.get_arguments()
         .filter(|arg| arg.is_required_set() && !arg.is_hide_set())
         .map(|arg| match arg.get_long() {
-            Some(long) if !arg.is_positional() => format!("--{long}"),
+            Some(long) if !arg.is_positional() && is_switch(arg) => format!("--{long}"),
+            Some(long) if !arg.is_positional() => {
+                format!("--{long} {}", long.to_ascii_uppercase().replace('-', "_"))
+            }
             _ => format!("<{}>", arg.get_id()),
         })
         .collect::<Vec<_>>()
@@ -318,7 +369,8 @@ fn is_many(arg: &Arg) -> bool {
 }
 
 /// The kind of value an arg takes: `str`, `int`, `num`, `path`, `bool`,
-/// `enum`, or `value` for anything else; empty for a switch.
+/// `time` ([`When`]), `duration` ([`Span`]), `enum`, or `value` for anything
+/// else; empty for a switch.
 pub(crate) fn arg_kind(arg: &Arg) -> &'static str {
     if is_switch(arg) {
         return "";
@@ -327,6 +379,10 @@ pub(crate) fn arg_kind(arg: &Arg) -> &'static str {
     let is = |candidates: &[TypeId]| candidates.iter().any(|candidate| id == *candidate);
     if is(&[TypeId::of::<String>()]) {
         "str"
+    } else if is(&[TypeId::of::<When>()]) {
+        "time"
+    } else if is(&[TypeId::of::<Span>()]) {
+        "duration"
     } else if is(&[
         TypeId::of::<i64>(),
         TypeId::of::<i32>(),

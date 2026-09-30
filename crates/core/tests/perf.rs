@@ -173,7 +173,18 @@ fn registry() -> Vec<Domain> {
                     break;
                 }
                 let verb = VERBS[(v + r) % VERBS.len()];
-                let template = templates[made % templates.len()];
+                // A template of the same verb where there is one, so lists
+                // keep --limit and logs keep --tail, as check_registry wants.
+                let same: Vec<&Command> = templates.iter().filter(|t| t.path[2] == verb).collect();
+                let others: Vec<&Command> = templates
+                    .iter()
+                    .filter(|t| !matches!(t.path[2], "list" | "logs"))
+                    .collect();
+                let template = if same.is_empty() {
+                    *others[made % others.len()]
+                } else {
+                    *same[made % same.len()]
+                };
                 let rest = template.example.splitn(4, ' ').nth(3).unwrap_or_default();
                 let quality = QUALITIES[(made * 7) % QUALITIES.len()];
                 commands.push(Command {

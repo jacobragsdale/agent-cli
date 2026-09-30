@@ -10,6 +10,7 @@
 mod az;
 mod cache;
 mod config;
+mod credential;
 mod ctx;
 mod discover;
 mod dispatch;
@@ -18,9 +19,12 @@ mod http;
 mod output;
 mod process;
 mod registry;
+#[cfg(feature = "fixtures")]
+mod replay;
 mod search;
 mod secret;
 pub mod testing;
+mod when;
 
 pub use anyhow;
 pub use clap;
@@ -28,17 +32,22 @@ pub use schemars;
 pub use serde_json;
 
 pub use cache::Cache;
-pub use config::Config;
-pub use ctx::{Ctx, Globals, Op, Setup};
+pub use config::{Config, pick};
+pub use credential::Credential;
+pub use ctx::{Ctx, DEFAULT_TIMEOUT, Globals, Op, Setup};
 pub use dispatch::{run, run_with};
-pub use error::{Exit, Failure};
+pub use error::{Exit, Failure, status_of};
 pub use http::{
     Body, Https, Method, Mint, Request, Response, Transport, failure_message, form_encode,
     host_under, percent_encode,
 };
 pub use process::{Output, run_until};
-pub use registry::{BUILTINS, Check, Command, Domain, Effect, GLOBAL_FLAGS, VERBS, check_registry};
+pub use registry::{
+    BUILTINS, Check, Command, Domain, Effect, GLOBAL_FLAGS, SHARED_WORDS, SYNONYM_FLAGS, VERBS,
+    check_registry,
+};
 #[doc(hidden)]
 pub use registry::{args_of, invoke, returns_of};
 pub use search::{Quality, quality};
 pub use secret::{Secret, redact};
+pub use when::{Span, When, now, utc, utc_time};
