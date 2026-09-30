@@ -20,5 +20,6 @@ export AGENT_CLI_CONFIG='$world/config.toml'
 export AGENT_CLI_NOW='2026-09-29T12:00:00Z'
 export PATH='$repo/target/debug:$repo/scripts/fake':"\$PATH"
 export AZURE_CONFIG_DIR='$world/.azure-unused'
+export AIRFLOW_PROD_PASSWORD='stand-in'
 unset AZURE_DEVOPS_EXT_PAT AGENT_CLI_READ_ONLY
 ENV

@@ -71,3 +71,36 @@
 #
 # read_only is a second line of defence; the real guard is a login that can
 # only read.
+
+# [[airflow.instance]]
+# One per Apache Airflow 3 server (/api/v2; Airflow 2 is not supported).
+# --instance takes the name; the only one is the default. Sign in with a
+# username and password (POST {base_url}/auth/token: the Simple, FAB and
+# Keycloak managers), or with a bearer token (token_env or token_cmd: Astro,
+# Composer, MWAA). The token goes only to URLs under base_url.
+# name = "dev"
+# base_url = "https://airflow-dev.contoso.example"  # the API server, with any path
+#                                        # prefix, without /api/v2; plain http
+#                                        # only to localhost
+# username = "agent"
+# password_env = "AIRFLOW_DEV_PASSWORD"  # or password_cmd = "pass show airflow/dev"
+# k8s_scope = "dev"                      # the [[k8s.scope]] its KubernetesExecutor
+#                                        # pods run in: task get prints the pod
+#                                        # as the id `k8s pod logs` takes
+# k8s_namespace = "airflow"              # where those pods run; default "airflow"
+#
+# [[airflow.instance]]
+# name = "qa"
+# base_url = "https://airflow-qa.contoso.example"
+# username = "agent"
+# password_env = "AIRFLOW_QA_PASSWORD"
+# k8s_scope = "qa"
+#
+# [[airflow.instance]]
+# name = "prod"
+# base_url = "https://airflow.contoso.example"
+# username = "agent"
+# password_cmd = "pass show airflow/prod"
+# read_only = true                       # refuse every change here: trigger,
+#                                        # pause, retry
+# k8s_scope = "prod"

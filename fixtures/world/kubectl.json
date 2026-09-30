@@ -655,12 +655,120 @@
       "objects": "array:\n  - |\n    objectName: worker-db-password\n    objectType: secret\n"
      }
     }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "etl-nightly-load-orders-q8x1k2vz",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T00:41:03Z",
+     "labels": {
+      "airflow-worker": "12",
+      "airflow_version": "3.3.2",
+      "dag_id": "etl_nightly",
+      "kubernetes_executor": "True",
+      "map_index": "-1",
+      "run_id": "scheduled__2026-09-29T0000000000-5d8e1f2a3",
+      "task_id": "load_orders",
+      "try_number": "2"
+     },
+     "annotations": {
+      "dag_id": "etl_nightly",
+      "run_id": "scheduled__2026-09-29T00:00:00+00:00",
+      "task_id": "load_orders",
+      "try_number": "2"
+     }
+    },
+    "spec": {
+     "nodeName": "aks-system-31415926-vmss000002",
+     "restartPolicy": "Never",
+     "containers": [
+      {
+       "name": "base",
+       "image": "contosoacr.azurecr.io/airflow:3.3.2-etl"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Failed",
+     "podIP": "10.244.2.41",
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "False",
+       "reason": "PodFailed"
+      }
+     ],
+     "containerStatuses": [
+      {
+       "name": "base",
+       "image": "contosoacr.azurecr.io/airflow:3.3.2-etl",
+       "imageID": "contosoacr.azurecr.io/airflow@sha256:6c1e9f0a2b7d4e8f3a5c9b1d7e2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f",
+       "ready": false,
+       "restartCount": 0,
+       "state": {
+        "terminated": {
+         "reason": "Error",
+         "exitCode": 1,
+         "startedAt": "2026-09-29T00:41:05Z",
+         "finishedAt": "2026-09-29T00:43:56Z"
+        }
+       }
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Event",
+    "metadata": {
+     "name": "etl-load-orders.scheduled",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T00:41:03Z"
+    },
+    "type": "Normal",
+    "reason": "Scheduled",
+    "count": 1,
+    "message": "Successfully assigned web/etl-nightly-load-orders-q8x1k2vz to aks-system-31415926-vmss000002",
+    "firstTimestamp": "2026-09-29T00:41:03Z",
+    "lastTimestamp": "2026-09-29T00:41:03Z",
+    "involvedObject": {
+     "kind": "Pod",
+     "name": "etl-nightly-load-orders-q8x1k2vz",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "kubelet"
+    }
+   },
+   {
+    "kind": "Event",
+    "metadata": {
+     "name": "etl-load-orders.started",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T00:41:05Z"
+    },
+    "type": "Normal",
+    "reason": "Started",
+    "count": 1,
+    "message": "Started container base",
+    "firstTimestamp": "2026-09-29T00:41:05Z",
+    "lastTimestamp": "2026-09-29T00:41:05Z",
+    "involvedObject": {
+     "kind": "Pod",
+     "name": "etl-nightly-load-orders-q8x1k2vz",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "kubelet"
+    }
    }
   ]
  },
  "logs": {
   "aks-contoso-prod/web/worker-5c4d3e9f1-q8zt1/worker/previous": "2026-09-29T11:47:10.100Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:11.137Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:12.174Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:13.211Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:12.512Z INFO  reading database password from /mnt/secrets/worker-db-password\n2026-09-29T11:47:12.874Z INFO  connecting to orders-db.contoso.example:5432 as worker\n2026-09-29T11:47:13.905Z ERROR connect failed: FATAL: password authentication failed for user \"worker\" (SQLSTATE 28P01)\n2026-09-29T11:47:13.906Z ERROR the password in /mnt/secrets/worker-db-password is the one Key Vault held before it expired on 2026-09-20\n2026-09-29T11:47:14.010Z FATAL cannot start without the orders database; exiting with status 1\n",
   "aks-contoso-prod/web/worker-5c4d3e9f1-q8zt1/worker": "2026-09-29T11:47:10.100Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:11.137Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:12.174Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:13.211Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:12.512Z INFO  reading database password from /mnt/secrets/worker-db-password\n2026-09-29T11:47:12.874Z INFO  connecting to orders-db.contoso.example:5432 as worker\n",
-  "aks-contoso-prod/web/api-7d9f8c6b5-x2k4q/api": "2026-09-29T11:50:00.000Z INFO  GET /orders/1050 200 13ms\n2026-09-29T11:51:00.000Z INFO  GET /orders/1051 200 14ms\n2026-09-29T11:52:00.000Z INFO  GET /orders/1052 200 15ms\n2026-09-29T11:53:00.000Z INFO  GET /orders/1053 200 16ms\n2026-09-29T11:54:00.000Z INFO  GET /orders/1054 200 17ms\n2026-09-29T11:55:00.000Z INFO  GET /orders/1055 200 18ms\n2026-09-29T11:56:00.000Z INFO  GET /orders/1056 200 12ms\n2026-09-29T11:57:00.000Z INFO  GET /orders/1057 200 13ms\n2026-09-29T11:58:00.000Z INFO  GET /orders/1058 200 14ms\n2026-09-29T11:59:00.000Z INFO  GET /orders/1059 200 15ms\n"
+  "aks-contoso-prod/web/api-7d9f8c6b5-x2k4q/api": "2026-09-29T11:50:00.000Z INFO  GET /orders/1050 200 13ms\n2026-09-29T11:51:00.000Z INFO  GET /orders/1051 200 14ms\n2026-09-29T11:52:00.000Z INFO  GET /orders/1052 200 15ms\n2026-09-29T11:53:00.000Z INFO  GET /orders/1053 200 16ms\n2026-09-29T11:54:00.000Z INFO  GET /orders/1054 200 17ms\n2026-09-29T11:55:00.000Z INFO  GET /orders/1055 200 18ms\n2026-09-29T11:56:00.000Z INFO  GET /orders/1056 200 12ms\n2026-09-29T11:57:00.000Z INFO  GET /orders/1057 200 13ms\n2026-09-29T11:58:00.000Z INFO  GET /orders/1058 200 14ms\n2026-09-29T11:59:00.000Z INFO  GET /orders/1059 200 15ms\n",
+  "aks-contoso-prod/web/etl-nightly-load-orders-q8x1k2vz/base": "{\"timestamp\":\"2026-09-29T00:41:07.120511Z\",\"level\":\"info\",\"event\":\"Task instance is in running state\",\"logger\":\"airflow.sdk.execution_time.task_runner\"}\n{\"timestamp\":\"2026-09-29T00:41:07.244103Z\",\"level\":\"info\",\"event\":\"Loading orders for 2026-09-28\",\"rows\":48213,\"logger\":\"task\"}\n{\"timestamp\":\"2026-09-29T00:43:54.991870Z\",\"level\":\"warning\",\"event\":\"Order without a customer\",\"order_id\":88123,\"logger\":\"task\"}\n{\"timestamp\":\"2026-09-29T00:43:55.004213Z\",\"level\":\"error\",\"event\":\"Task failed with exception\",\"logger\":\"task\"}\nTraceback (most recent call last):\n  File \"/home/airflow/.local/lib/python3.12/site-packages/airflow/sdk/execution_time/task_runner.py\", line 875, in run\n  File \"/opt/airflow/dags/etl_nightly.py\", line 42, in load_orders\n    raise ValueError(f\"order {order_id} has no customer_id\")\nValueError: order 88123 has no customer_id\n"
  }
 }

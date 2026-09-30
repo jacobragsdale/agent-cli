@@ -14,6 +14,7 @@ const DOMAINS: &[Domain] = &[
     agent_cli_azure::AKS,
     agent_cli_k8s::K8S,
     agent_cli_sql::DOMAIN,
+    agent_cli_airflow::DOMAIN,
 ];
 
 fn main() -> ExitCode {
@@ -84,6 +85,19 @@ host = "ledger.contoso.example"
 service = "LEDGER"
 user = "reader"
 password_cmd = "pass show contoso/ledger"
+
+[[airflow.instance]]
+name = "dev"
+base_url = "https://airflow-dev.contoso.example"
+token_env = "AIRFLOW_DEV_TOKEN"
+
+[[airflow.instance]]
+name = "prod"
+base_url = "https://airflow.contoso.example"
+username = "agent"
+password_env = "AIRFLOW_PROD_PASSWORD"
+read_only = true
+k8s_scope = "prod"
 "#;
         let setup = Setup::fake(FakeTransport::default()).with_config(config);
         let outcome = run(DOMAINS, &[], setup);
@@ -105,6 +119,7 @@ password_cmd = "pass show contoso/ledger"
             "acr 1 registry",
             "k8s 2 scopes",
             "sql 2 connections",
+            "airflow 2 instances",
         ] {
             assert!(config_line.contains(status), "{status}: {config_line}");
         }

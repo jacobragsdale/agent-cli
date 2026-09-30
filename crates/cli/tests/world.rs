@@ -21,6 +21,7 @@ const DOMAINS: &[Domain] = &[
     agent_cli_azure::AKS,
     agent_cli_k8s::K8S,
     agent_cli_sql::DOMAIN,
+    agent_cli_airflow::DOMAIN,
 ];
 
 struct Ran {
@@ -48,6 +49,7 @@ fn agent_cli(args: &[&str]) -> Ran {
         .env("AGENT_CLI_NOW", NOW)
         .env("PATH", path)
         .env("AZURE_CONFIG_DIR", format!("{world}/.azure-unused"))
+        .env("AIRFLOW_PROD_PASSWORD", "stand-in")
         .env_remove("AZURE_DEVOPS_EXT_PAT")
         .env_remove("AGENT_CLI_READ_ONLY")
         .output()
@@ -209,6 +211,89 @@ fn the_rest_of_the_world_answers_what_a_trial_is_likely_to_ask() {
         refs["secret_refs"][1]["kv"],
         json!(["kv-contoso-prod/db-password", "kv-contoso-prod/api-key"])
     );
+}
+
+#[test]
+fn last_nights_failed_dag_run_leads_to_its_exception_and_its_pod() {
+    let dags = ok(&["airflow", "dag", "list", "--fields", "id,paused"]);
+    assert_eq!(
+        dags,
+        json!([{"id": "etl_nightly", "paused": false}, {"id": "orders_export", "paused": false},
+            {"id": "reports_weekly", "paused": true}])
+    );
+    let runs = ok(&[
+        "airflow",
+        "run",
+        "list",
+        "--dag",
+        "etl_nightly",
+        "--state",
+        "failed",
+        "--since",
+        "1d",
+        "--fields",
+        "id",
+    ]);
+    let run = runs[0]["id"].as_str().unwrap().to_owned();
+    assert_eq!(run, "etl_nightly/scheduled__2026-09-29T00:00:00+00:00");
+    let failed = ok(&["airflow", "run", "get", &run, "--fields", "failed"]);
+    let task = failed["failed"][0].as_str().unwrap().to_owned();
+    assert_eq!(task, format!("{run}/load_orders/2"));
+
+    let log = ok(&[
+        "airflow",
+        "task",
+        "logs",
+        &task,
+        "--tail",
+        "20",
+        "--fields",
+        "error,text",
+    ]);
+    assert_eq!(
+        log["error"],
+        "ValueError: order 88123 has no customer_id (at /opt/airflow/dags/etl_nightly.py:42 in load_orders)"
+    );
+    assert!(
+        log["text"]
+            .as_str()
+            .unwrap()
+            .contains("\nValueError: order 88123 has no customer_id\n"),
+        "{log}"
+    );
+
+    let pod = ok(&["airflow", "task", "get", &task, "--fields", "pod"]);
+    let pod = pod["pod"].as_str().unwrap();
+    assert_eq!(pod, "prod/web/etl-nightly-load-orders-q8x1k2vz");
+    let pod_log = ok(&[
+        "k8s", "pod", "logs", pod, "--tail", "20", "--fields", "pod,text",
+    ]);
+    assert_eq!(pod_log["pod"], pod, "the printed ref is the id k8s takes");
+    assert!(
+        pod_log["text"]
+            .as_str()
+            .unwrap()
+            .contains("ValueError: order 88123 has no customer_id")
+    );
+    for args in [
+        &["k8s", "event", "list", "--pod", pod][..],
+        &["airflow", "dag", "get", "etl_nightly"],
+        &["airflow", "task", "list", "etl_nightly/latest"],
+        &[
+            "airflow", "run", "list", "--state", "failed", "--since", "1d",
+        ],
+        &["airflow", "import-error", "get", "12"],
+        &["doctor", "airflow"],
+    ] {
+        ok(args);
+    }
+    let broken = ok(&["airflow", "import-error", "list", "--fields", "file,error"]);
+    assert_eq!(
+        broken,
+        json!([{"file": "customer_sync.py", "error": "ModuleNotFoundError: No module named 'contoso_crm'"}])
+    );
+    let refused = agent_cli(&["airflow", "run", "retry", &run]);
+    assert_eq!(refused.code, 2, "prod is read_only: {}", refused.stderr);
 }
 
 #[test]
