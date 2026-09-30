@@ -382,6 +382,26 @@ exit-2 count, ref-assembly errors (a usage error about an id or scope),
 
 Every miss becomes a fix, a test or a labeled query, as PLAN.md says.
 
+## Decided (2026-09-29)
+
+- **Images are tagged with the git tag, and pushing that tag triggers the ADO
+  build.** The deploy trace is therefore:
+  1. `k8s deployment list` gives the image tag.
+  2. `ado run list --branch refs/tags/<tag>` finds the build.
+  3. `ado run get` gives the commit, PR and work items.
+
+  OCI labels on `acr manifest get` drop out of "build now". `ado run list
+  --branch` must accept both a bare tag and a `refs/tags/…` ref.
+- **Trials use local fixtures only.** A `fixtures` cargo feature replays
+  recorded HTTP answers, alongside the fake `az`/`kubectl`/`kubelogin`
+  scripts. One seeded contoso world is kept consistent across domains, so
+  cross-domain tasks can be tried.
+- **`aks` stays a separate domain,** because it calls Azure while `k8s` wraps
+  kubectl. `aks cluster list` prints the `k8s` scope name, so the id is the
+  ref.
+- **Airflow runs on AKS** with the Helm chart and KubernetesExecutor, as dev,
+  qa and prod instances (see `airflow.md`).
+
 ## Open questions
 
 1. **Trial environment.** Your real environment under

@@ -427,6 +427,20 @@ Add `min` only if trials show agents typing it.
 dd needs cross-domain.md's `When` type and canonical-flag checks first. It
 doesn't need the k8s crate, so it can land any time after phase 1.
 
+## Decided (2026-09-29)
+
+- **Credential:** a Datadog personal access token through `token_env` or
+  `token_cmd`. `token_cmd = "pup auth token"` reuses the existing pup login.
+  The API and application key pair stays as the fallback.
+- **Unconfirmed defaults, as proposed below:**
+  - The domain is called `dd`.
+  - Muting is Destructive, with `--for` of at most 7 days.
+  - `--cluster`/`--namespace` are plain tag filters, never defaulted from k8s
+    scopes, since nobody has confirmed that Datadog's cluster names match
+    them.
+- **Tests:** fixtures only; no Datadog org is reachable from the build
+  machine.
+
 ## Open questions
 
 1. **Which Datadog org and site will this run against?** Can you create a

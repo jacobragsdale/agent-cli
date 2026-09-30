@@ -419,6 +419,29 @@ day 1 config, auth, ids, doctor, dag, import-error; day 2 run list, get,
 create, wait; day 3 task list, get, logs, retries, dry-run tests, search
 queries; day 4 the live compose run, fixes and the agent trial.
 
+## Decided (2026-09-29)
+
+- **Airflow 3.x only.** The user's 2.x environments stay out of scope.
+- **Hosting:** self-hosted on AKS with the official Helm chart, as three
+  instances: dev, qa and prod. Each `[[airflow.instance]]` gets an optional
+  `k8s_scope` naming the `[[k8s.scope]]` its task pods run in, so `task get`
+  prints a pod ref that `k8s` accepts. `config.example.toml` shows prod with
+  `read_only = true`.
+- **Executor:** KubernetesExecutor. It's unknown whether remote logging is on,
+  so `task logs` handles both cases:
+  - Airflow serves the log (remote logging, or a pod that is still running).
+  - Or it says so plainly and prints the k8s pod ref while the pod exists.
+
+  Verify which case applies on the first live run.
+- **Unconfirmed defaults, as proposed below:**
+  - Safety levels.
+  - `run cancel` later.
+  - `DAG/latest` kept until the trials show whether agents use it.
+  - No Keycloak `client_credentials`.
+  - The compose test runs locally only.
+- **Trials:** local fixtures plus the local compose Airflow; no real
+  environment is reachable.
+
 ## Open questions
 
 1. **Airflow 2:** do you need any 2.x environment? Composer 3 still defaults
