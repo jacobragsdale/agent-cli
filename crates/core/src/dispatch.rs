@@ -120,7 +120,7 @@ fn dispatch(
             .iter()
             .map(|domain| domain.name)
             .chain(["search", "doctor"]);
-        return Err(unknown("domain", first, "", names, domains, words));
+        return Err(unknown("domain", first, "", names, domains, words, None));
     };
     let Some(resource) = words.get(1).filter(|word| !word.starts_with('-')) else {
         writeln!(out, "{}", discover::domain_listing(domain))?;
@@ -140,7 +140,7 @@ fn dispatch(
         resources.dedup();
         let scope = format!(" in {}", domain.name);
         return Err(unknown(
-            "resource", resource, &scope, resources, domains, words,
+            "resource", resource, &scope, resources, domains, words, None,
         ));
     }
     let Some(verb) = words.get(2).filter(|word| !word.starts_with('-')) else {
@@ -150,7 +150,14 @@ fn dispatch(
     let Some(command) = members.iter().find(|command| command.path[2] == verb) else {
         let scope = format!(" in {} {resource}", domain.name);
         let verbs = members.iter().map(|command| command.path[2]);
-        return Err(unknown("verb", verb, &scope, verbs, domains, words));
+        // `ado run 8809`: the id came before the verb, and `get` is the verb
+        // it was meant for.
+        let get = members
+            .iter()
+            .find(|command| command.path[2] == "get")
+            .filter(|_| looks_like_id(verb))
+            .and_then(|get| Some((*get, get_line(get, verb)?)));
+        return Err(unknown("verb", verb, &scope, verbs, domains, words, get));
     };
     if globals.help {
         writeln!(out, "{}", discover::command_help(command))?;
@@ -254,7 +261,8 @@ pub(crate) fn parse_leaf(command: &Command, args: &[String]) -> Result<ArgMatche
         .color(clap::ColorChoice::Never)
         .try_get_matches_from(args)
         .map_err(|error| {
-            Failure::usage(clap_message(&error)).hint(format!(
+            let message = unknown_flag(command, &error).unwrap_or_else(|| clap_message(&error));
+            Failure::usage(message).hint(format!(
                 "e.g. agent-cli {}\nall args: agent-cli {} --help",
                 command.example,
                 command.path.join(" ")
@@ -262,7 +270,47 @@ pub(crate) fn parse_leaf(command: &Command, args: &[String]) -> Result<ArgMatche
         })
 }
 
-/// clap's message without its usage block, on one line.
+/// A flag the command does not have: the close ones, and every one it has.
+/// clap's own tip ("to pass '--log-id' as a value, use '-- --log-id'")
+/// sends an agent the wrong way.
+fn unknown_flag(command: &Command, error: &clap::Error) -> Option<String> {
+    use clap::error::{ContextKind, ContextValue, ErrorKind};
+    if error.kind() != ErrorKind::UnknownArgument {
+        return None;
+    }
+    let Some(ContextValue::String(flag)) = error.get(ContextKind::InvalidArg) else {
+        return None;
+    };
+    if !flag.starts_with('-') {
+        return None;
+    }
+    let args = (command.args)();
+    let flags: Vec<&str> = args
+        .get_arguments()
+        .filter(|arg| !arg.is_positional() && !arg.is_hide_set())
+        .filter_map(clap::Arg::get_long)
+        .collect();
+    let wanted = flag.trim_start_matches('-');
+    let close: Vec<String> = did_you_mean(wanted, flags.iter().copied())
+        .into_iter()
+        .map(|name| format!("--{name}"))
+        .collect();
+    let mut message = format!("unknown flag {flag}");
+    if !close.is_empty() {
+        message.push_str(&format!(" \u{2014} did you mean {}?", close.join(", ")));
+    }
+    message.push_str(if close.is_empty() { "; " } else { " " });
+    let path = command.path.join(" ");
+    if flags.is_empty() {
+        message.push_str(&format!("{path} takes no flags"));
+    } else {
+        let all: Vec<String> = flags.iter().map(|name| format!("--{name}")).collect();
+        message.push_str(&format!("{path} takes {}", all.join(" ")));
+    }
+    Some(message)
+}
+
+/// clap's message without its usage block and tips, on one line.
 fn clap_message(error: &clap::Error) -> String {
     let text = error.to_string();
     let text = text.split("\nUsage:").next().unwrap_or_default();
@@ -271,7 +319,11 @@ fn clap_message(error: &clap::Error) -> String {
         .next()
         .unwrap_or_default();
     let mut message = String::new();
-    for line in text.lines().map(str::trim).filter(|line| !line.is_empty()) {
+    for line in text
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with("tip:"))
+    {
         if !message.is_empty() {
             message.push_str(if message.ends_with(':') { " " } else { "; " });
         }
@@ -308,7 +360,25 @@ fn precheck(
     }
 }
 
-/// An unknown word: the close names, and the closest commands by search.
+/// A word no verb has: a digit, a slash, a dot, a colon, `#`, `@` or a
+/// capital, as ids have.
+fn looks_like_id(word: &str) -> bool {
+    !word.is_empty()
+        && !word
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte == b'-')
+}
+
+/// `get`'s search line with `id` as its first positional.
+fn get_line(get: &Command, id: &str) -> Option<String> {
+    let args = (get.args)();
+    let first = args.get_positionals().next()?;
+    Some(search::hit_line(get).replacen(&format!("<{}>", first.get_id()), &shell_quote(id), 1))
+}
+
+/// An unknown word: the close names, and the closest commands by search,
+/// reads before changes (a failed lookup is rarely a request to delete
+/// something). `first`, when given, leads the list.
 fn unknown<'a>(
     kind: &str,
     word: &str,
@@ -316,11 +386,14 @@ fn unknown<'a>(
     candidates: impl IntoIterator<Item = &'a str>,
     domains: &[Domain],
     words: &[String],
+    first: Option<(&Command, String)>,
 ) -> anyhow::Error {
     let close = did_you_mean(word, candidates);
     let mut message = format!("unknown {kind} {word:?}{scope}");
     if !close.is_empty() {
         message.push_str(&format!(" \u{2014} did you mean {}?", close.join(", ")));
+    } else if first.is_some() {
+        message.push_str("; an id goes after the verb");
     }
     let query: Vec<&str> = words
         .iter()
@@ -328,10 +401,22 @@ fn unknown<'a>(
         .map(String::as_str)
         .filter(|word| !word.starts_with('-'))
         .collect();
-    let hits: Vec<String> = search::rank(domains, &query.join(" "))
+    let lead = first.as_ref().map(|(command, _)| command.path);
+    let mut ranked: Vec<&Command> = search::rank(domains, &query.join(" "))
         .iter()
-        .take(5)
-        .map(|hit| search::hit_line(hit.command))
+        .map(|hit| hit.command)
+        .filter(|command| Some(command.path) != lead)
+        .take(if first.is_some() { 4 } else { 5 })
+        .collect();
+    ranked.sort_by_key(|command| match command.effect {
+        Effect::Read => 0,
+        Effect::Reveal | Effect::Varies | Effect::Write => 1,
+        Effect::Destructive => 2,
+    });
+    let hits: Vec<String> = first
+        .map(|(_, line)| line)
+        .into_iter()
+        .chain(ranked.into_iter().map(search::hit_line))
         .collect();
     let hint = if hits.is_empty() {
         format!(
@@ -412,7 +497,7 @@ fn doctor_builtin(
             Some(domain) => vec![domain],
             None => {
                 let names = domains.iter().map(|domain| domain.name);
-                return Err(unknown("domain", name, "", names, domains, args));
+                return Err(unknown("domain", name, "", names, domains, args, None));
             }
         },
         _ => return Err(Failure::usage("usage: agent-cli doctor [domain]").into()),

@@ -150,6 +150,28 @@ fn unknown_words_get_did_you_mean_and_the_closest_commands() {
         )
     );
 
+    let id_first = go(&["tracker", "build", "991", "--raw"]);
+    let lines: Vec<&str> = id_first.stderr.lines().collect();
+    assert_eq!(
+        lines[..3],
+        [
+            "error: unknown verb \"991\" in tracker build; an id goes after the verb",
+            "hint: closest commands:",
+            "  agent-cli tracker build get 991  # Show one build's status, result and timing",
+        ],
+        "{}",
+        id_first.stderr
+    );
+    let effects: Vec<bool> = lines[3..]
+        .iter()
+        .map(|line| line.ends_with("(destructive)") || line.ends_with("(write)"))
+        .collect();
+    assert!(
+        effects.is_sorted(),
+        "reads before changes: {}",
+        id_first.stderr
+    );
+
     let synonym = go(&["tracker", "bug", "get"]);
     assert!(
         synonym.stderr.contains("agent-cli tracker ticket get <id>"),
@@ -184,12 +206,26 @@ fn a_bad_leaf_call_is_a_usage_error_that_shows_the_example() {
         bad.stderr
     );
     let typo = go(&["tracker", "ticket", "list", "--stat", "x"]);
-    assert!(
-        typo.stderr
-            .contains("tip: a similar argument exists: '--state'"),
-        "{}",
-        typo.stderr
+    assert_eq!(
+        typo.stderr.lines().next(),
+        Some(
+            "error: unknown flag --stat \u{2014} did you mean --state? \
+             tracker ticket list takes --assignee --state --text --limit"
+        ),
     );
+    let stranger = go(&["tracker", "ticket", "list", "--log-id=7"]);
+    assert_eq!(
+        stranger.stderr.lines().next(),
+        Some(
+            "error: unknown flag --log-id; tracker ticket list takes --assignee --state --text --limit"
+        ),
+    );
+    let extra = go(&["tracker", "ticket", "get", "42", "43"]);
+    assert_eq!(
+        extra.stderr.lines().next(),
+        Some("error: unexpected argument '43' found")
+    );
+    assert!(!format!("{typo:?}{stranger:?}{extra:?}").contains("tip:"));
     let enum_value = go(&["tracker", "pr", "vote", "7", "yes"]);
     assert!(
         enum_value
@@ -843,7 +879,7 @@ fn printed_command_lines_must_parse_and_printed_times_must_be_utc() {
     assert_eq!(
         printed_command_problems(DOMAINS, text),
         [
-            "`agent-cli tracker ticket get --bogus`: unexpected argument '--bogus' found; tip: to pass '--bogus' as a value, use '-- --bogus'",
+            "`agent-cli tracker ticket get --bogus`: unknown flag --bogus; tracker ticket get takes no flags",
             "`agent-cli tracker tikcet list`: tracker has no resource \"tikcet\"",
         ]
     );
