@@ -261,8 +261,10 @@ fn wrap(words: &[String]) -> Vec<String> {
 }
 
 /// `agent-cli <path> --help`: summary, args (`*` required), `Returns:`, the
-/// effect, and a runnable example.
-pub(crate) fn command_help(command: &Command) -> String {
+/// effect, and a runnable example. Public for the generated command
+/// reference (`docs/reference/commands.md`).
+#[must_use]
+pub fn command_help(command: &Command) -> String {
     let path = command.path.join(" ");
     let mut lines = vec![format!("agent-cli {path} \u{2014} {}", command.summary)];
     let args = (command.args)();
