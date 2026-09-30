@@ -34,7 +34,7 @@ pub use serde_json;
 pub use cache::Cache;
 pub use config::{Config, pick};
 pub use credential::Credential;
-pub use ctx::{Ctx, DEFAULT_TIMEOUT, Globals, Op, Setup};
+pub use ctx::{Ctx, DEFAULT_TIMEOUT, Globals, LongText, Op, Setup};
 pub use discover::command_help;
 pub use dispatch::{run, run_with};
 pub use error::{Exit, Failure, status_of};

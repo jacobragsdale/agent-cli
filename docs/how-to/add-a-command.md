@@ -282,8 +282,9 @@ a `contoso`-style placeholder. `testing::run`, which every `testkit` calls,
 also fails the test when a printed `agent-cli …` line does not parse or a
 printed time is not UTC. In a crate without a `testkit`, call it directly:
 `testing::run(DOMAINS, argv, Setup::fake(FakeTransport::answering([...])))`.
-`Setup::fake` sees no environment (`with_env` adds a variable) and signs every
-`az` token as `token@<resource>`. The k8s and azure crates run `kubectl`, `az`
+`Setup::fake` sees no environment (`with_env` adds a variable) and nothing on
+stdin (`with_stdin` pipes text in), and signs every `az` token as
+`token@<resource>`. The k8s and azure crates run `kubectl`, `az`
 and `kubelogin` from `scripts/fake`.
 
 ## 8. If the command changes something
@@ -448,6 +449,7 @@ same rules as the contract.
 | Printed times | RFC 3339 UTC ending in `Z`: pass a service's stamp through `agent_cli_core::utc`, an `OffsetDateTime` through `utc_time` | T |
 | Bounds | A `list` takes `--limit` (int, default 50) and says when it cut with `ctx.note`. `logs` takes `--tail`, never `--follow` | R |
 | Flag names | `--since --until --limit --tail --cluster --namespace --conn`; `SYNONYM_FLAGS` refuses `--from`, `--count`, `--ns`, `--context` and the like. Never declare a global (`--fields --raw --dry-run --yes --reveal --timeout --output --no-cache`) or `-h` | R |
+| Long text | A description, comment, SQL or JSON argument reads stdin when it is `-` and has a `--NAME-file` flag of type `PathBuf`; read both with `ctx.long_text(name, value, file, limit)`, one `-` per command. A cap (comments: 64 KiB) goes in the help | R |
 | Scopes | A scope flag defaults to the only configured one, else exit 2 naming them: `agent_cli_core::pick` | review |
 | People | A flag naming a person (`--assignee`, `--author` …) says in its help that `@me` works | R |
 | Effects | Only through `ctx.read` / `ctx.write`; a `POST` that only reads is `Request::query` | read-only and dry-run tests |

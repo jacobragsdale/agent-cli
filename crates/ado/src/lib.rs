@@ -192,6 +192,19 @@ pub(crate) mod testkit {
         (run(&[crate::DOMAIN], argv, setup), transport)
     }
 
+    /// [`ado`] with `stdin` piped in.
+    pub(crate) fn ado_piped(
+        stdin: &str,
+        argv: &[&str],
+        answers: Vec<Answer>,
+    ) -> (Outcome, FakeTransport) {
+        let transport = FakeTransport::answering(answers);
+        let setup = Setup::fake(transport.clone())
+            .with_config(CONFIG)
+            .with_stdin(stdin);
+        (run(&[crate::DOMAIN], argv, setup), transport)
+    }
+
     /// The URLs sent, in order.
     pub(crate) fn urls(transport: &FakeTransport) -> Vec<String> {
         transport.sent().into_iter().map(|sent| sent.url).collect()

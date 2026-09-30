@@ -2,6 +2,7 @@
 //! a bounded wait, and re-running what failed.
 
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use agent_cli_core::{Ctx, Effect, Exit, Failure, Method, When, command, redact_value, status_of};
@@ -244,6 +245,9 @@ pub struct RunCreateArgs {
     /// The run's conf: a JSON object, or - to read it from stdin
     #[arg(long)]
     conf: Option<String>,
+    /// The run's conf from a JSON file
+    #[arg(long)]
+    conf_file: Option<PathBuf>,
     /// RFC 3339 or now; a DAG that templates {{ ds }} needs one (none by default)
     #[arg(long)]
     logical_date: Option<String>,
@@ -278,18 +282,16 @@ fn run_create(ctx: &Ctx, args: RunCreateArgs) -> Result<RunCreated> {
         None,
     )?;
     client.writable()?;
-    let conf = match args.conf.as_deref() {
+    let conf = match ctx.long_text(
+        "conf",
+        args.conf.as_deref(),
+        args.conf_file.as_deref(),
+        None,
+    )? {
         None => json!({}),
-        Some(raw) => {
-            let raw = if raw == "-" {
-                std::io::read_to_string(std::io::stdin())?
-            } else {
-                raw.to_owned()
-            };
-            serde_json::from_str::<Map<String, Value>>(&raw)
-                .map(Value::Object)
-                .map_err(|error| Failure::usage(format!("--conf is not a JSON object: {error}")))?
-        }
+        Some(raw) => serde_json::from_str::<Map<String, Value>>(&raw.text)
+            .map(Value::Object)
+            .map_err(|error| Failure::usage(format!("--conf is not a JSON object: {error}")))?,
     };
     // Since 3.0 a REST trigger without one has no data interval, so a DAG
     // that templates {{ ds }} fails; null is still the API's own default.
@@ -774,6 +776,22 @@ pub(crate) mod tests {
         );
         assert_eq!(outcome.code, 2, "{outcome:?}");
         assert!(transport.sent().is_empty());
+
+        let dir = tempfile::tempdir().unwrap();
+        let conf = dir.path().join("conf.json");
+        std::fs::write(&conf, "{\"day\": \"2026-09-28\"}\n").unwrap();
+        let (plans, _) = dry_run(
+            &[
+                "airflow",
+                "run",
+                "create",
+                "etl_nightly",
+                "--conf-file",
+                conf.to_str().unwrap(),
+            ],
+            vec![Answer::json(&active)],
+        );
+        assert_eq!(plans[0]["body"]["conf"], json!({"day": "2026-09-28"}));
     }
 
     #[test]

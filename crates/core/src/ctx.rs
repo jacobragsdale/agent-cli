@@ -7,7 +7,8 @@
 //! enforced, so a handler cannot forget them.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::io::{IsTerminal as _, Read};
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
@@ -55,6 +56,9 @@ pub struct Setup {
     /// A stand-in for every `az` token, so tests never start `az`: see
     /// [`Ctx::az_token`].
     pub token: Option<String>,
+    /// What [`Ctx::long_text`] reads for `-`: `None` is the process's stdin;
+    /// tests pass what was piped in, and empty is nothing.
+    pub stdin: Option<String>,
 }
 
 impl Setup {
@@ -69,6 +73,7 @@ impl Setup {
             cache_dir: crate::cache::default_dir(),
             env: None,
             token: None,
+            stdin: None,
         };
         #[cfg(feature = "fixtures")]
         let setup = crate::replay::from_env(setup);
@@ -117,6 +122,7 @@ pub struct Ctx {
     read_only: bool,
     env: Option<Vec<(String, String)>>,
     pub(crate) token: Option<String>,
+    stdin: Mutex<Option<String>>,
     /// The command line as typed, for "run it again with --yes".
     command_line: String,
     plans: Mutex<Vec<Value>>,
@@ -137,6 +143,7 @@ impl Ctx {
             read_only: setup.read_only,
             env: setup.env,
             token: setup.token,
+            stdin: Mutex::new(setup.stdin),
             command_line: command_line.into(),
             plans: Mutex::new(Vec::new()),
             notes: Mutex::new(Vec::new()),
@@ -186,6 +193,93 @@ impl Ctx {
                 .map(|(_, value)| value.clone()),
         };
         value.filter(|value| !value.trim().is_empty())
+    }
+
+    /// Long text as every command takes it: `value` as typed, stdin when it
+    /// is `-`, or the file `--{name}-file` names (`None` when neither was
+    /// given, and both is exit 2). `name` is the argument's: `description`,
+    /// `text`. Text from stdin or a file loses its `\r`s and trailing
+    /// whitespace, must hold something, and is at most `limit` bytes when
+    /// there is one: read one byte past it and no further, so a log of any
+    /// size is refused without first being held in memory.
+    pub fn long_text(
+        &self,
+        name: &str,
+        value: Option<&str>,
+        file: Option<&Path>,
+        limit: Option<usize>,
+    ) -> Result<Option<LongText>> {
+        let cap = limit.map_or(u64::MAX, |limit| limit as u64 + 1);
+        let what = name.replace('-', " ");
+        let mut raw = String::new();
+        let (from, piped) = match (value, file) {
+            (Some(_), Some(path)) => {
+                return Err(Failure::usage(format!(
+                    "the {what} came both as a value and as the file {}",
+                    path.display()
+                ))
+                .hint(format!("pass the {what} or --{name}-file, not both"))
+                .into());
+            }
+            (None, None) => return Ok(None),
+            (Some(text), None) if text != "-" => {
+                return Ok(Some(LongText {
+                    text: text.to_owned(),
+                    piped: false,
+                }));
+            }
+            (Some(_), None) => {
+                match locked(&self.stdin).take() {
+                    Some(given) => raw = given,
+                    None => {
+                        let stdin = std::io::stdin();
+                        if stdin.is_terminal() {
+                            return Err(Failure::usage(format!(
+                                "`-` reads the {what} from stdin, and nothing is piped in"
+                            ))
+                            .hint(format!("pipe it in, or pass --{name}-file PATH"))
+                            .into());
+                        }
+                        stdin
+                            .lock()
+                            .take(cap)
+                            .read_to_string(&mut raw)
+                            .map_err(|error| {
+                                Failure::usage(format!(
+                                    "cannot read the {what} from stdin: {error}"
+                                ))
+                            })?;
+                    }
+                }
+                ("stdin".to_owned(), true)
+            }
+            (None, Some(path)) => {
+                std::fs::File::open(path)
+                    .and_then(|file| file.take(cap).read_to_string(&mut raw))
+                    .map_err(|error| {
+                        Failure::usage(format!(
+                            "cannot read the {what} from {}: {error}",
+                            path.display()
+                        ))
+                    })?;
+                (path.display().to_string(), false)
+            }
+        };
+        if let Some(limit) = limit
+            && raw.len() > limit
+        {
+            return Err(Failure::usage(format!(
+                "the {what} from {from} is more than {} KiB",
+                limit / 1024
+            ))
+            .hint("cut it to the part worth reading first, such as with `tail -200`")
+            .into());
+        }
+        let text = raw.replace("\r\n", "\n").trim_end().to_owned();
+        if text.trim().is_empty() {
+            return Err(Failure::usage(format!("the {what} from {from} is empty")).into());
+        }
+        Ok(Some(LongText { text, piped }))
     }
 
     /// A line for stderr after the output, such as `[50 of 312; --limit N]`.
@@ -247,8 +341,102 @@ impl Ctx {
     }
 }
 
+/// What [`Ctx::long_text`] read.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LongText {
+    pub text: String,
+    /// It came from stdin: program output, as `ado … comment -` posts it.
+    pub piped: bool,
+}
+
 /// A poisoned lock still holds a usable value; a panicked thread's half-done
 /// push is no reason to lose the rest.
 pub(crate) fn locked<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use crate::testing::{FakeTransport, ctx};
+    use crate::{Exit, Failure, Setup};
+
+    fn exit(error: &anyhow::Error) -> Exit {
+        error
+            .downcast_ref::<Failure>()
+            .map(|failure| failure.exit)
+            .unwrap()
+    }
+
+    #[test]
+    fn long_text_is_typed_piped_with_a_dash_or_read_from_a_file_and_capped() {
+        let piped = |text: &str| ctx(Setup::fake(FakeTransport::default()).with_stdin(text));
+        let typed = piped("");
+        let read =
+            |ctx: &super::Ctx, value, file, limit| ctx.long_text("description", value, file, limit);
+        assert_eq!(read(&typed, None, None, None).unwrap(), None);
+        let got = read(&typed, Some("  kept as typed \n"), None, None)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            (got.text.as_str(), got.piped),
+            ("  kept as typed \n", false)
+        );
+
+        let got = read(&piped("# Why\r\n\r\nBecause\r\n\n"), Some("-"), None, None)
+            .unwrap()
+            .unwrap();
+        assert_eq!((got.text.as_str(), got.piped), ("# Why\n\nBecause", true));
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("why.md");
+        std::fs::write(&path, "**Why**\n").unwrap();
+        let got = read(&typed, None, Some(&path), Some(64)).unwrap().unwrap();
+        assert_eq!((got.text.as_str(), got.piped), ("**Why**", false));
+        let big = dir.path().join("big.md");
+        std::fs::write(&big, "x".repeat(1025)).unwrap();
+
+        for (ctx, value, file, limit, said) in [
+            (
+                piped(""),
+                Some("-"),
+                None,
+                None,
+                "the description from stdin is empty",
+            ),
+            (
+                piped(&"x".repeat(1025)),
+                Some("-"),
+                None,
+                Some(1024),
+                "the description from stdin is more than 1 KiB",
+            ),
+            (
+                piped(""),
+                None,
+                Some(big.as_path()),
+                Some(1024),
+                "big.md is more than 1 KiB",
+            ),
+            (
+                piped(""),
+                Some("x"),
+                Some(path.as_path()),
+                None,
+                "both as a value and as the file",
+            ),
+            (
+                piped(""),
+                None,
+                Some(Path::new("/nonexistent/why.md")),
+                None,
+                "cannot read the description from /nonexistent/why.md",
+            ),
+        ] {
+            let error = read(&ctx, value, file, limit).unwrap_err();
+            assert_eq!(exit(&error), Exit::Usage, "{error:#}");
+            assert!(error.to_string().contains(said), "{error:#}");
+        }
+    }
 }

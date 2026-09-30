@@ -346,6 +346,57 @@ password_env = "CONTOSO_DB_PASSWORD"
     }
 
     #[test]
+    fn sql_comes_as_the_argument_piped_with_a_dash_or_from_a_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("fix.sql");
+        std::fs::write(&file, "select 1\r\ngo\r\ndelete from t\r\n").unwrap();
+        let file = file.to_str().unwrap();
+        for (argv, stdin) in [
+            (
+                &["sql", "query", "run", "--conn", "ms", "--sql-file", file][..],
+                "",
+            ),
+            (
+                &["sql", "query", "bench", "--conn", "ms", "--sql-file", file][..],
+                "",
+            ),
+            (
+                &["sql", "query", "run", "--conn", "ms", "-"][..],
+                "select 1\ngo\ndelete from t\n",
+            ),
+        ] {
+            let mut argv = argv.to_vec();
+            argv.push("--dry-run");
+            let outcome = sql(&argv, setup().with_stdin(stdin));
+            assert_eq!(outcome.code, 0, "{outcome:?}");
+            assert_eq!(
+                outcome.json()["would"][0]["statements"],
+                json!([
+                    {"sql": "select 1", "writes": false},
+                    {"sql": "delete from t", "writes": true}
+                ])
+            );
+        }
+        for argv in [
+            &["sql", "query", "run", "--conn", "ms"][..],
+            &[
+                "sql",
+                "query",
+                "run",
+                "--conn",
+                "ms",
+                "select 1",
+                "--sql-file",
+                file,
+            ][..],
+            &["sql", "query", "run", "--conn", "ms", "-"][..],
+        ] {
+            let outcome = sql(argv, setup());
+            assert_eq!(outcome.code, 2, "{outcome:?}");
+        }
+    }
+
+    #[test]
     fn a_write_needs_yes_and_read_only_mode_refuses_it() {
         let outcome = sql(
             &["sql", "query", "run", "--conn", "ms", "drop table t"],

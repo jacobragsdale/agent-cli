@@ -11,11 +11,11 @@
 //! error names the statement and what the ones before it already did, which
 //! stays done.
 
-use std::io::{IsTerminal as _, Read as _};
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use agent_cli_core::{Ctx, Effect, Failure, command};
-use anyhow::{Context as _, Result};
+use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::json;
@@ -36,8 +36,11 @@ pub struct RunArgs {
     max_rows: u64,
     /// The SQL, or - to read it from stdin. SQL Server splits at GO lines,
     /// Oracle at ; and / lines
-    #[arg(allow_hyphen_values = true)]
-    sql: String,
+    #[arg(allow_hyphen_values = true, required_unless_present = "sql_file")]
+    sql: Option<String>,
+    /// The SQL from a file
+    #[arg(long)]
+    sql_file: Option<PathBuf>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -51,7 +54,7 @@ fn query_run(ctx: &Ctx, args: RunArgs) -> Result<QueryResult> {
     let started = Instant::now();
     let sql = Sql::load(ctx.config())?;
     let spec = sql.connection(args.conn.as_deref())?;
-    let statements = statements(&args.sql, spec)?;
+    let statements = statements(ctx, args.sql.as_deref(), args.sql_file.as_deref(), spec)?;
     let keep = usize::try_from(args.max_rows).unwrap_or(usize::MAX);
     let deadline = ctx.deadline();
     let op = OnConnection {
@@ -114,8 +117,11 @@ pub struct BenchArgs {
     #[arg(long, default_value_t = 20, value_parser = clap::value_parser!(u32).range(1..))]
     runs: u32,
     /// The SQL, or - to read it from stdin; every row is read each run
-    #[arg(allow_hyphen_values = true)]
-    sql: String,
+    #[arg(allow_hyphen_values = true, required_unless_present = "sql_file")]
+    sql: Option<String>,
+    /// The SQL from a file
+    #[arg(long)]
+    sql_file: Option<PathBuf>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -141,7 +147,7 @@ pub struct Phase {
 fn query_bench(ctx: &Ctx, args: BenchArgs) -> Result<Bench> {
     let sql = Sql::load(ctx.config())?;
     let spec = sql.connection(args.conn.as_deref())?;
-    let statements = statements(&args.sql, spec)?;
+    let statements = statements(ctx, args.sql.as_deref(), args.sql_file.as_deref(), spec)?;
     let deadline = ctx.deadline();
     let op = OnConnection {
         spec,
@@ -233,26 +239,18 @@ fn percentile(sorted: &[Duration], p: usize) -> Duration {
 
 // ---------- shared ----------
 
-/// The statements in `sql` (`-` is stdin), classified. Nothing to run is a
-/// usage error.
-fn statements(sql: &str, spec: &Connection) -> Result<Vec<Statement>> {
-    let text = if sql == "-" {
-        let mut stdin = std::io::stdin();
-        if stdin.is_terminal() {
-            return Err(
-                Failure::usage("`-` reads the SQL from stdin, which is a terminal")
-                    .hint("pipe the SQL in, or pass it as the argument")
-                    .into(),
-            );
-        }
-        let mut text = String::new();
-        stdin
-            .read_to_string(&mut text)
-            .context("reading the SQL from stdin")?;
-        text
-    } else {
-        sql.to_owned()
-    };
+/// The statements in `sql` (`-` is stdin) or `file`, classified. Nothing to
+/// run is a usage error.
+fn statements(
+    ctx: &Ctx,
+    sql: Option<&str>,
+    file: Option<&Path>,
+    spec: &Connection,
+) -> Result<Vec<Statement>> {
+    let text = ctx
+        .long_text("sql", sql, file, None)?
+        .map(|sql| sql.text)
+        .unwrap_or_default();
     let statements = split::statements(&text, spec.kind);
     if statements.is_empty() {
         return Err(

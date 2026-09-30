@@ -140,8 +140,8 @@ impl Transport for FakeTransport {
 }
 
 impl Setup {
-    /// No config, no cache, not read-only, an empty environment and stand-in
-    /// `az` tokens (`token@<resource>`), over `transport`.
+    /// No config, no cache, not read-only, an empty environment, nothing on
+    /// stdin and stand-in `az` tokens (`token@<resource>`), over `transport`.
     #[must_use]
     pub fn fake(transport: impl Transport + 'static) -> Self {
         Self {
@@ -151,7 +151,15 @@ impl Setup {
             cache_dir: None,
             env: Some(Vec::new()),
             token: Some("token".to_owned()),
+            stdin: Some(String::new()),
         }
+    }
+
+    /// What was piped to the run's stdin (`Ctx::long_text` reads it for `-`).
+    #[must_use]
+    pub fn with_stdin(mut self, text: &str) -> Self {
+        self.stdin = Some(text.to_owned());
+        self
     }
 
     /// One environment variable the run sees (`Ctx::env`).

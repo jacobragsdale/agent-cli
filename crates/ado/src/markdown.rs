@@ -13,10 +13,10 @@
 //! text survives, their markup does not), and malformed input is rendered as
 //! the text it looks like rather than dropped.
 
-use std::io::{IsTerminal, Read};
+use std::path::Path;
 
-use agent_cli_core::Failure;
-use anyhow::{Context, Result};
+use agent_cli_core::{Ctx, Failure};
+use anyhow::Result;
 
 /// Longest entity body worth looking at: `&middot;` and `&#x1F600;` both fit.
 const MAX_ENTITY: usize = 12;
@@ -801,56 +801,23 @@ const COMMENT_LIMIT: usize = 64 * 1024;
 ///
 /// Piped text is program output (a test tail, a log), so it is posted as a
 /// fenced block, which is what keeps its columns lined up. Text typed as the
-/// argument is Markdown, as written.
+/// argument or read from `--text-file` is Markdown, as written.
 pub(crate) struct CommentBody {
     text: String,
     fenced: bool,
 }
 
 impl CommentBody {
-    /// The argument as typed, or stdin when it is `-`.
-    pub(crate) fn from_arg(text: &str) -> Result<Self> {
-        if text == "-" {
-            let stdin = std::io::stdin();
-            if stdin.is_terminal() {
-                return Err(Failure::usage("`-` reads the comment from stdin, and nothing is piped in")
-                    .hint("pipe it in (`cargo test 2>&1 | tail -30 | agent-cli … -`), or pass the text as the argument")
-                    .into());
-            }
-            return Self::piped(&mut stdin.lock());
-        }
-        if text.trim().is_empty() {
-            return Err(Failure::usage("a comment cannot be empty").into());
-        }
+    /// The argument as typed, stdin when it is `-`, or `--text-file`.
+    pub(crate) fn read(ctx: &Ctx, text: Option<&str>, file: Option<&Path>) -> Result<Self> {
+        let body = ctx
+            .long_text("text", text, file, Some(COMMENT_LIMIT))?
+            .filter(|body| !body.text.trim().is_empty())
+            .ok_or_else(|| Failure::usage("a comment cannot be empty"))?;
         Ok(Self {
-            text: text.to_owned(),
-            fenced: false,
+            text: body.text,
+            fenced: body.piped,
         })
-    }
-
-    /// Everything piped in, read one byte past the limit and no further: a
-    /// log of any size is refused without first being held in memory. The
-    /// trailing newline a pipe always carries is taken off.
-    fn piped(stdin: &mut impl Read) -> Result<Self> {
-        let mut raw = String::new();
-        stdin
-            .take(COMMENT_LIMIT as u64 + 1)
-            .read_to_string(&mut raw)
-            .context("cannot read the comment from stdin")?;
-        if raw.len() > COMMENT_LIMIT {
-            return Err(Failure::usage(
-                "that is a log, not a comment: more than 64 KiB came down the pipe",
-            )
-            .hint("pipe it through `tail -200` first")
-            .into());
-        }
-        let text = raw.trim_end().to_owned();
-        if text.trim().is_empty() {
-            return Err(
-                Failure::usage("a comment cannot be empty; nothing came down the pipe").into(),
-            );
-        }
-        Ok(Self { text, fenced: true })
     }
 
     /// As Markdown, which is what a pull request thread stores. A fence is one
@@ -1014,18 +981,19 @@ mod tests {
     }
 
     #[test]
-    fn a_piped_comment_is_a_fence_longer_than_any_run_inside_and_capped_at_64_kib() {
-        let body = CommentBody::piped(&mut "ok 1\n```inner```\n\n".as_bytes()).unwrap();
+    fn a_piped_comment_is_a_fence_longer_than_any_run_inside() {
+        let piped = |text: &str| CommentBody {
+            text: text.to_owned(),
+            fenced: true,
+        };
+        let body = piped("ok 1\n```inner```");
         assert_eq!(body.markdown(), "````\nok 1\n```inner```\n````");
         assert_eq!(body.html(), "<pre>ok 1\n```inner```</pre>");
-        let typed = CommentBody::from_arg("Fixed in **!17**").unwrap();
+        let typed = CommentBody {
+            fenced: false,
+            ..piped("Fixed in **!17**")
+        };
         assert_eq!(typed.markdown(), "Fixed in **!17**");
         assert_eq!(typed.html(), "<p>Fixed in <b>!17</b></p>");
-
-        let log = "x".repeat(COMMENT_LIMIT + 1);
-        let error = CommentBody::piped(&mut log.as_bytes()).err().unwrap();
-        assert!(error.to_string().contains("64 KiB"), "{error}");
-        assert!(CommentBody::piped(&mut "\n  \n".as_bytes()).is_err());
-        assert!(CommentBody::from_arg("  ").is_err());
     }
 }

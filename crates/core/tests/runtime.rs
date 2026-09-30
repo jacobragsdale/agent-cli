@@ -681,6 +681,12 @@ struct Loose {
     /// Who it is for
     #[arg(long)]
     assignee: Option<String>,
+    /// Markdown, or - to read stdin
+    #[arg(long)]
+    notes: Option<String>,
+    /// A file named by text, not a path
+    #[arg(long)]
+    body_file: Option<String>,
 }
 
 #[derive(clap::Args)]
@@ -740,6 +746,8 @@ fn the_checker_holds_every_domain_to_the_shared_flag_conventions() {
         "conv item list: --changed takes a time, which only --since and --until do",
         "conv item list: --since must take a time (core's When)",
         "conv item list: --assignee names a person, so its help must say @me works",
+        "conv item list: notes reads stdin with -, so --notes-file must read it from a file",
+        "conv item list: --body-file must take a path",
         "conv item list: a list takes --limit (int, default 50)",
         "conv item logs: logs take --tail",
         "conv item logs: logs never --follow: a command must end",

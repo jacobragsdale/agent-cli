@@ -90,6 +90,13 @@ has the reasoning.
   lists); `logs` takes `--tail` and never `--follow`. A flag naming a person
   (`--assignee`, `--author` …) says `@me` works, and `@me` is the
   authenticated user of that domain.
+- **Long text** (tested): an argument holding prose, Markdown, SQL or JSON
+  (a description, a comment's text, a query, a conf) reads stdin when its
+  value is `-`, and a sibling `--NAME-file PATH` (a `PathBuf`) reads it from
+  a file. Read both with `ctx.long_text(name, value, file, limit)`: it
+  refuses both at once, empty text from a pipe or file, and anything past
+  `limit` (comments keep ticket-tui's 64 KiB, and their help says so). Only
+  one argument per command can be `-`. Not `@path`: `@` already means `@me`.
 - **Scope defaults.** A scope flag (`--cluster`, `--conn`, an instance or
   site) defaults to the only configured one, else exit 2 naming them:
   `agent_cli_core::pick`.

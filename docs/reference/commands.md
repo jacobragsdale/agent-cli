@@ -12,7 +12,7 @@ Generated from the registry by `crates/cli` (`UPDATE_DOCS=1 cargo test -p agent-
 | [`ado workitem get`](#ado-workitem-get) | read | Show a work item: fields, description as Markdown, links, latest comments |
 | [`ado workitem create`](#ado-workitem-create) | write | Create a work item (bug, task, story …), optionally under a parent |
 | [`ado workitem update`](#ado-workitem-update) | write | Change a work item's state, assignee, title, iteration, tags or description |
-| [`ado workitem comment`](#ado-workitem-comment) | write | Add a comment to a work item (Markdown, or - for stdin) |
+| [`ado workitem comment`](#ado-workitem-comment) | write | Add a comment to a work item (Markdown, - for stdin, or --text-file) |
 | [`ado workitem link`](#ado-workitem-link) | write | Link a work item to a branch, creating the branch when missing |
 | [`ado team list`](#ado-team-list) | read | List the project's teams (for [ado] team, which @current needs) |
 | [`ado repo list`](#ado-repo-list) | read | List the project's Git repositories |
@@ -23,7 +23,7 @@ Generated from the registry by `crates/cli` (`UPDATE_DOCS=1 cargo test -p agent-
 | [`ado pr vote`](#ado-pr-vote) | write | Record your vote on a pull request: approve, suggest, reject or none |
 | [`ado pr update`](#ado-pr-update) | write | Turn auto-complete on or off, mark draft or ready, or retitle a pull request |
 | [`ado pr link`](#ado-pr-link) | write | Link a work item to a pull request |
-| [`ado pr comment`](#ado-pr-comment) | write | Start a comment thread on a pull request (Markdown, or - for stdin) |
+| [`ado pr comment`](#ado-pr-comment) | write | Start a comment thread on a pull request (Markdown, - for stdin, or --text-file) |
 | [`ado pr complete`](#ado-pr-complete) | destructive | Complete (merge) a pull request: squash, merge or rebase |
 | [`ado pr abandon`](#ado-pr-abandon) | destructive | Abandon (close) a pull request, discarding its changes |
 | [`ado pipeline list`](#ado-pipeline-list) | read | List build pipelines with their last run |
@@ -75,17 +75,19 @@ e.g. agent-cli ado workitem get 42 --fields id,title,state,description
 
 ```text
 agent-cli ado workitem create — Create a work item (bug, task, story …), optionally under a parent
- *--type str                 Bug, Task, "User Story" …
- *--title str                What it is called
-  --parent int               The work item it goes under
-  --state str                Active, Closed …
-  --assignee str             Name, email or @me ("" unassigns)
-  --iteration str            Full iteration path
-  --area str                 Full area path
-  --priority int             1 (highest) to 4
-  --tags str                 Comma-separated; replaces the tags it has
-  --description str          Markdown, stored as HTML
-  --acceptance-criteria str  Markdown, stored as HTML
+ *--type str                    Bug, Task, "User Story" …
+ *--title str                   What it is called
+  --parent int                  The work item it goes under
+  --state str                   Active, Closed …
+  --assignee str                Name, email or @me ("" unassigns)
+  --iteration str               Full iteration path
+  --area str                    Full area path
+  --priority int                1 (highest) to 4
+  --tags str                    Comma-separated; replaces the tags it has
+  --description str             Markdown, stored as HTML; - reads stdin
+  --description-file path       The description from a Markdown file
+  --acceptance-criteria str     Markdown, stored as HTML; - reads stdin
+  --acceptance-criteria-file path  The acceptance criteria from a Markdown file
 Returns: {id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado workitem create --type Bug --title 'Login fails on Safari' --priority 2
@@ -95,17 +97,19 @@ e.g. agent-cli ado workitem create --type Bug --title 'Login fails on Safari' --
 
 ```text
 agent-cli ado workitem update — Change a work item's state, assignee, title, iteration, tags or description
- *<id> str                   The work item's id: 1207, #1207, AB#1207 or its web URL
-  --title str                A new title
-  --state str                Active, Closed …
-  --assignee str             Name, email or @me ("" unassigns)
-  --iteration str            Full iteration path
-  --area str                 Full area path
-  --priority int             1 (highest) to 4
-  --tags str                 Comma-separated; replaces the tags it has
-  --description str          Markdown, stored as HTML
-  --acceptance-criteria str  Markdown, stored as HTML
-  --if-rev int               Refuse unless it is still at this rev (from workitem get)
+ *<id> str                      The work item's id: 1207, #1207, AB#1207 or its web URL
+  --title str                   A new title
+  --state str                   Active, Closed …
+  --assignee str                Name, email or @me ("" unassigns)
+  --iteration str               Full iteration path
+  --area str                    Full area path
+  --priority int                1 (highest) to 4
+  --tags str                    Comma-separated; replaces the tags it has
+  --description str             Markdown, stored as HTML; - reads stdin
+  --description-file path       The description from a Markdown file
+  --acceptance-criteria str     Markdown, stored as HTML; - reads stdin
+  --acceptance-criteria-file path  The acceptance criteria from a Markdown file
+  --if-rev int                  Refuse unless it is still at this rev (from workitem get)
 Returns: {id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado workitem update 42 --state Active --assignee @me --if-rev 7
@@ -114,9 +118,10 @@ e.g. agent-cli ado workitem update 42 --state Active --assignee @me --if-rev 7
 ### ado workitem comment
 
 ```text
-agent-cli ado workitem comment — Add a comment to a work item (Markdown, or - for stdin)
- *<id> str    The work item's id: 1207, #1207, AB#1207 or its web URL
- *<text> str  Markdown, or - to read stdin (posted as a code block, 64 KiB max)
+agent-cli ado workitem comment — Add a comment to a work item (Markdown, - for stdin, or --text-file)
+ *<id> str          The work item's id: 1207, #1207, AB#1207 or its web URL
+  <text> str        Markdown, or - to read stdin (posted as a code block, 64 KiB max)
+  --text-file path  The comment from a Markdown file (64 KiB max)
 Returns: {work_item,id,date}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado workitem comment 42 'Fixed in !17; deploying tomorrow'
@@ -200,13 +205,14 @@ e.g. agent-cli ado pr get 42 --fields title,status,reviewers,policies
 
 ```text
 agent-cli ado pr create — Open a pull request linked to work items, or reuse the one already open
- *--repo str          The repository, by name
- *--source str        The branch it merges from
- *--title str         The pull request's title
-  --target str        The branch it merges into (default: the repo's default branch)
-  --description str   Markdown
-  --workitem int[]    A work item to link (repeatable)
-  --draft true|false  Open it as a draft
+ *--repo str               The repository, by name
+ *--source str             The branch it merges from
+ *--title str              The pull request's title
+  --target str             The branch it merges into (default: the repo's default branch)
+  --description str        Markdown; - reads stdin
+  --description-file path  The description from a Markdown file
+  --workitem int[]         A work item to link (repeatable)
+  --draft true|false       Open it as a draft
 Returns: {id,url,repo,source,target,status,is_draft,created,work_items[]}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado pr create --repo web --source 42-fix-login --title 'Fix login' --workitem 42
@@ -227,11 +233,12 @@ e.g. agent-cli ado pr vote 42 approve
 
 ```text
 agent-cli ado pr update — Turn auto-complete on or off, mark draft or ready, or retitle a pull request
- *<id> str               The pull request's id: 431, #431 or its web URL
-  --autocomplete on|off  Complete it by itself once policies pass
-  --draft true|false     True to make it a draft, false to publish it
-  --title str            A new title
-  --description str      Markdown; replaces the description
+ *<id> str                 The pull request's id: 431, #431 or its web URL
+  --autocomplete on|off    Complete it by itself once policies pass
+  --draft true|false       True to make it a draft, false to publish it
+  --title str              A new title
+  --description str        Markdown, replacing the description; - reads stdin
+  --description-file path  The description from a Markdown file
 Returns: {id,repo,title,author,status,is_draft,source,target,merge_status,auto_complete,created,reviewers[{name,vote,required}],url}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado pr update 42 --autocomplete on
@@ -251,9 +258,10 @@ e.g. agent-cli ado pr link 17 --workitem 42
 ### ado pr comment
 
 ```text
-agent-cli ado pr comment — Start a comment thread on a pull request (Markdown, or - for stdin)
- *<id> str    The pull request's id: 431, #431 or its web URL
- *<text> str  Markdown, or - to read stdin (posted as a code block, 64 KiB max)
+agent-cli ado pr comment — Start a comment thread on a pull request (Markdown, - for stdin, or --text-file)
+ *<id> str          The pull request's id: 431, #431 or its web URL
+  <text> str        Markdown, or - to read stdin (posted as a code block, 64 KiB max)
+  --text-file path  The comment from a Markdown file (64 KiB max)
 Returns: {pr,thread_id}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado pr comment 42 'Tests pass locally; ready for review'
@@ -755,11 +763,12 @@ e.g. agent-cli k8s context list --fields name,context,namespaces,known
 
 ```text
 agent-cli sql query run — Run SQL on a connection and return every result set as JSON
- *<sql> str       The SQL, or - to read it from stdin. SQL Server splits at GO lines, Oracle at ; and / lines
-  --conn str      Connection name from `sql connection list`; defaults to the only one
-  --max-rows int  Keep at most this many rows of each result set (default 1000)
+  <sql> str        The SQL, or - to read it from stdin. SQL Server splits at GO lines, Oracle at ; and / lines
+  --conn str       Connection name from `sql connection list`; defaults to the only one
+  --max-rows int   Keep at most this many rows of each result set (default 1000)
+  --sql-file path  The SQL from a file
 Returns: {results[{columns[],types[],rows[],rows_affected,truncated}],elapsed_ms}
-Read or write, decided by the input: a write honours --dry-run and may need --yes. * required. Globals: --fields --raw --timeout --output
+Read or write, decided by the input: a write honours --dry-run and may need --yes. Globals: --fields --raw --timeout --output
 e.g. agent-cli sql query run --conn local-mssql 'select top 5 id, name from bench.customers'
 ```
 
@@ -767,11 +776,12 @@ e.g. agent-cli sql query run --conn local-mssql 'select top 5 id, name from benc
 
 ```text
 agent-cli sql query bench — Time a query over several runs: connect, first row and total latency
- *<sql> str   The SQL, or - to read it from stdin; every row is read each run
-  --conn str  Connection name from `sql connection list`; defaults to the only one
-  --runs int  How many times to run it on one connection (default 20)
+  <sql> str        The SQL, or - to read it from stdin; every row is read each run
+  --conn str       Connection name from `sql connection list`; defaults to the only one
+  --runs int       How many times to run it on one connection (default 20)
+  --sql-file path  The SQL from a file
 Returns: {runs,requested,rows,phases[{phase,min_ms,p50_ms,p95_ms,max_ms}]}
-Read or write, decided by the input: a write honours --dry-run and may need --yes. * required. Globals: --fields --raw --timeout --output
+Read or write, decided by the input: a write honours --dry-run and may need --yes. Globals: --fields --raw --timeout --output
 e.g. agent-cli sql query bench --conn local-mssql --runs 5 'select count(*) from bench.orders'
 ```
 
@@ -922,6 +932,7 @@ e.g. agent-cli airflow run get etl_nightly/latest --fields id,state,tasks,failed
 agent-cli airflow run create — Trigger a DAG run, with a conf and optionally a logical date
  *<dag> str           The DAG: its id, or its Airflow UI URL
   --conf str          The run's conf: a JSON object, or - to read it from stdin
+  --conf-file path    The run's conf from a JSON file
   --logical-date str  RFC 3339 or now; a DAG that templates {{ ds }} needs one (none by default)
   --run-id str        A run id of your own; Airflow makes a manual__ one otherwise
   --note str          A note on the run

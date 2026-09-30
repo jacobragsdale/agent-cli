@@ -419,6 +419,24 @@ fn check_conventions(command: &Command) -> Vec<String> {
             ));
         }
     }
+    // Long text: `-` reads stdin, and `--NAME-file PATH` reads a file.
+    for arg in args.get_arguments() {
+        let help = arg.get_help().map(ToString::to_string).unwrap_or_default();
+        let name = arg
+            .get_long()
+            .map_or_else(|| arg.get_id().as_str().replace('_', "-"), str::to_owned);
+        let file = format!("{name}-file");
+        if help.contains("stdin")
+            && flag(&file).is_none_or(|file| discover::arg_kind(file) != "path")
+        {
+            problems.push(format!(
+                "{name} reads stdin with -, so --{file} must read it from a file (a PathBuf)"
+            ));
+        }
+        if name.ends_with("-file") && !arg.is_positional() && discover::arg_kind(arg) != "path" {
+            problems.push(format!("--{name} must take a path (a PathBuf)"));
+        }
+    }
     // A list with no arguments at all reads config, not a service.
     let bounded = args.get_arguments().next().is_none()
         || flag("limit").is_some_and(|limit| {

@@ -184,7 +184,7 @@ command! {
 #[derive(clap::Args)]
 pub struct Comment {
     id: u64,
-    /// the comment text, or - for stdin
+    /// the comment text
     text: String,
 }
 
@@ -810,7 +810,7 @@ pub struct QueryRun {
     /// the connection name from the config
     #[arg(long)]
     conn: String,
-    /// the SQL text, or - for stdin
+    /// the SQL text
     sql: String,
 }
 

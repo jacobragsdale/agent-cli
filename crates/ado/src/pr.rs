@@ -1,6 +1,8 @@
 //! Repositories and pull requests. Every pull request the filters match is
 //! listed: ticket-tui showed only repositories with a clone on the machine.
 
+use std::path::PathBuf;
+
 use agent_cli_core::{Ctx, Effect, Exit, Failure, Method, When, command};
 use anyhow::{Context, Result};
 use schemars::JsonSchema;
@@ -547,9 +549,12 @@ pub struct PrCreateArgs {
     /// The pull request's title
     #[arg(long)]
     title: String,
-    /// Markdown
-    #[arg(long)]
+    /// Markdown; - reads stdin
+    #[arg(long, allow_hyphen_values = true)]
     description: Option<String>,
+    /// The description from a Markdown file
+    #[arg(long)]
+    description_file: Option<PathBuf>,
     /// A work item to link (repeatable)
     #[arg(long)]
     workitem: Vec<i64>,
@@ -598,6 +603,12 @@ fn pr_create(ctx: &Ctx, args: PrCreateArgs) -> Result<PrCreated> {
     if title.is_empty() {
         return Err(Failure::usage("a pull request needs a title").into());
     }
+    let description = ctx.long_text(
+        "description",
+        args.description.as_deref(),
+        args.description_file.as_deref(),
+        None,
+    )?;
     let repo = ado.repo(ctx, &args.repo)?;
     let source = full_ref(&args.source);
     let target = match &args.target {
@@ -627,7 +638,7 @@ fn pr_create(ctx: &Ctx, args: PrCreateArgs) -> Result<PrCreated> {
                 "sourceRefName": source,
                 "targetRefName": target,
                 "title": title,
-                "description": args.description.unwrap_or_default(),
+                "description": description.map(|description| description.text).unwrap_or_default(),
                 "isDraft": args.draft.unwrap_or(false),
                 "workItemRefs": args.workitem.iter().map(|id| json!({"id": id.to_string()})).collect::<Vec<_>>(),
             });
@@ -805,9 +816,12 @@ pub struct PrUpdateArgs {
     /// A new title
     #[arg(long)]
     title: Option<String>,
-    /// Markdown; replaces the description
-    #[arg(long)]
+    /// Markdown, replacing the description; - reads stdin
+    #[arg(long, allow_hyphen_values = true)]
     description: Option<String>,
+    /// The description from a Markdown file
+    #[arg(long)]
+    description_file: Option<PathBuf>,
 }
 
 fn pr_update(ctx: &Ctx, args: PrUpdateArgs) -> Result<PrRow> {
@@ -820,12 +834,17 @@ fn pr_update(ctx: &Ctx, args: PrUpdateArgs) -> Result<PrRow> {
     if let Some(title) = &args.title {
         body.insert("title".into(), title.trim().into());
     }
-    if let Some(description) = &args.description {
-        body.insert("description".into(), description.as_str().into());
+    if let Some(description) = ctx.long_text(
+        "description",
+        args.description.as_deref(),
+        args.description_file.as_deref(),
+        None,
+    )? {
+        body.insert("description".into(), description.text.into());
     }
     if body.is_empty() && args.autocomplete.is_none() {
         return Err(Failure::usage("nothing to change")
-            .hint(format!("pass --autocomplete on|off, --draft true|false, --title or --description, e.g. agent-cli ado pr update {} --autocomplete on", id))
+            .hint(format!("pass --autocomplete on|off, --draft true|false, --title, --description or --description-file, e.g. agent-cli ado pr update {} --autocomplete on", id))
             .into());
     }
     let pr = fetch_pr(ctx, &ado, id)?;
@@ -906,8 +925,11 @@ pub struct PrCommentArgs {
     /// The pull request's id: 431, #431 or its web URL
     id: String,
     /// Markdown, or - to read stdin (posted as a code block, 64 KiB max)
-    #[arg(allow_hyphen_values = true)]
-    text: String,
+    #[arg(allow_hyphen_values = true, required_unless_present = "text_file")]
+    text: Option<String>,
+    /// The comment from a Markdown file (64 KiB max)
+    #[arg(long)]
+    text_file: Option<PathBuf>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -917,7 +939,7 @@ pub struct PrCommented {
 }
 
 fn pr_comment(ctx: &Ctx, args: PrCommentArgs) -> Result<PrCommented> {
-    let body = CommentBody::from_arg(&args.text)?;
+    let body = CommentBody::read(ctx, args.text.as_deref(), args.text_file.as_deref())?;
     let ado = Ado::load(ctx)?;
     let id = ado.id(Kind::PullRequest, &args.id)?;
     let pr = fetch_pr(ctx, &ado, id)?;
@@ -944,7 +966,7 @@ fn pr_comment(ctx: &Ctx, args: PrCommentArgs) -> Result<PrCommented> {
 
 command! {
     pub PR_COMMENT = ["ado", "pr", "comment"], Write,
-    "Start a comment thread on a pull request (Markdown, or - for stdin)",
+    "Start a comment thread on a pull request (Markdown, - for stdin, or --text-file)",
     keywords: ["discussion", "note", "reply", "post", "feedback", "review"],
     example: "ado pr comment 42 'Tests pass locally; ready for review'",
     run: pr_comment,
@@ -1062,7 +1084,7 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::{Value, json};
 
-    use crate::testkit::{ado, dry_run, urls};
+    use crate::testkit::{ado, ado_piped, dry_run, urls};
 
     const BASE: &str = "https://dev.azure.com/contoso";
     const CODE: &str = "https://dev.azure.com/contoso/Fabrikam/_apis";
@@ -1541,6 +1563,71 @@ mod tests {
             ],
         );
         assert_eq!(outcome.json(), json!({"pr": 17, "thread_id": 88}));
+    }
+
+    #[test]
+    fn a_description_or_comment_comes_piped_with_a_dash_or_from_a_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let why = dir.path().join("why.md");
+        std::fs::write(&why, "Fixes **login**\r\n\r\n- on Safari\r\n").unwrap();
+        let why = why.to_str().unwrap();
+        let plans = dry_run(
+            &[
+                "ado",
+                "pr",
+                "create",
+                "--repo",
+                "web",
+                "--source",
+                "42-fix-login",
+                "--title",
+                "Fix login",
+                "--description-file",
+                why,
+            ],
+            vec![repos(), page(vec![])],
+        );
+        assert_eq!(
+            plans[0]["body"]["description"],
+            "Fixes **login**\n\n- on Safari"
+        );
+
+        let (outcome, _) = ado_piped(
+            "Now also **Firefox**\n",
+            &[
+                "ado",
+                "pr",
+                "update",
+                "17",
+                "--description",
+                "-",
+                "--dry-run",
+            ],
+            vec![Answer::json(&pr(17, false))],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json()["would"][0]["body"],
+            json!({"description": "Now also **Firefox**"})
+        );
+
+        let plans = dry_run(
+            &["ado", "pr", "comment", "17", "--text-file", why],
+            vec![Answer::json(&pr(17, false))],
+        );
+        assert_eq!(
+            plans[0]["body"]["comments"][0]["content"], "Fixes **login**\n\n- on Safari",
+            "a file is Markdown, not a code block"
+        );
+        let (outcome, _) = ado_piped(
+            "ok 1\n",
+            &["ado", "pr", "comment", "17", "-", "--dry-run"],
+            vec![Answer::json(&pr(17, false))],
+        );
+        assert_eq!(
+            outcome.json()["would"][0]["body"]["comments"][0]["content"],
+            "```\nok 1\n```"
+        );
     }
 
     #[test]
