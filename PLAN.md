@@ -1,3 +1,5 @@
+> History: the original plan (2026-09-29). For the current design read docs/explanation/design.md; for current work read TODO.md.
+
 # agent-cli plan
 
 One Rust binary, `agent-cli`, that gives coding agents Azure DevOps, Azure (Key

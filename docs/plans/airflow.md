@@ -1,3 +1,5 @@
+> History: the original plan (2026-09-29). For the current design read docs/explanation/design.md; for current work read TODO.md.
+
 # Airflow domain
 
 Plan for `agent-cli airflow …` against Apache Airflow 3.x (latest 3.3.2,

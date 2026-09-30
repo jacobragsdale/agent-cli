@@ -1,3 +1,5 @@
+> History: the original plan (2026-09-29). For the current design read docs/explanation/design.md; for current work read TODO.md.
+
 # Datadog domain (`dd`)
 
 Researched 2026-09-29. Evidence: pup 1.23.6 (source at commit `9e26544`, and
