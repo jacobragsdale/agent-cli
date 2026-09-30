@@ -1,0 +1,9 @@
+# Labeled search queries, written as tasks an agent would type.
+# Every new command adds at least two, for example:
+#
+#   [[query]]
+#   text = "who approved PR 42"
+#   expect = "ado pr get"
+#
+# CI fails when search puts the expected command first in fewer than 80% of
+# queries, or in the top five in fewer than 95%.

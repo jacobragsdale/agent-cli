@@ -1,0 +1,39 @@
+# agent-cli configuration: copy to ~/.config/agent-cli/config.toml
+# ($XDG_CONFIG_HOME/agent-cli/config.toml, or the path in $AGENT_CLI_CONFIG).
+#
+# Each domain reads only its own section, so a mistake in one section breaks
+# only that domain. AGENT_CLI_<SECTION>_<KEY> overrides any scalar key, for
+# example AGENT_CLI_ADO_PROJECT=web. Run `agent-cli doctor` to check it all.
+#
+# The sections below are placeholders; each domain settles its keys when it
+# lands.
+
+# [ado]
+# org = "contoso"
+# project = "web"
+# code_project = "web"
+# team = "web team"
+
+# [azure]
+# subscriptions = ["00000000-0000-0000-0000-000000000000"]
+# vaults = ["kv-contoso-dev"]
+# registries = ["contosoacr"]
+# parallel = 8
+
+# [[k8s.scope]]
+# name = "dev"
+# context = "aks-contoso-dev"
+# namespaces = ["web", "jobs"]
+
+# [[sql.connection]]
+# name = "local-mssql"
+# kind = "mssql"
+# host = "localhost"
+# port = 1433
+# database = "contoso"
+# user = "app"
+# password_env = "CONTOSO_DB_PASSWORD"   # or password_cmd = "pass show contoso/db"
+# read_only = true
+
+# [oracle]
+# client_lib_dir = "/opt/oracle/instantclient"

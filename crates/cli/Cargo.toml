@@ -1,0 +1,19 @@
+[package]
+name = "agent-cli"
+description = "One CLI that gives coding agents Azure DevOps, Azure, Kubernetes and SQL"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[[bin]]
+name = "agent-cli"
+path = "src/main.rs"
+
+[dependencies]
+agent-cli-core.workspace = true
+
+[lints]
+workspace = true
