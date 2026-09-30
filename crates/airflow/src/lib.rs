@@ -8,6 +8,7 @@
 
 mod client;
 mod dag;
+mod dag_run;
 mod doctor;
 mod import_error;
 mod instance;

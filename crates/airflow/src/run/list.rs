@@ -3,7 +3,7 @@ use anyhow::Result;
 use clap::builder::PossibleValuesParser;
 
 use crate::client::{Airflow, At, note_more, query_value};
-use crate::dag::RUN_STATES;
+use crate::dag_run::RUN_STATES;
 
 use super::{RunRow, run_row};
 

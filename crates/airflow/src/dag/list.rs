@@ -4,7 +4,8 @@ use clap::builder::PossibleValuesParser;
 
 use crate::client::{Airflow, At, note_more, query_value};
 
-use super::{DagRow, RUN_STATES, dag_row};
+use super::{DagRow, dag_row};
+use crate::dag_run::RUN_STATES;
 
 #[derive(clap::Args)]
 pub struct DagListArgs {

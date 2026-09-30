@@ -85,17 +85,6 @@ fn failed_ids(tasks: &[Value]) -> Vec<String> {
         .collect()
 }
 
-/// The task instances a clear's dry run listed, without a try: the next try
-/// is the one that will run.
-pub(crate) fn cleared_ids(preview: &Value) -> Vec<String> {
-    preview["task_instances"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .map(|task| ti_id(task, false))
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use agent_cli_core::testing::Answer;

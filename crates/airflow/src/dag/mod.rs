@@ -10,9 +10,6 @@ use serde_json::Value;
 
 use crate::client::{stamp, text};
 
-/// A run's states, as Airflow names them.
-pub(crate) const RUN_STATES: [&str; 4] = ["queued", "running", "success", "failed"];
-
 fn strings(value: &Value) -> Vec<String> {
     value
         .as_array()

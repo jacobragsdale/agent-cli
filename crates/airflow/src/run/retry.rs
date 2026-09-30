@@ -6,7 +6,8 @@ use serde_json::json;
 
 use crate::client::Airflow;
 
-use super::{RunIdArgs, cleared_ids};
+use super::RunIdArgs;
+use crate::dag_run::cleared_ids;
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct Retried {
