@@ -213,6 +213,39 @@ mod tests {
         assert!(problems.is_empty(), "{problems:#?}");
     }
 
+    /// `crates/core/AGENTS.md` is the core API an agent reads instead of the
+    /// source, so every name `crates/core/src/lib.rs` re-exports is on it.
+    #[test]
+    fn the_core_card_names_every_public_export() {
+        let repo = Path::new(REPO);
+        let lib = std::fs::read_to_string(repo.join("crates/core/src/lib.rs")).unwrap();
+        let card = std::fs::read_to_string(repo.join("crates/core/AGENTS.md")).unwrap();
+        let named = |name: &str| {
+            card.match_indices(name).any(|(at, _)| {
+                let word = |c: char| c.is_alphanumeric() || c == '_';
+                !card[..at].ends_with(word) && !card[at + name.len()..].starts_with(word)
+            })
+        };
+        let mut missing = Vec::new();
+        for statement in lib.split("pub use ").skip(1) {
+            let statement = &statement[..statement.find(';').unwrap()];
+            let names = match statement.split_once('{') {
+                Some((_, list)) => list.trim_end_matches('}').split(',').collect(),
+                None => vec![statement.rsplit("::").next().unwrap()],
+            };
+            missing.extend(
+                names
+                    .into_iter()
+                    .map(str::trim)
+                    .filter(|name| !name.is_empty() && !named(name)),
+            );
+        }
+        assert!(
+            missing.is_empty(),
+            "crates/core/AGENTS.md does not name {missing:?}"
+        );
+    }
+
     #[test]
     fn the_registry_keeps_every_rule() {
         assert_eq!(
