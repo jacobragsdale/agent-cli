@@ -1,0 +1,24 @@
+[package]
+name = "agent-cli-k8s"
+description = "The k8s domain of agent-cli: a bounded, JSON-emitting kubectl wrapper"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+agent-cli-core.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+time.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

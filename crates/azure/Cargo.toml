@@ -1,0 +1,24 @@
+[package]
+name = "agent-cli-azure"
+description = "The kv, acr and aks domains of agent-cli: Key Vault secrets, registry images, AKS clusters"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+agent-cli-core.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+time.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true
