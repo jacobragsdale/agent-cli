@@ -666,7 +666,7 @@ fn holder(ctx: &Ctx, azure: &Azure, repo: &str, only: Option<&str>) -> Result<Re
 command! {
     pub TAG_LIST = ["acr", "tag", "list"], Read,
     "List an image repository's tags, newest first, with their digests",
-    keywords: ["tags", "image", "images", "version", "versions", "latest", "pushed", "docker"],
+    keywords: ["tags", "image", "images", "version", "versions", "latest", "pushed", "docker", "registry"],
     example: "acr tag list team/api --fields id,digest,updated",
     run: tag_list,
 }

@@ -406,7 +406,7 @@ fn pod_get(ctx: &Ctx, args: PodGetArgs) -> Result<PodDetail> {
 command! {
     pub POD_GET = ["k8s", "pod", "get"], Read,
     "Describe a pod: containers, images, states, last termination reason, owner",
-    keywords: ["describe", "crashloop", "why", "oomkilled", "image", "yaml", "manifest", "conditions"],
+    keywords: ["describe", "crashloop", "why", "oomkilled", "image", "yaml", "manifest", "conditions", "vault", "uses"],
     example: "k8s pod get qa/dev/orders-api-7d9f5b-abc12 --fields status,containers,secret_refs",
     run: pod_get,
 }

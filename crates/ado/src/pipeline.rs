@@ -107,7 +107,7 @@ fn pipeline_list(ctx: &Ctx, args: PipelineListArgs) -> Result<Vec<PipelineRow>> 
 command! {
     pub PIPELINE_LIST = ["ado", "pipeline", "list"], Read,
     "List build pipelines with their last run",
-    keywords: ["definitions", "ci", "builds", "workflows", "find"],
+    keywords: ["definitions", "ci", "workflows", "find"],
     example: "ado pipeline list --repo web --fields id,name,last_run.result",
     run: pipeline_list,
 }
@@ -604,7 +604,7 @@ fn run_logs(ctx: &Ctx, args: LogsArgs) -> Result<RunLogs> {
 command! {
     pub RUN_LOGS = ["ado", "run", "logs"], Read,
     "Print the tail of a run's logs: failed tasks by default, or a job or task",
-    keywords: ["output", "console", "error", "why", "failed", "build", "tail", "trace"],
+    keywords: ["output", "console", "error", "failed", "build", "tail", "trace"],
     example: "ado run logs 1234 --task 'Run tests' --tail 100",
     run: run_logs,
 }

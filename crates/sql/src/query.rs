@@ -98,7 +98,7 @@ fn query_run(ctx: &Ctx, args: RunArgs) -> Result<QueryResult> {
 command! {
     pub QUERY_RUN = ["sql", "query", "run"], Varies,
     "Run SQL on a connection and return every result set as JSON",
-    keywords: ["select", "execute", "statement", "script", "rows", "insert", "update", "delete"],
+    keywords: ["select", "execute", "statement", "script", "rows", "insert", "update", "delete", "how many"],
     example: "sql query run --conn local-mssql 'select top 5 id, name from bench.customers'",
     run: query_run,
 }

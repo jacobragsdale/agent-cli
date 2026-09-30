@@ -494,7 +494,7 @@ fn rolled_out(item: &Value) -> Option<OffsetDateTime> {
 command! {
     pub DEPLOYMENT_LIST = ["k8s", "deployment", "list"], Read,
     "List deployments: ready pods, images with tag and digest, when they rolled out",
-    keywords: ["deployed", "running", "version", "image", "tag", "digest", "release", "rollout", "workloads"],
+    keywords: ["deployed", "running", "version", "image", "tag", "digest", "release", "rollout", "workloads", "prod", "production"],
     example: "k8s deployment list --cluster prod --namespace web --fields id,ready,images,updated",
     run: deployment_list,
 }

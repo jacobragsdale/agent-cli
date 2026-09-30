@@ -877,3 +877,123 @@ expect = "k8s pod logs"
 [[query]]
 text = "list the containers running in the dev namespace"
 expect = "k8s pod list"
+
+# ---------- agent trials, 2026-09-30 (docs/trials/2026-09-30.md) ----------
+# Each trial task as the agent was given it, and the searches agents typed for
+# it, expecting the command an agent should reach first. A cross-domain task
+# expects the first hop of its trace.
+
+# t01
+[[query]]
+text = "which of my work items in the current sprint are not resolved"
+expect = "ado workitem list"
+
+# t01
+[[query]]
+text = "my work items current sprint not resolved"
+expect = "ado workitem list"
+
+# t01
+[[query]]
+text = "list work items assigned to me in current sprint"
+expect = "ado workitem list"
+
+# t02
+[[query]]
+text = "which test failed in the first build of v1.4.2"
+expect = "ado run list"
+
+# t02
+[[query]]
+text = "v1.4.2 build"
+expect = "ado run list"
+
+# t02
+[[query]]
+text = "builds for release tag"
+expect = "ado run list"
+
+# t03
+[[query]]
+text = "which key vault secrets have expired or expire within 30 days"
+expect = "kv secret list"
+
+# t04
+[[query]]
+text = "which pod is crash looping, how many restarts, and what did its last crash log say"
+expect = "k8s pod list"
+
+# t04
+[[query]]
+text = "worker pod crash looping"
+expect = "k8s pod list"
+
+# t05
+[[query]]
+text = "how many customers and orders are in the database"
+expect = "sql query run"
+
+# t06
+[[query]]
+text = "why did the etl_nightly DAG fail last night"
+expect = "airflow run list"
+
+# t07
+[[query]]
+text = "which datadog monitor is alerting and what error is being logged"
+expect = "dd monitor list"
+
+# t07
+[[query]]
+text = "alert"
+expect = "dd monitor list"
+
+# t08
+[[query]]
+text = "which work items shipped in the api image running in prod"
+expect = "k8s deployment list"
+
+# t08
+[[query]]
+text = "prod api image deployed"
+expect = "k8s deployment list"
+
+# t08
+[[query]]
+text = "work items in a build or release"
+expect = "ado run get"
+
+# t09
+[[query]]
+text = "did the api error rate alert follow a deploy"
+expect = "dd event list"
+
+# t09
+[[query]]
+text = "alert monitor triggered events"
+expect = "dd event list"
+
+# t10
+[[query]]
+text = "what is the root cause of the worker crash loop"
+expect = "k8s pod list"
+
+# t10
+[[query]]
+text = "worker crash loop pod logs"
+expect = "k8s pod logs"
+
+# t11
+[[query]]
+text = "is there a pipeline approval waiting"
+expect = "ado approval list"
+
+# t11
+[[query]]
+text = "pipeline approval pending"
+expect = "ado approval list"
+
+# t12
+[[query]]
+text = "restart deployment"
+expect = "k8s deployment restart"

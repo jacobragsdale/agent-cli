@@ -4,7 +4,10 @@
 //! (x3), summary (x2), keywords, arg names and return field names, times the
 //! squared share of query words matched, with prefix matching, a light
 //! stemmer and verb synonyms. On top of that, each domain's own synonyms
-//! ("ticket" -> workitem). At 1,000 in-memory commands it needs no index.
+//! ("ticket" -> workitem), which count for that domain's commands only: ado's
+//! "build" means `ado run`, not every `run`. A question ("which pods…",
+//! "why did…") ranks changes below reads. At 1,000 in-memory commands it
+//! needs no index.
 
 use std::collections::{HashMap, HashSet};
 
@@ -12,12 +15,26 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 
 use crate::discover::{required_args, return_fields};
-use crate::registry::{Command, Domain};
+use crate::registry::{Command, Domain, Effect};
 
 pub(crate) const STOP: &[&str] = &[
     "a", "an", "the", "to", "for", "of", "in", "on", "with", "from", "by", "and", "or", "is",
     "are", "be", "this", "that", "it", "i", "what", "which", "how", "do", "does", "can", "some",
-    "any", "into", "at", "as", "am", "was", "were", "there",
+    "any", "into", "at", "as", "am", "was", "were", "there", "did", "has", "have", "had", "been",
+    "being", "not",
+];
+
+/// Words that ask to see something without saying what: they add their verb
+/// synonyms' score but do not count toward the share of words matched, so
+/// "show" matching `list` cannot outweigh the words that name the thing.
+const FILLER: &[&str] = &["show", "view", "display", "see"];
+
+/// A query starting with one of these asks to read something, so writes and
+/// destructive commands rank at half their score. Not "how" ("how do I
+/// restart…") and not "get" ("get kubeconfig credentials").
+const QUESTIONS: &[&str] = &[
+    "what", "which", "why", "who", "whose", "when", "where", "is", "are", "was", "were", "did",
+    "does", "has", "have", "show", "list",
 ];
 
 /// Verb synonyms, weighted half a direct hit.
@@ -60,8 +77,8 @@ const WEIGHTS: [f64; 5] = [3.0, 2.0, 1.0, 0.4, 0.4];
 
 pub(crate) struct Hit<'a> {
     pub score: f64,
-    /// Every query word matched something.
-    pub all: bool,
+    /// The share of query words that matched something.
+    pub coverage: f64,
     pub command: &'a Command,
 }
 
@@ -98,14 +115,33 @@ pub(crate) fn rank<'a>(domains: &'a [Domain], query: &str) -> Vec<Hit<'a>> {
             *df.entry(term).or_default() += 1;
         }
     }
-    let expansions = expand(domains, query, &df);
-    if expansions.is_empty() {
+    let by_domain: HashMap<&str, Vec<HashMap<&str, f64>>> = domains
+        .iter()
+        .map(|domain| (domain.name, expand(domain.synonyms, query, &df)))
+        .collect();
+    if by_domain.values().next().is_none_or(Vec::is_empty) {
         return Vec::new();
+    }
+    let question = split_words(query)
+        .first()
+        .is_some_and(|word| QUESTIONS.contains(&word.as_str()));
+    let mut filler: Vec<bool> = terms(query)
+        .iter()
+        .map(|term| FILLER.contains(&term.as_str()))
+        .collect();
+    let mut counted = filler.iter().filter(|filler| !**filler).count();
+    if counted == 0 {
+        // Nothing but filler ("show"): every word counts after all.
+        filler.iter_mut().for_each(|filler| *filler = false);
+        counted = filler.len();
     }
     let mut hits: Vec<Hit<'a>> = Vec::new();
     for doc in &docs {
+        let Some(expansions) = by_domain.get(doc.command.path[0]) else {
+            continue;
+        };
         let (mut total, mut matched) = (0.0, 0);
-        for expansion in &expansions {
+        for (slot, expansion) in expansions.iter().enumerate() {
             let mut best: f64 = 0.0;
             for (term, weight) in expansion {
                 let tf: f64 = (0..5)
@@ -122,15 +158,17 @@ pub(crate) fn rank<'a>(domains: &'a [Domain], query: &str) -> Vec<Hit<'a>> {
                 }
             }
             if best > 0.0 {
-                matched += 1;
+                matched += usize::from(!filler[slot]);
                 total += best;
             }
         }
         if total > 0.0 {
-            let coverage = f64::from(matched) / expansions.len() as f64;
+            let coverage = matched as f64 / counted as f64;
+            let asks =
+                question && matches!(doc.command.effect, Effect::Write | Effect::Destructive);
             hits.push(Hit {
-                score: total * coverage * coverage,
-                all: matched as usize == expansions.len(),
+                score: total * coverage * coverage * if asks { 0.5 } else { 1.0 },
+                coverage,
                 command: doc.command,
             });
         }
@@ -140,22 +178,14 @@ pub(crate) fn rank<'a>(domains: &'a [Domain], query: &str) -> Vec<Hit<'a>> {
 }
 
 /// Each query word as the indexed terms it can match, with a weight: itself
-/// (1.0), a domain synonym (1.0), a verb synonym (0.5), and prefixes of either
-/// (x0.7).
+/// (1.0), one of `synonyms` (a domain's; 1.0), a verb synonym (0.5), and
+/// prefixes of either (x0.7).
 fn expand<'d>(
-    domains: &[Domain],
+    synonyms: &[(&str, &[&str])],
     query: &str,
     df: &HashMap<&'d str, usize>,
 ) -> Vec<HashMap<&'d str, f64>> {
-    let words = split_words(query);
-    let mut terms: Vec<String> = words
-        .iter()
-        .filter(|word| !STOP.contains(&word.as_str()))
-        .cloned()
-        .collect();
-    if terms.is_empty() {
-        terms = words;
-    }
+    let terms = terms(query);
     let mut candidates: Vec<Vec<(String, f64)>> = terms
         .iter()
         .map(|word| {
@@ -166,21 +196,19 @@ fn expand<'d>(
             own
         })
         .collect();
-    for domain in domains {
-        for (key, targets) in domain.synonyms {
-            let key = split_words(key);
-            if key.is_empty() || key.len() > terms.len() {
-                continue;
-            }
-            for start in 0..=terms.len() - key.len() {
-                if terms[start..start + key.len()] == key[..] {
-                    for slot in &mut candidates[start..start + key.len()] {
-                        slot.extend(targets.iter().flat_map(|target| {
-                            split_words(target)
-                                .into_iter()
-                                .map(|word| (stem(&word), 1.0))
-                        }));
-                    }
+    for (key, targets) in synonyms {
+        let key = split_words(key);
+        if key.is_empty() || key.len() > terms.len() {
+            continue;
+        }
+        for start in 0..=terms.len() - key.len() {
+            if terms[start..start + key.len()] == key[..] {
+                for slot in &mut candidates[start..start + key.len()] {
+                    slot.extend(targets.iter().flat_map(|target| {
+                        split_words(target)
+                            .into_iter()
+                            .map(|word| (stem(&word), 1.0))
+                    }));
                 }
             }
         }
@@ -207,6 +235,18 @@ fn expand<'d>(
             expansion
         })
         .collect()
+}
+
+/// The query's words that count: all but stop words, or all of them when
+/// nothing else is left.
+fn terms(query: &str) -> Vec<String> {
+    let words = split_words(query);
+    let terms: Vec<String> = words
+        .iter()
+        .filter(|word| !STOP.contains(&word.as_str()))
+        .cloned()
+        .collect();
+    if terms.is_empty() { words } else { terms }
 }
 
 fn doc(command: &Command) -> Doc<'_> {
@@ -240,12 +280,13 @@ fn doc(command: &Command) -> Doc<'_> {
     }
 }
 
-/// The lines `agent-cli search` prints.
+/// The lines `agent-cli search` prints. When the best hit matched fewer than
+/// half the words, a first line says the hits are guesses.
 pub(crate) fn search_lines(domains: &[Domain], query: &str, limit: usize) -> Vec<String> {
     let hits = rank(domains, query);
     let mut lines = Vec::new();
-    if hits.first().is_some_and(|hit| !hit.all) {
-        lines.push("(no command matches every word; closest:)".to_owned());
+    if hits.first().is_some_and(|hit| hit.coverage < 0.5) {
+        lines.push("(no command matches most of these words; closest:)".to_owned());
     }
     lines.extend(hits.iter().take(limit).map(|hit| hit_line(hit.command)));
     if hits.len() > limit {

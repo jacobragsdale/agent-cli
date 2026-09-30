@@ -332,7 +332,7 @@ fn workitem_list(ctx: &Ctx, args: ListArgs) -> Result<Vec<WorkItemRow>> {
 command! {
     pub WORKITEM_LIST = ["ado", "workitem", "list"], Read,
     "List work items matching filters (live WIQL)",
-    keywords: ["query", "find", "search", "assigned", "mine", "sprint", "active", "open", "wiql"],
+    keywords: ["query", "find", "search", "assigned", "my", "mine", "sprint", "active", "open", "resolved", "wiql"],
     example: "ado workitem list --assignee @me --state Active --fields id,title,state",
     run: workitem_list,
 }

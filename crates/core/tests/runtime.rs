@@ -267,7 +267,7 @@ fn globals_work_anywhere_and_fields_project_the_output() {
 }
 
 #[test]
-fn search_ranks_by_intent_and_says_when_nothing_covers_every_word() {
+fn search_ranks_by_intent_and_says_when_the_best_hit_misses_most_words() {
     let outcome = go(&["search", "merge", "a", "pull", "request"]);
     assert_eq!(
         outcome.stdout.lines().next(),
@@ -288,12 +288,11 @@ fn search_ranks_by_intent_and_says_when_nothing_covers_every_word() {
             "--limit N for more. Details: agent-cli <domain> <resource> <verb> --help)\n"
         )
     );
-    let partial = go(&["search", "pod", "zebra"]);
-    assert!(
-        partial
-            .stdout
-            .starts_with("(no command matches every word; closest:)\n")
-    );
+    let guess = "(no command matches most of these words; closest:)\n";
+    let partial = go(&["search", "pod", "zebra", "yak"]);
+    assert!(partial.stdout.starts_with(guess), "{}", partial.stdout);
+    let half = go(&["search", "pod", "zebra"]);
+    assert!(!half.stdout.starts_with(guess), "{}", half.stdout);
     let none = go(&["search", "zzqx"]);
     assert_eq!(
         none.stdout,
