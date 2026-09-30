@@ -232,6 +232,7 @@ context = take("--context")
 args[:] = [a for a in args if not a.startswith("--request-timeout")]
 ns = take("-n")
 container = take("-c")
+selector = take("-l")
 all_ns = "--all-namespaces" in args or "-A" in args
 args[:] = [a for a in args if a not in ("--all-namespaces", "-A")]
 
@@ -252,9 +253,19 @@ if os.environ.get("FAKE_KUBECTL_DOWN") == context:
 cluster = CONTEXTS[context]
 
 
+def labelled(o):
+    """What `-l a=b,c` selects: every pair equal, every bare key present."""
+    labels = o["metadata"].get("labels", {})
+    for term in (selector or "").split(","):
+        key, _, value = term.partition("=")
+        if term and (key not in labels or (value and labels[key] != value)):
+            return False
+    return True
+
+
 def here(kind):
     return [o for o in OBJECTS.get(cluster, [])
-            if o["kind"] == kind and (all_ns or o["metadata"].get("namespace") == ns)]
+            if o["kind"] == kind and (all_ns or o["metadata"].get("namespace") == ns) and labelled(o)]
 
 
 def forbidden(kind):

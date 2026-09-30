@@ -245,13 +245,21 @@ pub struct PodListArgs {
     name: Option<String>,
     #[command(flatten)]
     at: At,
+    /// Only pods with this label: app=api, or a key alone (repeatable, all must hold)
+    #[arg(long)]
+    label: Vec<String>,
     #[arg(long, default_value_t = 50)]
     limit: usize,
 }
 
 fn pod_list(ctx: &Ctx, args: PodListArgs) -> Result<Vec<PodRow>> {
     let target = args.at.listing(ctx)?;
-    let listed = target.json(ctx, &["get", "pods", "-o", "json"])?;
+    let selector = args.label.join(",");
+    let mut argv = vec!["get", "pods", "-o", "json"];
+    if !selector.is_empty() {
+        argv.extend(["-l", selector.as_str()]);
+    }
+    let listed = target.json(ctx, &argv)?;
     let rows = items(&listed)
         .filter(|item| {
             args.name.as_deref().is_none_or(|part| {
@@ -725,6 +733,36 @@ pub(crate) mod tests {
             outcome.json(),
             json!([{"name": "orders-worker-5c4d3e-q8zt"}])
         );
+    }
+
+    #[test]
+    fn pod_list_selects_by_label() {
+        let outcome = run(&[
+            "k8s",
+            "pod",
+            "list",
+            "--label",
+            "app=billing-api",
+            "--fields",
+            "name",
+        ]);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json(),
+            json!([{"name": "billing-api-1a2b3c-qq111"}])
+        );
+        let outcome = run(&[
+            "k8s",
+            "pod",
+            "list",
+            "--label",
+            "app=orders-api",
+            "--label",
+            "pod-template-hash",
+            "--fields",
+            "name",
+        ]);
+        assert_eq!(outcome.json().as_array().unwrap().len(), 2, "{outcome:?}");
     }
 
     #[test]

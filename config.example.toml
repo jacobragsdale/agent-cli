@@ -30,9 +30,10 @@
 # parallel = 8                           # vaults, registries, repositories read at once
 
 # [[k8s.scope]]
-# One per cluster. `agent-cli aks cluster connect <cluster>` fetches the
-# credentials and prints this block. --cluster takes the name and --namespace
-# one of the namespaces; each defaults when there is only one.
+# One per cluster. `agent-cli aks cluster connect NAME` fetches the
+# credentials and prints this block. --cluster takes the name (or the
+# context) and --namespace one of the namespaces; each defaults when there is
+# only one.
 # name = "dev"
 # context = "aks-contoso-dev"            # the kubeconfig context; the name when left out
 # namespaces = ["web", "jobs"]           # or one string; left out: every namespace
@@ -46,14 +47,16 @@
 # oracle_client_dir = "~/.local/opt/oracle/instantclient_23_26"
 #
 # [[sql.connection]]
-# name = "reporting"                     # what --conn takes
+# name = "reporting"                     # what --conn takes; the only one is the default
 # kind = "mssql"                         # or "oracle"
 # host = "sql.contoso.example"
 # port = 1433                            # default 1433 (mssql), 1521 (oracle)
 # database = "contoso"                   # mssql only
 # user = "app_reader"
-# password_env = "CONTOSO_DB_PASSWORD"   # or password_cmd = "pass show contoso/db",
-#                                        # or password = "..." (throwaway only)
+# password_env = "CONTOSO_DB_PASSWORD"   # or password_cmd = "pass show contoso/db"
+#                                        # (run under the command's deadline, its
+#                                        # trailing newline dropped), or
+#                                        # password = "..." (throwaway only)
 # trust_cert = false                     # mssql only: accept a self-signed certificate
 # encrypt = true                         # mssql only
 # read_only = true                       # refuse every write on this connection
