@@ -776,9 +776,10 @@ e.g. agent-cli sql query run --conn local-mssql 'select top 5 id, name from benc
 
 ```text
 agent-cli sql query bench — Time a query over several runs: connect, first row and total latency
-  <sql> str        The SQL, or - to read it from stdin; every row is read each run
+  <sql> str        The SQL, or - to read it from stdin
   --conn str       Connection name from `sql connection list`; defaults to the only one
   --runs int       How many times to run it on one connection (default 20)
+  --max-rows int   Keep at most this many rows of each result set, ending the read there (default: read every row each run)
   --sql-file path  The SQL from a file
 Returns: {runs,requested,rows,phases[{phase,min_ms,p50_ms,p95_ms,max_ms}]}
 Read or write, decided by the input: a write honours --dry-run and may need --yes. Globals: --fields --raw --timeout --output

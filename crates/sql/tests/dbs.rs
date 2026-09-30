@@ -468,6 +468,38 @@ fn mssql_bench_reports_every_phase() {
 }
 
 #[test]
+fn mssql_bench_max_rows_ends_each_read_there_and_says_the_session_reconnects() {
+    if !wanted() {
+        return;
+    }
+    let outcome = sql(&[
+        "sql",
+        "query",
+        "bench",
+        "--conn",
+        "local-mssql",
+        "--runs",
+        "3",
+        "--max-rows",
+        "4",
+        "select id from bench.orders",
+    ]);
+    assert_eq!(outcome.code, 0, "{outcome:?}");
+    let bench = outcome.json();
+    assert_eq!(
+        (bench["runs"].clone(), bench["rows"].clone()),
+        (json!(3), json!(4))
+    );
+    assert!(
+        outcome
+            .stderr
+            .contains("each run after the first connected again"),
+        "{}",
+        outcome.stderr
+    );
+}
+
+#[test]
 fn mssql_doctor_connects_and_says_how_long_it_took() {
     if !wanted() {
         return;
@@ -736,6 +768,28 @@ fn oracle_objects_schemas_and_sources() {
         schemas.as_array().unwrap().contains(&json!("BENCH")),
         "{schemas}"
     );
+}
+
+#[test]
+fn oracle_bench_max_rows_ends_each_read_there() {
+    if !wanted() {
+        return;
+    }
+    let outcome = sql(&[
+        "sql",
+        "query",
+        "bench",
+        "--conn",
+        "local-oracle",
+        "--runs",
+        "2",
+        "--max-rows",
+        "4",
+        "select id from bench.orders",
+    ]);
+    assert_eq!(outcome.code, 0, "{outcome:?}");
+    assert_eq!(outcome.json()["rows"], 4);
+    assert!(outcome.stderr.is_empty(), "{}", outcome.stderr);
 }
 
 #[test]

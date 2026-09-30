@@ -397,6 +397,42 @@ password_env = "CONTOSO_DB_PASSWORD"
     }
 
     #[test]
+    fn bench_takes_max_rows_as_query_run_does() {
+        let outcome = sql(
+            &[
+                "sql",
+                "query",
+                "bench",
+                "--conn",
+                "ms",
+                "--max-rows",
+                "10",
+                "--runs",
+                "2",
+                "update t set a = 1",
+                "--dry-run",
+            ],
+            setup(),
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()["would"][0]["runs"], 2);
+        let outcome = sql(
+            &[
+                "sql",
+                "query",
+                "bench",
+                "--conn",
+                "ms",
+                "--max-rows",
+                "0",
+                "select 1",
+            ],
+            setup(),
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+    }
+
+    #[test]
     fn a_write_needs_yes_and_read_only_mode_refuses_it() {
         let outcome = sql(
             &["sql", "query", "run", "--conn", "ms", "drop table t"],

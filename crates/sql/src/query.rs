@@ -20,7 +20,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::json;
 
-use crate::config::{Connection, Sql};
+use crate::config::{Connection, Kind, Sql};
 use crate::db::{self, Fetch, OnConnection, ResultSet, Session};
 use crate::split::{self, Statement};
 
@@ -116,7 +116,11 @@ pub struct BenchArgs {
     /// How many times to run it on one connection
     #[arg(long, default_value_t = 20, value_parser = clap::value_parser!(u32).range(1..))]
     runs: u32,
-    /// The SQL, or - to read it from stdin; every row is read each run
+    /// Keep at most this many rows of each result set, ending the read there
+    /// (default: read every row each run)
+    #[arg(long, value_parser = clap::value_parser!(u64).range(1..))]
+    max_rows: Option<u64>,
+    /// The SQL, or - to read it from stdin
     #[arg(allow_hyphen_values = true, required_unless_present = "sql_file")]
     sql: Option<String>,
     /// The SQL from a file
@@ -129,7 +133,7 @@ pub struct Bench {
     /// Runs finished: fewer than `requested` when --timeout ran out first.
     runs: u32,
     requested: u32,
-    /// Rows the last run read.
+    /// Rows the last run read (at most --max-rows of each result set).
     rows: u64,
     /// connect (one sample), first_row and total, in milliseconds.
     phases: Vec<Phase>,
@@ -149,6 +153,10 @@ fn query_bench(ctx: &Ctx, args: BenchArgs) -> Result<Bench> {
     let spec = sql.connection(args.conn.as_deref())?;
     let statements = statements(ctx, args.sql.as_deref(), args.sql_file.as_deref(), spec)?;
     let deadline = ctx.deadline();
+    let cap = args
+        .max_rows
+        .map(|rows| usize::try_from(rows).unwrap_or(usize::MAX));
+    let mut cut = false;
     let op = OnConnection {
         spec,
         client_dir: sql.client_dir.as_deref(),
@@ -164,12 +172,28 @@ fn query_bench(ctx: &Ctx, args: BenchArgs) -> Result<Bench> {
                 let (mut first, mut read) = (None, 0);
                 for statement in &statements {
                     // Nothing kept, everything read: what is timed is the
-                    // server and the wire.
-                    let fetch = Fetch {
-                        keep: 0,
-                        stop: false,
+                    // server and the wire. Under --max-rows a read keeps
+                    // that many and ends there, as `query run` does.
+                    let fetch = match cap {
+                        None => Fetch {
+                            keep: 0,
+                            stop: false,
+                        },
+                        Some(keep) => Fetch {
+                            keep,
+                            stop: !statement.writes,
+                        },
                     };
                     match session.run(&statement.sql, fetch, deadline) {
+                        Ok(ran) if cap.is_some() => {
+                            first = first.or(ran.first_row);
+                            cut |= ran.sets.iter().any(|set| set.truncated);
+                            read += ran
+                                .sets
+                                .iter()
+                                .map(|set| set.rows.len() as u64)
+                                .sum::<u64>();
+                        }
                         Ok(ran) => {
                             first = first.or(ran.first_row);
                             read += ran.rows;
@@ -193,6 +217,11 @@ fn query_bench(ctx: &Ctx, args: BenchArgs) -> Result<Bench> {
             "[stopped after {runs} of {} runs at the --timeout deadline]",
             args.runs
         ));
+    }
+    if cut && matches!(spec.kind, Kind::Mssql) {
+        ctx.note(
+            "[--max-rows cut the read short, which ends a SQL Server session: each run after the first connected again, inside its total]",
+        );
     }
     Ok(Bench {
         runs,
