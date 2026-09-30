@@ -269,6 +269,14 @@ mod tests {
             .iter()
             .map(|path| std::fs::read_to_string(path).unwrap() + "\n")
             .collect();
+        let placeholders: Vec<&str> = queries
+            .lines()
+            .filter(|line| line.starts_with("text = \"TODO"))
+            .collect();
+        assert!(
+            placeholders.is_empty(),
+            "replace the placeholder queries scripts/new-command.sh wrote: {placeholders:#?}"
+        );
         assert_search_quality(DOMAINS, &queries);
     }
 
