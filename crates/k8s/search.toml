@@ -1,0 +1,180 @@
+# Labeled search queries for k8s, written as tasks an agent would type.
+# The search gate in crates/cli reads every crates/*/search.toml. Every new
+# command adds at least two, for example:
+#
+#   [[query]]
+#   text = "who approved PR 42"
+#   expect = "ado pr get"
+#
+# CI fails when search puts the expected command first in fewer than 80% of
+# queries, or in the top five in fewer than 95%, across all crates.
+
+# ---------- k8s ----------
+
+[[query]]
+text = "why is my pod crashlooping"
+expect = "k8s pod get"
+
+[[query]]
+text = "describe the pod and its container states"
+expect = "k8s pod get"
+
+[[query]]
+text = "show the yaml manifest of a pod"
+expect = "k8s pod get"
+
+[[query]]
+text = "list the pods in the dev namespace"
+expect = "k8s pod list"
+
+[[query]]
+text = "which containers are restarting"
+expect = "k8s pod list"
+
+[[query]]
+text = "show the logs of the api pod"
+expect = "k8s pod logs"
+
+[[query]]
+text = "read the output of the container before it crashed"
+expect = "k8s pod logs"
+
+[[query]]
+text = "delete a stuck pod"
+expect = "k8s pod delete"
+
+[[query]]
+text = "kill the pod so it gets recreated"
+expect = "k8s pod delete"
+
+[[query]]
+text = "show recent kubernetes warning events"
+expect = "k8s event list"
+
+[[query]]
+text = "why did the image pull fail on the cluster"
+expect = "k8s event list"
+
+[[query]]
+text = "restart the api deployment"
+expect = "k8s deployment restart"
+
+[[query]]
+text = "do a rollout restart"
+expect = "k8s deployment restart"
+
+[[query]]
+text = "scale the deployment to 3 replicas"
+expect = "k8s deployment scale"
+
+[[query]]
+text = "scale down the worker to zero"
+expect = "k8s deployment scale"
+
+[[query]]
+text = "list the configmaps in the namespace"
+expect = "k8s configmap list"
+
+[[query]]
+text = "which config maps exist"
+expect = "k8s configmap list"
+
+[[query]]
+text = "show the values in a configmap"
+expect = "k8s configmap get"
+
+[[query]]
+text = "what environment settings does orders-config hold"
+expect = "k8s configmap get"
+
+[[query]]
+text = "list kubernetes secrets and their keys"
+expect = "k8s secret list"
+
+[[query]]
+text = "which tls secrets are in the cluster namespace"
+expect = "k8s secret list"
+
+[[query]]
+text = "decode a kubernetes secret key"
+expect = "k8s secret get"
+
+[[query]]
+text = "read the password from a k8s secret"
+expect = "k8s secret get"
+
+[[query]]
+text = "which kubectl contexts are configured"
+expect = "k8s context list"
+
+[[query]]
+text = "list the configured cluster scopes and namespaces"
+expect = "k8s context list"
+
+# ---------- conventions phase: deploy trace ----------
+
+[[query]]
+text = "which image version is deployed in prod"
+expect = "k8s deployment list"
+
+[[query]]
+text = "list deployments with their images and ready pods"
+expect = "k8s deployment list"
+
+[[query]]
+text = "when did the api deployment last roll out"
+expect = "k8s deployment list"
+
+[[query]]
+text = "which kubernetes secrets and key vault secrets does a pod use"
+expect = "k8s pod get"
+
+# The k8s readings of words dd shares (SHARED_WORDS: container, log).
+
+[[query]]
+text = "read the log of the worker pod"
+expect = "k8s pod logs"
+
+[[query]]
+text = "list the containers running in the dev namespace"
+expect = "k8s pod list"
+
+# ---------- agent trials, 2026-09-30 (docs/trials/2026-09-30.md) ----------
+# Each trial task as the agent was given it, and the searches agents typed for
+# it, expecting the command an agent should reach first. A cross-domain task
+# expects the first hop of its trace.
+
+# t04
+[[query]]
+text = "which pod is crash looping, how many restarts, and what did its last crash log say"
+expect = "k8s pod list"
+
+# t04
+[[query]]
+text = "worker pod crash looping"
+expect = "k8s pod list"
+
+# t08
+[[query]]
+text = "which work items shipped in the api image running in prod"
+expect = "k8s deployment list"
+
+# t08
+[[query]]
+text = "prod api image deployed"
+expect = "k8s deployment list"
+
+# t10
+[[query]]
+text = "what is the root cause of the worker crash loop"
+expect = "k8s pod list"
+
+# t10
+[[query]]
+text = "worker crash loop pod logs"
+expect = "k8s pod logs"
+
+# t12
+[[query]]
+text = "restart deployment"
+expect = "k8s deployment restart"

@@ -33,7 +33,7 @@ listing calls to Haiku's 26.
 Search is a small ranker (BM25F over path, summary, keywords, argument names
 and return fields, times the squared share of words matched) plus each
 domain's synonyms. Its quality is a number, not a feeling: labeled queries in
-`crates/cli/tests/search.toml` gate every change at top-1 80% and top-5 95%.
+each crate's `search.toml` gate every change at top-1 80% and top-5 95%.
 This round showed why synonyms belong to their domain. ado's "build" meant
 `run`, so "why did the build fail" ranked `airflow run get` first; now a
 domain's synonyms count only for its own commands.

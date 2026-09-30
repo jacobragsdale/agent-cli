@@ -207,8 +207,10 @@ domain's own test counts its commands (`assert_eq!(DOMAIN.commands.len(),
 
 ## 6. Add labeled search queries
 
-Add at least two queries per command to `crates/cli/tests/search.toml`, in
-the domain's section, written as the task an agent would be given:
+Add at least two queries per command to the crate's own `search.toml`
+(`crates/ado/search.toml` here), written as the task an agent would be given.
+The search gate reads every `crates/*/search.toml`, so no other crate's file
+needs reading:
 
 ```toml
 [[query]]

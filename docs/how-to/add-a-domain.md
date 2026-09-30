@@ -181,8 +181,8 @@ an `id` that the domain's `get` takes, and accept the service's web URL there
 too. Where a row names another domain's thing, print that thing's id:
 airflow's task `pod` is `prod/web/<pod>`, the id `k8s pod logs` takes, and
 dd's rows do the same from the pod tags Datadog records. Add at least two
-labeled queries per command to a new section of
-`crates/cli/tests/search.toml`.
+labeled queries per command to the new crate's `search.toml`
+(`crates/<name>/search.toml`); the search gate reads every crate's file.
 
 ## 8. Add the domain to the contoso world
 

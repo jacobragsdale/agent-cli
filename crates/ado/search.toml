@@ -1,0 +1,368 @@
+# Labeled search queries for ado, written as tasks an agent would type.
+# The search gate in crates/cli reads every crates/*/search.toml. Every new
+# command adds at least two, for example:
+#
+#   [[query]]
+#   text = "who approved PR 42"
+#   expect = "ado pr get"
+#
+# CI fails when search puts the expected command first in fewer than 80% of
+# queries, or in the top five in fewer than 95%, across all crates.
+
+# ---------- ado ----------
+
+[[query]]
+text = "what am I assigned this sprint"
+expect = "ado workitem list"
+
+[[query]]
+text = "list my active bugs"
+expect = "ado workitem list"
+
+[[query]]
+text = "find tickets tagged regression changed this week"
+expect = "ado workitem list"
+
+[[query]]
+text = "show ticket 4521 with its description"
+expect = "ado workitem get"
+
+[[query]]
+text = "read the acceptance criteria of a user story"
+expect = "ado workitem get"
+
+[[query]]
+text = "what are the child tasks of story 88"
+expect = "ado workitem get"
+
+[[query]]
+text = "file a new bug"
+expect = "ado workitem create"
+
+[[query]]
+text = "create a task under story 88"
+expect = "ado workitem create"
+
+[[query]]
+text = "move work item 42 to resolved"
+expect = "ado workitem update"
+
+[[query]]
+text = "assign the bug to me and change its state"
+expect = "ado workitem update"
+
+[[query]]
+text = "add a comment to ticket 42"
+expect = "ado workitem comment"
+
+[[query]]
+text = "post test output as a note on the work item"
+expect = "ado workitem comment"
+
+[[query]]
+text = "create a branch for work item 42 and link it"
+expect = "ado workitem link"
+
+[[query]]
+text = "start working on ticket 42 in repo web"
+expect = "ado workitem link"
+
+[[query]]
+text = "which teams are in the project"
+expect = "ado team list"
+
+[[query]]
+text = "list azure devops teams"
+expect = "ado team list"
+
+[[query]]
+text = "list the git repositories"
+expect = "ado repo list"
+
+[[query]]
+text = "which repos exist in azure devops"
+expect = "ado repo list"
+
+[[query]]
+text = "get the clone url of the web repository"
+expect = "ado repo get"
+
+[[query]]
+text = "what branches does repo web have"
+expect = "ado repo get"
+
+[[query]]
+text = "pull requests waiting for my review"
+expect = "ado pr list"
+
+[[query]]
+text = "list my open pull requests"
+expect = "ado pr list"
+
+[[query]]
+text = "who approved PR 42"
+expect = "ado pr get"
+
+[[query]]
+text = "show pull request 17 reviewers and build status"
+expect = "ado pr get"
+
+[[query]]
+text = "open a pull request for my branch"
+expect = "ado pr create"
+
+[[query]]
+text = "raise a merge request linked to work item 42"
+expect = "ado pr create"
+
+[[query]]
+text = "approve pull request 42"
+expect = "ado pr vote"
+
+[[query]]
+text = "reject pull request 42 as a reviewer"
+expect = "ado pr vote"
+
+[[query]]
+text = "turn on auto-complete for PR 17"
+expect = "ado pr update"
+
+[[query]]
+text = "mark a draft pull request as ready"
+expect = "ado pr update"
+
+[[query]]
+text = "link work item 42 to pull request 17"
+expect = "ado pr link"
+
+[[query]]
+text = "attach a ticket to a pull request"
+expect = "ado pr link"
+
+[[query]]
+text = "leave a comment on pull request 17"
+expect = "ado pr comment"
+
+[[query]]
+text = "reply with review feedback on a PR"
+expect = "ado pr comment"
+
+[[query]]
+text = "merge pull request 17"
+expect = "ado pr complete"
+
+[[query]]
+text = "squash and complete the PR"
+expect = "ado pr complete"
+
+[[query]]
+text = "abandon pull request 17"
+expect = "ado pr abandon"
+
+[[query]]
+text = "close a PR without merging it"
+expect = "ado pr abandon"
+
+[[query]]
+text = "list the build pipelines"
+expect = "ado pipeline list"
+
+[[query]]
+text = "which ci pipeline builds repo web"
+expect = "ado pipeline list"
+
+[[query]]
+text = "recent builds of the main branch"
+expect = "ado run list"
+
+[[query]]
+text = "list failed pipeline runs"
+expect = "ado run list"
+
+[[query]]
+text = "why did the build fail"
+expect = "ado run get"
+
+[[query]]
+text = "show the status of run 1234"
+expect = "ado run get"
+
+[[query]]
+text = "show the build log of the failed task"
+expect = "ado run logs"
+
+[[query]]
+text = "tail the logs of pipeline run 1234"
+expect = "ado run logs"
+
+[[query]]
+text = "trigger the ci pipeline on my branch"
+expect = "ado run create"
+
+[[query]]
+text = "queue a new build with parameters"
+expect = "ado run create"
+
+[[query]]
+text = "wait for the pipeline to finish"
+expect = "ado run wait"
+
+[[query]]
+text = "block until build 1234 is done"
+expect = "ado run wait"
+
+[[query]]
+text = "cancel the running build"
+expect = "ado run cancel"
+
+[[query]]
+text = "stop pipeline run 1234"
+expect = "ado run cancel"
+
+[[query]]
+text = "retry the failed jobs of a build"
+expect = "ado run retry"
+
+[[query]]
+text = "rerun a flaky pipeline run"
+expect = "ado run retry"
+
+[[query]]
+text = "which deployments are waiting for approval"
+expect = "ado approval list"
+
+[[query]]
+text = "list pending gates"
+expect = "ado approval list"
+
+[[query]]
+text = "approve the production deployment"
+expect = "ado approval approve"
+
+[[query]]
+text = "sign off the release gate"
+expect = "ado approval approve"
+
+[[query]]
+text = "reject the pending deployment approval"
+expect = "ado approval reject"
+
+[[query]]
+text = "deny a pipeline gate"
+expect = "ado approval reject"
+
+# ---------- parity with the old CLIs: filters and long text ----------
+
+[[query]]
+text = "which pull requests are waiting for my review"
+expect = "ado pr list"
+
+[[query]]
+text = "which pull requests still need my vote"
+expect = "ado pr list"
+
+[[query]]
+text = "list PRs Sam approved"
+expect = "ado pr list"
+
+[[query]]
+text = "runs I started today"
+expect = "ado run list"
+
+[[query]]
+text = "builds triggered by a pull request"
+expect = "ado run list"
+
+[[query]]
+text = "which scheduled builds ran last night"
+expect = "ado run list"
+
+[[query]]
+text = "high priority bugs"
+expect = "ado workitem list"
+
+[[query]]
+text = "bugs filed this week"
+expect = "ado workitem list"
+
+[[query]]
+text = "work items created since Monday"
+expect = "ado workitem list"
+
+[[query]]
+text = "write the work item description from a markdown file"
+expect = "ado workitem update"
+
+[[query]]
+text = "open a pull request with its description piped from stdin"
+expect = "ado pr create"
+
+# ---------- conventions phase: deploy trace ----------
+
+[[query]]
+text = "find the build for git tag v1.4.2"
+expect = "ado run list"
+
+[[query]]
+text = "which work items and pull request shipped in build 8812"
+expect = "ado run get"
+
+# The ado readings of words airflow shares (SHARED_WORDS: task).
+
+[[query]]
+text = "show azure devops task 1215"
+expect = "ado workitem get"
+
+[[query]]
+text = "list my active tasks in the sprint"
+expect = "ado workitem list"
+
+# ---------- agent trials, 2026-09-30 (docs/trials/2026-09-30.md) ----------
+# Each trial task as the agent was given it, and the searches agents typed for
+# it, expecting the command an agent should reach first. A cross-domain task
+# expects the first hop of its trace.
+
+# t01
+[[query]]
+text = "which of my work items in the current sprint are not resolved"
+expect = "ado workitem list"
+
+# t01
+[[query]]
+text = "my work items current sprint not resolved"
+expect = "ado workitem list"
+
+# t01
+[[query]]
+text = "list work items assigned to me in current sprint"
+expect = "ado workitem list"
+
+# t02
+[[query]]
+text = "which test failed in the first build of v1.4.2"
+expect = "ado run list"
+
+# t02
+[[query]]
+text = "v1.4.2 build"
+expect = "ado run list"
+
+# t02
+[[query]]
+text = "builds for release tag"
+expect = "ado run list"
+
+# t08
+[[query]]
+text = "work items in a build or release"
+expect = "ado run get"
+
+# t11
+[[query]]
+text = "is there a pipeline approval waiting"
+expect = "ado approval list"
+
+# t11
+[[query]]
+text = "pipeline approval pending"
+expect = "ado approval list"

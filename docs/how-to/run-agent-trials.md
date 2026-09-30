@@ -143,7 +143,7 @@ agent's transcript for where it went astray.
   that did not parse, a destructive command suggested for a lookup. Fix it in
   core or the domain, with a test that shows the new message.
 - **Search sent the agent astray:** add the searches agents typed, and each
-  task as written, to `crates/cli/tests/search.toml` with the command an
+  task as written, to the crate's `search.toml` with the command an
   agent should reach first, then tune words until the gate passes.
 
 Record the round in `docs/trials/<date>.md`: the setup, the tasks with their

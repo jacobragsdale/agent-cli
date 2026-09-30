@@ -15,12 +15,13 @@ crates/core/   agent-cli-core: registry + command! macro, dispatch, discovery
                redaction, Ctx (the read/write chokepoint), config, cache,
                process runner, HTTP transport, az tokens, testing helpers
 crates/cli/    agent-cli: main() = core::run(DOMAINS), registry-level tests
-               (the command reference, the docs' command lines),
-               tests/search.toml (labeled search queries), tests/world.rs
+               (the command reference, the docs' command lines, the search
+               gate over every crate's search.toml), tests/world.rs
 crates/<name>/ one crate per domain group (ado, sql, azure, k8s, airflow, dd),
                exporting one `pub const Domain` per domain: DOMAIN, K8S, and
-               KV, ACR, AKS from crates/azure
-docs/          tutorial.md, how-to/, reference/commands.md (generated),
+               KV, ACR, AKS from crates/azure; search.toml holds its labeled
+               search queries
+docs/          tutorial.md, how-to/, reference/ (generated, a page per domain),
                explanation/, trials/ (agent trial results), plans/
 fixtures/world the recorded contoso world agent trials run against
 scripts/fake   az, kubectl, kubelogin stand-ins (tests and trials)

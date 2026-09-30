@@ -1,0 +1,154 @@
+# Labeled search queries for airflow, written as tasks an agent would type.
+# The search gate in crates/cli reads every crates/*/search.toml. Every new
+# command adds at least two, for example:
+#
+#   [[query]]
+#   text = "who approved PR 42"
+#   expect = "ado pr get"
+#
+# CI fails when search puts the expected command first in fewer than 80% of
+# queries, or in the top five in fewer than 95%, across all crates.
+
+# ---------- airflow ----------
+
+[[query]]
+text = "which airflow environments are configured"
+expect = "airflow instance list"
+
+[[query]]
+text = "list airflow instances"
+expect = "airflow instance list"
+
+[[query]]
+text = "list all airflow dags"
+expect = "airflow dag list"
+
+[[query]]
+text = "which dags are paused"
+expect = "airflow dag list"
+
+[[query]]
+text = "which dags failed on their last run"
+expect = "airflow dag list"
+
+[[query]]
+text = "when does the etl_nightly dag run next"
+expect = "airflow dag get"
+
+[[query]]
+text = "status of the orders dag"
+expect = "airflow dag get"
+
+[[query]]
+text = "what params does this dag take"
+expect = "airflow dag get"
+
+[[query]]
+text = "pause the etl_nightly dag"
+expect = "airflow dag update"
+
+[[query]]
+text = "unpause a dag in airflow"
+expect = "airflow dag update"
+
+[[query]]
+text = "airflow dag runs that failed in the last day"
+expect = "airflow run list"
+
+[[query]]
+text = "run history of the etl_nightly dag"
+expect = "airflow run list"
+
+[[query]]
+text = "state of the latest etl_nightly dag run"
+expect = "airflow run get"
+
+[[query]]
+text = "which tasks failed in this airflow dag run"
+expect = "airflow run get"
+
+[[query]]
+text = "trigger the etl_nightly dag with conf"
+expect = "airflow run create"
+
+[[query]]
+text = "kick off an airflow dag run"
+expect = "airflow run create"
+
+[[query]]
+text = "wait for the airflow dag run to finish"
+expect = "airflow run wait"
+
+[[query]]
+text = "block until my dag run completes"
+expect = "airflow run wait"
+
+[[query]]
+text = "rerun the failed tasks of a dag run"
+expect = "airflow run retry"
+
+[[query]]
+text = "clear failed tasks in an airflow run"
+expect = "airflow run retry"
+
+[[query]]
+text = "list task instances of a dag run with their states"
+expect = "airflow task list"
+
+[[query]]
+text = "which airflow tasks are still running"
+expect = "airflow task list"
+
+[[query]]
+text = "why is my airflow task stuck in queued"
+expect = "airflow task get"
+
+[[query]]
+text = "how many attempts did the load task take"
+expect = "airflow task get"
+
+[[query]]
+text = "which pod did the airflow task run in"
+expect = "airflow task get"
+
+[[query]]
+text = "show the log of the failed airflow task"
+expect = "airflow task logs"
+
+[[query]]
+text = "traceback of the transform task"
+expect = "airflow task logs"
+
+[[query]]
+text = "clear the load task and its downstream tasks"
+expect = "airflow task retry"
+
+[[query]]
+text = "re-run one airflow task"
+expect = "airflow task retry"
+
+[[query]]
+text = "why is my dag missing from airflow"
+expect = "airflow import-error list"
+
+[[query]]
+text = "dag files with import errors"
+expect = "airflow import-error list"
+
+[[query]]
+text = "full stack trace of an airflow import error"
+expect = "airflow import-error get"
+
+[[query]]
+text = "show import error 12"
+expect = "airflow import-error get"
+
+# ---------- agent trials, 2026-09-30 (docs/trials/2026-09-30.md) ----------
+# Each trial task as the agent was given it, and the searches agents typed for
+# it, expecting the command an agent should reach first. A cross-domain task
+# expects the first hop of its trace.
+
+# t06
+[[query]]
+text = "why did the etl_nightly DAG fail last night"
+expect = "airflow run list"

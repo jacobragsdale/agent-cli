@@ -199,9 +199,22 @@ mod tests {
         );
     }
 
+    /// Each crate keeps its own labeled queries in `crates/<crate>/search.toml`,
+    /// so a new crate's file counts with no edit here.
     #[test]
     fn search_finds_the_labeled_command() {
-        assert_search_quality(DOMAINS, include_str!("../tests/search.toml"));
+        let mut files: Vec<PathBuf> = std::fs::read_dir(Path::new(REPO).join("crates"))
+            .unwrap()
+            .flatten()
+            .map(|entry| entry.path().join("search.toml"))
+            .filter(|path| path.is_file())
+            .collect();
+        files.sort();
+        let queries: String = files
+            .iter()
+            .map(|path| std::fs::read_to_string(path).unwrap() + "\n")
+            .collect();
+        assert_search_quality(DOMAINS, &queries);
     }
 
     #[test]

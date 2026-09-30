@@ -1,0 +1,104 @@
+# Labeled search queries for sql, written as tasks an agent would type.
+# The search gate in crates/cli reads every crates/*/search.toml. Every new
+# command adds at least two, for example:
+#
+#   [[query]]
+#   text = "who approved PR 42"
+#   expect = "ado pr get"
+#
+# CI fails when search puts the expected command first in fewer than 80% of
+# queries, or in the top five in fewer than 95%, across all crates.
+
+# ---------- sql ----------
+
+[[query]]
+text = "run a select against the reporting database"
+expect = "sql query run"
+
+[[query]]
+text = "execute a SQL statement on SQL Server"
+expect = "sql query run"
+
+[[query]]
+text = "insert a row into an Oracle table"
+expect = "sql query run"
+
+[[query]]
+text = "delete old rows with a sql script"
+expect = "sql query run"
+
+[[query]]
+text = "time how long a query takes"
+expect = "sql query bench"
+
+[[query]]
+text = "benchmark a slow SQL query"
+expect = "sql query bench"
+
+[[query]]
+text = "measure query latency over several runs"
+expect = "sql query bench"
+
+[[query]]
+text = "find tables whose name contains customer"
+expect = "sql object list"
+
+[[query]]
+text = "list the stored procedures in a database"
+expect = "sql object list"
+
+[[query]]
+text = "which views are in the bench schema"
+expect = "sql object list"
+
+[[query]]
+text = "show the source of a stored procedure"
+expect = "sql object get"
+
+[[query]]
+text = "what columns does the customers table have"
+expect = "sql object get"
+
+[[query]]
+text = "get the DDL of a table"
+expect = "sql object get"
+
+[[query]]
+text = "show the definition of a database view"
+expect = "sql object get"
+
+[[query]]
+text = "list the schemas in a database"
+expect = "sql schema list"
+
+[[query]]
+text = "which owners exist on the Oracle database"
+expect = "sql schema list"
+
+[[query]]
+text = "which databases are configured"
+expect = "sql connection list"
+
+[[query]]
+text = "list my database connections"
+expect = "sql connection list"
+
+# ---------- parity with the old CLIs: filters and long text ----------
+
+[[query]]
+text = "run the sql in a file"
+expect = "sql query run"
+
+[[query]]
+text = "benchmark a query but stop reading after 100 rows"
+expect = "sql query bench"
+
+# ---------- agent trials, 2026-09-30 (docs/trials/2026-09-30.md) ----------
+# Each trial task as the agent was given it, and the searches agents typed for
+# it, expecting the command an agent should reach first. A cross-domain task
+# expects the first hop of its trace.
+
+# t05
+[[query]]
+text = "how many customers and orders are in the database"
+expect = "sql query run"

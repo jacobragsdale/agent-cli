@@ -1,0 +1,132 @@
+# Labeled search queries for kv, acr and aks, written as tasks an agent would type.
+# The search gate in crates/cli reads every crates/*/search.toml. Every new
+# command adds at least two, for example:
+#
+#   [[query]]
+#   text = "who approved PR 42"
+#   expect = "ado pr get"
+#
+# CI fails when search puts the expected command first in fewer than 80% of
+# queries, or in the top five in fewer than 95%, across all crates.
+
+# ---------- kv ----------
+
+[[query]]
+text = "which secrets expire this month"
+expect = "kv secret list"
+
+[[query]]
+text = "find key vault secrets whose name contains db"
+expect = "kv secret list"
+
+[[query]]
+text = "list expired passwords in key vault"
+expect = "kv secret list"
+
+[[query]]
+text = "get the connection string from key vault"
+expect = "kv secret get"
+
+[[query]]
+text = "read the value of a key vault secret"
+expect = "kv secret get"
+
+[[query]]
+text = "fetch the database password from the vault"
+expect = "kv secret get"
+
+[[query]]
+text = "when was this secret last rotated"
+expect = "kv version list"
+
+[[query]]
+text = "show the version history of a key vault secret"
+expect = "kv version list"
+
+[[query]]
+text = "which key vaults can I reach"
+expect = "kv vault list"
+
+[[query]]
+text = "list the vault URIs in my subscription"
+expect = "kv vault list"
+
+# ---------- acr ----------
+
+[[query]]
+text = "list container image repositories in the registry"
+expect = "acr repo list"
+
+[[query]]
+text = "which images were pushed this week"
+expect = "acr repo list"
+
+[[query]]
+text = "show the image tags in the registry"
+expect = "acr tag list"
+
+[[query]]
+text = "what is the latest tag of the api image"
+expect = "acr tag list"
+
+[[query]]
+text = "which architecture and digest does image tag 1.4.2 have"
+expect = "acr manifest get"
+
+[[query]]
+text = "get the sha256 digest pull reference of a container image"
+expect = "acr manifest get"
+
+[[query]]
+text = "which container registries are there"
+expect = "acr registry list"
+
+[[query]]
+text = "find the acr login server"
+expect = "acr registry list"
+
+# ---------- aks ----------
+
+[[query]]
+text = "list the AKS clusters"
+expect = "aks cluster list"
+
+[[query]]
+text = "which kubernetes clusters are running and what version"
+expect = "aks cluster list"
+
+[[query]]
+text = "get kubeconfig credentials for an AKS cluster"
+expect = "aks cluster connect"
+
+[[query]]
+text = "set up kubectl access to the aks cluster"
+expect = "aks cluster connect"
+
+# ---------- parity with the old CLIs: filters and long text ----------
+
+[[query]]
+text = "secrets tagged team=platform"
+expect = "kv secret list"
+
+[[query]]
+text = "which key vault secrets are certificates"
+expect = "kv secret list"
+
+[[query]]
+text = "images not updated since last year"
+expect = "acr repo list"
+
+[[query]]
+text = "stale container repositories nobody pushed to in 90 days"
+expect = "acr repo list"
+
+# ---------- agent trials, 2026-09-30 (docs/trials/2026-09-30.md) ----------
+# Each trial task as the agent was given it, and the searches agents typed for
+# it, expecting the command an agent should reach first. A cross-domain task
+# expects the first hop of its trace.
+
+# t03
+[[query]]
+text = "which key vault secrets have expired or expire within 30 days"
+expect = "kv secret list"
