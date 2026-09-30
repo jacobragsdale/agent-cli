@@ -125,8 +125,10 @@ mod tests {
         found
     }
 
-    /// Every `agent-cli …` in the docs parses against the registry, and a
-    /// command line in a `sh` block names a real domain.
+    /// Every `agent-cli …` call in a `sh` block of the docs names a real
+    /// domain and parses against the registry, and so does every one in the
+    /// prose around the blocks. Other blocks are not calls: `text` is output,
+    /// and a `shell` block holds a call that fails on purpose.
     #[test]
     fn every_command_line_in_the_docs_parses() {
         let mut problems = Vec::new();
@@ -137,30 +139,54 @@ mod tests {
                 .unwrap_or(&path)
                 .display()
                 .to_string();
-            problems.extend(
-                printed_command_problems(DOMAINS, &text)
-                    .into_iter()
-                    .map(|problem| format!("{name}: {problem}")),
-            );
-            let mut in_sh = false;
+            let mut report = |found: Vec<String>| {
+                problems.extend(
+                    found
+                        .into_iter()
+                        .map(|problem| format!("{name}: {problem}")),
+                );
+            };
+            let mut fence: Option<String> = None;
+            let mut prose = String::new();
             for line in text.lines() {
-                let fence = line.trim_start();
-                if fence.starts_with("```") {
-                    in_sh = !in_sh && fence == "```sh";
+                if let Some(language) = line.trim_start().strip_prefix("```") {
+                    fence = match fence {
+                        Some(_) => None,
+                        None => Some(language.trim().to_owned()),
+                    };
                     continue;
                 }
-                let line = line.trim().trim_start_matches("$ ");
-                let Some(rest) = line.strip_prefix("agent-cli ") else {
-                    continue;
-                };
-                let first = rest.split_whitespace().next().unwrap_or_default();
-                let known = first.starts_with('-')
-                    || BUILTINS.contains(&first)
-                    || DOMAINS.iter().any(|domain| domain.name == first);
-                if in_sh && !known {
-                    problems.push(format!("{name}: `{line}` names no domain"));
+                match fence.as_deref() {
+                    None => {
+                        prose.push_str(line);
+                        prose.push('\n');
+                    }
+                    Some("sh") => {
+                        let call = line.trim().trim_start_matches("$ ");
+                        let Some(rest) = call.strip_prefix("agent-cli") else {
+                            continue;
+                        };
+                        if !rest.is_empty() && !rest.starts_with(' ') {
+                            continue;
+                        }
+                        let first = rest
+                            .split("  ")
+                            .next()
+                            .and_then(|words| words.split_whitespace().next())
+                            .unwrap_or_default();
+                        let known = first.is_empty()
+                            || first.starts_with('-')
+                            || BUILTINS.contains(&first)
+                            || DOMAINS.iter().any(|domain| domain.name == first);
+                        if !known {
+                            report(vec![format!("`{call}` names no domain")]);
+                        }
+                        report(printed_command_problems(DOMAINS, call));
+                    }
+                    Some(_) => {}
                 }
             }
+            report(printed_command_problems(DOMAINS, &prose));
         }
         assert!(problems.is_empty(), "{problems:#?}");
     }

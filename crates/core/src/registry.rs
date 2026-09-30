@@ -304,10 +304,20 @@ pub fn check_registry(domains: &[Domain]) -> Vec<String> {
 }
 
 /// A domain synonym that is another domain's resource ties the two in
-/// search, unless it is a [`SHARED_WORDS`] word with queries for both.
+/// search, unless it is a [`SHARED_WORDS`] word with queries for both. A key
+/// holding a stop word never matches: queries lose their stop words first.
 fn check_synonyms(domain: &Domain, domains: &[Domain]) -> Vec<String> {
     let mut problems = Vec::new();
     for (key, _) in domain.synonyms {
+        if let Some(stop) = key
+            .split(|c: char| !c.is_alphanumeric())
+            .find(|word| crate::search::STOP.contains(&word.to_lowercase().as_str()))
+        {
+            problems.push(format!(
+                "{}'s synonym {key:?} holds the stop word {stop:?}, so no query can match it",
+                domain.name
+            ));
+        }
         for other in domains.iter().filter(|other| other.name != domain.name) {
             if other.commands.iter().any(|command| command.path[1] == *key)
                 && !SHARED_WORDS.contains(key)

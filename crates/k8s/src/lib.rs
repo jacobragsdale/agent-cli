@@ -56,7 +56,6 @@ pub const K8S: Domain = Domain {
         ("oomkilled", &["pod", "status"]),
         ("rollout", &["deployment", "restart"]),
         ("deployed", &["deployment", "images"]),
-        ("running in", &["deployment", "images"]),
         ("redeploy", &["deployment", "restart"]),
         ("bounce", &["restart"]),
         ("replicas", &["scale"]),

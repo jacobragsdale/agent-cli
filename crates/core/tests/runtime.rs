@@ -720,7 +720,7 @@ fn the_checker_holds_every_domain_to_the_shared_flag_conventions() {
             name: "conv",
             summary: "Conventions",
             commands: &[LOOSE, ENDLESS],
-            synonyms: &[("ticket", &["item"])],
+            synonyms: &[("ticket", &["item"]), ("running in", &["item"])],
             status: |_| String::new(),
             doctor: |_| Vec::new(),
         },
@@ -744,6 +744,7 @@ fn the_checker_holds_every_domain_to_the_shared_flag_conventions() {
         "conv item logs: logs take --tail",
         "conv item logs: logs never --follow: a command must end",
         "conv's synonym \"ticket\" is a other resource",
+        "conv's synonym \"running in\" holds the stop word \"in\", so no query can match it",
     ];
     for want in expected {
         assert!(
