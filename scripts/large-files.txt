@@ -14,9 +14,7 @@ crates/core/src/discover.rs 749
 crates/core/src/dispatch.rs 669
 crates/core/src/http.rs 939
 crates/core/src/registry.rs 766
-crates/dd/src/catalog.rs 781
 crates/dd/src/client.rs 860
-crates/dd/src/monitor.rs 814
 crates/sql/src/catalog.rs 800
 crates/sql/src/mssql.rs 631
 crates/sql/src/oracle.rs 708

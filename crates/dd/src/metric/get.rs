@@ -1,6 +1,3 @@
-//! Metrics: finding a metric's name, and querying it as a summary an agent
-//! can read (stats and a dozen points per series) instead of raw pointlists.
-
 use std::collections::BTreeMap;
 
 use agent_cli_core::{Ctx, Failure, When, command, utc_time};
@@ -11,56 +8,7 @@ use serde::Serialize;
 use serde_json::Value;
 use time::OffsetDateTime;
 
-use crate::client::{Dd, Scope, Window, limited, strings, text};
-
-// ---------- dd metric list ----------
-
-#[derive(clap::Args)]
-pub struct MetricListArgs {
-    /// Part of the metric name: kubernetes.memory, latency
-    pattern: Option<String>,
-    /// Reporting since when (default 1h ago)
-    #[arg(long)]
-    since: Option<When>,
-    #[command(flatten)]
-    scope: Scope,
-    #[arg(long, default_value_t = 50)]
-    limit: usize,
-}
-
-fn metric_list(ctx: &Ctx, args: MetricListArgs) -> Result<Vec<String>> {
-    let dd = Dd::load(ctx)?;
-    let since = args.since.map_or_else(
-        || agent_cli_core::now() - time::Duration::hours(1),
-        |since| since.0,
-    );
-    let mut query = vec![("from", since.unix_timestamp().to_string())];
-    let tags = args.scope.tags(&dd, false)?;
-    if !tags.is_empty() {
-        query.push(("tag_filter", tags.join(" AND ")));
-    }
-    let found = dd.get(ctx, "/api/v1/metrics", &query)?;
-    let mut names: Vec<String> = strings(&found["metrics"])
-        .into_iter()
-        .filter(|name| {
-            args.pattern
-                .as_deref()
-                .is_none_or(|pattern| name.contains(pattern))
-        })
-        .collect();
-    names.sort();
-    Ok(limited(ctx, names, args.limit))
-}
-
-command! {
-    pub METRIC_LIST = ["dd", "metric", "list"], Read,
-    "Find Datadog metric names reporting recently, by part of the name",
-    keywords: ["names", "available", "find metric", "which metrics", "exist"],
-    example: "dd metric list kubernetes.memory --namespace web",
-    run: metric_list,
-}
-
-// ---------- dd metric get ----------
+use crate::client::{Dd, Scope, Window, strings, text};
 
 #[derive(clap::Args)]
 pub struct MetricGetArgs {
@@ -299,7 +247,7 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::testkit::dd;
+    use crate::testing::dd;
 
     #[test]
     fn filters_go_inside_each_metric_scope_and_never_into_by() {
@@ -430,47 +378,6 @@ mod tests {
         assert!(
             url.contains("service%3Aapi%2Ckube_namespace%3Aweb%7D+by+%7Bpod_name%7D"),
             "{url}"
-        );
-    }
-
-    #[test]
-    fn a_query_datadog_refuses_is_a_usage_error_and_metric_list_filters_names() {
-        let (outcome, _) = dd(
-            &["dd", "metric", "get", "avg:nope{*"],
-            vec![Answer::json(
-                &json!({"status": "error", "error": "Error parsing query: unexpected end"}),
-            )],
-        );
-        assert_eq!(outcome.code, 2, "{outcome:?}");
-        assert!(
-            outcome.stderr.contains("Error parsing query"),
-            "{}",
-            outcome.stderr
-        );
-
-        let (outcome, transport) = dd(
-            &[
-                "dd",
-                "metric",
-                "list",
-                "memory",
-                "--cluster",
-                "prod",
-                "--since",
-                "2026-09-29T11:00:00Z",
-            ],
-            vec![Answer::json(
-                &json!({"from": "1790679600", "metrics": ["kubernetes.memory.usage", "kubernetes.cpu.usage.total", "kubernetes.memory.limits"]}),
-            )],
-        );
-        assert_eq!(outcome.code, 0, "{outcome:?}");
-        assert_eq!(
-            outcome.json(),
-            json!(["kubernetes.memory.limits", "kubernetes.memory.usage"])
-        );
-        assert_eq!(
-            transport.sent()[0].url,
-            "https://api.datadoghq.eu/api/v1/metrics?from=1790679600&tag_filter=kube_cluster_name%3Aprod"
         );
     }
 }
