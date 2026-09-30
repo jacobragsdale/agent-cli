@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/core", "crates/sql", "crates/cli"]
+members = ["crates/core", "crates/sql", "crates/ado", "crates/cli"]
 
 [workspace.package]
 version = "0.1.0"
@@ -10,6 +10,7 @@ license = "MIT"
 repository = "https://github.com/jacobragsdale/agent-cli"
 
 [workspace.dependencies]
+agent-cli-ado = { path = "crates/ado" }
 agent-cli-core = { path = "crates/core" }
 agent-cli-sql = { path = "crates/sql" }
 anyhow = "1.0.104"

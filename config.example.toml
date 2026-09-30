@@ -9,10 +9,13 @@
 # lands.
 
 # [ado]
-# org = "contoso"
-# project = "web"
-# code_project = "web"
-# team = "web team"
+# Sign-in: AZURE_DEVOPS_EXT_PAT (a personal access token) if set, else the
+# Azure CLI's login (`az login`). org and project fall back to
+# `az devops configure --defaults organization=... project=...`.
+# org = "contoso"                        # or "https://dev.azure.com/contoso"
+# project = "web"                        # where the work items live
+# code_project = "web"                   # repos, PRs, pipelines; default: project
+# team = "web team"                      # or a list; `--iteration @current` needs it
 
 # [azure]
 # subscriptions = ["00000000-0000-0000-0000-000000000000"]
