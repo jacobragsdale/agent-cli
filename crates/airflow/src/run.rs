@@ -325,8 +325,14 @@ fn run_create(ctx: &Ctx, args: RunCreateArgs) -> Result<RunCreated> {
             Some(400) if format!("{error:#}").contains("import errors") => {
                 refine(error, "agent-cli airflow import-error list")
             }
+            // 3.3 words a duplicate as an object `detail` ("Unique
+            // constraint violation"), which reads as noise.
             Some(409) => refine(
-                error,
+                Failure::conflict(format!(
+                    "DAG {} already has a run with that run id or logical date",
+                    id.dag
+                ))
+                .into(),
                 &format!("agent-cli airflow run list --dag {}", id.dag),
             ),
             _ => error,
@@ -740,7 +746,7 @@ pub(crate) mod tests {
         for (status, body, code, hint) in [
             (
                 409,
-                r#"{"detail":"A DAG Run already exists"}"#,
+                r#"{"detail":{"reason":"Unique constraint violation","statement":"hidden"}}"#,
                 5,
                 "agent-cli airflow run list --dag etl_nightly",
             ),
