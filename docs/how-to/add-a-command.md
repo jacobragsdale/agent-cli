@@ -382,7 +382,7 @@ env -u AGENT_CLI_FIXTURES_MATCH agent-cli ado approval list --fields id,pipeline
 
 A miss exits 1 naming the request and the closest recording. Add the exchange
 to `fixtures/world/http/ado.json`, consistent with the facts in
-`fixtures/world/README.md`, and add a row there when you add a fact:
+`fixtures/world/facts/ado.md`, and add a line there when you add a fact:
 
 ```json
 {

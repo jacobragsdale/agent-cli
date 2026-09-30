@@ -28,24 +28,12 @@ A release build ignores `AGENT_CLI_FIXTURES`: the feature is not in it.
 
 ## What is true here
 
-| Domain | Facts |
-|---|---|
-| ado | Org `contoso`, project `Fabrikam`, team `Fabrikam Team`, repo `api`. You are Jane Doe (`@me`). |
-| | PR **431** "Retry on 429 from the orders service" (reviewers Sam Lee and Priya Patel, both approved) merged commit `4be1c0d2…` into `main`; it closes work items **1207** and **1210**. |
-| | Git tag `v1.4.2` on that commit triggered `api-ci` run **8809**, which **failed** in "Run tests" (`OrdersClientTests.RetriesOn429` timed out; `ado run logs 8809`); the re-run **8812** succeeded and pushed the image. |
-| | Assigned to `@me` in Sprint 42: **1218** (Bug, New, priority 1: the worker crash loop), **1215** (Task, Active: retry jitter, PR 436 open), **1207** (Resolved). |
-| | No open pull request waits on your review (`ado pr list --vote none`); Sam Lee has not voted on 436. You queued runs 8812, 8809 and 8801 (`--requested-by @me`); Sam Lee queued 8811 by hand. |
-| | A pending approval: `db-migrations` run 8811, "Apply migration 0042 to prod". |
-| acr | Registry `contosoacr` (`contosoacr.azurecr.io`): `api` tags `v1.4.2`, `v1.4.1`, `v1.4.0`; `worker` tags `v1.4.2`, `v1.4.1`. The `v1.4.2` digests match what the pods run. |
-| k8s | Scope `prod` (context `aks-contoso-prod`, namespace `web`). Deployment `api` runs `contosoacr.azurecr.io/api:v1.4.2`, 3/3 ready. Deployment `worker` (`worker:v1.4.2`) is 0/1: pod `worker-5c4d3e9f1-q8zt1` is in CrashLoopBackOff with 23 restarts, BackOff events, and a previous log saying the database password was refused. Configmap `api-config`; secrets `api-env`, `worker-db`; SecretProviderClasses `api-kv` and `worker-kv`. |
-| kv | Vault `kv-contoso-prod`: `db-password` expires 2026-10-14 (within 30 days), `worker-db-password` expired 2026-09-20 (why the worker cannot log in), `api-key`, `orders-db-conn`. |
-| aks | Cluster `aks-contoso-prod` (Running). |
-| airflow | Instance `prod` (`https://airflow.contoso.example`, Airflow 3.3.2, read_only; sign-in with any password) runs KubernetesExecutor task pods in `prod/web` and logs remotely to Azure Blob. DAGs `etl_nightly` (daily at 00:00), `orders_export` (hourly), `reports_weekly` (paused). |
-| | Run `etl_nightly/scheduled__2026-09-29T00:00:00+00:00` **failed**: `extract_orders` and `transform_orders` succeeded, `load_orders` failed on try 2 with `ValueError: order 88123 has no customer_id` (`dags/etl_nightly.py:42`), `publish_report` is upstream_failed. Its pod `etl-nightly-load-orders-q8x1k2vz` (Failed, container `base`) is still in the cluster, with its log and events. |
-| | `customer_sync` is missing from the DAG list: import error **12**, `ModuleNotFoundError: No module named 'contoso_crm'`. |
-| dd | Site `datadoghq.eu`, env `prod`. Services `api` and `worker`, tagged `kube_cluster_name:prod`, `kube_namespace:web`, so a row's `pod` is the k8s id (`prod/web/…`). |
-| | Monitor **4711** "[prod] api error rate above 5%" triggered at 21:36 on 09-28, two minutes after api `v1.4.2` rolled out (21:34:40), and recovered at 21:58 (OK now; groups per api pod). Monitor **4712** "[prod] worker crash-looping" has been in Alert since 21:41 for pod `worker-5c4d3e9f1-q8zt1`. No downtimes, no incidents. |
-| | Error logs 21:30–22:30 on 09-28: the worker pod's `password authentication failed for user "worker"` from 21:36:05 on, and api's `POST /orders 503 … upstream worker unavailable` 21:35–21:37 (trace ids match `dd span list --service api --status error` in that window). `trace.http.request.errors{service:api,env:prod}` peaks at 64 at 21:40. The event stream holds the rollout, both triggers and the recovery. |
+Each domain's facts are in `facts/`: [ado](facts/ado.md), [acr](facts/acr.md),
+[k8s](facts/k8s.md), [kv](facts/kv.md), [aks](facts/aks.md),
+[airflow](facts/airflow.md), [dd](facts/dd.md). They tie the domains together:
+the api image the cluster runs is the one the registry and the build hold, the
+worker crash-loops on the password Key Vault let expire, the nightly DAG's pod
+runs in the same namespace, and Datadog alerted at the rollout.
 
 The deploy trace, for example (see AGENTS.md):
 
@@ -74,6 +62,7 @@ http/azure.json   Resource Graph, Key Vault and ACR answers
 http/airflow.json Airflow's REST API (/api/v2 and /auth/token)
 http/dd.json      Datadog answers (api.datadoghq.eu)
 kubectl.json      what the fake kubectl knows: objects per context, and logs
+facts/<domain>.md what the recordings say, one file per domain
 ```
 
 Each `http/*.json` is a list of exchanges; the replayer reads every file in
@@ -110,19 +99,23 @@ and `metadata.name` are what the fake filters on). Logs are keyed
    ```
 
 2. Add that exchange, with an answer in the shape the service really sends
-   (the domain's own fixture tests show the fields it reads). Keep the facts
-   consistent with the table above; add to it when you add a fact.
+   (the domain's own fixture tests show the fields it reads). Keep it
+   consistent with the domain's `facts/<domain>.md`; add a line there when
+   you add a fact.
 3. Timestamps in answers are as the service writes them (ADO's seven
    fractional digits, offsets); the CLI prints them as UTC `Z`. Pick times
    before `AGENT_CLI_NOW`.
-4. `cargo test -p agent-cli --features fixtures --test world` runs the
-   commands the world must answer; add yours there.
+4. `cargo test -p agent-cli --features fixtures --test world_<domain>` runs
+   the commands the world must answer of that domain; add yours to
+   `crates/cli/tests/world_<domain>.rs`. A check that hops between domains
+   goes in `world_cross.rs`.
 
 **A new domain** (airflow, dd) adds `http/<domain>.json` for its host
 (`https://airflow.contoso.example`, `https://api.datadoghq.eu`), its section in
-`config.toml`, any credentials as `*_env` variables `scripts/trial-env.sh`
-exports with a stand-in value, and rows to the facts table that tie it to the
-rest: the Airflow DAG whose task pods run in `prod/web`, the Datadog monitor
-on `service:api` that alerted when the worker began crash-looping.
+`config.toml` (a credential as a `*_cmd` stand-in such as `token_cmd = "echo
+stand-in"`, so neither `scripts/trial-env.sh` nor the tests change), and a
+`facts/<domain>.md` that ties it to the rest: the Airflow DAG whose task pods
+run in `prod/web`, the Datadog monitor on `service:api` that alerted when the
+worker began crash-looping.
 
 Names stay `contoso`/`fabrikam`-style placeholders: the repository is public.

@@ -145,12 +145,9 @@ mod tests {
             }
         }
         let repo = Path::new(REPO);
-        let mut found = vec![
-            repo.join("README.md"),
-            repo.join("AGENTS.md"),
-            repo.join("fixtures/world/README.md"),
-        ];
+        let mut found = vec![repo.join("README.md"), repo.join("AGENTS.md")];
         walk(&repo.join("docs"), &mut found);
+        walk(&repo.join("fixtures/world"), &mut found);
         found
     }
 

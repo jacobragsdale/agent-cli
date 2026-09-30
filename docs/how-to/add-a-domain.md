@@ -192,14 +192,16 @@ Trials need the new service to describe the same company as the rest:
 1. Add `fixtures/world/http/<name>.json` with the exchanges for the service's
    host (see the world's README for the format).
 2. Add the section to `fixtures/world/config.toml`.
-3. For a credential, export a stand-in `*_env` variable in
-   `scripts/trial-env.sh`, and set the same variable in `agent_cli()` in
-   `crates/cli/tests/world.rs`.
-4. Add rows to the facts table in `fixtures/world/README.md` that tie the
-   new service to the rest, such as the Airflow DAG whose task pods run in
-   `prod/web`, or the Datadog monitor that alerted when the api rolled out.
-5. Add a test to `crates/cli/tests/world.rs` that walks one cross-domain
-   chain end to end.
+3. For a credential, a stand-in `*_cmd` in that section, such as
+   `token_cmd = "echo stand-in"`; `scripts/trial-env.sh` and the tests need
+   no change.
+4. Add `fixtures/world/facts/<name>.md`, the facts that tie the new service
+   to the rest, such as the Airflow DAG whose task pods run in `prod/web`, or
+   the Datadog monitor that alerted when the api rolled out, and link it from
+   the world's README.
+5. Add `crates/cli/tests/world_<name>.rs` for the commands a trial is likely
+   to run, and a test to `crates/cli/tests/world_cross.rs` that walks one
+   cross-domain chain end to end.
 
 ## 9. Keep the overview under 1 KB
 
