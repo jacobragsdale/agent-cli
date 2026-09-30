@@ -1,15 +1,15 @@
 # Source files allowed past 600 lines, each with the count it may not grow past
 # (no_source_file_is_too_long in crates/cli/src/main.rs). The list only
 # shrinks: split a file, then drop its line. No command file belongs here.
-crates/ado/src/client.rs 1123
-crates/ado/src/markdown.rs 999
-crates/airflow/src/client.rs 1048
-crates/core/src/discover.rs 749
-crates/core/src/dispatch.rs 669
-crates/core/src/http.rs 939
-crates/core/src/registry.rs 766
-crates/dd/src/client.rs 860
-crates/sql/src/catalog.rs 800
-crates/sql/src/mssql.rs 631
-crates/sql/src/oracle.rs 708
-crates/sql/src/split.rs 620
+crates/ado/src/client.rs 1123  # the one door to Azure DevOps and the lookups every resource shares (333 lines are tests)
+crates/ado/src/markdown.rs 999  # one tokenizer and its two directions, HTML to Markdown and back (154 lines are tests)
+crates/airflow/src/client.rs 1048  # the one door to Airflow, its config and the id parser every resource shares (171 lines are tests)
+crates/core/src/discover.rs 749  # every text an agent reads to find a command, kept together so they read alike (128 lines are tests)
+crates/core/src/dispatch.rs 669  # argv to output in one place: the path every command takes (75 lines are tests)
+crates/core/src/http.rs 939  # the request type, the transport seam, and refusals in each service's words (318 lines are tests)
+crates/core/src/registry.rs 766  # the command type, command! and every invariant check_registry holds (98 lines are tests)
+crates/dd/src/client.rs 860  # the one door to Datadog, its credentials, and the tag and window helpers (106 lines are tests)
+crates/sql/src/catalog.rs 800  # the catalog SQL for both vendors that the object and schema commands share (144 lines are tests)
+crates/sql/src/mssql.rs 631  # the SQL Server driver: one connection, its deadline races, value conversion (134 lines are tests)
+crates/sql/src/oracle.rs 708  # the Oracle driver: the client load, blocking calls under the deadline (151 lines are tests)
+crates/sql/src/split.rs 620  # one lexer that cuts scripts for both servers and classifies each statement (200 lines are tests)

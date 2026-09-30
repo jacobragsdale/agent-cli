@@ -308,6 +308,7 @@ mod tests {
             agent_cli_core::check_registry(DOMAINS),
             Vec::<String>::new()
         );
+        assert_eq!(agent_cli_core::check_layout(DOMAINS), Vec::<String>::new());
     }
 
     /// Each crate keeps its own labeled queries in `crates/<crate>/search.toml`,
