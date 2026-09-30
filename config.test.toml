@@ -1,0 +1,25 @@
+# The two local containers scripts/db-up.sh starts (compose.yaml), for the
+# integration tests and dev loops. Committed on purpose: these credentials are
+# throwaway, localhost only, and open nothing but a disposable database.
+
+[sql]
+oracle_client_dir = "~/.local/opt/oracle/instantclient_23_26"
+
+[[sql.connection]]
+name = "local-mssql"
+kind = "mssql"
+host = "localhost"
+port = 1433
+database = "bench"
+user = "sa"
+password = "Bench_Pass1!"
+trust_cert = true
+
+[[sql.connection]]
+name = "local-oracle"
+kind = "oracle"
+host = "localhost"
+port = 1521
+service = "FREEPDB1"
+user = "bench"
+password = "bench"

@@ -251,8 +251,10 @@ and `--help` on any path.
   - `[ado]` org, project, code_project, team
   - `[azure]` subscriptions, vaults, registries, parallel
   - `[[k8s.scope]]` name, context, namespaces
-  - `[[sql.connection]]` … `password_env` / `password_cmd`, read_only
-  - `[oracle]` client_lib_dir
+  - `[sql]` oracle_client_dir, and `[[sql.connection]]` name, kind, host,
+    port, database / service, user, `password` / `password_env` /
+    `password_cmd`, trust_cert, encrypt, read_only (inside `[sql]`, so a
+    broken Oracle setting can only break sql)
 - **Config loading:**
   - Each domain parses only its own section, lazily. A bad `[sql]` section
     can't break `ado` (in ticket-tui and sql-bench, any config error kills

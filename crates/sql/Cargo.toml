@@ -1,0 +1,29 @@
+[package]
+name = "agent-cli-sql"
+description = "The sql domain of agent-cli: queries, objects and schemas on SQL Server and Oracle"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+agent-cli-core.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+futures-util.workspace = true
+oracle.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tiberius.workspace = true
+time.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

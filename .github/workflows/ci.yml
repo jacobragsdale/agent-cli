@@ -27,3 +27,43 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
       - run: cargo build --release --workspace
+
+  # The sql integration tests against a real SQL Server. Oracle stays local
+  # (scripts/db-up.sh): its tests also need Instant Client on the runner,
+  # downloaded from Oracle and rpath-patched, plus libaio, and its container
+  # takes a minute or two to start; the Oracle code path the runners can check
+  # without it (no client installed) is covered by `cargo test` above.
+  mssql:
+    name: SQL Server integration
+    runs-on: ubuntu-latest
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_PID: Developer
+          # Throwaway: this job's own container, the same as config.test.toml.
+          MSSQL_SA_PASSWORD: "Bench_Pass1!"
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -b -S localhost -U sa -P 'Bench_Pass1!' -Q 'select 1'"
+          --health-interval 5s
+          --health-timeout 10s
+          --health-retries 60
+          --health-start-period 20s
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Seed
+        run: |
+          docker cp scripts/seed/mssql.sql ${{ job.services.mssql.id }}:/tmp/seed.sql
+          docker exec ${{ job.services.mssql.id }} /opt/mssql-tools18/bin/sqlcmd \
+            -C -b -S localhost -U sa -P 'Bench_Pass1!' -i /tmp/seed.sql
+      - name: SQL Server tests
+        env:
+          AGENT_CLI_TEST_DBS: "1"
+        run: |
+          cargo test -p agent-cli-sql --test dbs mssql
+          cargo test -p agent-cli --test sql mssql

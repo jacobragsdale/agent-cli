@@ -7,3 +7,77 @@
 #
 # CI fails when search puts the expected command first in fewer than 80% of
 # queries, or in the top five in fewer than 95%.
+
+# ---------- sql ----------
+
+[[query]]
+text = "run a select against the reporting database"
+expect = "sql query run"
+
+[[query]]
+text = "execute a SQL statement on SQL Server"
+expect = "sql query run"
+
+[[query]]
+text = "insert a row into an Oracle table"
+expect = "sql query run"
+
+[[query]]
+text = "delete old rows with a sql script"
+expect = "sql query run"
+
+[[query]]
+text = "time how long a query takes"
+expect = "sql query bench"
+
+[[query]]
+text = "benchmark a slow SQL query"
+expect = "sql query bench"
+
+[[query]]
+text = "measure query latency over several runs"
+expect = "sql query bench"
+
+[[query]]
+text = "find tables whose name contains customer"
+expect = "sql object list"
+
+[[query]]
+text = "list the stored procedures in a database"
+expect = "sql object list"
+
+[[query]]
+text = "which views are in the bench schema"
+expect = "sql object list"
+
+[[query]]
+text = "show the source of a stored procedure"
+expect = "sql object get"
+
+[[query]]
+text = "what columns does the customers table have"
+expect = "sql object get"
+
+[[query]]
+text = "get the DDL of a table"
+expect = "sql object get"
+
+[[query]]
+text = "show the definition of a database view"
+expect = "sql object get"
+
+[[query]]
+text = "list the schemas in a database"
+expect = "sql schema list"
+
+[[query]]
+text = "which owners exist on the Oracle database"
+expect = "sql schema list"
+
+[[query]]
+text = "which databases are configured"
+expect = "sql connection list"
+
+[[query]]
+text = "list my database connections"
+expect = "sql connection list"

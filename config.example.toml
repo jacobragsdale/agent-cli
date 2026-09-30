@@ -25,15 +25,34 @@
 # context = "aks-contoso-dev"
 # namespaces = ["web", "jobs"]
 
+# [sql]
+# Where Oracle's Instant Client is, for Oracle connections only. Precedence:
+# AGENT_CLI_SQL_ORACLE_CLIENT_DIR, then this key, then the system search
+# (LD_LIBRARY_PATH, the library's run path, $ORACLE_HOME). A zip install on
+# Linux also needs libaio, and its run path set (patchelf --set-rpath '$ORIGIN')
+# or LD_LIBRARY_PATH. A leading ~/ is your home directory.
+# oracle_client_dir = "~/.local/opt/oracle/instantclient_23_26"
+#
 # [[sql.connection]]
-# name = "local-mssql"
-# kind = "mssql"
-# host = "localhost"
-# port = 1433
-# database = "contoso"
-# user = "app"
-# password_env = "CONTOSO_DB_PASSWORD"   # or password_cmd = "pass show contoso/db"
-# read_only = true
-
-# [oracle]
-# client_lib_dir = "/opt/oracle/instantclient"
+# name = "reporting"                     # what --conn takes
+# kind = "mssql"                         # or "oracle"
+# host = "sql.contoso.example"
+# port = 1433                            # default 1433 (mssql), 1521 (oracle)
+# database = "contoso"                   # mssql only
+# user = "app_reader"
+# password_env = "CONTOSO_DB_PASSWORD"   # or password_cmd = "pass show contoso/db",
+#                                        # or password = "..." (throwaway only)
+# trust_cert = false                     # mssql only: accept a self-signed certificate
+# encrypt = true                         # mssql only
+# read_only = true                       # refuse every write on this connection
+#
+# [[sql.connection]]
+# name = "ledger"
+# kind = "oracle"
+# host = "ora.contoso.example"
+# service = "LEDGER"                     # oracle only: the service name
+# user = "app_reader"
+# password_cmd = "pass show contoso/ledger"
+#
+# read_only is a second line of defence; the real guard is a login that can
+# only read.

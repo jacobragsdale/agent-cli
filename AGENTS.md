@@ -113,3 +113,7 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
+
+The sql integration tests need the two compose databases: `scripts/db-up.sh`,
+then `AGENT_CLI_TEST_DBS=1 cargo test --workspace`. Without the variable they
+skip.

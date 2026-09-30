@@ -14,6 +14,11 @@ path = "src/main.rs"
 
 [dependencies]
 agent-cli-core.workspace = true
+agent-cli-sql.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true
 
 [lints]
 workspace = true
