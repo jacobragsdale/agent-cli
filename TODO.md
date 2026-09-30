@@ -48,7 +48,7 @@
 - [x] Search says "(no command matches every word; closest:)" for most natural questions ("why did the build fail"); "show image tags" ranks `acr manifest get` over `acr tag list`
 - [ ] Cross-domain items not built yet: `ado run list --commit` / `pr list --commit` (the tag trace made them optional), a generic `ids_round_trip_to_get` test helper and a `handoff.rs` table (the world test covers the deploy trace), `next:` notes, time arithmetic (`T-2h`), fold `k8s context list` into `aks`/`k8s cluster`
 - [ ] sql `object list` `modified` is the server's local time with no offset; UTC needs the server's zone
-- [ ] The fixture world's `AGENT_CLI_NOW` lives in `scripts/trial-env.sh` and `crates/cli/tests/world.rs`; move it into the world directory if a second world appears
+- [ ] The fixture world's `AGENT_CLI_NOW` lives in `scripts/trial-env.sh` and `crates/cli/tests/common/world.rs`; move it into the world directory if a second world appears
 
 ## Parity with the old CLIs (the audit of ticket-tui, az-tui and sql-bench)
 
@@ -67,3 +67,16 @@
 - [ ] Next round: three runs per cell, tokens and wall time per run, compared task by task with this baseline
 - [ ] The one-line global CLAUDE.md note that agent-cli exists (PLAN phase 4; the README gives the line), once the live runs pass
 - [ ] Listings say "1 commands" (`agent-cli ado pipeline`): pluralize the count
+
+## Small units of work (REFACTOR_PLAN.md; docs/trials/dev-after-2026-09-30.md)
+
+- [x] 0. A development-trial baseline: `scripts/context-stats.sh`, three tasks by fresh Sonnet agents
+- [x] 1. Each domain owns its files: search queries, reference page, world tests, world facts, stand-in credentials in the world's config
+- [x] 2. Crate cards (the core card tested), a 7 KB root `AGENTS.md` with context rules, `scripts/check.sh`, `scripts/new-command.sh`, the `agent-cli-dev` skill, read-denied generated files
+- [x] 3. One file per command in every crate, held by `check_layout`; no source file over 600 lines but the shared modules in `scripts/large-files.txt`
+- [x] 4. The trials again: all runs pass the checks, none reads history or generated files, tool calls down a quarter
+- [ ] Tokens fell 29% on one run per task but 18% on two, short of the 25% target: each call carries about 27k tokens of fixed context, so calls matter more than reading. Next round: three runs per task, and cut calls (a scaffold that fills in more of a routine command; a check that builds once for both feature sets)
+- [ ] D2 (a k8s flag) still edits `scripts/fake/kubectl`, whose built-in cluster the k8s tests use: move those objects into a file under `crates/k8s/` that the fake reads
+- [ ] The skill's `paths` hide it until a matching file is touched, so agents found it through `AGENTS.md` and read it with `cat`; drop `paths` if it should be offered as a skill from the first turn
+- [ ] dd's downtime rows take monitor's `MESSAGE_MAX` from `monitor/mod.rs`, the one place a resource reads another's module; move it crate-level if downtimes stop being monitor mutes
+

@@ -123,6 +123,43 @@ match loosely, because this round's eleven fixture misses were all agents
 choosing their own windows and limits, and an agent told "fixtures: no
 recorded answer" learns about the harness instead of the service.
 
+## Built for small units of work
+
+The registry is meant to reach 1,000 commands, added and changed mostly by
+agents, one command at a time. The repository is shaped so that one command
+costs an agent a few small files, whatever the registry's size.
+
+- **One file per command.** `ado approval list` is
+  `crates/ado/src/approval/list.rs`: its args, rows, handler, `command!` and
+  tests. What a resource's verbs share is in its `mod.rs`, what several
+  resources share in a crate-level module, and no command file imports
+  another. `check_layout` holds every command to its path, and no source file
+  passes 600 lines except the shared modules in `scripts/large-files.txt`,
+  a list that only shrinks.
+- **Each domain owns its files.** Its search queries (`search.toml`), its
+  reference page, its world tests and its world facts live apart from the
+  other domains', so a routine new command touches its crate, its fixtures
+  and facts, its world test and its reference page, and two domains built in
+  parallel do not collide.
+- **Context in layers.** The root `AGENTS.md` (7 KB) holds the rules and
+  says what not to read; each crate has a card of at most 3 KB that loads
+  when an agent works there; the core card names every public export (a
+  test holds it to `lib.rs`); the `agent-cli-dev` skill routes each kind of
+  change to what to read, run and check; `.claude/settings.json` denies
+  reading the generated reference. `scripts/new-command.sh` writes a command
+  that compiles and fails until filled in, and `scripts/check.sh` runs the
+  checks for one crate or all of them.
+
+Fresh agents did three development tasks before and after this layout
+([baseline](../trials/dev-baseline-2026-09-30.md),
+[after](../trials/dev-after-2026-09-30.md)). After it they read their
+crate's card and one or two command files instead of a 19 KB how-to and a
+1,000-line resource file, made a quarter fewer tool calls (median 12 to 8)
+and touched fewer files outside the crate (median 2 to 1). Tokens fell 29%
+on one run per task but 18% on two: each model call carries about 27,000
+tokens of fixed context, so what an agent no longer reads matters less than
+how many calls it makes.
+
 ## What was left out
 
 Some choices are absences. There are no `--json` or `--format` flags: output

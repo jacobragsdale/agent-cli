@@ -1,3 +1,5 @@
+> Done on 2026-09-30; results in docs/trials/dev-after-2026-09-30.md. Two criteria were not met: D2 still edits scripts/fake/kubectl, and tokens fell 18% on two runs per task (29% on the one run the plan specifies).
+
 # Refactor plan: small units of work for agents
 
 This plan restructures agent-cli so an agent (or a person) adding or changing a
@@ -88,14 +90,14 @@ The same trial method as `docs/how-to/run-agent-trials.md`, applied to
 
 ### 0.1 A stats script
 
-- [ ] Add `scripts/context-stats.sh`. It prints:
+- [x] Add `scripts/context-stats.sh`. It prints:
   - the 15 largest `.rs` files under `crates/*/src` (lines)
   - lines per crate
   - for the last N commits (default 20), how many files each touched outside
     the domain crate its subject names
 
   Plain shell; `git` and `wc` only.
-- [ ] Run it and paste the output into `docs/trials/dev-baseline-2026-09-30.md`.
+- [x] Run it and paste the output into `docs/trials/dev-baseline-2026-09-30.md`.
 
 ### 0.2 Three development tasks, run by fresh agents
 
@@ -124,11 +126,11 @@ For each run, record:
   are outside the task's crate
 - `git diff --shortstat`
 
-- [ ] Run D1–D3 and record every row in
+- [x] Run D1–D3 and record every row in
   `docs/trials/dev-baseline-2026-09-30.md`: the table plus a short note on
   where each agent spent its reading, taken from its report.
-- [ ] Delete the trial worktrees and branches.
-- [ ] Commit the stats script and the baseline doc.
+- [x] Delete the trial worktrees and branches.
+- [x] Commit the stats script and the baseline doc.
 
 ## Phase 1: each domain owns its files
 
@@ -137,49 +139,49 @@ domains. Do the steps in order and run the checks after each.
 
 ### 1.1 Workspace members by glob
 
-- [ ] `Cargo.toml`: `members = ["crates/*"]`.
-- [ ] **Verify:** `cargo metadata --no-deps --format-version 1 | grep -o
+- [x] `Cargo.toml`: `members = ["crates/*"]`.
+- [x] **Verify:** `cargo metadata --no-deps --format-version 1 | grep -o
   '"name":"agent-cli[^"]*"' | sort -u` lists all 8 crates.
 
 ### 1.2 Search queries per crate
 
-- [ ] **Split the file:** move `crates/cli/tests/search.toml` into
+- [x] **Split the file:** move `crates/cli/tests/search.toml` into
   `crates/<crate>/search.toml`, one per crate. The azure crate's file holds
   kv, acr and aks. A query that tests a cross-domain reading (see
   `SHARED_WORDS` in `crates/core/src/registry.rs`) goes in the crate of the
   command it expects.
-- [ ] **Read them at runtime:** `search_finds_the_labeled_command` in
+- [x] **Read them at runtime:** `search_finds_the_labeled_command` in
   `crates/cli/src/main.rs` walks `crates/*/search.toml` with `std::fs`
   (sorted, via the repo root it already uses as `REPO`) and concatenates
   them. A new crate's file is then picked up with no edit here.
-- [ ] **Verify:**
+- [x] **Verify:**
   - The gate reports the same counts (253/253 top-1 and top-5), and the total
     query count is unchanged.
   - `crates/cli/tests/search.toml` is gone.
-- [ ] Update the "Adding a command" step in `AGENTS.md` and
+- [x] Update the "Adding a command" step in `AGENTS.md` and
   `docs/how-to/add-a-command.md` to name `crates/<crate>/search.toml`.
 
 ### 1.3 The generated reference per domain
 
-- [ ] **Change the generator.** It lives in `crates/cli/src/main.rs`
+- [x] **Change the generator.** It lives in `crates/cli/src/main.rs`
   (`reference()`, `the_command_reference_matches_the_registry`). It now writes
   `docs/reference/<domain>.md` for each domain, plus `docs/reference/README.md`:
   an index with the one-paragraph header, the global flags and exit codes, and
   one row per domain (name, summary, command count, link).
-- [ ] **Keep the regeneration command:** `UPDATE_DOCS=1 cargo test -p
+- [x] **Keep the regeneration command:** `UPDATE_DOCS=1 cargo test -p
   agent-cli reference` still regenerates everything. The staleness test covers
   every file, and fails on a stray `docs/reference/*.md` that no domain
   produces.
-- [ ] **Delete** `docs/reference/commands.md` and fix every link to it
+- [x] **Delete** `docs/reference/commands.md` and fix every link to it
   (`grep -rn "reference/commands.md" docs README.md AGENTS.md`).
-- [ ] **Verify:**
+- [x] **Verify:**
   - Every `## <domain>` section of the old file equals the body of its new
     file (spot-check two domains with `diff`).
   - `every_command_line_in_the_docs_parses` passes.
 
 ### 1.4 World tests per domain
 
-- [ ] **Split the file:** `crates/cli/tests/world.rs` (543 lines, all domains)
+- [x] **Split the file:** `crates/cli/tests/world.rs` (543 lines, all domains)
   becomes:
   - `crates/cli/tests/common/world.rs`: the `agent_cli`, `ok` and env helpers.
   - one `crates/cli/tests/world_<domain>.rs` per domain, holding that
@@ -190,45 +192,45 @@ domains. Do the steps in order and run the checks after each.
     `last_nights_failed_dag_run_leads_to_its_exception_and_its_pod`,
     `datadog_shows_the_alert_at_the_deploy_the_errors_and_the_pod_to_hop_to`),
     and the miss-message test.
-- [ ] **Verify:** `cargo test -p agent-cli --features fixtures` runs the same
+- [x] **Verify:** `cargo test -p agent-cli --features fixtures` runs the same
   number of world tests, and each command line the old file ran is still run
   exactly once. Compare the lists: `grep -c 'ok(&\[' ` before and after,
   summed.
 
 ### 1.5 Stand-in credentials live in the world, not the script
 
-- [ ] **Move the credentials.** `scripts/trial-env.sh` exports
+- [x] **Move the credentials.** `scripts/trial-env.sh` exports
   `AIRFLOW_PROD_PASSWORD` and `DD_ACCESS_TOKEN`, and `world.rs` sets them.
   Move them into `fixtures/world/config.toml` as `password_cmd = "echo
   stand-in"` (airflow) and `token_cmd = "echo fixture-dd-token"` (dd).
   Credentials already accept `*_cmd`. Remove the exports and the `.env(...)`
   lines.
-- [ ] **Verify:** a new domain now needs no edit to `scripts/trial-env.sh`.
+- [x] **Verify:** a new domain now needs no edit to `scripts/trial-env.sh`.
   Run `eval "$(scripts/trial-env.sh)"`, then `target/debug/agent-cli airflow
   dag list` and `agent-cli dd monitor list` (built with fixtures). Both
   answer.
 
 ### 1.6 World facts per domain
 
-- [ ] **Split the table:** the "What is true here" table in
+- [x] **Split the table:** the "What is true here" table in
   `fixtures/world/README.md` moves to `fixtures/world/facts/<domain>.md`, one
   per domain. The README keeps how the world works, how to extend it, and a
   list of links to the facts files.
-- [ ] Update `docs/how-to/add-a-domain.md` and the world README's "Extend it"
+- [x] Update `docs/how-to/add-a-domain.md` and the world README's "Extend it"
   steps.
 
 ### 1.7 Check Phase 1
 
-- [ ] All five checks pass.
-- [ ] **Overview and help unchanged:** `target/debug/agent-cli` is
+- [x] All five checks pass.
+- [x] **Overview and help unchanged:** `target/debug/agent-cli` is
   byte-identical to before Phase 1. So is `agent-cli ado pr vote --help`
   (keep a copy from before the phase and `diff` them).
-- [ ] **Walk it through:** confirm on paper that adding a command to `dd`
+- [x] **Walk it through:** confirm on paper that adding a command to `dd`
   needs only `crates/dd/**`, `fixtures/world/http/dd.json`,
   `fixtures/world/facts/dd.md`, `crates/cli/tests/world_dd.rs` (only when it
   adds a world check) and `docs/reference/dd.md`. Write that list into
   `docs/how-to/add-a-command.md`.
-- [ ] Commit each step separately; the subjects say what moved.
+- [x] Commit each step separately; the subjects say what moved.
 
 **What stays shared, on purpose:**
 - `crates/cli/src/main.rs` `DOMAINS`: one line per domain.
@@ -244,11 +246,11 @@ Every crate gets a nested card. Claude Code loads a nested `CLAUDE.md` only
 when it reads files in that directory. Codex and other agents read nested
 `AGENTS.md`.
 
-- [ ] **Card files:** for each crate (`ado`, `azure`, `k8s`, `sql`,
+- [x] **Card files:** for each crate (`ado`, `azure`, `k8s`, `sql`,
   `airflow`, `dd`, `core`, `cli`), add `crates/<crate>/AGENTS.md` (at most
   60 lines / 3 KB) and `crates/<crate>/CLAUDE.md` containing exactly
   `@AGENTS.md`.
-- [ ] **Domain card sections** (azure covers kv, acr and aks):
+- [x] **Domain card sections** (azure covers kv, acr and aks):
   1. **What it is:** one line, plus the service's API docs link.
   2. **Config:** the section and keys, the credential keys (`KEY`, `KEY_env`,
      `KEY_cmd`), and hosts a token may go to.
@@ -266,23 +268,23 @@ when it reads files in that directory. Codex and other agents read nested
      7-day `--for` cap. For sql: the classifier, `panic=unwind`, Oracle's
      `dlopen`. For k8s: the fake kubectl, `pick()` for scopes.
   7. **Never needed:** files an agent working here can skip.
-- [ ] **The core card** (`crates/core/AGENTS.md`) is the core API cheat
+- [x] **The core card** (`crates/core/AGENTS.md`) is the core API cheat
   sheet: every `pub use` in `crates/core/src/lib.rs` with one line on when to
   use it, grouped (registry, Ctx, HTTP, errors, time, credentials, testing).
   Add a test in `crates/cli/src/main.rs`,
   `the_core_card_names_every_public_export`, that parses the `pub use` names
   from `crates/core/src/lib.rs` and fails if one is missing from
   `crates/core/AGENTS.md`.
-- [ ] **The cli card** says what the gate tests are, how the reference is
+- [x] **The cli card** says what the gate tests are, how the reference is
   regenerated, and where the world tests live.
-- [ ] **Verify:** `wc -c crates/*/AGENTS.md` shows every card ≤ 3 KB, and the
+- [x] **Verify:** `wc -c crates/*/AGENTS.md` shows every card ≤ 3 KB, and the
   new test passes. Have a fresh subagent read only `crates/dd/AGENTS.md` and
   the core card, then state where a new dd command goes and which helper
   sends a read-only POST. Its answer must be right.
 
 ### 2.2 Root context rules
 
-- [ ] **Trim `AGENTS.md`** to at most 8 KB: the rules, the conventions across
+- [x] **Trim `AGENTS.md`** to at most 8 KB: the rules, the conventions across
   domains, and a new **Context rules** section:
   - learn commands from the binary (`search`, `--help`), not from source
   - don't read `PLAN.md`, `docs/plans/`, `docs/trials/` or
@@ -292,18 +294,18 @@ when it reads files in that directory. Codex and other agents read nested
   - run `scripts/check.sh <crate>` while working and the full checks before
     committing
   - the crate cards exist and load when you work in a crate
-- [ ] **Mark the history docs.** `PLAN.md` and `docs/plans/*.md` get a first
+- [x] **Mark the history docs.** `PLAN.md` and `docs/plans/*.md` get a first
   line: `> History: the original plan (2026-09-29). For the current design
   read docs/explanation/design.md; for current work read TODO.md.` Nothing
   else in them changes.
-- [ ] **Verify:** `wc -c AGENTS.md` ≤ 8192, and no file other than docs
+- [x] **Verify:** `wc -c AGENTS.md` ≤ 8192, and no file other than docs
   history links to `PLAN.md` as current guidance (`grep -rn PLAN.md --include=*.md .`).
 
 ### 2.3 Scripts
 
 Plain shell; no xtask crate.
 
-- [ ] **`scripts/check.sh [crate…] [--all]`.** For the named crates it runs:
+- [x] **`scripts/check.sh [crate…] [--all]`.** For the named crates it runs:
   - `cargo fmt --all -- --check`
   - `cargo clippy -p agent-cli-<crate> --all-targets -- -D warnings`
   - `cargo test -q -p agent-cli-<crate>`
@@ -312,7 +314,7 @@ Plain shell; no xtask crate.
   It prints only failures and a final line such as `check: ado ok (5 steps)`.
   `--all` runs exactly CI's five checks. It exits non-zero on the first
   failure.
-- [ ] **`scripts/new-command.sh <domain> <resource> <verb> --effect
+- [x] **`scripts/new-command.sh <domain> <resource> <verb> --effect
   read|write|destructive|reveal|varies`.** It writes a new command from
   `scripts/templates/command.rs`, where the path follows Phase 3's layout:
   - `crates/<crate>/src/<resource>/<verb>.rs`
@@ -334,7 +336,7 @@ Plain shell; no xtask crate.
   The generated file **compiles**, and its tests **fail** until they're
   filled in. Unknown domains or verbs exit 2 with the valid choices, and it
   refuses to overwrite an existing file.
-- [ ] **Verify:**
+- [x] **Verify:**
   - `scripts/new-command.sh dd monitor mute --effect destructive` (or any
     unused path) produces a tree that `cargo build` accepts.
   - `cargo test -p agent-cli-dd` fails only in the new file's tests.
@@ -350,7 +352,7 @@ Skill location follows the user's convention (`.agents/skills/<name>/`, as in
 symlink. Before writing, load the user's skill-authoring standards at
 `~/.claude/skills/jacob-create-skill/SKILL.md` and follow them.
 
-- [ ] **`.agents/skills/agent-cli-dev/SKILL.md`** (≤ 100 lines):
+- [x] **`.agents/skills/agent-cli-dev/SKILL.md`** (≤ 100 lines):
   - **Frontmatter:** `name`, a trigger-rich `description` (add or change an
     agent-cli command, domain, search query, fixture, or run trials), and
     `paths: ["crates/**", "fixtures/**", "scripts/**", "docs/how-to/**"]`.
@@ -365,13 +367,13 @@ symlink. Before writing, load the user's skill-authoring standards at
     - agent trial
   - **Reuse, don't copy:** link to `docs/how-to/*.md` sections instead of
     duplicating them.
-- [ ] **`references/`** only for what the how-tos don't cover: e.g. a
+- [x] **`references/`** only for what the how-tos don't cover: e.g. a
   `checklist.md` with the pre-commit checklist, and `trials.md` with the
   development-trial prompt and the table columns from Phase 0.
-- [ ] **Link it for Claude Code:** commit the symlink `.claude/skills/agent-cli-dev ->
+- [x] **Link it for Claude Code:** commit the symlink `.claude/skills/agent-cli-dev ->
   ../../.agents/skills/agent-cli-dev`. In `.gitignore`, replace `/.claude/`
   with `/.claude/*`, `!/.claude/skills/` and `!/.claude/settings.json`.
-- [ ] **Verify:**
+- [x] **Verify:**
   - `git ls-files .claude .agents` shows the skill, the symlink and nothing
     else from `.claude/`.
   - In a fresh Claude Code session in the repo, the skill is listed.
@@ -379,22 +381,22 @@ symlink. Before writing, load the user's skill-authoring standards at
 
 ### 2.5 Project settings
 
-- [ ] **Deny reads of generated files:** `.claude/settings.json` (committed)
+- [x] **Deny reads of generated files:** `.claude/settings.json` (committed)
   denies `Read` of `docs/reference/**`, `Cargo.lock` and `target/**`. Check
   the permission rule syntax in Claude Code's settings docs.
-- [ ] **Code navigation:** check Claude Code's docs for the rust-analyzer
+- [x] **Code navigation:** check Claude Code's docs for the rust-analyzer
   code-intelligence (LSP) plugin.
   - **If it's a per-user install:** add one line to the skill ("with the
     rust-analyzer plugin, jump to definitions instead of reading whole
     files") and don't commit user config.
   - **If a project setting enables it:** commit that setting.
-- [ ] **Verify:** in a fresh session, reading `docs/reference/ado.md` is
+- [x] **Verify:** in a fresh session, reading `docs/reference/ado.md` is
   denied. `cargo test` is unaffected, since tests read through `std::fs`.
 
 ### 2.6 Check Phase 2
 
-- [ ] All five checks pass, including the new core-card test.
-- [ ] `git status` is clean after `UPDATE_DOCS=1 cargo test -p agent-cli
+- [x] All five checks pass, including the new core-card test.
+- [x] `git status` is clean after `UPDATE_DOCS=1 cargo test -p agent-cli
   reference`.
 
 ## Phase 3: one file per command
@@ -433,15 +435,15 @@ crates/azure/src/
 
 ### 3.2 Make the layout checkable (core, before the split)
 
-- [ ] **Record the source file:** add `source: &'static str` to
+- [x] **Record the source file:** add `source: &'static str` to
   `agent_cli_core::Command`, and have `command!` fill it with `file!()`.
   Nothing prints it.
-- [ ] **Invariant:** `check_registry` checks that `source` ends with
+- [x] **Invariant:** `check_registry` checks that `source` ends with
   `<resource>/<verb>.rs` (or `<domain>/<resource>/<verb>.rs`), hyphens →
   underscores. Behind a flag at first:
   `AGENT_CLI_CHECK_LAYOUT=1` or a separate `check_layout()` the gate calls
   only once Phase 3 is complete. Turn it on permanently in 3.5.
-- [ ] **File-size test:** `no_source_file_is_too_long` in
+- [x] **File-size test:** `no_source_file_is_too_long` in
   `crates/cli/src/main.rs` walks `crates/*/src/**/*.rs` and fails any file
   over 600 lines. The exception is paths listed in `scripts/large-files.txt`,
   each with its current line count; the test also fails if a listed file
@@ -451,13 +453,13 @@ crates/azure/src/
 
 ### 3.3 The split, crate by crate
 
-- [ ] **Before you start, record for each crate:**
+- [x] **Before you start, record for each crate:**
   - `cargo test -q -p agent-cli-<crate> -- --list 2>/dev/null | grep -c ':
     test$'` (the test count)
   - `target/debug/agent-cli <domain> <resource> <verb> --help` for every
     command, into a before-directory (a loop over `agent-cli <domain>`
     listings)
-- [ ] **Pilot on `sql`** (6 commands, the smallest) in one worktree:
+- [x] **Pilot on `sql`** (6 commands, the smallest) in one worktree:
   - Move each command's const, args, rows, handler and tests into its own
     file.
   - Move shared code as the rules say.
@@ -472,7 +474,7 @@ crates/azure/src/
     compose databases
 
   **Stop and review the pilot's diff before continuing.**
-- [ ] **Then the other five crates,** one agent per crate in its own worktree,
+- [x] **Then the other five crates,** one agent per crate in its own worktree,
   at most two at a time for memory: `k8s`, `azure`, `airflow`, `dd`, `ado`
   (largest last). Give each agent:
   - this section
@@ -481,74 +483,74 @@ crates/azure/src/
 
   Each crate has to meet the same checks as the pilot: identical test count,
   byte-identical `--help`, identical gate numbers.
-- [ ] **Merge each crate branch** into `main` as it lands. Because Phase 1
+- [x] **Merge each crate branch** into `main` as it lands. Because Phase 1
   removed the shared files, a merge should touch only `crates/<crate>/**`,
   `scripts/large-files.txt` and `Cargo.lock`. Record any other conflict in
   the Phase 4 notes as a finding.
 
 ### 3.4 Update the tools and docs to the layout
 
-- [ ] **Scaffold:** `scripts/new-command.sh` now writes into the new layout
+- [x] **Scaffold:** `scripts/new-command.sh` now writes into the new layout
   (it was written against it in 2.3; re-run its verification).
-- [ ] **How-tos:** `docs/how-to/add-a-command.md` walks through the new
+- [x] **How-tos:** `docs/how-to/add-a-command.md` walks through the new
   layout. Its worked example (`ado approval list` / `approve`) points at
   `crates/ado/src/approval/list.rs` and `approve.rs`.
   `every_command_line_in_the_docs_parses` still passes.
-- [ ] **Cards:** update each crate card's "Where things are" section.
+- [x] **Cards:** update each crate card's "Where things are" section.
 
 ### 3.5 Check Phase 3
 
-- [ ] Turn the layout invariant on permanently. `check_registry` passes.
-- [ ] `no_source_file_is_too_long` passes. `scripts/large-files.txt` lists
+- [x] Turn the layout invariant on permanently. `check_registry` passes.
+- [x] `no_source_file_is_too_long` passes. `scripts/large-files.txt` lists
   only non-command modules (e.g. `core/http.rs`, `ado/markdown.rs`,
   `sql/catalog.rs`), and each has a reason in a comment.
-- [ ] Every domain `lib.rs` is at most about 120 lines.
-- [ ] All five checks pass. The overview and every `--help` are
+- [x] Every domain `lib.rs` is at most about 120 lines.
+- [x] All five checks pass. The overview and every `--help` are
   byte-identical to Phase 0's. `docs/reference/*` needs no regeneration.
 
 ## Phase 4: measure again and write it down
 
-- [ ] **Re-run D1–D3** exactly as in 0.2: same prompt, same models, fresh
+- [x] **Re-run D1–D3** exactly as in 0.2: same prompt, same models, fresh
   worktrees from the new `main`. Record the same columns in
   `docs/trials/dev-after-2026-MM-DD.md`, next to the baseline.
-- [ ] **Success criteria.** If a criterion fails, say so plainly in the doc,
+- [x] **Success criteria.** If a criterion fails, say so plainly in the doc,
   and add a TODO with the likely cause.
-  - [ ] Every run passes all five checks. There were no baseline failures
+  - [x] Every run passes all five checks. There were no baseline failures
     to fix, so any failure is a regression.
   - [ ] Files changed outside the task's crate are limited to the task's
     fixtures, facts, world test and reference page.
   - [ ] Median tokens per task are at least 25% below the baseline.
-  - [ ] No run reads `PLAN.md`, `docs/plans/` or the generated reference.
+  - [x] No run reads `PLAN.md`, `docs/plans/` or the generated reference.
     Check the agents' reports, or ask each agent at the end to list the files
     it read.
-- [ ] **Explain the design:** update `docs/explanation/design.md` with a short
+- [x] **Explain the design:** update `docs/explanation/design.md` with a short
   section, "Built for small units of work": the layout, the cards, the skill,
   and the before/after numbers.
-- [ ] **TODO.md:** tick this plan's items; add what the trials found.
-- [ ] Delete the trial worktrees and branches.
-- [ ] Add a first line to this file: `> Done on <date>; results in
+- [x] **TODO.md:** tick this plan's items; add what the trials found.
+- [x] Delete the trial worktrees and branches.
+- [x] Add a first line to this file: `> Done on <date>; results in
   docs/trials/dev-after-….md`.
 
 ## Acceptance checklist (the whole plan)
 
-- [ ] CI's five checks pass. Search gate: 253/253 top-1 and top-5, plus any
+- [x] CI's five checks pass. Search gate: 253/253 top-1 and top-5, plus any
   queries added since. Same test count or higher.
-- [ ] The overview and every command's `--help` are byte-identical to the
+- [x] The overview and every command's `--help` are byte-identical to the
   start.
 - [ ] Adding a command in an existing domain touches only that crate, its
   fixtures and facts file, its world test (optional) and its reference page.
   This is shown by D1–D3 after the refactor.
-- [ ] No source file over 600 lines outside `scripts/large-files.txt`. That
+- [x] No source file over 600 lines outside `scripts/large-files.txt`. That
   list holds no command files.
-- [ ] Every crate has a card of at most 3 KB. The core card names every
+- [x] Every crate has a card of at most 3 KB. The core card names every
   public export (tested).
-- [ ] `AGENTS.md` ≤ 8 KB, with context rules. `PLAN.md` and `docs/plans/` are
+- [x] `AGENTS.md` ≤ 8 KB, with context rules. `PLAN.md` and `docs/plans/` are
   marked as history.
-- [ ] Two scripts work: `scripts/check.sh` (scoped and `--all`) and
+- [x] Two scripts work: `scripts/check.sh` (scoped and `--all`) and
   `scripts/new-command.sh`, whose output compiles and fails until filled in.
-- [ ] The `agent-cli-dev` skill is in `.agents/skills/`, symlinked for Claude
+- [x] The `agent-cli-dev` skill is in `.agents/skills/`, symlinked for Claude
   Code, and appears in a fresh session.
-- [ ] `docs/trials/dev-baseline-2026-09-30.md` and `docs/trials/dev-after-….md`
+- [x] `docs/trials/dev-baseline-2026-09-30.md` and `docs/trials/dev-after-….md`
   exist, and the after-run meets Phase 4's criteria or says why not.
 
 ## What not to do
