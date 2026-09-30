@@ -44,13 +44,14 @@ plan is cheaper than reviewing a crate.
 
 Create `crates/<name>/` with a `Cargo.toml` copied from `crates/dd/Cargo.toml`
 (workspace version, edition, lints, `publish = false`) and a `src/lib.rs`.
-Then register it in three places:
+The workspace takes every `crates/*` as a member. Then register it in three
+places:
 
-- the root `Cargo.toml`: `members`, and `[workspace.dependencies]` as
+- the root `Cargo.toml` `[workspace.dependencies]`, as
   `agent-cli-<name> = { path = "crates/<name>" }`;
 - `crates/cli/Cargo.toml` `[dependencies]`;
 - `DOMAINS` in `crates/cli/src/main.rs` (its position is the overview's
-  order), and the copy of that list in `crates/cli/tests/world.rs`.
+  order), and the copy of that list in `crates/cli/tests/common/world.rs`.
 
 Take dependencies from the workspace list. A new third-party dependency needs
 a one-line reason in the commit message.

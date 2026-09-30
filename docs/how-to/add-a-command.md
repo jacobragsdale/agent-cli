@@ -396,8 +396,9 @@ to `fixtures/world/http/ado.json`, consistent with the facts in
 }
 ```
 
-Then add the call to `the_rest_of_the_world_answers_what_a_trial_is_likely_to_ask`
-in `crates/cli/tests/world.rs`:
+Then add the call to the domain's world test,
+`the_world_answers_what_a_trial_asks_of_ado` in
+`crates/cli/tests/world_ado.rs`:
 
 ```rust
         &["ado", "approval", "list"],
