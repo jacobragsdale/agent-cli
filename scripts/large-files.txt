@@ -3,9 +3,6 @@
 # shrinks: split a file, then drop its line. No command file belongs here.
 crates/ado/src/client.rs 1123
 crates/ado/src/markdown.rs 999
-crates/ado/src/pipeline.rs 1628
-crates/ado/src/pr.rs 1782
-crates/ado/src/workitem.rs 1977
 crates/airflow/src/client.rs 1048
 crates/core/src/discover.rs 749
 crates/core/src/dispatch.rs 669
