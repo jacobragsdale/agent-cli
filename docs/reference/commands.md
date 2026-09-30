@@ -576,7 +576,7 @@ e.g. agent-cli aks cluster connect aks-contoso-dev --resource-group rg-contoso -
 |---|---|---|
 | [`k8s pod list`](#k8s-pod-list) | read | List pods with status, ready, restarts, age, node and owning deployment |
 | [`k8s pod get`](#k8s-pod-get) | read | Describe a pod: containers, images, states, last termination reason, owner |
-| [`k8s pod logs`](#k8s-pod-logs) | read | Read the last lines of a pod's log, or of the run before its last restart |
+| [`k8s pod logs`](#k8s-pod-logs) | read | Read the tail of a pod's log, or of the container's previous run |
 | [`k8s pod delete`](#k8s-pod-delete) | destructive | Delete a pod so its controller replaces it (a bare pod is gone for good) |
 | [`k8s event list`](#k8s-event-list) | read | List Kubernetes events, newest first: warnings, back-offs, failed pulls |
 | [`k8s deployment list`](#k8s-deployment-list) | read | List deployments: ready pods, images with tag and digest, when they rolled out |
@@ -618,7 +618,7 @@ e.g. agent-cli k8s pod get qa/dev/orders-api-7d9f5b-abc12 --fields status,contai
 ### k8s pod logs
 
 ```text
-agent-cli k8s pod logs — Read the last lines of a pod's log, or of the run before its last restart
+agent-cli k8s pod logs — Read the tail of a pod's log, or of the container's previous run
  *<pod> str        The pod: its id (cluster/namespace/name), namespace/name, or name
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace

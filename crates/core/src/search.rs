@@ -58,6 +58,8 @@ const SYNONYMS: &[(&str, &[&str])] = &[
     ("reopen", &["update", "edit", "state"]),
     ("rename", &["update", "edit"]),
     ("all", &["list"]),
+    // "How many" is counted off a list.
+    ("many", &["list"]),
     ("list", &["all", "get"]),
     ("my", &["authenticated", "current", "user"]),
     ("me", &["authenticated", "current", "user"]),
@@ -252,15 +254,40 @@ fn expand<'d>(
 }
 
 /// The query's words that count: all but stop words, or all of them when
-/// nothing else is left.
+/// nothing else is left. A version (`v1.4.2`, `2.0`) is one word, `tag`:
+/// what a release is cut and an image is named by.
 fn terms(query: &str) -> Vec<String> {
-    let words = split_words(query);
+    let words: Vec<String> = query
+        .split_whitespace()
+        .flat_map(|token| {
+            if is_version(token.trim_matches(|c: char| !c.is_alphanumeric())) {
+                vec!["tag".to_owned()]
+            } else {
+                split_words(token)
+            }
+        })
+        .collect();
     let terms: Vec<String> = words
         .iter()
         .filter(|word| !STOP.contains(&word.as_str()))
         .cloned()
         .collect();
     if terms.is_empty() { words } else { terms }
+}
+
+/// `v1.4.2`, `1.4`, `2.0.1`: digits in two or three dotted parts.
+// ponytail: no pre-release suffixes (`1.4.2-rc1` reads as words); an IP
+// address has four parts, so it never reads as a version.
+fn is_version(token: &str) -> bool {
+    let parts: Vec<&str> = token
+        .strip_prefix(['v', 'V'])
+        .unwrap_or(token)
+        .split('.')
+        .collect();
+    (2..=3).contains(&parts.len())
+        && parts
+            .iter()
+            .all(|part| !part.is_empty() && part.bytes().all(|byte| byte.is_ascii_digit()))
 }
 
 fn doc(command: &Command) -> Doc<'_> {
@@ -478,6 +505,11 @@ mod tests {
         assert_eq!(stem("pods"), "pod");
         assert_eq!(stem("prs"), "prs", "never below three letters");
         assert_eq!(stem("classes"), "class");
+        assert_eq!(terms("the v1.4.2 build, of 2.0?"), ["tag", "build", "tag"]);
+        assert_eq!(
+            terms("10.0.0.1 v1 1.4.2-rc1"),
+            ["10", "0", "0", "1", "v1", "1", "4", "2", "rc1"]
+        );
     }
 
     #[test]

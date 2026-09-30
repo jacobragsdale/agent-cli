@@ -591,7 +591,7 @@ fn pod_logs(ctx: &Ctx, args: PodLogsArgs) -> Result<Logs> {
 
 command! {
     pub POD_LOGS = ["k8s", "pod", "logs"], Read,
-    "Read the last lines of a pod's log, or of the run before its last restart",
+    "Read the tail of a pod's log, or of the container's previous run",
     keywords: ["log", "output", "stdout", "stderr", "tail", "crash", "error", "previous", "container"],
     example: "k8s pod logs qa/dev/orders-worker-5c4d3e-q8zt --previous --tail 50",
     run: pod_logs,
