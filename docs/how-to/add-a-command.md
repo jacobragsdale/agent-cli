@@ -21,6 +21,20 @@ Prerequisites:
   `cargo build --features fixtures -p agent-cli`, then
   `eval "$(scripts/trial-env.sh)"`.
 
+A routine command in an existing domain touches only these files (dd here);
+you need not read any other domain's:
+
+- `crates/dd/**`: the command, its line in `lib.rs`, its tests, and its
+  queries in `crates/dd/search.toml`.
+- `fixtures/world/http/dd.json`, when a trial could reach the command, and
+  `fixtures/world/facts/dd.md` when the recording adds a fact.
+- `crates/cli/tests/world_dd.rs`, only when it adds a world check.
+- `docs/reference/dd.md`, regenerated.
+
+A new verb (`VERBS`) or shared word (`SHARED_WORDS`) in
+`crates/core/src/registry.rs`, a domain in `DOMAINS`, and a section in
+`config.example.toml` are deliberate edits of their own.
+
 ## 1. Choose the path and the effect
 
 A command is `agent-cli <domain> <resource> <verb>`. Before you write one, ask

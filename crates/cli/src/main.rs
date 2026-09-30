@@ -38,29 +38,25 @@ mod tests {
 
     /// `docs/reference/`, rendered from the registry: `README.md`, the index,
     /// and one `<domain>.md` per domain holding every command's help, as
-    /// `agent-cli <path> --help` prints it. Pairs of file name and text.
+    /// `agent-cli <path> --help` prints it. Pairs of file name and text. The
+    /// index names no counts, so a new command changes only its domain's page.
     fn reference() -> Vec<(String, String)> {
-        let total: usize = DOMAINS.iter().map(|domain| domain.commands.len()).sum();
-        let mut index = format!(
+        let mut index = String::from(
             "# Command reference\n\n\
              Generated from the registry by `crates/cli` (`UPDATE_DOCS=1 cargo test -p agent-cli \
              reference`); a test fails when it is stale. Each domain's page holds, for every \
              command, what `agent-cli <domain> <resource> <verb> --help` prints: arguments (`*` \
              required), `Returns:`, the effect, and an example.\n\n\
-             {total} commands in {} domains. Every command also takes the globals `--fields a,b.c`, \
-             `--raw`, `--dry-run`, `--yes`, `--reveal`, `--timeout S`, `--output FILE` and \
-             `--no-cache`. Exit codes: 0 ok, 1 failed, 2 fix the call, 3 needs setup, 4 not found, \
-             5 conflict, 124 timed out.\n\n\
-             | Domain | Summary | Commands |\n|---|---|---|\n",
-            DOMAINS.len()
+             Every command also takes the globals `--fields a,b.c`, `--raw`, `--dry-run`, `--yes`, \
+             `--reveal`, `--timeout S`, `--output FILE` and `--no-cache`. Exit codes: 0 ok, 1 \
+             failed, 2 fix the call, 3 needs setup, 4 not found, 5 conflict, 124 timed out.\n\n\
+             | Domain | Summary |\n|---|---|\n",
         );
         let mut files = Vec::new();
         for domain in DOMAINS {
             index.push_str(&format!(
-                "| [{0}]({0}.md) | {1} | {2} |\n",
-                domain.name,
-                domain.summary,
-                domain.commands.len()
+                "| [{0}]({0}.md) | {1} |\n",
+                domain.name, domain.summary
             ));
             let mut out = format!(
                 "# {} \u{2014} {} ({} commands)\n\n| Command | Effect | Summary |\n|---|---|---|\n",
