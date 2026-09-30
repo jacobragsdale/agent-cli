@@ -165,12 +165,13 @@ pub(crate) fn one_or_many<'de, D: Deserializer<'de>>(
 fn allowlist_status(
     config: &agent_cli_core::Config,
     domain: &str,
-    noun: &str,
+    (one, many): (&str, &str),
     names: fn(&Azure) -> &[String],
 ) -> String {
     match config.section::<Azure>("azure") {
-        Ok(azure) if names(&azure).is_empty() => format!("{domain} all {noun}"),
-        Ok(azure) => format!("{domain} {} {noun}", names(&azure).len()),
+        Ok(azure) if names(&azure).is_empty() => format!("{domain} all {many}"),
+        Ok(azure) if names(&azure).len() == 1 => format!("{domain} 1 {one}"),
+        Ok(azure) => format!("{domain} {} {many}", names(&azure).len()),
         Err(_) => format!("{domain} config broken"),
     }
 }
@@ -213,22 +214,9 @@ pub(crate) fn doctor_login(
     Some(azure)
 }
 
-/// `az`'s token for `resource`: the real one, or in tests a fixed one, since
-/// `az` is not signed in where the tests run.
-#[cfg(not(test))]
+/// `az`'s token for `resource` (`Setup::with_token` stands in for it in tests).
 pub(crate) fn az_token(ctx: &Ctx, resource: &str, fresh: bool) -> Result<Secret> {
     ctx.az_token(resource, fresh)
-}
-
-#[cfg(test)]
-pub(crate) fn az_token(_: &Ctx, resource: &str, fresh: bool) -> Result<Secret> {
-    let audience = match resource {
-        ARM => "arm",
-        VAULT => "vault",
-        _ => "registry",
-    };
-    let generation = if fresh { "fresh" } else { "first" };
-    Ok(Secret::new(format!("{audience}-token-{generation}")))
 }
 
 /// The `Request::auth` hook for an `az` token.
@@ -409,40 +397,17 @@ pub(crate) fn limited<T>(ctx: &Ctx, mut rows: Vec<T>, limit: usize) -> Vec<T> {
     rows
 }
 
-/// A window such as `30d`, `12h`, `2w` or `90m`; a bad one is a usage error
-/// naming the flag.
-pub(crate) fn window(flag: &str, raw: &str) -> Result<Duration> {
-    let raw = raw.trim();
-    let split = raw.find(|c: char| !c.is_ascii_digit()).unwrap_or(raw.len());
-    let (count, unit) = raw.split_at(split);
-    let unit = match unit {
-        "m" => 60,
-        "h" => 3600,
-        "d" | "" => 86_400,
-        "w" => 7 * 86_400,
-        _ => 0,
-    };
-    match count.parse::<u64>() {
-        Ok(count) if unit > 0 => Ok(Duration::from_secs(count * unit)),
-        _ => Err(Failure::usage(format!(
-            "{flag} takes a window like 30d, 12h, 2w or 90m, not {raw:?}"
-        ))
-        .into()),
-    }
-}
-
-/// A unix second, as a vault writes its attributes, in RFC 3339. `null` is not
-/// 1970.
+/// A unix second, as a vault writes its attributes, in RFC 3339 UTC. `null`
+/// is not 1970.
 pub(crate) fn from_unix(value: &serde_json::Value) -> Option<String> {
     OffsetDateTime::from_unix_timestamp(value.as_i64()?)
-        .ok()?
-        .format(&Rfc3339)
         .ok()
+        .map(agent_cli_core::utc_time)
 }
 
-/// An RFC 3339 stamp as a registry writes it, normalised to UTC.
+/// An RFC 3339 stamp as a registry writes it, in UTC whole seconds.
 pub(crate) fn stamp(value: &serde_json::Value) -> Option<String> {
-    parse_stamp(value.as_str()?)?.format(&Rfc3339).ok()
+    parse_stamp(value.as_str()?).map(agent_cli_core::utc_time)
 }
 
 pub(crate) fn parse_stamp(raw: &str) -> Option<OffsetDateTime> {
@@ -460,14 +425,9 @@ pub(crate) fn text(value: &serde_json::Value) -> Option<String> {
         .map(str::to_owned)
 }
 
-/// The HTTP status a refusal carried, read back from core's
-/// `"<METHOD> <url> answered <status>: …"` failure message.
+/// The HTTP status a refusal carried.
 pub(crate) fn refused_with(error: &anyhow::Error) -> Option<u16> {
-    let failure = error
-        .chain()
-        .find_map(|cause| cause.downcast_ref::<Failure>())?;
-    let (_, rest) = failure.message.split_once(" answered ")?;
-    rest.get(..3)?.parse().ok()
+    agent_cli_core::status_of(error)
 }
 
 /// The first line a tool wrote that says anything.
@@ -645,30 +605,6 @@ mod tests {
     }
 
     #[test]
-    fn a_window_reads_minutes_to_weeks_and_a_bad_one_is_a_usage_error() {
-        assert_eq!(
-            window("--x", "30d").unwrap(),
-            Duration::from_secs(30 * 86_400)
-        );
-        assert_eq!(
-            window("--x", "12h").unwrap(),
-            Duration::from_secs(12 * 3600)
-        );
-        assert_eq!(
-            window("--x", "2w").unwrap(),
-            Duration::from_secs(14 * 86_400)
-        );
-        assert_eq!(window("--x", "7").unwrap(), Duration::from_secs(7 * 86_400));
-        for bad in ["", "d", "soon", "3y", "-1d"] {
-            let error = window("--expires-within", bad).unwrap_err();
-            assert!(
-                error.to_string().starts_with("--expires-within takes"),
-                "{bad}"
-            );
-        }
-    }
-
-    #[test]
     fn the_pool_keeps_the_items_order_on_any_number_of_threads() {
         let items: Vec<usize> = (0..50).collect();
         for limit in [1, 4, 100] {
@@ -692,15 +628,5 @@ mod tests {
             Some("2026-09-11T20:00:00Z")
         );
         assert_eq!(stamp(&serde_json::json!("yesterday")), None);
-    }
-
-    #[test]
-    fn the_status_of_a_refusal_is_read_back_from_cores_message() {
-        let error = anyhow::Error::new(Failure::new(
-            agent_cli_core::Exit::Failed,
-            "GET https://kv.vault.azure.net/x answered 403: nope",
-        ));
-        assert_eq!(refused_with(&error), Some(403));
-        assert_eq!(refused_with(&anyhow::anyhow!("socket closed")), None);
     }
 }

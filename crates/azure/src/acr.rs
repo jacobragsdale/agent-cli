@@ -13,16 +13,15 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Mutex;
 
 use agent_cli_core::{
-    Check, Config, Ctx, Failure, Method, Request, Secret, command, host_under, percent_encode,
+    Check, Config, Ctx, Failure, Method, Request, Secret, When, command, host_under, percent_encode,
 };
 use anyhow::{Context, Result, bail};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use time::OffsetDateTime;
 
 use crate::graph::{Registry, inventory};
-use crate::{Azure, Kind, REGISTRY, az_token, limited, narrow, parallel, stamp, text, window};
+use crate::{Azure, Kind, REGISTRY, az_token, limited, narrow, parallel, stamp, text};
 
 const CATALOG_SCOPE: &str = "registry:catalog:*";
 /// A short page is how a listing's end announces itself.
@@ -291,15 +290,17 @@ pub struct RepoListArgs {
     /// Only this registry (repeatable; within [azure] registries)
     #[arg(long)]
     registry: Vec<String>,
-    /// Only repositories pushed to within this window: 7d, 12h
-    #[arg(long, value_name = "WINDOW")]
-    updated_within: Option<String>,
+    /// Only repositories pushed to after this
+    #[arg(long)]
+    since: Option<When>,
     #[arg(long, default_value_t = 50)]
     limit: usize,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct RepoRow {
+    /// `loginserver/repository`: what `acr tag list` takes.
+    id: String,
     registry: String,
     repository: String,
     tag_count: Option<u64>,
@@ -311,11 +312,7 @@ pub struct RepoRow {
 }
 
 fn repo_list(ctx: &Ctx, args: RepoListArgs) -> Result<Vec<RepoRow>> {
-    let within = args
-        .updated_within
-        .as_deref()
-        .map(|raw| window("--updated-within", raw))
-        .transpose()?;
+    let within = args.since;
     let azure = Azure::load(ctx)?;
     let registries = narrow(
         &inventory(ctx, &azure)?.registries,
@@ -361,19 +358,19 @@ fn repo_list(ctx: &Ctx, args: RepoListArgs) -> Result<Vec<RepoRow>> {
         names.truncate(args.limit);
     }
     let filled = fill(ctx, &azure, &sessions, &names)?;
-    let now = OffsetDateTime::now_utc();
     let rows: Vec<RepoRow> = names
         .into_iter()
         .zip(filled)
         .filter(|(_, held)| {
-            within.is_none_or(|within| {
+            within.is_none_or(|since| {
                 held.updated
                     .as_deref()
                     .and_then(crate::parse_stamp)
-                    .is_some_and(|at| at >= now - within)
+                    .is_some_and(|at| at >= since.0)
             })
         })
         .map(|((index, repository), held)| RepoRow {
+            id: format!("{}/{repository}", registries[index].login_server),
             registry: registries[index].name.clone(),
             repository,
             tag_count: held.tag_count,
@@ -440,7 +437,7 @@ command! {
     pub REPO_LIST = ["acr", "repo", "list"], Read,
     "List container image repositories with tag counts and last push",
     keywords: ["image", "images", "repository", "repositories", "pushed", "recent", "docker"],
-    example: "acr repo list api --updated-within 7d --fields registry,repository,updated",
+    example: "acr repo list api --since 7d --fields id,tag_count,updated",
     run: repo_list,
 }
 
@@ -448,7 +445,7 @@ command! {
 
 #[derive(clap::Args)]
 pub struct TagListArgs {
-    /// The repository's exact name, e.g. team/api
+    /// The repository: its exact name (team/api) or id (contosoacr.azurecr.io/team/api)
     repo: String,
     /// The registry that holds it; needed when more than one does
     #[arg(long)]
@@ -459,6 +456,8 @@ pub struct TagListArgs {
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct TagRow {
+    /// The image, `loginserver/repository:tag`: what `acr manifest get` takes.
+    id: String,
     tag: String,
     digest: String,
     /// RFC 3339.
@@ -468,7 +467,20 @@ pub struct TagRow {
 
 fn tag_list(ctx: &Ctx, args: TagListArgs) -> Result<Vec<TagRow>> {
     let azure = Azure::load(ctx)?;
-    let registry = holder(ctx, &azure, &args.repo, args.registry.as_deref())?;
+    let image = image_ref(&args.repo);
+    if image.reference.is_some() {
+        return Err(Failure::usage(format!(
+            "{} names one image; tag list takes its repository",
+            args.repo
+        ))
+        .hint(format!("agent-cli acr manifest get {}", args.repo))
+        .into());
+    }
+    let registry = registry_for(ctx, &azure, &image, args.registry.as_deref())?;
+    let args = TagListArgs {
+        repo: image.repo,
+        ..args
+    };
     let session = Session::new(ctx, &registry)?;
     let mut tags: Vec<TagRow> = Vec::new();
     let mut last: Option<String> = None;
@@ -486,8 +498,10 @@ fn tag_list(ctx: &Ctx, args: TagListArgs) -> Result<Vec<TagRow>> {
             .into_iter()
             .flatten()
             .filter_map(|entry| {
+                let tag = text(&entry["name"])?;
                 Some(TagRow {
-                    tag: text(&entry["name"])?,
+                    id: format!("{}/{}:{tag}", registry.login_server, args.repo),
+                    tag,
                     digest: text(&entry["digest"]).unwrap_or_default(),
                     created: stamp(&entry["createdTime"]),
                     updated: stamp(&entry["lastUpdateTime"]),
@@ -510,6 +524,76 @@ fn tag_list(ctx: &Ctx, args: TagListArgs) -> Result<Vec<TagRow>> {
         tags.truncate(args.limit);
     }
     Ok(tags)
+}
+
+/// An image as an agent was handed it: `team/api`, with `:tag` or
+/// `@sha256:…`, after the login server (`contosoacr.azurecr.io/team/api:1.42.0`)
+/// or not. Read, never fetched.
+struct ImageRef {
+    host: Option<String>,
+    repo: String,
+    reference: Option<String>,
+}
+
+fn image_ref(raw: &str) -> ImageRef {
+    let raw = raw.trim();
+    let (host, rest) = match raw.split_once('/') {
+        Some((first, rest)) if first.contains(['.', ':']) || first == "localhost" => {
+            (Some(first.to_ascii_lowercase()), rest)
+        }
+        _ => (None, raw),
+    };
+    let (repo, reference) = match rest.split_once('@') {
+        Some((repo, digest)) => (repo, Some(digest)),
+        None => match rest.rsplit_once(':') {
+            Some((repo, tag)) if !tag.contains('/') => (repo, Some(tag)),
+            _ => (rest, None),
+        },
+    };
+    ImageRef {
+        host,
+        repo: repo.to_owned(),
+        reference: reference.map(str::to_owned),
+    }
+}
+
+/// The registry that holds `repo`: the one its login server names (which
+/// must be in reach, and agree with `--registry`), else as [`holder`] finds it.
+fn registry_for(
+    ctx: &Ctx,
+    azure: &Azure,
+    image: &ImageRef,
+    flag: Option<&str>,
+) -> Result<Registry> {
+    let Some(host) = &image.host else {
+        return holder(ctx, azure, &image.repo, flag);
+    };
+    let found = crate::allowed(&inventory(ctx, azure)?.registries, &azure.registries, |r| {
+        &r.name
+    });
+    let Some(registry) = found
+        .iter()
+        .find(|registry| registry.login_server.eq_ignore_ascii_case(host))
+    else {
+        let servers: Vec<&str> = found.iter().map(|r| r.login_server.as_str()).collect();
+        return Err(Failure::usage(format!(
+            "{host} is not a registry in reach; they are: {}",
+            if servers.is_empty() {
+                "none".to_owned()
+            } else {
+                servers.join(", ")
+            }
+        ))
+        .into());
+    };
+    match flag {
+        Some(flag) if !flag.eq_ignore_ascii_case(&registry.name) => Err(Failure::usage(format!(
+            "{host} is registry {}, and --registry says {flag}",
+            registry.name
+        ))
+        .into()),
+        _ => Ok(registry.clone()),
+    }
 }
 
 /// The one registry holding `repo`: `--registry`, or the only one in reach,
@@ -583,7 +667,7 @@ command! {
     pub TAG_LIST = ["acr", "tag", "list"], Read,
     "List an image repository's tags, newest first, with their digests",
     keywords: ["tags", "image", "images", "version", "versions", "latest", "pushed", "docker"],
-    example: "acr tag list team/api --fields tag,digest,updated",
+    example: "acr tag list team/api --fields id,digest,updated",
     run: tag_list,
 }
 
@@ -591,10 +675,10 @@ command! {
 
 #[derive(clap::Args)]
 pub struct ManifestGetArgs {
-    /// The repository's exact name, e.g. team/api
-    repo: String,
-    /// A tag (1.42.0) or a digest (sha256:…)
-    reference: String,
+    /// The image: contosoacr.azurecr.io/team/api:1.42.0, team/api@sha256:…, or a repository
+    image: String,
+    /// A tag (1.42.0) or a digest (sha256:…), when IMAGE names only the repository
+    reference: Option<String>,
     /// The registry that holds it; needed when more than one does
     #[arg(long)]
     registry: Option<String>,
@@ -618,15 +702,39 @@ pub struct ManifestRow {
 
 fn manifest_get(ctx: &Ctx, args: ManifestGetArgs) -> Result<ManifestRow> {
     let azure = Azure::load(ctx)?;
-    let registry = holder(ctx, &azure, &args.repo, args.registry.as_deref())?;
+    let image = image_ref(&args.image);
+    let reference = match (image.reference.clone(), args.reference) {
+        (Some(held), Some(given)) if held != given => {
+            return Err(Failure::usage(format!(
+                "{} names {held}, and REFERENCE says {given}",
+                args.image
+            ))
+            .into());
+        }
+        (Some(held), _) => held,
+        (None, Some(given)) => given,
+        (None, None) => {
+            return Err(
+                Failure::usage(format!("{} names no tag or digest", args.image))
+                    .hint(format!(
+                        "agent-cli acr tag list {} --fields id,updated",
+                        args.image
+                    ))
+                    .into(),
+            );
+        }
+    };
+    let registry = registry_for(ctx, &azure, &image, args.registry.as_deref())?;
+    let repo = image.repo;
     let session = Session::new(ctx, &registry)?;
-    let mut reference = String::new();
-    percent_encode(&args.reference, &mut reference);
+    let mut encoded = String::new();
+    percent_encode(&reference, &mut encoded);
+    let reference = encoded;
     // A digest's colon survives as itself; the registry reads either form.
     let reference = reference.replace("%3A", ":");
     let answer = session.get(
-        &metadata(&args.repo),
-        &format!("{}/_manifests/{reference}", path(&args.repo)),
+        &metadata(&repo),
+        &format!("{}/_manifests/{reference}", path(&repo)),
     )?;
     // The singular call nests everything under `manifest`.
     let held = if answer["manifest"].is_object() {
@@ -634,9 +742,9 @@ fn manifest_get(ctx: &Ctx, args: ManifestGetArgs) -> Result<ManifestRow> {
     } else {
         &answer
     };
-    let digest = text(&held["digest"]).unwrap_or_else(|| args.reference.clone());
+    let digest = text(&held["digest"]).unwrap_or(reference);
     Ok(ManifestRow {
-        pull: format!("{}/{}@{digest}", registry.login_server, args.repo),
+        pull: format!("{}/{}@{digest}", registry.login_server, repo),
         size: count(&held["imageSize"]),
         architecture: text(&held["architecture"]),
         os: text(&held["os"]),
@@ -655,14 +763,16 @@ command! {
     pub MANIFEST_GET = ["acr", "manifest", "get"], Read,
     "Describe one image by tag or digest: size, architecture, os, tags on it",
     keywords: ["image", "digest", "sha256", "pull", "reference", "arch", "platform", "size"],
-    example: "acr manifest get team/api 1.42.0 --fields digest,architecture,tags,pull",
+    example: "acr manifest get contosoacr.azurecr.io/team/api:1.42.0 --fields digest,created,tags,pull",
     run: manifest_get,
 }
 
 // ---------- overview and doctor ----------
 
 pub fn status(config: &Config) -> String {
-    crate::allowlist_status(config, "acr", "registries", |azure| &azure.registries)
+    crate::allowlist_status(config, "acr", ("registry", "registries"), |azure| {
+        &azure.registries
+    })
 }
 
 /// The login and the registry token, the inventory, and the first catalog
@@ -785,7 +895,7 @@ mod tests {
         assert_eq!(field(&sent[1], "grant_type"), Some("access_token"));
         assert_eq!(
             field(&sent[1], "access_token"),
-            Some("registry-token-first"),
+            Some("token@https://containerregistry.azure.net"),
             "the containerregistry audience, not ARM"
         );
         assert!(
@@ -857,7 +967,7 @@ mod tests {
         let sent = transport.sent();
         assert_eq!(
             field(&sent[4], "access_token"),
-            Some("registry-token-fresh"),
+            Some("token-fresh@https://containerregistry.azure.net"),
             "down to a fresh az token"
         );
         assert_eq!(sent[6].authorization.as_deref(), Some("Bearer fresh"));
@@ -891,7 +1001,7 @@ mod tests {
         );
         assert_eq!(
             field(&transport.sent()[2], "access_token"),
-            Some("registry-token-fresh")
+            Some("token-fresh@https://containerregistry.azure.net")
         );
     }
 
@@ -978,7 +1088,8 @@ mod tests {
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(
             outcome.json(),
-            json!([{"tag": "1.42.0", "digest": "sha256:ab12", "created": "2026-09-11T18:00:00Z", "updated": "2026-09-11T18:00:00Z"}])
+            json!([{"id": "contosoacr.azurecr.io/team/api:1.42.0", "tag": "1.42.0", "digest": "sha256:ab12",
+                "created": "2026-09-11T18:00:00Z", "updated": "2026-09-11T18:00:00Z"}])
         );
         assert!(
             outcome.stderr.contains("[first 1 tags"),
@@ -1038,6 +1149,81 @@ mod tests {
     }
 
     #[test]
+    fn an_image_reference_names_its_registry_repository_and_tag_or_digest() {
+        let manifest = || Answer::json(&json!({"manifest": {"digest": "sha256:9f2c"}}));
+        for (image, url) in [
+            (
+                "contosoacr.azurecr.io/team/api:1.42.0",
+                "https://contosoacr.azurecr.io/acr/v1/team/api/_manifests/1.42.0",
+            ),
+            (
+                "CONTOSOACR.azurecr.io/team/api@sha256:9f2c",
+                "https://contosoacr.azurecr.io/acr/v1/team/api/_manifests/sha256:9f2c",
+            ),
+            (
+                "team/api:1.42.0",
+                "https://contosoacr.azurecr.io/acr/v1/team/api/_manifests/1.42.0",
+            ),
+        ] {
+            let (outcome, transport) = azure(
+                &[ACR],
+                &["acr", "manifest", "get", image],
+                vec![one_registry(), exchanged(), issued("t"), manifest()],
+            );
+            assert_eq!(outcome.code, 0, "{image}: {outcome:?}");
+            assert_eq!(transport.sent()[3].url, url, "{image}");
+        }
+        let (outcome, _) = azure(
+            &[ACR],
+            &[
+                "acr",
+                "manifest",
+                "get",
+                "fabrikamacr.azurecr.io/team/api:1",
+            ],
+            vec![one_registry()],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains(
+                "fabrikamacr.azurecr.io is not a registry in reach; they are: contosoacr.azurecr.io"
+            ),
+            "{}",
+            outcome.stderr
+        );
+        let (outcome, transport) = azure(&[ACR], &["acr", "manifest", "get", "team/api"], vec![]);
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(transport.sent().is_empty());
+
+        let (outcome, transport) = azure(
+            &[ACR],
+            &[
+                "acr",
+                "tag",
+                "list",
+                "contosoacr.azurecr.io/team/api",
+                "--fields",
+                "id",
+            ],
+            vec![
+                one_registry(),
+                exchanged(),
+                issued("t"),
+                Answer::json(&json!({"tags": [{"name": "1.42.0", "digest": "sha256:ab12"}]})),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json(),
+            json!([{"id": "contosoacr.azurecr.io/team/api:1.42.0"}])
+        );
+        assert_eq!(
+            transport.sent()[3].url,
+            "https://contosoacr.azurecr.io/acr/v1/team/api/_tags?n=100&orderby=timedesc"
+        );
+    }
+
+    #[test]
     fn attributes_are_cached_per_registry_and_a_gone_repository_keeps_its_name() {
         let temp = tempfile::tempdir().unwrap();
         let run = |argv: &[&str], answers: Vec<Answer>| {
@@ -1066,7 +1252,7 @@ mod tests {
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(
             outcome.json()[0],
-            json!({"registry": "contosoacr", "repository": "gone"})
+            json!({"id": "contosoacr.azurecr.io/gone", "registry": "contosoacr", "repository": "gone"})
         );
         assert!(
             outcome.stderr.contains("1 repositories' counts"),
@@ -1089,6 +1275,30 @@ mod tests {
             3,
             "the inventory and the attributes came from the cache"
         );
+
+        for (since, want) in [
+            (
+                "2026-09-01",
+                json!([{"id": "contosoacr.azurecr.io/team/api"}]),
+            ),
+            ("2026-09-12T00:00:00Z", json!([])),
+        ] {
+            let (outcome, _) = run(
+                &["acr", "repo", "list", "--since", since, "--fields", "id"],
+                vec![
+                    exchanged(),
+                    issued("t"),
+                    Answer::json(&json!({"repositories": ["gone", "team/api"]})),
+                    issued("t1"),
+                    Answer::status(
+                        404,
+                        r#"{"errors":[{"code":"NAME_UNKNOWN","message":"gone"}]}"#,
+                    ),
+                ],
+            );
+            assert_eq!(outcome.code, 0, "{outcome:?}");
+            assert_eq!(outcome.json(), want, "pushed since {since}");
+        }
     }
 
     #[test]

@@ -39,16 +39,35 @@ pub struct ClusterListArgs {
     limit: usize,
 }
 
-fn cluster_list(ctx: &Ctx, args: ClusterListArgs) -> Result<Vec<Cluster>> {
+/// A cluster, and the name the k8s domain knows it by.
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct ClusterRow {
+    #[serde(flatten)]
+    cluster: Cluster,
+    /// The `[[k8s.scope]]` name `aks cluster connect` writes for it: what
+    /// `k8s … --cluster` takes (k8s also accepts the context, which is the
+    /// cluster's name).
+    k8s_scope: String,
+}
+
+fn cluster_list(ctx: &Ctx, args: ClusterListArgs) -> Result<Vec<ClusterRow>> {
     let azure = Azure::load(ctx)?;
-    Ok(limited(ctx, inventory(ctx, &azure)?.clusters, args.limit))
+    let rows = inventory(ctx, &azure)?
+        .clusters
+        .into_iter()
+        .map(|cluster| ClusterRow {
+            k8s_scope: cluster.name.clone(),
+            cluster,
+        })
+        .collect();
+    Ok(limited(ctx, rows, args.limit))
 }
 
 command! {
     pub CLUSTER_LIST = ["aks", "cluster", "list"], Read,
     "List the AKS clusters the az login reaches, with version and power state",
     keywords: ["kubernetes", "clusters", "managed", "running", "stopped", "version"],
-    example: "aks cluster list --fields name,resource_group,power_state",
+    example: "aks cluster list --fields name,k8s_scope,power_state",
     run: cluster_list,
 }
 
@@ -320,6 +339,7 @@ mod tests {
                 "name": "aks-contoso-dev", "resource_group": "rg-contoso",
                 "subscription": "00000000-0000-0000-0000-000000000001", "location": "eastus",
                 "kubernetes_version": "1.30.4", "power_state": "Running",
+                "k8s_scope": "aks-contoso-dev",
             }])
         );
     }

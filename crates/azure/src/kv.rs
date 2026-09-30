@@ -10,16 +10,15 @@
 use std::collections::BTreeMap;
 
 use agent_cli_core::{
-    Check, Config, Ctx, Failure, Request, Secret, command, host_under, percent_encode,
+    Check, Config, Ctx, Failure, Request, Secret, Span, command, host_under, percent_encode,
 };
 use anyhow::{Context, Result, bail};
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::Value;
-use time::OffsetDateTime;
 
 use crate::graph::{Vault, inventory};
-use crate::{Azure, Kind, VAULT, bearer, from_unix, limited, narrow, parallel, text, window};
+use crate::{Azure, Kind, VAULT, bearer, from_unix, limited, narrow, parallel, text};
 
 /// Key Vault has moved to date-based versions; 7.4 is still what every vault
 /// answers, and none of the shapes read here changed. The one constant to bump
@@ -95,6 +94,8 @@ fn pages(ctx: &Ctx, vault: &Vault, first: String) -> Result<Vec<Value>> {
 /// One secret, as a listing describes it. There is no field for its value.
 #[derive(Clone, Debug, Serialize, JsonSchema)]
 pub struct SecretRow {
+    /// `vault/name`: what `kv secret get` and `kv version list` take.
+    id: String,
     vault: String,
     name: String,
     enabled: bool,
@@ -117,9 +118,11 @@ fn secrets(ctx: &Ctx, vault: &Vault) -> Result<Vec<SecretRow>> {
         .iter()
         .filter_map(|entry| {
             let attributes = &entry["attributes"];
+            let name = last_segment(entry)?;
             Some(SecretRow {
+                id: format!("{}/{name}", vault.name),
                 vault: vault.name.clone(),
-                name: last_segment(entry)?,
+                name,
                 // A vault says so only when a secret is disabled.
                 enabled: attributes["enabled"].as_bool().unwrap_or(true),
                 content_type: text(&entry["contentType"]),
@@ -182,14 +185,14 @@ command! {
 
 #[derive(clap::Args)]
 pub struct SecretListArgs {
-    /// Part of the secret name, any case
+    /// Part of the secret name, any case; or a secret's id (vault/name), exactly
     name: Option<String>,
     /// Only this vault (repeatable; within [azure] vaults)
     #[arg(long)]
     vault: Vec<String>,
-    /// Only secrets expiring within this window, or already expired: 30d, 12h
-    #[arg(long, value_name = "WINDOW")]
-    expires_within: Option<String>,
+    /// Only secrets expiring within this long, or already expired
+    #[arg(long)]
+    expires_within: Option<Span>,
     /// Only secrets whose expiry has passed
     #[arg(long)]
     expired: bool,
@@ -201,29 +204,39 @@ pub struct SecretListArgs {
 }
 
 fn secret_list(ctx: &Ctx, args: SecretListArgs) -> Result<Vec<SecretRow>> {
-    let within = args
-        .expires_within
-        .as_deref()
-        .map(|raw| window("--expires-within", raw))
-        .transpose()?;
+    let within = args.expires_within.map(|span| span.0);
+    // A secret's id reads its one vault and matches its name exactly.
+    let (only, exact) = match args.name.as_deref().map(|raw| secret_ref(raw, None, None)) {
+        Some(Ok(found)) if found.vault.is_some() => (found.vault.into_iter().collect(), true),
+        Some(Err(error)) => return Err(error),
+        _ => (args.vault.clone(), false),
+    };
+    let wanted = match args.name.as_deref() {
+        Some(raw) if exact => Some(secret_ref(raw, None, None)?.name.to_ascii_lowercase()),
+        other => other.map(str::to_ascii_lowercase),
+    };
     let azure = Azure::load(ctx)?;
     let vaults = narrow(
         &inventory(ctx, &azure)?.vaults,
         &azure.vaults,
-        &args.vault,
+        &only,
         VAULTS,
         |v| &v.name,
     )?;
     let rows = read_all(ctx, &azure, &vaults)?;
-    let now = OffsetDateTime::now_utc();
+    let now = agent_cli_core::now();
     let expiry = |row: &SecretRow| row.expires.as_deref().and_then(crate::parse_stamp);
-    let wanted = args.name.as_deref().map(str::to_ascii_lowercase);
     let rows = rows
         .into_iter()
         .filter(|row| {
-            wanted
-                .as_deref()
-                .is_none_or(|wanted| row.name.to_ascii_lowercase().contains(wanted))
+            wanted.as_deref().is_none_or(|wanted| {
+                let name = row.name.to_ascii_lowercase();
+                if exact {
+                    name == wanted
+                } else {
+                    name.contains(wanted)
+                }
+            })
         })
         .filter(|row| !args.disabled || !row.enabled)
         .filter(|row| !args.expired || expiry(row).is_some_and(|at| at < now))
@@ -260,15 +273,83 @@ command! {
     pub SECRET_LIST = ["kv", "secret", "list"], Read,
     "List Key Vault secrets with expiry and tags (names and metadata, never values)",
     keywords: ["password", "credential", "expiring", "expired", "disabled", "vaults", "contains", "find"],
-    example: "kv secret list db --expires-within 30d --fields vault,name,expires",
+    example: "kv secret list db --expires-within 30d --fields id,expires",
     run: secret_list,
+}
+
+/// A secret as an agent was handed it.
+struct SecretRef {
+    vault: Option<String>,
+    name: String,
+    version: Option<String>,
+}
+
+/// `db-password`, the id a listing prints (`kv-contoso-prod/db-password`, and
+/// `/version` after it), or the secret's URI
+/// (`https://kv-contoso-prod.vault.azure.net/secrets/db-password[/version]`,
+/// read, never fetched). A vault or version in it that disagrees with
+/// `--vault` or `--version` is exit 2: the CLI never picks one.
+fn secret_ref(raw: &str, vault: Option<&str>, version: Option<&str>) -> Result<SecretRef> {
+    let raw = raw.trim();
+    let bad = |why: &str| -> anyhow::Error {
+        Failure::usage(format!("{raw:?} {why}"))
+            .hint("pass NAME, VAULT/NAME, VAULT/NAME/VERSION or the secret's URI")
+            .into()
+    };
+    let parts: Vec<String> = match raw.strip_prefix("https://") {
+        Some(rest) => {
+            let (host, path) = rest.split_once('/').unwrap_or((rest, ""));
+            let Some(held) = host
+                .to_ascii_lowercase()
+                .strip_suffix(".vault.azure.net")
+                .map(str::to_owned)
+            else {
+                return Err(bad("is not a Key Vault secret URI"));
+            };
+            let path = path.split('?').next().unwrap_or_default();
+            let Some(rest) = path.strip_prefix("secrets/") else {
+                return Err(bad("is not a Key Vault secret URI"));
+            };
+            std::iter::once(held)
+                .chain(
+                    rest.split('/')
+                        .filter(|part| !part.is_empty())
+                        .map(str::to_owned),
+                )
+                .collect()
+        }
+        None => raw.split('/').map(str::to_owned).collect(),
+    };
+    let (held_vault, name, held_version) = match parts.as_slice() {
+        [name] => (None, name.as_str(), None),
+        [vault, name] => (Some(vault.as_str()), name.as_str(), None),
+        [vault, name, version] => (Some(vault.as_str()), name.as_str(), Some(version.as_str())),
+        _ => return Err(bad("is not a secret name, id or URI")),
+    };
+    if name.is_empty() || held_vault.is_some_and(str::is_empty) {
+        return Err(bad("is not a secret name, id or URI"));
+    }
+    let agree = |held: Option<&str>, flag: Option<&str>, what: &str| -> Result<Option<String>> {
+        match (held, flag) {
+            (Some(held), Some(flag)) if !held.eq_ignore_ascii_case(flag) => Err(Failure::usage(
+                format!("{raw} names {what} {held}, and --{what} says {flag}"),
+            )
+            .into()),
+            (held, flag) => Ok(held.or(flag).map(str::to_owned)),
+        }
+    };
+    Ok(SecretRef {
+        vault: agree(held_vault, vault, "vault")?,
+        name: name.to_owned(),
+        version: agree(held_version, version, "version")?,
+    })
 }
 
 // ---------- kv secret get ----------
 
 #[derive(clap::Args)]
 pub struct SecretGetArgs {
-    /// The secret's exact name
+    /// The secret: its name, its id (vault/name[/version]) or its URI
     name: String,
     /// The vault that holds it; needed when more than one does
     #[arg(long)]
@@ -289,6 +370,12 @@ pub struct SecretValue {
 }
 
 fn secret_get(ctx: &Ctx, args: SecretGetArgs) -> Result<SecretValue> {
+    let secret = secret_ref(&args.name, args.vault.as_deref(), args.version.as_deref())?;
+    let args = SecretGetArgs {
+        name: secret.name,
+        vault: secret.vault,
+        version: secret.version,
+    };
     let vault = holder(ctx, &args.name, args.vault.as_deref())?;
     let url = match &args.version {
         Some(version) => format!(
@@ -385,8 +472,7 @@ fn holder(ctx: &Ctx, name: &str, only: Option<&str>) -> Result<Vault> {
             names(&holding)
         ))
         .hint(format!(
-            "agent-cli kv secret get {name} --vault {} ...",
-            holding[0].name
+            "pass its id: agent-cli kv secret list {name} --fields id,vault"
         ))
         .into()),
     }
@@ -396,7 +482,7 @@ command! {
     pub SECRET_GET = ["kv", "secret", "get"], Reveal,
     "Get a Key Vault secret's value (needs --reveal, or --output FILE)",
     keywords: ["password", "credential", "connection", "string", "value", "read", "fetch"],
-    example: "kv secret get db-password --vault kv-contoso-dev --fields value --output db-password.txt",
+    example: "kv secret get kv-contoso-dev/db-password --fields value --output db-password.txt",
     run: secret_get,
 }
 
@@ -404,7 +490,7 @@ command! {
 
 #[derive(clap::Args)]
 pub struct VersionListArgs {
-    /// The secret's exact name
+    /// The secret: its name, its id (vault/name) or its URI
     secret: String,
     /// The vault that holds it; needed when more than one does
     #[arg(long)]
@@ -415,6 +501,8 @@ pub struct VersionListArgs {
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct VersionRow {
+    /// `vault/name/version`: what `kv secret get` takes for this version.
+    id: String,
     version: String,
     enabled: bool,
     /// RFC 3339.
@@ -424,18 +512,28 @@ pub struct VersionRow {
 }
 
 fn version_list(ctx: &Ctx, args: VersionListArgs) -> Result<Vec<VersionRow>> {
-    let vault = holder(ctx, &args.secret, args.vault.as_deref())?;
+    let secret = secret_ref(&args.secret, args.vault.as_deref(), None)?;
+    if secret.version.is_some() {
+        return Err(Failure::usage(format!(
+            "{} names one version; version list takes the secret (vault/name)",
+            args.secret
+        ))
+        .into());
+    }
+    let vault = holder(ctx, &secret.name, secret.vault.as_deref())?;
     let first = format!(
         "{}secrets/{}/versions?api-version={API_VERSION}&maxresults={PAGE}",
         base(&vault),
-        segment(&args.secret)
+        segment(&secret.name)
     );
     let mut rows: Vec<VersionRow> = pages(ctx, &vault, first)?
         .iter()
         .filter_map(|entry| {
             let attributes = &entry["attributes"];
+            let version = last_segment(entry)?;
             Some(VersionRow {
-                version: last_segment(entry)?,
+                id: format!("{}/{}/{version}", vault.name, secret.name),
+                version,
                 enabled: attributes["enabled"].as_bool().unwrap_or(true),
                 created: from_unix(&attributes["created"]),
                 updated: from_unix(&attributes["updated"]),
@@ -453,14 +551,14 @@ command! {
     pub VERSION_LIST = ["kv", "version", "list"], Read,
     "List a secret's versions, newest first (when it was rotated; never values)",
     keywords: ["history", "rotated", "rotation", "previous", "old"],
-    example: "kv version list db-password --fields version,created,enabled",
+    example: "kv version list kv-contoso-dev/db-password --fields id,created,enabled",
     run: version_list,
 }
 
 // ---------- overview and doctor ----------
 
 pub fn status(config: &Config) -> String {
-    crate::allowlist_status(config, "kv", "vaults", |azure| &azure.vaults)
+    crate::allowlist_status(config, "kv", ("vault", "vaults"), |azure| &azure.vaults)
 }
 
 /// The login and its two tokens, the inventory, and one page from each vault:
@@ -569,6 +667,7 @@ mod tests {
         assert_eq!(outcome.code, 0, "{outcome:?}");
         let rows = outcome.json();
         assert_eq!(rows.as_array().unwrap().len(), 1);
+        assert_eq!(rows[0]["id"], "kv-contoso-dev/api-key");
         assert_eq!(rows[0]["name"], "api-key");
         assert_eq!(rows[0]["tags"]["owner"], "platform");
         assert_eq!(rows[0]["created"], "2024-03-01T00:00:00Z");
@@ -615,7 +714,7 @@ mod tests {
         );
         assert_eq!(
             sent[1].authorization.as_deref(),
-            Some("Bearer vault-token-first")
+            Some("Bearer token@https://vault.azure.net")
         );
     }
 
@@ -672,7 +771,7 @@ mod tests {
 
     #[test]
     fn filters_narrow_by_name_expiry_and_state() {
-        let now = OffsetDateTime::now_utc().unix_timestamp();
+        let now = agent_cli_core::now().unix_timestamp();
         let answer = Answer::json(&json!({"value": [
             {"id": "https://kv-contoso-dev.vault.azure.net/secrets/db-password", "attributes": {"exp": now + 5 * 86_400}},
             {"id": "https://kv-contoso-dev.vault.azure.net/secrets/db-old", "attributes": {"exp": now - 86_400, "enabled": false}},
@@ -849,6 +948,98 @@ mod tests {
     }
 
     #[test]
+    fn a_secret_is_named_by_its_id_or_its_uri_and_a_disagreeing_flag_is_refused() {
+        let value = || {
+            Answer::json(&json!({"value": "fixture-value-1",
+                "id": "https://kv-contoso-prod.vault.azure.net/secrets/db-password/8f3a"}))
+        };
+        for (argv, url) in [
+            (
+                &[
+                    "kv",
+                    "secret",
+                    "get",
+                    "kv-contoso-prod/db-password",
+                    "--reveal",
+                ][..],
+                "https://kv-contoso-prod.vault.azure.net/secrets/db-password?api-version=7.4",
+            ),
+            (
+                &[
+                    "kv",
+                    "secret",
+                    "get",
+                    "kv-contoso-prod/db-password/8f3a",
+                    "--reveal",
+                ][..],
+                "https://kv-contoso-prod.vault.azure.net/secrets/db-password/8f3a?api-version=7.4",
+            ),
+            (
+                &[
+                    "kv",
+                    "secret",
+                    "get",
+                    "https://kv-contoso-prod.vault.azure.net/secrets/db-password/8f3a",
+                    "--reveal",
+                ][..],
+                "https://kv-contoso-prod.vault.azure.net/secrets/db-password/8f3a?api-version=7.4",
+            ),
+        ] {
+            let (outcome, transport) = azure(&[KV], argv, vec![two_vaults(), value()]);
+            assert_eq!(outcome.code, 0, "{argv:?}: {outcome:?}");
+            assert_eq!(
+                transport.sent()[1].url,
+                url,
+                "{argv:?}: no vault was searched"
+            );
+        }
+        let (outcome, transport) = azure(
+            &[KV],
+            &[
+                "kv",
+                "secret",
+                "get",
+                "kv-contoso-prod/db-password",
+                "--vault",
+                "kv-contoso-dev",
+                "--reveal",
+            ],
+            vec![],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("names vault kv-contoso-prod, and --vault says kv-contoso-dev"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(transport.sent().is_empty());
+
+        let (outcome, _) = azure(
+            &[KV],
+            &[
+                "kv",
+                "secret",
+                "list",
+                "kv-contoso-prod/db-password",
+                "--fields",
+                "id",
+            ],
+            vec![
+                two_vaults(),
+                listing("kv-contoso-prod", &["db-password", "db-password-old"]),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json(),
+            json!([{"id": "kv-contoso-prod/db-password"}]),
+            "an id is exact, and reads one vault"
+        );
+    }
+
+    #[test]
     fn versions_come_back_newest_first() {
         let (outcome, transport) = azure(
             &[KV],
@@ -863,6 +1054,7 @@ mod tests {
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
         let rows = outcome.json();
+        assert_eq!(rows[0]["id"], "kv-contoso-dev/db-password/8f3a");
         assert_eq!(rows[0]["version"], "8f3a");
         assert_eq!(rows[0]["enabled"], false);
         assert_eq!(rows[1]["version"], "1c2b");
@@ -1003,6 +1195,7 @@ mod tests {
             status(&config("[azure]\nvaults = [\"a\", \"b\", \"c\"]\n")),
             "kv 3 vaults"
         );
+        assert_eq!(status(&config("[azure]\nvaults = \"a\"\n")), "kv 1 vault");
         assert_eq!(status(&config("")), "kv all vaults");
         assert_eq!(
             status(&config("[azure]\nvault = \"typo\"\n")),
@@ -1010,7 +1203,7 @@ mod tests {
         );
         assert_eq!(
             crate::acr::status(&config("[azure]\nregistries = \"contosoacr\"\n")),
-            "acr 1 registries"
+            "acr 1 registry"
         );
     }
 }

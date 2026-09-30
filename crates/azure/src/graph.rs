@@ -232,7 +232,7 @@ mod tests {
         );
         assert_eq!(
             sent[0].authorization.as_deref(),
-            Some("Bearer arm-token-first")
+            Some("Bearer token@https://management.azure.com/")
         );
         assert!(
             sent[0]
