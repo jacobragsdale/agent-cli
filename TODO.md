@@ -11,9 +11,11 @@
 
 ## New domains (plans in docs/plans/)
 
-- [ ] Airflow 3.x: list DAGs, run history, run and task status, task logs, trigger, wait
-- [ ] Datadog: wrap `pup`, or call the API directly, or generate from the OpenAPI spec (decide from the plan)
-- [ ] Cross-domain design: shared references, next-step hints, a time-window flag, triage commands
+- [ ] Airflow 3.x (`docs/plans/airflow.md`): 15 hand-written commands over `/api/v2`; open questions at the end of the plan
+- [ ] Datadog (`docs/plans/datadog.md`): a `dd` domain of 20 commands on the REST API; pup stays the documented fallback, not wrapped
+- [ ] Cross-domain (`docs/plans/cross-domain.md`): build now — `--since/--until` in core, "the id is the ref", convention checks in `check_registry`
+- [ ] Core prerequisites from the plans: JSON output with a non-zero exit, per-command default timeout, `password_env`/`password_cmd` in core, extra redaction headers, rate-limit reset headers
+- [ ] Overview ≤ 1 KB is only tested with an empty config; test it with every domain configured
 
 ## Follow-ups found along the way
 
