@@ -415,14 +415,14 @@ release build.
 
 ## Phases
 
-| Phase | Scope | Done when |
-|---|---|---|
-| 0. Repo | Workspace, core, CI, README stub, AGENTS.md with the "adding a command" checklist | CI green on an empty registry. Overview, search, help and guard all tested against synthetic commands |
-| 1. sql | Port about 4.5k lines: drivers, catalog, splitter (without blank-line splitting), export → the result shape above. `doctor sql` | All 6 sql commands pass against both compose DBs. Agent trial of 6 tasks. `az` token latency measured (for phase 2) |
-| 2. ado | Port about 13–15k lines: azure client, model, markdown and html, edit, classification. WIQL-backed list. Drop sync, db, local, watch, agents and status | 29 commands. Fixture tests. Read-only trial against a personal ADO org (no employer names in the repo). Agent trial of 8 tasks |
-| 3. kv, acr, aks, k8s | Port about 5.5k lines: auth, transport, graph, vault, acr, kube (no watcher). Plus the TUI-only features in the map | 22 commands. fake-kubectl and fixture tests. **First run against real Azure and a real cluster**, using az-tui's `plan/CHECKLIST.md`, since az-tui has never had one |
-| 4. Harden | Search tuning from the trial transcripts, perf gates, README (Diátaxis: tutorial, how-to per domain, reference generated from the registry) | Search gates met. A one-line global CLAUDE.md note tells agents that agent-cli exists |
-| 5. Consolidate (optional) | The TUIs depend on the agent-cli domain crates via git and delete their copies and their CLIs | Each TUI's tests pass on the shared crates |
+| Phase | Scope | Done when | Status (2026-09-30) |
+|---|---|---|---|
+| 0. Repo | Workspace, core, CI, README stub, AGENTS.md with the "adding a command" checklist | CI green on an empty registry. Overview, search, help and guard all tested against synthetic commands | Done |
+| 1. sql | Port about 4.5k lines: drivers, catalog, splitter (without blank-line splitting), export → the result shape above. `doctor sql` | All 6 sql commands pass against both compose DBs. Agent trial of 6 tasks. `az` token latency measured (for phase 2) | Done; the signed-in `az` latency is still to measure (TODO.md) |
+| 2. ado | Port about 13–15k lines: azure client, model, markdown and html, edit, classification. WIQL-backed list. Drop sync, db, local, watch, agents and status | 29 commands. Fixture tests. Read-only trial against a personal ADO org (no employer names in the repo). Agent trial of 8 tasks | Done against fixtures; the live read-only run is pending |
+| 3. kv, acr, aks, k8s | Port about 5.5k lines: auth, transport, graph, vault, acr, kube (no watcher). Plus the TUI-only features in the map | 22 commands. fake-kubectl and fixture tests. **First run against real Azure and a real cluster**, using az-tui's `plan/CHECKLIST.md`, since az-tui has never had one | Done against fixtures (23 commands with `k8s deployment list`); the live run is pending: `docs/first-live-run.md` |
+| 4. Harden | Search tuning from the trial transcripts, perf gates, README (Diátaxis: tutorial, how-to per domain, reference generated from the registry) | Search gates met. A one-line global CLAUDE.md note tells agents that agent-cli exists | Done, except the global CLAUDE.md note (the README gives the line). Added along the way: the cross-domain conventions (`docs/plans/cross-domain.md`), the airflow (15 commands) and dd (20 commands) domains, and the contoso world. Trial of 12 tasks on both models, 24 of 24 correct (`docs/trials/2026-09-30.md`); docs in `docs/` |
+| 5. Consolidate (optional) | The TUIs depend on the agent-cli domain crates via git and delete their copies and their CLIs | Each TUI's tests pass on the shared crates | Not started; waits for the live runs of phases 2 and 3 |
 
 ## Growth path to 1,000+
 

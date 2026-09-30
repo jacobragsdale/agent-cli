@@ -4,6 +4,8 @@ agent-cli is one Rust binary whose only users are AI coding agents. Every
 command is `agent-cli <domain> <resource> <verb>`. It is built to hold 1,000+
 commands, so the rules below are enforced by tests, not by review. `PLAN.md`
 is the approved design; `crates/core` is the runtime every domain plugs into.
+This file is the contract; the how-to guides in `docs/how-to/` are the
+procedures.
 
 ## Layout
 
@@ -12,11 +14,14 @@ crates/core/   agent-cli-core: registry + command! macro, dispatch, discovery
                (overview, listings, help), search, output guard, errors and
                redaction, Ctx (the read/write chokepoint), config, cache,
                process runner, HTTP transport, az tokens, testing helpers
-crates/cli/    agent-cli: main() = core::run(DOMAINS), registry-level tests,
-               tests/search.toml (labeled search queries), tests/e2e.rs
-crates/<name>/ one crate per domain group (sql, ado, azure, k8s), exporting
-               one `pub const Domain` per domain: DOMAIN (ado, sql), K8S,
-               and KV, ACR, AKS from crates/azure
+crates/cli/    agent-cli: main() = core::run(DOMAINS), registry-level tests
+               (the command reference, the docs' command lines),
+               tests/search.toml (labeled search queries), tests/world.rs
+crates/<name>/ one crate per domain group (ado, sql, azure, k8s, airflow, dd),
+               exporting one `pub const Domain` per domain: DOMAIN, K8S, and
+               KV, ACR, AKS from crates/azure
+docs/          tutorial.md, how-to/, reference/commands.md (generated),
+               explanation/, trials/ (agent trial results), plans/
 fixtures/world the recorded contoso world agent trials run against
 scripts/fake   az, kubectl, kubelogin stand-ins (tests and trials)
 ```
@@ -114,19 +119,9 @@ has the reasoning.
   `Retry-After`, `X-RateLimit-Reset` and ARM's quota clock, within the
   deadline.
 
-### The deploy trace
-
-Images are tagged with the git tag that built them, and pushing the tag runs
-the ADO build, so production traces back to its work items in three calls:
-
-```sh
-agent-cli k8s deployment list --cluster prod --fields id,images   # image contosoacr.azurecr.io/api:v1.4.2
-agent-cli ado run list --branch refs/tags/v1.4.2 --fields id,result,finished
-agent-cli ado run get 8812 --fields commit,pr,workitems
-```
-
-`acr manifest get contosoacr.azurecr.io/api:v1.4.2` confirms the digest the
-pods report. `fixtures/world` answers exactly this.
+The deploy trace (image tag, then the build on that tag, then its PR and
+work items) and the failed-DAG trace are in `fixtures/world/README.md`, which
+answers both.
 
 ## Style
 
@@ -137,69 +132,14 @@ pods report. `fixtures/world` answers exactly this.
 - Tests sit beside the code (`#[cfg(test)] mod tests`); end-to-end tests live
   in `tests/`. Test names are sentences.
 
-## Adding a command
+## Adding commands, domains and trials
 
-1. **Args struct** in the domain crate: `#[derive(clap::Args)]`. The first
-   line of each field's doc comment is its help text. The main identifier is
-   positional (`ado pr get 123`) and takes the row's `id` (see the
-   conventions above). Lists take `--limit` with default 50; times are
-   `--since`/`--until: Option<When>`. Reuse an existing flag name only with
-   the same kind of value; never declare `--fields --raw --dry-run --yes
-   --reveal --timeout --output --no-cache` or `-h`.
-2. **Return struct**: `#[derive(Serialize, JsonSchema)]`, fields in the order
-   an agent wants them (`id` first, then name or title, state). This type is
-   the `Returns:` line in help and feeds search, so it must be what the
-   command really returns. Timestamps go through `agent_cli_core::utc`.
-3. **Handler**: `fn verb(ctx: &Ctx, args: Args) -> anyhow::Result<Ret>`, all
-   effects through `ctx.read` / `ctx.write`, environment through `ctx.env`.
-4. **Register it** with the macro:
-
-   ```rust
-   command! {
-       pub PR_GET = ["ado", "pr", "get"], Read,
-       "Show a pull request with its reviewers and votes",
-       keywords: ["review", "approved", "who"],
-       example: "ado pr get 42",
-       run: pr_get,
-   }
-   ```
-
-   - **Effect:** `Read`; `Write`; `Destructive` for anything hard to undo
-     (delete, complete, approve, restart, scale); `Reveal` when it prints a
-     secret; `Varies` when the input decides (the handler then sends each
-     write through `ctx.write`).
-   - **Summary:** imperative, at most 80 characters, no trailing period.
-   - **Keywords:** words an agent would use that are not already in the path
-     or summary.
-   - **Example:** starts with the path, runs as written, and uses `--fields`
-     when the command returns a list of objects.
-   - **Timeout** (optional, `timeout: 100,` before `run:`): only for waits.
-   - **Verb:** one of `VERBS` in `crates/core/src/registry.rs`. Adding a verb
-     is a deliberate one-line edit there, only when no existing verb fits.
-5. **Add it to the domain's `COMMANDS` slice** (the order is the listing
-   order). A new domain also goes into `DOMAINS` in `crates/cli/src/main.rs`,
-   the workspace members, and `crates/cli/Cargo.toml`.
-6. **Add at least two labeled queries** to `crates/cli/tests/search.toml`,
-   written as tasks (`text = "who approved PR 42"`,
-   `expect = "ado pr get"`).
-7. **Fixture test**: run it with `testing::run(DOMAINS, argv,
-   Setup::fake(FakeTransport::answering([...])))` over synthetic or scrubbed
-   answers, and assert on stdout, stderr and the exit code. `run` also fails
-   the test on a printed command line that does not parse or a printed time
-   not in UTC. `Setup::fake` signs every `az` token as `token@<resource>`
-   (`with_token` changes it) and sees no environment (`with_env` adds to it);
-   the k8s and azure crates' tests run `kubectl`, `az` and `kubelogin` from
-   `scripts/fake`.
-8. **Dry-run test** for every `Write`, `Destructive` or `Varies` command:
-   `testing::assert_dry_run(DOMAINS, argv, answers_for_the_reads)`.
-9. **Add it to the world**: record the answers a trial would need in
-   `fixtures/world/http/<domain>.json` (or `kubectl.json`), consistent with
-   the facts in `fixtures/world/README.md`, and a line in
-   `crates/cli/tests/world.rs`.
-10. **Run the checks** below. The tests include the registry invariants
-    (`check_registry`), the search gates (top-1 at least 80%, top-5 at least
-    95%), read-only refusal of every non-read command, the overview budget
-    with every domain configured, and the 1,000-command perf gates.
+- A command: `docs/how-to/add-a-command.md`, step by step with a worked
+  example (args, return type, handler, `command!`, `COMMANDS`, labeled
+  queries, fixture and dry-run tests, the world, the reference).
+- A domain: `docs/how-to/add-a-domain.md`, and first whether it earns one.
+- An agent trial: `docs/how-to/run-agent-trials.md`. Every miss becomes a
+  fix, a test or a labeled query.
 
 ## Checks before any commit
 
@@ -211,10 +151,19 @@ cargo test --workspace
 cargo test --workspace --features agent-cli/fixtures
 ```
 
+They include the registry invariants (`check_registry`), the search gates
+(top-1 at least 80%, top-5 at least 95%), read-only refusal of every non-read
+command, the overview budget with every domain configured, the 1,000-command
+perf gates, and two docs tests: `docs/reference/commands.md` must match the
+registry (`UPDATE_DOCS=1 cargo test -p agent-cli reference` rewrites it), and
+every `agent-cli …` in the docs' `sh` blocks and prose must parse.
+
 The `fixtures` feature (off by default, never in a release) compiles in the
 HTTP replayer: with `AGENT_CLI_FIXTURES=<dir>` every request is answered from
-`<dir>/http/*.json`. `eval "$(scripts/trial-env.sh)"` sets up a shell to run
-the fixtures build against `fixtures/world`; its README says how to extend it.
+`<dir>/http/*.json`, strictly unless `AGENT_CLI_FIXTURES_MATCH=loose`.
+`eval "$(scripts/trial-env.sh)"` sets up a shell to run the fixtures build
+against `fixtures/world` (loosely, as trials do); its README says how to
+extend it.
 
 The sql integration tests need the two compose databases: `scripts/db-up.sh`,
 then `AGENT_CLI_TEST_DBS=1 cargo test --workspace`. Without the variable they
