@@ -65,7 +65,43 @@ pub struct Session {
     pub kind: Kind,
     /// What opening it cost, for `query bench`.
     pub connect: Duration,
+    /// The connection's name, for hints.
+    conn: String,
     driver: Driver,
+}
+
+/// A statement named a table or view the database does not have: SQL Server
+/// error 208, Oracle ORA-00942. The drivers raise it; [`Session::run`], which
+/// knows the connection, turns it into exit 4 with the search that finds the
+/// right name.
+#[derive(Debug)]
+pub struct UnknownObject {
+    pub message: String,
+    /// The name the server quoted, when it quoted one.
+    pub name: Option<String>,
+}
+
+impl std::fmt::Display for UnknownObject {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for UnknownObject {}
+
+impl UnknownObject {
+    /// The last name the server quoted (`'bench.nope'`, `"BENCH"."NOPE"`),
+    /// less its schema: what `object list` matches best.
+    pub fn quoted(message: &str) -> Option<String> {
+        let quoted: Vec<&str> = message
+            .split(['\'', '"'])
+            .skip(1)
+            .step_by(2)
+            .filter(|part| !part.trim().is_empty())
+            .collect();
+        let last = quoted.last()?;
+        Some(last.rsplit('.').next().unwrap_or(last).to_owned())
+    }
 }
 
 // One per command, so tiberius' kilobyte of config costs nothing.
@@ -92,6 +128,7 @@ impl Session {
         Ok(Self {
             kind: spec.kind,
             connect: started.elapsed(),
+            conn: spec.name.clone(),
             driver,
         })
     }
@@ -99,10 +136,20 @@ impl Session {
     /// Runs one statement (a whole batch on SQL Server), stopping at
     /// `deadline` with exit 124.
     pub fn run(&mut self, sql: &str, fetch: Fetch, deadline: Instant) -> Result<Ran> {
-        match &mut self.driver {
+        let ran = match &mut self.driver {
             Driver::Mssql(session) => session.run(sql, fetch, deadline),
             Driver::Oracle(session) => session.run(sql, fetch, deadline),
-        }
+        };
+        ran.map_err(|error| match error.downcast::<UnknownObject>() {
+            Ok(unknown) => Failure::not_found(unknown.message)
+                .hint(format!(
+                    "agent-cli sql object list --conn {} {} --fields id,kind",
+                    self.conn,
+                    unknown.name.as_deref().unwrap_or("PATTERN")
+                ))
+                .into(),
+            Err(error) => error,
+        })
     }
 }
 
@@ -130,8 +177,8 @@ impl<T, F: FnOnce(&mut Session) -> Result<T>> Op for OnConnection<'_, F> {
         self.writes
     }
 
-    fn perform(self, _: &Ctx) -> Result<T> {
-        let password = self.spec.password(self.deadline)?;
+    fn perform(self, ctx: &Ctx) -> Result<T> {
+        let password = self.spec.password(ctx)?;
         let mut session = Session::open(self.spec, &password, self.client_dir, self.deadline)?;
         (self.work)(&mut session)
     }
@@ -283,6 +330,23 @@ mod tests {
         assert_eq!(
             (whole(&row, 1), whole(&row, 3), whole(&row, 9)),
             (200, 12, 0)
+        );
+    }
+
+    #[test]
+    fn an_unknown_object_names_the_last_thing_the_server_quoted() {
+        assert_eq!(
+            UnknownObject::quoted("Invalid object name 'bench.nope'.").as_deref(),
+            Some("nope")
+        );
+        assert_eq!(
+            UnknownObject::quoted(r#"ORA-00942: table or view "BENCH"."NOPE" does not exist"#)
+                .as_deref(),
+            Some("NOPE")
+        );
+        assert_eq!(
+            UnknownObject::quoted("ORA-00942: table or view does not exist"),
+            None
         );
     }
 

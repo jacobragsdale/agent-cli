@@ -439,7 +439,19 @@ password_env = "CONTOSO_DB_PASSWORD"
         let outcome = sql(&["sql", "schema", "list", "--conn", "nope"], setup());
         assert_eq!(outcome.code, 2, "{outcome:?}");
         assert!(
-            outcome.stderr.contains("configured: ms, ora, env"),
+            outcome.stderr.contains("--conn takes one of: ms, ora, env"),
+            "{}",
+            outcome.stderr
+        );
+        let outcome = sql(&["sql", "schema", "list"], setup());
+        assert_eq!(
+            outcome.code, 2,
+            "three connections leave the choice open: {outcome:?}"
+        );
+        assert!(
+            outcome.stderr.contains(
+                "more than one connection is configured; name one with --conn: ms, ora, env"
+            ),
             "{}",
             outcome.stderr
         );

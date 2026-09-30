@@ -431,17 +431,27 @@ fn check_conventions(command: &Command) -> Vec<String> {
 
 /// The command lines after each `agent-cli ` in `text` (a hint, a note, an
 /// example), each cut where the prose resumes: a backtick, a bracket, `;`,
-/// `, `, two spaces, ` (`, or the end of the line.
+/// `, `, two spaces, ` (`, or the end of the line, outside quotes (a quoted
+/// argument, such as SQL, may hold any of them).
 pub(crate) fn printed_commands(text: &str) -> Vec<String> {
     const STOPS: [&str; 8] = ["\n", "`", ")", "]", ";", ", ", "  ", " ("];
     text.match_indices("agent-cli ")
         .filter_map(|(at, marker)| {
             let rest = &text[at + marker.len()..];
-            let end = STOPS
-                .iter()
-                .filter_map(|stop| rest.find(stop))
-                .min()
-                .unwrap_or(rest.len());
+            let mut quote: Option<char> = None;
+            let mut end = rest.len();
+            for (index, c) in rest.char_indices() {
+                match quote {
+                    Some(open) if c == open => quote = None,
+                    Some(_) => {}
+                    None if c == '\'' || c == '"' => quote = Some(c),
+                    None if STOPS.iter().any(|stop| rest[index..].starts_with(stop)) => {
+                        end = index;
+                        break;
+                    }
+                    None => {}
+                }
+            }
             let line = rest[..end].trim().trim_end_matches(['.', ',']);
             (!line.is_empty()).then(|| line.to_owned())
         })

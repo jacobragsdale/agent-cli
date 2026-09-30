@@ -23,10 +23,8 @@
 //! connections never runs ten `password_cmd`s.
 
 use std::path::PathBuf;
-use std::process::Command;
-use std::time::Instant;
 
-use agent_cli_core::{Config, Failure, Secret, run_until};
+use agent_cli_core::{Config, Credential, Ctx, Failure, Secret, pick};
 use anyhow::Result;
 use serde::Deserialize;
 
@@ -55,15 +53,6 @@ impl Kind {
     }
 }
 
-/// Where a password comes from. One source or none.
-#[derive(Clone, Debug)]
-pub enum Password {
-    Literal(Secret),
-    Env(String),
-    /// Run through `sh -c`; its stdout, less the trailing newline.
-    Command(String),
-}
-
 /// One `[[sql.connection]]`, checked, with the defaults filled in.
 #[derive(Clone, Debug)]
 pub struct Connection {
@@ -76,7 +65,8 @@ pub struct Connection {
     /// Always set for oracle, never for mssql.
     pub service: Option<String>,
     pub user: String,
-    pub password: Option<Password>,
+    /// `password`, `password_env` or `password_cmd`: core's [`Credential`].
+    pub password: Option<Credential>,
     pub trust_cert: bool,
     pub encrypt: bool,
     pub read_only: bool,
@@ -154,12 +144,10 @@ impl Sql {
         })
     }
 
-    /// The connection `--conn` names: exit 2 listing the ones there are, or
-    /// exit 3 when there are none at all.
-    pub fn connection(&self, name: &str) -> Result<&Connection> {
-        if let Some(found) = self.connections.iter().find(|spec| spec.name == name) {
-            return Ok(found);
-        }
+    /// The connection `--conn` names, or the only one when it names none
+    /// (core's rule for every scope flag): exit 2 listing the ones there are,
+    /// or exit 3 when there are none at all.
+    pub fn connection(&self, name: Option<&str>) -> Result<&Connection> {
         if self.connections.is_empty() {
             return Err(Failure::setup(format!(
                 "no [[sql.connection]] in {}",
@@ -168,17 +156,10 @@ impl Sql {
             .hint("add one; config.example.toml shows the keys")
             .into());
         }
-        let names: Vec<&str> = self
-            .connections
-            .iter()
-            .map(|spec| spec.name.as_str())
-            .collect();
-        Err(Failure::usage(format!(
-            "unknown connection {name:?}; configured: {}",
-            names.join(", ")
-        ))
-        .hint("agent-cli sql connection list")
-        .into())
+        pick("connection", "--conn", name, &self.connections, |spec| {
+            &spec.name
+        })
+        .map_err(|failure| failure.hint("agent-cli sql connection list").into())
     }
 }
 
@@ -227,13 +208,12 @@ impl Raw {
             Some(port) => port,
             None => kind.default_port(),
         };
-        let password = match (self.password, self.password_env, self.password_cmd) {
-            (None, None, None) => None,
-            (Some(literal), None, None) => Some(Password::Literal(Secret::new(literal))),
-            (None, Some(variable), None) => Some(Password::Env(variable)),
-            (None, None, Some(command)) => Some(Password::Command(command)),
-            _ => return Err("give one of password, password_env and password_cmd".to_owned()),
-        };
+        let password = Credential::from_keys(
+            "password",
+            self.password,
+            self.password_env,
+            self.password_cmd,
+        )?;
         Ok(Connection {
             name: self.name,
             kind,
@@ -251,36 +231,15 @@ impl Raw {
 }
 
 impl Connection {
-    /// The password, resolved now that the connection is opening. A
-    /// `password_cmd` runs under `deadline` like any other child process.
-    pub fn password(&self, deadline: Instant) -> Result<Secret> {
-        let setup = |message: String| -> anyhow::Error {
-            Failure::setup(format!("connection {:?}: {message}", self.name))
-                .hint("fix its password source in [sql]; `agent-cli doctor sql` checks it")
-                .into()
-        };
+    /// The password, resolved now that the connection is opening: a
+    /// `password_cmd` runs under the command's deadline like any other child
+    /// process. None is an empty one, which is what a trusted login sends.
+    pub fn password(&self, ctx: &Ctx) -> Result<Secret> {
         match &self.password {
-            // No password is an empty one, which is what a trusted login sends.
             None => Ok(Secret::new(String::new())),
-            Some(Password::Literal(secret)) => Ok(secret.clone()),
-            Some(Password::Env(variable)) => std::env::var(variable)
-                .map(Secret::new)
-                .map_err(|_| setup(format!("password_env {variable} is not set"))),
-            Some(Password::Command(command)) => {
-                let mut sh = Command::new("sh");
-                sh.args(["-c", command]);
-                let output = run_until(sh, deadline)?;
-                if !output.status.success() {
-                    return Err(setup(format!(
-                        "password_cmd failed ({}): {}",
-                        output.status,
-                        output.stderr.trim()
-                    )));
-                }
-                Ok(Secret::new(
-                    output.stdout.trim_end_matches(['\r', '\n']).to_owned(),
-                ))
-            }
+            Some(credential) => credential
+                .resolve(ctx)
+                .map_err(|error| error.context(format!("connection {:?}", self.name))),
         }
     }
 }
@@ -295,8 +254,6 @@ fn expand_home(path: &str) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
-
     use super::*;
 
     fn load(toml: &str) -> Result<Sql> {
@@ -321,7 +278,7 @@ trust_cert = true
     #[test]
     fn a_connection_keeps_what_the_file_says_and_defaults_the_rest() {
         let sql = load(MSSQL).unwrap();
-        let spec = sql.connection("local-mssql").unwrap();
+        let spec = sql.connection(Some("local-mssql")).unwrap();
         assert_eq!((spec.kind, spec.port), (Kind::Mssql, 1433));
         assert!(spec.trust_cert && spec.encrypt && !spec.read_only);
         assert_eq!(sql.client_dir, None);
@@ -329,7 +286,7 @@ trust_cert = true
             "[sql]\noracle_client_dir = \"/opt/ic\"\n[[sql.connection]]\nname = \"o\"\nkind = \"oracle\"\nhost = \"h\"\nservice = \"FREEPDB1\"\nuser = \"u\"\nread_only = true\n",
         )
         .unwrap();
-        let spec = oracle.connection("o").unwrap();
+        let spec = oracle.connection(Some("o")).unwrap();
         assert_eq!(
             (spec.kind, spec.port, spec.read_only),
             (Kind::Oracle, 1521, true)
@@ -401,43 +358,78 @@ trust_cert = true
     }
 
     #[test]
-    fn an_unknown_connection_lists_the_ones_there_are() {
+    fn an_unknown_connection_lists_the_ones_there_are_and_the_only_one_is_the_default() {
         let sql = load(MSSQL).unwrap();
-        let message = format!("{:#}", sql.connection("prod").unwrap_err());
+        assert_eq!(sql.connection(None).unwrap().name, "local-mssql");
+        let message = format!("{:#}", sql.connection(Some("prod")).unwrap_err());
         assert_eq!(
             message,
-            "unknown connection \"prod\"; configured: local-mssql"
+            "no connection \"prod\"; --conn takes one of: local-mssql"
+        );
+        let two = load(&format!("{MSSQL}{}", MSSQL.replace("local-mssql", "other"))).unwrap();
+        let message = format!("{:#}", two.connection(None).unwrap_err());
+        assert_eq!(
+            message,
+            "more than one connection is configured; name one with --conn: local-mssql, other"
         );
         let none = load("").unwrap();
         assert!(
-            format!("{:#}", none.connection("x").unwrap_err())
+            format!("{:#}", none.connection(Some("x")).unwrap_err())
                 .starts_with("no [[sql.connection]] in /cfg/config.toml")
         );
     }
 
     #[test]
     fn a_password_comes_from_the_file_a_variable_or_a_command() {
-        let deadline = Instant::now() + Duration::from_secs(10);
+        use agent_cli_core::testing::{FakeTransport, ctx};
+        let ctx = ctx(agent_cli_core::Setup::fake(FakeTransport::default())
+            .with_env("SQL_TEST_PASSWORD", "from-env-1"));
         let sql = load(MSSQL).unwrap();
-        let spec = sql.connection("local-mssql").unwrap();
-        assert_eq!(spec.password(deadline).unwrap().expose(), "hunter2hunter2");
+        let spec = sql.connection(Some("local-mssql")).unwrap();
+        assert_eq!(spec.password(&ctx).unwrap().expose(), "hunter2hunter2");
 
-        let mut command = spec.clone();
-        command.password = Some(Password::Command("printf 's3cret\\n'".to_owned()));
-        assert_eq!(command.password(deadline).unwrap().expose(), "s3cret");
-
-        command.password = Some(Password::Command("echo nope >&2; exit 3".to_owned()));
-        let message = format!("{:#}", command.password(deadline).unwrap_err());
+        let with = |source: (Option<&str>, Option<&str>)| {
+            let mut spec = spec.clone();
+            spec.password = Credential::from_keys(
+                "password",
+                None,
+                source.0.map(str::to_owned),
+                source.1.map(str::to_owned),
+            )
+            .unwrap();
+            spec
+        };
+        assert_eq!(
+            with((None, Some("printf 's3cret\\n'")))
+                .password(&ctx)
+                .unwrap()
+                .expose(),
+            "s3cret"
+        );
+        assert_eq!(
+            with((Some("SQL_TEST_PASSWORD"), None))
+                .password(&ctx)
+                .unwrap()
+                .expose(),
+            "from-env-1"
+        );
+        let message = format!(
+            "{:#}",
+            with((None, Some("echo nope >&2; exit 3")))
+                .password(&ctx)
+                .unwrap_err()
+        );
         assert!(
             message.contains("password_cmd failed") && message.contains("nope"),
             "{message}"
         );
-
-        command.password = Some(Password::Env("AGENT_CLI_TEST_NO_SUCH_VARIABLE".to_owned()));
-        let message = format!("{:#}", command.password(deadline).unwrap_err());
+        let message = format!(
+            "{:#}",
+            with((Some("UNSET_VAR"), None)).password(&ctx).unwrap_err()
+        );
         assert_eq!(
             message,
-            "connection \"local-mssql\": password_env AGENT_CLI_TEST_NO_SUCH_VARIABLE is not set"
+            "connection \"local-mssql\": password_env UNSET_VAR is not set"
         );
     }
 }

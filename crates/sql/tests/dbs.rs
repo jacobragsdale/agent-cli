@@ -222,12 +222,46 @@ fn mssql_a_failure_names_the_statement_and_what_already_ran() {
         "local-mssql",
         "select 1\ngo\nselect * from bench.nope",
     ]);
-    assert_eq!(outcome.code, 1, "{outcome:?}");
+    assert_eq!(
+        outcome.code, 4,
+        "an unknown table is not found: {outcome:?}"
+    );
     assert!(outcome.stdout.is_empty(), "{outcome:?}");
     assert_eq!(
         outcome.stderr.trim(),
         "error: statement 2 of 2 failed; statement 1 already ran and stays committed \
-         (1 row returned): line 1: Invalid object name 'bench.nope'."
+         (1 row returned): line 1: Invalid object name 'bench.nope'.\n\
+         hint: agent-cli sql object list --conn local-mssql nope --fields id,kind"
+    );
+}
+
+#[test]
+fn mssql_an_unknown_table_is_not_found_and_hints_the_search() {
+    if !wanted() {
+        return;
+    }
+    let outcome = sql(&[
+        "sql",
+        "query",
+        "run",
+        "--conn",
+        "local-mssql",
+        "select * from bench.nosuchthing",
+    ]);
+    assert_eq!(outcome.code, 4, "{outcome:?}");
+    assert!(
+        outcome
+            .stderr
+            .contains("Invalid object name 'bench.nosuchthing'"),
+        "{}",
+        outcome.stderr
+    );
+    assert!(
+        outcome.stderr.contains(
+            "hint: agent-cli sql object list --conn local-mssql nosuchthing --fields id,kind"
+        ),
+        "{}",
+        outcome.stderr
     );
 }
 
@@ -564,6 +598,30 @@ fn oracle_a_broken_procedure_says_which_line() {
         "local-oracle",
         "drop procedure agent_cli_broken",
         &["--yes"],
+    );
+}
+
+#[test]
+fn oracle_an_unknown_table_is_not_found_and_hints_the_search() {
+    if !wanted() {
+        return;
+    }
+    let outcome = sql(&[
+        "sql",
+        "query",
+        "run",
+        "--conn",
+        "local-oracle",
+        "select * from bench.nosuchthing",
+    ]);
+    assert_eq!(outcome.code, 4, "{outcome:?}");
+    assert!(outcome.stderr.contains("ORA-00942"), "{}", outcome.stderr);
+    assert!(
+        outcome
+            .stderr
+            .contains("hint: agent-cli sql object list --conn local-oracle "),
+        "{}",
+        outcome.stderr
     );
 }
 

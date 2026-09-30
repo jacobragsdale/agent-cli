@@ -78,9 +78,9 @@ impl ObjectKind {
 
 #[derive(clap::Args)]
 pub struct ObjectListArgs {
-    /// Connection name from `sql connection list`
+    /// Connection name from `sql connection list`; defaults to the only one
     #[arg(long)]
-    conn: String,
+    conn: Option<String>,
     /// Only names containing this, any case
     pattern: Option<String>,
     /// Only this schema (owner on Oracle)
@@ -95,6 +95,8 @@ pub struct ObjectListArgs {
 
 #[derive(Debug, PartialEq, Serialize, JsonSchema)]
 pub struct ObjectRow {
+    /// `schema.name`: what `object get` takes (with the same --conn).
+    id: String,
     schema: String,
     kind: ObjectKind,
     name: String,
@@ -104,7 +106,7 @@ pub struct ObjectRow {
 
 fn object_list(ctx: &Ctx, args: ObjectListArgs) -> Result<Vec<ObjectRow>> {
     let sql = Sql::load(ctx.config())?;
-    let spec = sql.connection(&args.conn)?;
+    let spec = sql.connection(args.conn.as_deref())?;
     let query = objects_sql(
         spec.kind,
         &Filter {
@@ -137,9 +139,9 @@ command! {
 
 #[derive(clap::Args)]
 pub struct ObjectGetArgs {
-    /// Connection name from `sql connection list`
+    /// Connection name from `sql connection list`; defaults to the only one
     #[arg(long)]
-    conn: String,
+    conn: Option<String>,
     /// schema.name; either part may be quoted as [x] or "x"
     object: String,
 }
@@ -170,13 +172,17 @@ pub struct ColumnInfo {
 
 fn object_get(ctx: &Ctx, args: ObjectGetArgs) -> Result<Object> {
     let (schema, name) = object_name(&args.object).ok_or_else(|| {
+        let conn = args
+            .conn
+            .as_deref()
+            .map_or_else(String::new, |conn| format!("--conn {conn} "));
         Failure::usage(format!("expected SCHEMA.NAME, got {:?}", args.object)).hint(format!(
-            "agent-cli sql object list --conn {} {} --fields schema,name",
-            args.conn, args.object
+            "agent-cli sql object list {conn}{} --fields id,kind",
+            args.object
         ))
     })?;
     let sql = Sql::load(ctx.config())?;
-    let spec = sql.connection(&args.conn)?;
+    let spec = sql.connection(args.conn.as_deref())?;
     let backend = spec.kind;
     let lookup = objects_sql(
         backend,
@@ -207,7 +213,7 @@ fn object_get(ctx: &Ctx, args: ObjectGetArgs) -> Result<Object> {
                     "no table, view, procedure, function, package or sequence {schema}.{name}"
                 ))
                 .hint(format!(
-                    "agent-cli sql object list --conn {} {name} --fields schema,kind,name",
+                    "agent-cli sql object list --conn {} {name} --fields id,kind",
                     spec.name
                 ))
                 .into());
@@ -265,9 +271,9 @@ command! {
 
 #[derive(clap::Args)]
 pub struct SchemaListArgs {
-    /// Connection name from `sql connection list`
+    /// Connection name from `sql connection list`; defaults to the only one
     #[arg(long)]
-    conn: String,
+    conn: Option<String>,
     #[arg(long, default_value_t = 50)]
     limit: usize,
 }
@@ -276,7 +282,7 @@ pub struct SchemaListArgs {
 /// account Oracle did not create, and the one logged in as.
 fn schema_list(ctx: &Ctx, args: SchemaListArgs) -> Result<Vec<String>> {
     let sql = Sql::load(ctx.config())?;
-    let spec = sql.connection(&args.conn)?;
+    let spec = sql.connection(args.conn.as_deref())?;
     let query = match spec.kind {
         Kind::Mssql => "select s.name from sys.schemas s \
              where s.name not in ('sys', 'INFORMATION_SCHEMA', 'guest') \
@@ -439,6 +445,7 @@ fn parse_objects(backend: Kind, rows: &[Vec<Value>]) -> Vec<ObjectRow> {
     rows.iter()
         .filter_map(|row| {
             Some(ObjectRow {
+                id: format!("{}.{}", text(row, 0), text(row, 1)),
                 schema: text(row, 0),
                 name: text(row, 1),
                 kind: ObjectKind::from_code(backend, &text(row, 2))?,

@@ -473,6 +473,12 @@ fn failure(why: TiberiusError) -> anyhow::Error {
             token.line(),
             token.message()
         ),
+        TiberiusError::Server(token) if token.code() == 208 => {
+            anyhow::Error::new(crate::db::UnknownObject {
+                message: format!("line {}: {}", token.line(), token.message()),
+                name: crate::db::UnknownObject::quoted(token.message()),
+            })
+        }
         TiberiusError::Server(token) => anyhow!("line {}: {}", token.line(), token.message()),
         TiberiusError::Io { message, .. } => anyhow!(
             "connection lost: {}",

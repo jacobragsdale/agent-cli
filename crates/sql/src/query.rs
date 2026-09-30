@@ -28,9 +28,9 @@ use crate::split::{self, Statement};
 
 #[derive(clap::Args)]
 pub struct RunArgs {
-    /// Connection name from `sql connection list`
+    /// Connection name from `sql connection list`; defaults to the only one
     #[arg(long)]
-    conn: String,
+    conn: Option<String>,
     /// Keep at most this many rows of each result set
     #[arg(long, default_value_t = 1000, value_parser = clap::value_parser!(u64).range(1..))]
     max_rows: u64,
@@ -50,7 +50,7 @@ pub struct QueryResult {
 fn query_run(ctx: &Ctx, args: RunArgs) -> Result<QueryResult> {
     let started = Instant::now();
     let sql = Sql::load(ctx.config())?;
-    let spec = sql.connection(&args.conn)?;
+    let spec = sql.connection(args.conn.as_deref())?;
     let statements = statements(&args.sql, spec)?;
     let keep = usize::try_from(args.max_rows).unwrap_or(usize::MAX);
     let deadline = ctx.deadline();
@@ -107,9 +107,9 @@ command! {
 
 #[derive(clap::Args)]
 pub struct BenchArgs {
-    /// Connection name from `sql connection list`
+    /// Connection name from `sql connection list`; defaults to the only one
     #[arg(long)]
-    conn: String,
+    conn: Option<String>,
     /// How many times to run it on one connection
     #[arg(long, default_value_t = 20, value_parser = clap::value_parser!(u32).range(1..))]
     runs: u32,
@@ -140,7 +140,7 @@ pub struct Phase {
 
 fn query_bench(ctx: &Ctx, args: BenchArgs) -> Result<Bench> {
     let sql = Sql::load(ctx.config())?;
-    let spec = sql.connection(&args.conn)?;
+    let spec = sql.connection(args.conn.as_deref())?;
     let statements = statements(&args.sql, spec)?;
     let deadline = ctx.deadline();
     let op = OnConnection {

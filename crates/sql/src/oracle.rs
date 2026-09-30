@@ -496,10 +496,18 @@ fn failure(why: &oracle::Error, sql: &str) -> anyhow::Error {
         .map(|db| db.offset() as usize)
         .filter(|offset| *offset > 0)
         .map(|offset| line_of(sql, offset));
-    match line {
-        Some(line) => anyhow!("line {line}: {}", complaint(why)),
-        None => anyhow!(complaint(why)),
+    let message = match line {
+        Some(line) => format!("line {line}: {}", complaint(why)),
+        None => complaint(why),
+    };
+    // ORA-00942, table or view does not exist.
+    if why.db_error().is_some_and(|db| db.code() == 942) {
+        return anyhow::Error::new(crate::db::UnknownObject {
+            name: crate::db::UnknownObject::quoted(&complaint(why)),
+            message,
+        });
     }
+    anyhow!(message)
 }
 
 /// ODPI-C counts the offset in bytes.
