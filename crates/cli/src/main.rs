@@ -7,7 +7,13 @@ use std::process::ExitCode;
 use agent_cli_core::Domain;
 
 /// Every domain, in overview order. Each later phase adds its crate's `DOMAIN`.
-const DOMAINS: &[Domain] = &[agent_cli_sql::DOMAIN];
+const DOMAINS: &[Domain] = &[
+    agent_cli_azure::KV,
+    agent_cli_azure::ACR,
+    agent_cli_azure::AKS,
+    agent_cli_k8s::K8S,
+    agent_cli_sql::DOMAIN,
+];
 
 fn main() -> ExitCode {
     agent_cli_core::run(DOMAINS)

@@ -15,15 +15,24 @@
 # team = "web team"
 
 # [azure]
+# kv, acr and aks sign in with your `az login`; nothing here is required. An
+# empty or missing list means everything the login reaches; a list is an
+# allowlist that also sets the order rows come in. Each takes a string or a
+# list. Add the section (even empty) for `agent-cli doctor` to check Azure.
 # subscriptions = ["00000000-0000-0000-0000-000000000000"]
-# vaults = ["kv-contoso-dev"]
-# registries = ["contosoacr"]
-# parallel = 8
+# vaults = ["kv-contoso-dev", "kv-contoso-prod"]
+# registries = "contosoacr"
+# refresh = 300                          # seconds the resource inventory and
+#                                        # registry counts are cached; 0 = never
+# parallel = 8                           # vaults, registries, repositories read at once
 
 # [[k8s.scope]]
+# One per cluster. `agent-cli aks cluster connect <cluster>` fetches the
+# credentials and prints this block. --cluster takes the name and --namespace
+# one of the namespaces; each defaults when there is only one.
 # name = "dev"
-# context = "aks-contoso-dev"
-# namespaces = ["web", "jobs"]
+# context = "aks-contoso-dev"            # the kubeconfig context; the name when left out
+# namespaces = ["web", "jobs"]           # or one string; left out: every namespace
 
 # [sql]
 # Where Oracle's Instant Client is, for Oracle connections only. Precedence:

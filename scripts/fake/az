@@ -1,0 +1,10 @@
+#!/bin/sh
+# An az that knows `aks get-credentials`, for testing `aks cluster connect`
+# without Azure. Put this directory first on PATH. Tokens never come from
+# here: the tests sign with fixed ones.
+if [ "$1 $2" = "aks get-credentials" ]; then
+  echo "Merged \"$6\" as current context in /nonexistent/.kube/config"
+  exit 0
+fi
+echo "ERROR: the fake az does not know: $*" >&2
+exit 2

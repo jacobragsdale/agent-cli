@@ -1,0 +1,9 @@
+#!/bin/sh
+# A kubelogin that converts nothing, for testing `aks cluster connect`
+# without Azure. Put this directory first on PATH.
+case "$1" in
+  convert-kubeconfig) exit 0 ;;
+  --version) echo "kubelogin version v0.1.4-fake"; exit 0 ;;
+esac
+echo "error: the fake kubelogin does not know: $*" >&2
+exit 2

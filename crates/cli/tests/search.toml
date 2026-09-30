@@ -81,3 +81,199 @@ expect = "sql connection list"
 [[query]]
 text = "list my database connections"
 expect = "sql connection list"
+
+# ---------- kv ----------
+
+[[query]]
+text = "which secrets expire this month"
+expect = "kv secret list"
+
+[[query]]
+text = "find key vault secrets whose name contains db"
+expect = "kv secret list"
+
+[[query]]
+text = "list expired passwords in key vault"
+expect = "kv secret list"
+
+[[query]]
+text = "get the connection string from key vault"
+expect = "kv secret get"
+
+[[query]]
+text = "read the value of a key vault secret"
+expect = "kv secret get"
+
+[[query]]
+text = "fetch the database password from the vault"
+expect = "kv secret get"
+
+[[query]]
+text = "when was this secret last rotated"
+expect = "kv version list"
+
+[[query]]
+text = "show the version history of a key vault secret"
+expect = "kv version list"
+
+[[query]]
+text = "which key vaults can I reach"
+expect = "kv vault list"
+
+[[query]]
+text = "list the vault URIs in my subscription"
+expect = "kv vault list"
+
+# ---------- acr ----------
+
+[[query]]
+text = "list container image repositories in the registry"
+expect = "acr repo list"
+
+[[query]]
+text = "which images were pushed this week"
+expect = "acr repo list"
+
+[[query]]
+text = "show the image tags in the registry"
+expect = "acr tag list"
+
+[[query]]
+text = "what is the latest tag of the api image"
+expect = "acr tag list"
+
+[[query]]
+text = "which architecture and digest does image tag 1.4.2 have"
+expect = "acr manifest get"
+
+[[query]]
+text = "get the sha256 digest pull reference of a container image"
+expect = "acr manifest get"
+
+[[query]]
+text = "which container registries are there"
+expect = "acr registry list"
+
+[[query]]
+text = "find the acr login server"
+expect = "acr registry list"
+
+# ---------- aks ----------
+
+[[query]]
+text = "list the AKS clusters"
+expect = "aks cluster list"
+
+[[query]]
+text = "which kubernetes clusters are running and what version"
+expect = "aks cluster list"
+
+[[query]]
+text = "get kubeconfig credentials for an AKS cluster"
+expect = "aks cluster connect"
+
+[[query]]
+text = "set up kubectl access to the aks cluster"
+expect = "aks cluster connect"
+
+# ---------- k8s ----------
+
+[[query]]
+text = "why is my pod crashlooping"
+expect = "k8s pod get"
+
+[[query]]
+text = "describe the pod and its container states"
+expect = "k8s pod get"
+
+[[query]]
+text = "show the yaml manifest of a pod"
+expect = "k8s pod get"
+
+[[query]]
+text = "list the pods in the dev namespace"
+expect = "k8s pod list"
+
+[[query]]
+text = "which containers are restarting"
+expect = "k8s pod list"
+
+[[query]]
+text = "show the logs of the api pod"
+expect = "k8s pod logs"
+
+[[query]]
+text = "read the output of the container before it crashed"
+expect = "k8s pod logs"
+
+[[query]]
+text = "delete a stuck pod"
+expect = "k8s pod delete"
+
+[[query]]
+text = "kill the pod so it gets recreated"
+expect = "k8s pod delete"
+
+[[query]]
+text = "show recent kubernetes warning events"
+expect = "k8s event list"
+
+[[query]]
+text = "why did the image pull fail on the cluster"
+expect = "k8s event list"
+
+[[query]]
+text = "restart the api deployment"
+expect = "k8s deployment restart"
+
+[[query]]
+text = "do a rollout restart"
+expect = "k8s deployment restart"
+
+[[query]]
+text = "scale the deployment to 3 replicas"
+expect = "k8s deployment scale"
+
+[[query]]
+text = "scale down the worker to zero"
+expect = "k8s deployment scale"
+
+[[query]]
+text = "list the configmaps in the namespace"
+expect = "k8s configmap list"
+
+[[query]]
+text = "which config maps exist"
+expect = "k8s configmap list"
+
+[[query]]
+text = "show the values in a configmap"
+expect = "k8s configmap get"
+
+[[query]]
+text = "what environment settings does orders-config hold"
+expect = "k8s configmap get"
+
+[[query]]
+text = "list kubernetes secrets and their keys"
+expect = "k8s secret list"
+
+[[query]]
+text = "which tls secrets are in the cluster namespace"
+expect = "k8s secret list"
+
+[[query]]
+text = "decode a kubernetes secret key"
+expect = "k8s secret get"
+
+[[query]]
+text = "read the password from a k8s secret"
+expect = "k8s secret get"
+
+[[query]]
+text = "which kubectl contexts are configured"
+expect = "k8s context list"
+
+[[query]]
+text = "list the configured cluster scopes and namespaces"
+expect = "k8s context list"
