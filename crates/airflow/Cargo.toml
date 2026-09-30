@@ -1,0 +1,21 @@
+[package]
+name = "agent-cli-airflow"
+description = "The airflow domain of agent-cli: DAGs, runs, task instances, logs and import errors on Apache Airflow 3"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+agent-cli-core.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+time.workspace = true
+
+[lints]
+workspace = true
