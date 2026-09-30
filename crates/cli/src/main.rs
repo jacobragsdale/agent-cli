@@ -8,6 +8,7 @@ use agent_cli_core::Domain;
 
 /// Every domain, in overview order. Each later phase adds its crate's `DOMAIN`.
 const DOMAINS: &[Domain] = &[
+    agent_cli_ado::DOMAIN,
     agent_cli_azure::KV,
     agent_cli_azure::ACR,
     agent_cli_azure::AKS,

@@ -13,6 +13,7 @@ name = "agent-cli"
 path = "src/main.rs"
 
 [dependencies]
+agent-cli-ado.workspace = true
 agent-cli-core.workspace = true
 agent-cli-sql.workspace = true
 agent-cli-azure.workspace = true

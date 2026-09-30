@@ -12,10 +12,24 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 name = "agent-cli"
 version = "0.1.0"
 dependencies = [
+ "agent-cli-ado",
  "agent-cli-azure",
  "agent-cli-core",
  "agent-cli-k8s",
  "agent-cli-sql",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "agent-cli-ado"
+version = "0.1.0"
+dependencies = [
+ "agent-cli-core",
+ "anyhow",
+ "clap",
+ "schemars",
+ "serde",
  "serde_json",
  "tempfile",
 ]
