@@ -432,4 +432,44 @@ trust_cert = true
             "connection \"local-mssql\": password_env UNSET_VAR is not set"
         );
     }
+
+    #[test]
+    fn nothing_to_run_and_an_unknown_connection_are_usage_errors() {
+        use crate::testing::{setup, sql};
+
+        let outcome = sql(
+            &["sql", "query", "run", "--conn", "ms", "-- only a note"],
+            setup(),
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        let outcome = sql(&["sql", "schema", "list", "--conn", "nope"], setup());
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("--conn takes one of: ms, ora, env"),
+            "{}",
+            outcome.stderr
+        );
+        let outcome = sql(&["sql", "schema", "list"], setup());
+        assert_eq!(
+            outcome.code, 2,
+            "three connections leave the choice open: {outcome:?}"
+        );
+        assert!(
+            outcome.stderr.contains(
+                "more than one connection is configured; name one with --conn: ms, ora, env"
+            ),
+            "{}",
+            outcome.stderr
+        );
+        let outcome = sql(
+            &["sql", "object", "get", "--conn", "ms", "customers"],
+            setup(),
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("expected SCHEMA.NAME"),
+            "{}",
+            outcome.stderr
+        );
+    }
 }

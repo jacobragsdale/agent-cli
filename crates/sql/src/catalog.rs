@@ -10,7 +10,7 @@
 
 use std::borrow::Cow;
 
-use agent_cli_core::{Ctx, Failure, command};
+use agent_cli_core::Ctx;
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -74,90 +74,17 @@ impl ObjectKind {
     }
 }
 
-// ---------- sql object list ----------
-
-#[derive(clap::Args)]
-pub struct ObjectListArgs {
-    /// Connection name from `sql connection list`; defaults to the only one
-    #[arg(long)]
-    conn: Option<String>,
-    /// Only names containing this, any case
-    pattern: Option<String>,
-    /// Only this schema (owner on Oracle)
-    #[arg(long)]
-    schema: Option<String>,
-    /// Only this kind
-    #[arg(long, value_enum)]
-    kind: Option<ObjectKind>,
-    #[arg(long, default_value_t = 50)]
-    limit: usize,
-}
+// ---------- the rows it reads ----------
 
 #[derive(Debug, PartialEq, Serialize, JsonSchema)]
 pub struct ObjectRow {
     /// `schema.name`: what `object get` takes (with the same --conn).
-    id: String,
-    schema: String,
-    kind: ObjectKind,
-    name: String,
+    pub(crate) id: String,
+    pub(crate) schema: String,
+    pub(crate) kind: ObjectKind,
+    pub(crate) name: String,
     /// When it last changed, RFC 3339.
-    modified: Option<String>,
-}
-
-fn object_list(ctx: &Ctx, args: ObjectListArgs) -> Result<Vec<ObjectRow>> {
-    let sql = Sql::load(ctx.config())?;
-    let spec = sql.connection(args.conn.as_deref())?;
-    let query = objects_sql(
-        spec.kind,
-        &Filter {
-            schema: args.schema.as_deref(),
-            kind: args.kind,
-            name: args.pattern.as_deref().map(Name::Contains),
-            limit: Some(args.limit),
-        },
-    );
-    let rows = ctx.read(catalog_read(ctx, &sql, spec, "objects", query))?;
-    let total = rows.first().map_or(0, |row| whole(row, 4));
-    if usize::try_from(total).unwrap_or(usize::MAX) > rows.len() {
-        ctx.note(format!(
-            "[{} of {total}; --limit N, or narrow with PATTERN, --schema or --kind]",
-            rows.len()
-        ));
-    }
-    Ok(parse_objects(spec.kind, &rows))
-}
-
-command! {
-    pub OBJECT_LIST = ["sql", "object", "list"], Read,
-    "List tables and views, procedures, functions, packages and sequences",
-    keywords: ["catalog", "find", "search", "browse", "tables", "names"],
-    example: "sql object list --conn local-mssql customer --kind table --fields schema,name",
-    run: object_list,
-}
-
-// ---------- sql object get ----------
-
-#[derive(clap::Args)]
-pub struct ObjectGetArgs {
-    /// Connection name from `sql connection list`; defaults to the only one
-    #[arg(long)]
-    conn: Option<String>,
-    /// schema.name; either part may be quoted as [x] or "x"
-    object: String,
-}
-
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct Object {
-    kind: ObjectKind,
-    schema: String,
-    name: String,
-    /// Source of a view, procedure, function or package (spec, then body).
-    text: Option<String>,
-    /// A table's columns, in order.
-    columns: Vec<ColumnInfo>,
-    /// A CREATE sketch of a table (columns, NOT NULL, primary key) or a
-    /// sequence.
-    ddl: Option<String>,
+    pub(crate) modified: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
@@ -170,148 +97,10 @@ pub struct ColumnInfo {
     pk: bool,
 }
 
-fn object_get(ctx: &Ctx, args: ObjectGetArgs) -> Result<Object> {
-    let (schema, name) = object_name(&args.object).ok_or_else(|| {
-        let conn = args
-            .conn
-            .as_deref()
-            .map_or_else(String::new, |conn| format!("--conn {conn} "));
-        Failure::usage(format!("expected SCHEMA.NAME, got {:?}", args.object)).hint(format!(
-            "agent-cli sql object list {conn}{} --fields id,kind",
-            args.object
-        ))
-    })?;
-    let sql = Sql::load(ctx.config())?;
-    let spec = sql.connection(args.conn.as_deref())?;
-    let backend = spec.kind;
-    let lookup = objects_sql(
-        backend,
-        &Filter {
-            schema: Some(&schema),
-            kind: None,
-            name: Some(Name::Exact(&name)),
-            limit: None,
-        },
-    );
-    let plan = json!({"conn": spec.name, "read": "object", "object": args.object});
-    let op = OnConnection {
-        spec,
-        client_dir: sql.client_dir.as_deref(),
-        deadline: ctx.deadline(),
-        plan,
-        writes: false,
-        work: |session: &mut Session| {
-            let found = parse_objects(backend, &rows(session, &lookup, ctx)?);
-            // Exact first: on a case-sensitive collation two objects can
-            // differ by nothing else.
-            let found = found
-                .iter()
-                .find(|object| object.name == name)
-                .or_else(|| found.first());
-            let Some(found) = found else {
-                return Err(Failure::not_found(format!(
-                    "no table, view, procedure, function, package or sequence {schema}.{name}"
-                ))
-                .hint(format!(
-                    "agent-cli sql object list --conn {} {name} --fields id,kind",
-                    spec.name
-                ))
-                .into());
-            };
-            describe(session, found, ctx)
-        },
-    };
-    ctx.read(op)
-}
-
-/// What there is to say about an object found by [`object_get`].
-fn describe(session: &mut Session, found: &ObjectRow, ctx: &Ctx) -> Result<Object> {
-    let backend = session.kind;
-    let (schema, name) = (found.schema.as_str(), found.name.as_str());
-    let mut object = Object {
-        kind: found.kind,
-        schema: found.schema.clone(),
-        name: found.name.clone(),
-        text: None,
-        columns: Vec::new(),
-        ddl: None,
-    };
-    match found.kind {
-        ObjectKind::Table => {
-            let columns = parse_columns(
-                backend,
-                &rows(session, &columns_sql(backend, schema, name), ctx)?,
-            );
-            object.ddl = Some(table_ddl(backend, schema, name, &columns));
-            object.columns = columns;
-        }
-        ObjectKind::Sequence => {
-            let row = rows(session, &sequence_sql(backend, schema, name), ctx)?;
-            object.ddl = row
-                .first()
-                .map(|row| sequence_ddl(backend, schema, name, row));
-        }
-        kind => {
-            let source = rows(session, &source_sql(backend, schema, name, kind), ctx)?;
-            object.text = Some(parse_source(backend, schema, name, &source));
-        }
-    }
-    Ok(object)
-}
-
-command! {
-    pub OBJECT_GET = ["sql", "object", "get"], Read,
-    "Show a view, procedure, function or package's source, or a table's columns",
-    keywords: ["definition", "ddl", "code", "describe", "body", "columns"],
-    example: "sql object get --conn local-mssql bench.customers --fields kind,columns,ddl",
-    run: object_get,
-}
-
-// ---------- sql schema list ----------
-
-#[derive(clap::Args)]
-pub struct SchemaListArgs {
-    /// Connection name from `sql connection list`; defaults to the only one
-    #[arg(long)]
-    conn: Option<String>,
-    #[arg(long, default_value_t = 50)]
-    limit: usize,
-}
-
-/// Schema names: on SQL Server all but the system ones; on Oracle every
-/// account Oracle did not create, and the one logged in as.
-fn schema_list(ctx: &Ctx, args: SchemaListArgs) -> Result<Vec<String>> {
-    let sql = Sql::load(ctx.config())?;
-    let spec = sql.connection(args.conn.as_deref())?;
-    let query = match spec.kind {
-        Kind::Mssql => "select s.name from sys.schemas s \
-             where s.name not in ('sys', 'INFORMATION_SCHEMA', 'guest') \
-               and s.name not like 'db[_]%' \
-             order by s.name"
-            .to_owned(),
-        Kind::Oracle => format!("select username from all_users where {OWNERS} order by username"),
-    };
-    let rows = ctx.read(catalog_read(ctx, &sql, spec, "schemas", query))?;
-    let mut schemas: Vec<String> = rows.iter().map(|row| text(row, 0)).collect();
-    if schemas.len() > args.limit {
-        ctx.note(format!("[{} of {}; --limit N]", args.limit, schemas.len()));
-        schemas.truncate(args.limit);
-    }
-    Ok(schemas)
-}
-
-command! {
-    pub SCHEMA_LIST = ["sql", "schema", "list"], Read,
-    "List the schemas (owners) of a database",
-    keywords: ["owners", "users", "namespaces"],
-    example: "sql schema list --conn local-mssql",
-    run: schema_list,
-}
-
 // ---------- the catalog SQL ----------
 
 /// One catalog query on a connection of its own, as a read op.
-fn catalog_read<'a>(
+pub(crate) fn catalog_read<'a>(
     ctx: &'a Ctx,
     sql: &'a Sql,
     spec: &'a crate::config::Connection,
@@ -329,26 +118,26 @@ fn catalog_read<'a>(
 }
 
 /// Every row of a catalog query.
-fn rows(session: &mut Session, sql: &str, ctx: &Ctx) -> Result<Vec<Vec<Value>>> {
+pub(crate) fn rows(session: &mut Session, sql: &str, ctx: &Ctx) -> Result<Vec<Vec<Value>>> {
     let ran = session.run(sql, Fetch::ALL, ctx.deadline())?;
     Ok(ran.sets.into_iter().flat_map(|set| set.rows).collect())
 }
 
-enum Name<'a> {
+pub(crate) enum Name<'a> {
     Contains(&'a str),
     Exact(&'a str),
 }
 
-struct Filter<'a> {
-    schema: Option<&'a str>,
-    kind: Option<ObjectKind>,
-    name: Option<Name<'a>>,
-    limit: Option<usize>,
+pub(crate) struct Filter<'a> {
+    pub(crate) schema: Option<&'a str>,
+    pub(crate) kind: Option<ObjectKind>,
+    pub(crate) name: Option<Name<'a>>,
+    pub(crate) limit: Option<usize>,
 }
 
 /// Objects as `schema, name, type code, modified, total`, where `total` is
 /// how many matched before the limit.
-fn objects_sql(backend: Kind, filter: &Filter) -> String {
+pub(crate) fn objects_sql(backend: Kind, filter: &Filter) -> String {
     let kinds: Vec<ObjectKind> = filter
         .kind
         .map_or_else(|| ObjectKind::ALL.to_vec(), |kind| vec![kind]);
@@ -441,7 +230,7 @@ fn like(pattern: &str, brackets: bool) -> String {
     escaped
 }
 
-fn parse_objects(backend: Kind, rows: &[Vec<Value>]) -> Vec<ObjectRow> {
+pub(crate) fn parse_objects(backend: Kind, rows: &[Vec<Value>]) -> Vec<ObjectRow> {
     rows.iter()
         .filter_map(|row| {
             Some(ObjectRow {
@@ -455,7 +244,7 @@ fn parse_objects(backend: Kind, rows: &[Vec<Value>]) -> Vec<ObjectRow> {
         .collect()
 }
 
-fn columns_sql(backend: Kind, schema: &str, table: &str) -> String {
+pub(crate) fn columns_sql(backend: Kind, schema: &str, table: &str) -> String {
     match backend {
         Kind::Mssql => format!(
             "select c.name, t.name, c.max_length, c.precision, c.scale, \
@@ -497,7 +286,7 @@ fn columns_sql(backend: Kind, schema: &str, table: &str) -> String {
     }
 }
 
-fn parse_columns(backend: Kind, rows: &[Vec<Value>]) -> Vec<ColumnInfo> {
+pub(crate) fn parse_columns(backend: Kind, rows: &[Vec<Value>]) -> Vec<ColumnInfo> {
     rows.iter()
         .map(|row| match backend {
             Kind::Mssql => ColumnInfo {
@@ -531,7 +320,7 @@ fn parse_columns(backend: Kind, rows: &[Vec<Value>]) -> Vec<ColumnInfo> {
 /// `OBJECT_DEFINITION` is the whole batch that created the object on SQL
 /// Server; Oracle keeps a line per row in `ALL_SOURCE`, and a view's text in
 /// `ALL_VIEWS`. The names are as the lookup found them, so no folding.
-fn source_sql(backend: Kind, schema: &str, name: &str, kind: ObjectKind) -> String {
+pub(crate) fn source_sql(backend: Kind, schema: &str, name: &str, kind: ObjectKind) -> String {
     match backend {
         Kind::Mssql => format!(
             "select object_definition(o.object_id) from sys.objects o \
@@ -560,7 +349,7 @@ fn source_sql(backend: Kind, schema: &str, name: &str, kind: ObjectKind) -> Stri
     }
 }
 
-fn parse_source(backend: Kind, schema: &str, name: &str, rows: &[Vec<Value>]) -> String {
+pub(crate) fn parse_source(backend: Kind, schema: &str, name: &str, rows: &[Vec<Value>]) -> String {
     let Some(first) = rows.first() else {
         return String::new();
     };
@@ -594,7 +383,7 @@ fn parse_source(backend: Kind, schema: &str, name: &str, rows: &[Vec<Value>]) ->
 /// primary key.
 // ponytail: no defaults, identity, checks, foreign keys or indexes; ask
 // sys.default_constraints / ALL_CONSTRAINTS if the sketch stops being enough.
-fn table_ddl(backend: Kind, schema: &str, name: &str, columns: &[ColumnInfo]) -> String {
+pub(crate) fn table_ddl(backend: Kind, schema: &str, name: &str, columns: &[ColumnInfo]) -> String {
     let mut lines: Vec<String> = columns
         .iter()
         .map(|column| {
@@ -622,7 +411,7 @@ fn table_ddl(backend: Kind, schema: &str, name: &str, columns: &[ColumnInfo]) ->
 }
 
 /// A sequence's settings as text, so the DDL needs no number rules.
-fn sequence_sql(backend: Kind, schema: &str, name: &str) -> String {
+pub(crate) fn sequence_sql(backend: Kind, schema: &str, name: &str) -> String {
     match backend {
         Kind::Mssql => format!(
             "select type_name(q.user_type_id), cast(q.start_value as varchar(40)), \
@@ -647,7 +436,7 @@ fn sequence_sql(backend: Kind, schema: &str, name: &str) -> String {
 /// `CREATE SEQUENCE` as it stands now: Oracle's `START WITH` is its
 /// `LAST_NUMBER`, the next value a new cache would begin at, the way
 /// `DBMS_METADATA` writes it; SQL Server's current value follows as a note.
-fn sequence_ddl(backend: Kind, schema: &str, name: &str, row: &[Value]) -> String {
+pub(crate) fn sequence_ddl(backend: Kind, schema: &str, name: &str, row: &[Value]) -> String {
     let qualified = qualified(backend, schema, name);
     match backend {
         Kind::Mssql => format!(
@@ -681,7 +470,7 @@ fn sequence_ddl(backend: Kind, schema: &str, name: &str, row: &[Value]) -> Strin
 
 /// The `ALL_USERS` predicate for "a schema somebody here made": Oracle
 /// ships forty accounts of its own.
-const OWNERS: &str = "(oracle_maintained = 'N' \
+pub(crate) const OWNERS: &str = "(oracle_maintained = 'N' \
      or username = sys_context('userenv', 'current_schema'))";
 
 /// SQL Server `sys.types` gives a name, a length in bytes, a precision and
@@ -840,7 +629,7 @@ fn list(values: &[&str]) -> String {
 
 /// `schema.name`, where either part may be quoted as `[x]` or `"x"` (and so
 /// hold a dot); a doubled closing mark is the name's own.
-fn object_name(text: &str) -> Option<(String, String)> {
+pub(crate) fn object_name(text: &str) -> Option<(String, String)> {
     let mut parts = vec![String::new()];
     let mut closing = None;
     let mut characters = text.chars().peekable();
