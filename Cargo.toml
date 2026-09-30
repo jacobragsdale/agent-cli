@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/core", "crates/ado", "crates/sql", "crates/azure", "crates/k8s", "crates/cli"]
+members = ["crates/core", "crates/ado", "crates/sql", "crates/azure", "crates/k8s", "crates/dd", "crates/cli"]
 
 [workspace.package]
 version = "0.1.0"
@@ -15,6 +15,7 @@ agent-cli-core = { path = "crates/core" }
 agent-cli-sql = { path = "crates/sql" }
 agent-cli-azure = { path = "crates/azure" }
 agent-cli-k8s = { path = "crates/k8s" }
+agent-cli-dd = { path = "crates/dd" }
 anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive"] }
 futures-util = "0.3.34"

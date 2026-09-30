@@ -544,3 +544,195 @@ expect = "ado run get"
 [[query]]
 text = "which kubernetes secrets and key vault secrets does a pod use"
 expect = "k8s pod get"
+
+# ---------- dd ----------
+
+[[query]]
+text = "datadog error logs for service api in the last hour"
+expect = "dd log list"
+
+[[query]]
+text = "what did pod worker-5c4d3e9f1-q8zt1 log in datadog last night"
+expect = "dd log list"
+
+[[query]]
+text = "search datadog logs for timeout exceptions"
+expect = "dd log list"
+
+[[query]]
+text = "which services log the most errors"
+expect = "dd log-count list"
+
+[[query]]
+text = "count datadog logs by status in namespace web"
+expect = "dd log-count list"
+
+[[query]]
+text = "how many error logs per pod in the last day"
+expect = "dd log-count list"
+
+[[query]]
+text = "which kubernetes memory metrics exist in datadog"
+expect = "dd metric list"
+
+[[query]]
+text = "find the metric name for request latency"
+expect = "dd metric list"
+
+[[query]]
+text = "cpu of pods in namespace web over the last 3 hours"
+expect = "dd metric get"
+
+[[query]]
+text = "is memory of deployment api growing"
+expect = "dd metric get"
+
+[[query]]
+text = "graph the request errors metric across the deploy"
+expect = "dd metric get"
+
+[[query]]
+text = "which datadog monitors are alerting"
+expect = "dd monitor list"
+
+[[query]]
+text = "list monitors for team web"
+expect = "dd monitor list"
+
+[[query]]
+text = "what alerts are firing right now"
+expect = "dd monitor list"
+
+[[query]]
+text = "why is monitor 4711 alerting"
+expect = "dd monitor get"
+
+[[query]]
+text = "which pods triggered monitor 4711"
+expect = "dd monitor get"
+
+[[query]]
+text = "is monitor 4711 muted"
+expect = "dd downtime list"
+
+[[query]]
+text = "list active datadog downtimes"
+expect = "dd downtime list"
+
+[[query]]
+text = "mute monitor 4711 for 30 minutes"
+expect = "dd downtime create"
+
+[[query]]
+text = "silence alerts during the deploy"
+expect = "dd downtime create"
+
+[[query]]
+text = "unmute monitor 4711"
+expect = "dd downtime cancel"
+
+[[query]]
+text = "end the datadog downtime early"
+expect = "dd downtime cancel"
+
+[[query]]
+text = "datadog events for namespace web in the last 2 hours"
+expect = "dd event list"
+
+[[query]]
+text = "kubernetes events from yesterday in datadog"
+expect = "dd event list"
+
+[[query]]
+text = "list apm services in prod"
+expect = "dd service list"
+
+[[query]]
+text = "which services send traces"
+expect = "dd service list"
+
+[[query]]
+text = "error rate and p95 latency of service api"
+expect = "dd service get"
+
+[[query]]
+text = "is the checkout service healthy"
+expect = "dd service get"
+
+[[query]]
+text = "failing requests to api in the last 30 minutes"
+expect = "dd span list"
+
+[[query]]
+text = "slow traces over 2 seconds for service api"
+expect = "dd span list"
+
+[[query]]
+text = "show every span of trace 5417337734251113490"
+expect = "dd span list"
+
+[[query]]
+text = "are there any active incidents"
+expect = "dd incident list"
+
+[[query]]
+text = "list sev-1 incidents this week"
+expect = "dd incident list"
+
+[[query]]
+text = "details of incident 982"
+expect = "dd incident get"
+
+[[query]]
+text = "what was the customer impact of incident 982"
+expect = "dd incident get"
+
+[[query]]
+text = "which datadog hosts are down"
+expect = "dd host list"
+
+[[query]]
+text = "hosts reporting to datadog for cluster prod"
+expect = "dd host list"
+
+[[query]]
+text = "containers datadog sees in namespace web"
+expect = "dd container list"
+
+[[query]]
+text = "which image does datadog say the worker container runs"
+expect = "dd container list"
+
+[[query]]
+text = "list slos for team web"
+expect = "dd slo list"
+
+[[query]]
+text = "which slos exist for the api"
+expect = "dd slo list"
+
+[[query]]
+text = "how much error budget is left for the api slo"
+expect = "dd slo get"
+
+[[query]]
+text = "is the availability slo breaching"
+expect = "dd slo get"
+
+[[query]]
+text = "find the kubernetes dashboard link"
+expect = "dd dashboard list"
+
+[[query]]
+text = "which datadog dashboards mention checkout"
+expect = "dd dashboard list"
+
+# The k8s readings of words dd shares (SHARED_WORDS: container, log).
+
+[[query]]
+text = "read the log of the worker pod"
+expect = "k8s pod logs"
+
+[[query]]
+text = "list the containers running in the dev namespace"
+expect = "k8s pod list"

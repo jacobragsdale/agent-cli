@@ -14,6 +14,7 @@ const DOMAINS: &[Domain] = &[
     agent_cli_azure::AKS,
     agent_cli_k8s::K8S,
     agent_cli_sql::DOMAIN,
+    agent_cli_dd::DOMAIN,
 ];
 
 fn main() -> ExitCode {
@@ -84,6 +85,11 @@ host = "ledger.contoso.example"
 service = "LEDGER"
 user = "reader"
 password_cmd = "pass show contoso/ledger"
+
+[datadog]
+site = "datadoghq.eu"
+env = "prod"
+token_cmd = "pup auth token"
 "#;
         let setup = Setup::fake(FakeTransport::default()).with_config(config);
         let outcome = run(DOMAINS, &[], setup);
@@ -105,6 +111,7 @@ password_cmd = "pass show contoso/ledger"
             "acr 1 registry",
             "k8s 2 scopes",
             "sql 2 connections",
+            "dd eu",
         ] {
             assert!(config_line.contains(status), "{status}: {config_line}");
         }

@@ -61,7 +61,11 @@ const IDENTITY_FLAGS: &[&str] = &["assignee", "author", "reviewer", "creator", "
 /// Words that are one domain's synonym and another's resource, each with
 /// labeled queries for both readings in `search.toml`. Anything else that
 /// collides is refused: search would weigh the two readings the same.
-pub const SHARED_WORDS: &[&str] = &[];
+pub const SHARED_WORDS: &[&str] = &[
+    // k8s synonyms for pod and logs; dd resources.
+    "container",
+    "log",
+];
 
 /// The longest status line the overview shows for a domain; longer ones are
 /// cut. What keeps the overview under 1 KB with every domain configured.
