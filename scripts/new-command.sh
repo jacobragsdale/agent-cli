@@ -61,7 +61,7 @@ struct=$(camel "$res")$(camel "$verb")
 # Declares `child` in the module file of `dir` (`dir.rs`, else `dir/mod.rs`,
 # made when neither exists and declared in its own parent in turn).
 declare_mod() { # parent_dir child
-    parent=$1 child=$2
+    local parent=$1 child=$2 target line
     if [ "$parent" = "$crate/src" ]; then
         target=$lib line="mod $child;"
     elif [ -e "$parent.rs" ]; then

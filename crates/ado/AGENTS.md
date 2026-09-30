@@ -15,10 +15,11 @@ Work item, PR and run: `8812`, `#8812`, `AB#8812`, or its web URL in this org
 (`Ado::id(Kind, raw)`; another org or kind is exit 2). Repos by name; an
 approval by its GUID; a pipeline by id or name (`Ado::pipeline_id`).
 
-## Where things are
+## Where things are (`src/`)
+A command is `<resource>/<verb>.rs`: its args, rows, handler, `command!`
+and tests (`approval/list.rs` is `ado approval list`). Copy a sibling.
 - `lib.rs`: `DOMAIN`, whose `commands` registers every command (its order
-  is the listing's), status, doctor, and `testkit` (`ado`, `ado_with`,
-  `ado_piped`, `urls`, `dry_run`, `CONFIG`).
+  is the listing's). `doctor.rs`: status, doctor, the PAT test.
 - `client.rs`: `Ado::load(ctx)`, then:
   - `get(ctx, url)` a read; `query(ctx, url, body)` a POST that only reads
     (WIQL, batches); `change(ctx, effect, method, url, body)` a write;
@@ -28,10 +29,12 @@ approval by its GUID; a pipeline by id or name (`Ado::pipeline_id`).
   - Cached lookups: `me`, `identity` (`@me`), `repo`, `repos`, `pipeline_id`.
   - Row helpers: `text`, `stamp` (UTC), `list`, `short_branch`, `full_ref`,
     `segment`, `query_value`.
-- `workitem.rs`, `pr.rs`, `pipeline.rs` (pipelines, runs, approvals):
-  commands with their rows and tests.
-- `markdown.rs`: rich text to Markdown and back, for descriptions and
-  comments.
+- `work_items.rs`: work item rows read in batches, and the artifact links
+  workitem, pr and run share. `markdown.rs`: rich text to Markdown and back.
+- `<resource>/mod.rs`: what its verbs share (`pr/mod.rs`: the PR row;
+  `run/mod.rs`: `RunRow`, `RunIdArgs`; `approval/mod.rs`: `answer`).
+- `testing.rs`: `ado`, `ado_with`, `ado_piped`, `urls`, `dry_run`, `CONFIG`,
+  `CODE`, and sample answers (`page`, `item`, `wiql`, `pr`, `build`, …).
 
 ## Fixtures
 `fixtures/world/http/ado.json`; facts `fixtures/world/facts/ado.md`; world

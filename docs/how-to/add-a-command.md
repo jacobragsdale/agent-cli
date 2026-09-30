@@ -7,9 +7,9 @@ world and the regenerated reference. For a new service, first follow
 [How to add a domain](add-a-domain.md).
 
 The worked example is the approvals resource of the ado domain, as it is in
-`crates/ado/src/pipeline.rs`: `ado approval list`, a read that lists pending
-deployment gates, and `ado approval approve`, a destructive change that takes
-the `id` the list prints. Every snippet is the code in the repository, so its
+`crates/ado/src/approval/`: `ado approval list` (`list.rs`), a read that
+lists pending deployment gates, and `ado approval approve` (`approve.rs`), a
+destructive change that takes the `id` the list prints. Every snippet is the code in the repository, so its
 tests keep this guide honest.
 
 Prerequisites:
@@ -64,10 +64,22 @@ because an approved gate can deploy to production.
 
 ## 2. Write the args struct
 
-Put the command in the domain crate's module for its resource; a new resource
-can go in an existing module or a new one (with its `mod` line in the crate's
-`lib.rs`). The args are a `clap::Args` struct, and the first line of each
-field's doc comment is its help text. A list takes `--limit` with a default of
+A command is one file, named for its path: `crates/<crate>/src/<resource>/<verb>.rs`
+(`src/<domain>/<resource>/<verb>.rs` in azure, which holds three domains; a
+hyphen becomes an underscore). The file holds its args, return struct,
+handler, `command!` and tests; what several verbs of the resource share goes
+in `<resource>/mod.rs` (here `approval/mod.rs`), and what several resources
+share in a crate-level module. No command file imports another.
+`check_layout` fails a command that lives anywhere else. Start it with:
+
+```sh
+scripts/new-command.sh ado approval list --effect read
+```
+
+It writes the file from `scripts/templates/command.rs` (it compiles, and its
+tests fail until you fill it in), declares the module, registers the command
+and appends two placeholder queries. The args are a `clap::Args` struct, and
+the first line of each field's doc comment is its help text. A list takes `--limit` with a default of
 50:
 
 ```rust
@@ -129,8 +141,8 @@ pub struct Approver {
 
 The handler is `fn(&Ctx, Args) -> anyhow::Result<Return>`. Every HTTP request,
 child process and SQL batch goes through `ctx.read` or `ctx.write`. A domain
-wraps that in its client (`crates/<domain>/src/client.rs`, or `lib.rs` in
-k8s and sql), which also attaches its credential only to its own hosts, so
+wraps that in its client (`crates/<domain>/src/client.rs`; `kubectl.rs` in
+k8s, `db.rs` in sql), which also attaches its credential only to its own hosts, so
 call the client's methods (`ado.get`, `ado.query`, `ado.change`) rather than
 building a `Request` yourself. Here `Ado`, `list`, `text`, `stamp` and
 `PREVIEW_API` come from ado's client; `Ctx`, `Effect`, `Method` and `command!`
@@ -205,19 +217,19 @@ command! {
 - **Timeout:** only a command that waits declares one, as `timeout: 100,`
   before `run:` (see `ado run wait`). Everything else keeps core's 60 seconds.
 
-Then add the constant to the domain's `commands` slice in
-`crates/ado/src/lib.rs`. Its position is its place in `agent-cli ado`
-listings:
+`scripts/new-command.sh` added the constant at the end of the domain's
+`commands` slice in `crates/ado/src/lib.rs`; move it to its place, which is
+its place in `agent-cli ado` listings:
 
 ```rust
-        pipeline::APPROVAL_LIST,
-        pipeline::APPROVAL_APPROVE,
-        pipeline::APPROVAL_REJECT,
+        approval::list::APPROVAL_LIST,
+        approval::approve::APPROVAL_APPROVE,
+        approval::reject::APPROVAL_REJECT,
 ```
 
-In other crates the slice is in the `Domain` constant in `lib.rs` too. The
+Every crate's `lib.rs` holds its `Domain` constant and nothing else. The
 domain's own test counts its commands (`assert_eq!(DOMAIN.commands.len(),
-29)` in ado); raise it for each command you add.
+29)` in ado); `scripts/new-command.sh` raises it.
 
 ## 6. Add labeled search queries
 
@@ -260,9 +272,10 @@ looping"; the synonym now points at `status` and `ready`.
 
 ## 7. Write a fixture test
 
-Tests sit beside the code and are named as sentences. Each domain has a
-`testkit` that runs the real dispatcher in process over recorded answers; the
-fake transport keeps what was sent:
+Tests sit in the command's file and are named as sentences; one that covers
+several verbs of a resource, like this one, sits in its `mod.rs`. Each crate's
+`src/testing.rs` runs the real dispatcher in process over recorded answers;
+the fake transport keeps what was sent:
 
 ```rust
 #[test]
@@ -294,9 +307,9 @@ fn approvals_list_the_pending_gates_and_answering_one_is_destructive() {
 ```
 
 Answers are synthetic or scrubbed: the repository is public, so every name is
-a `contoso`-style placeholder. `testing::run`, which every `testkit` calls,
-also fails the test when a printed `agent-cli …` line does not parse or a
-printed time is not UTC. In a crate without a `testkit`, call it directly:
+a `contoso`-style placeholder. Core's `testing::run`, which every crate's
+helpers call, also fails the test when a printed `agent-cli …` line does not
+parse or a printed time is not UTC. To call it directly:
 `testing::run(DOMAINS, argv, Setup::fake(FakeTransport::answering([...])))`.
 `Setup::fake` sees no environment (`with_env` adds a variable) and nothing on
 stdin (`with_stdin` pipes text in), and signs every `az` token as
@@ -307,7 +320,8 @@ and `kubelogin` from `scripts/fake`.
 
 A change goes through `ctx.write(effect, op)`, which is where `--dry-run`,
 `AGENT_CLI_READ_ONLY` and `--yes` are enforced; the handler never checks those
-flags itself. With the ado client that is `ado.change`:
+flags itself. With the ado client that is `ado.change`, here in `answer`, which
+approve and reject share from `approval/mod.rs`:
 
 ```rust
 fn answer(ctx: &Ctx, args: AnswerArgs, status: &str) -> Result<Answered> {
@@ -350,7 +364,7 @@ command! {
 
 Every `Write`, `Destructive` or `Varies` command gets a dry-run test: under
 `--dry-run` the reads run, the first change is planned, and nothing that
-writes reaches the transport. ado's `testkit::dry_run` asserts that and
+writes reaches the transport. ado's `testing::dry_run` asserts that and
 returns the plans; in another crate use `testing::assert_dry_run(DOMAINS,
 argv, answers_for_the_reads)`. The rest of the test from step 7:
 
