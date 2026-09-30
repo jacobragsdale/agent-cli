@@ -4,7 +4,7 @@
 
 - [x] 0. Core runtime: registry, discovery, search, output guard, safety chokepoint
 - [x] 1. sql domain (SQL Server + Oracle)
-- [ ] 2. ado domain (Azure DevOps)
+- [x] 2. ado domain (Azure DevOps; not yet run against a real org)
 - [x] 3. kv, acr, aks, k8s domains (not yet run against real Azure: docs/first-live-run.md)
 - [ ] 4a. Conventions and prerequisites: `--since/--until`, the id is the ref, convention checks, core items below, a `fixtures` replay feature for trials
 - [ ] 4b. airflow and dd domains (in parallel)
@@ -22,7 +22,7 @@
 ## Follow-ups found along the way
 
 - [ ] Measure `az account get-access-token` latency while signed in (~255 ms when signed out); add a disk token cache if it costs more than ~300 ms
-- [ ] ADO answers bad credentials with a 203 sign-in page: map it to exit 3
+- [x] ADO answers bad credentials with a 203 sign-in page: map it to exit 3
 - [ ] Config env overrides guess types for keys missing from the file ("123" becomes an int)
 - [ ] Search hits render a required flag without its value (`--conn <object>` should read `--conn C <object>`)
 - [ ] An unknown table error (SQL Server 208, ORA-00942) should hint `sql object list --conn C PATTERN`
@@ -31,3 +31,7 @@
 - [ ] Two search misses (acr, k8s) land second; "acr 1 registries" pluralization in the overview
 - [ ] AGENTS.md says each crate exports `DOMAIN`; crates/azure exports KV, ACR and AKS
 - [ ] Live checks for docs/first-live-run.md: ACR `_manifests/{tag}`, the exchange's `tenant`, Key Vault `api-version=7.4`, Resource Graph's AKS version and power state
+- [ ] Core: a per-command default timeout (`ado run wait` wants ~100 s), and data on stdout alongside a non-zero exit (failed waits, `pr create` with missing links)
+- [ ] Replace the `cfg!(test)` token seams in ado and azure with `Setup::with_token`
+- [ ] ADO API shapes to confirm live: comments `order=desc`, WIQL `$top`, log `startLine` base, approvals `state`/`top`, identity search, pipelines run shape, rev-test failure, auto-complete off (empty GUID)
+- [ ] Search says "(no command matches every word; closest:)" for most natural questions ("why did the build fail"); "show image tags" ranks `acr manifest get` over `acr tag list`
