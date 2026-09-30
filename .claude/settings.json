@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(/docs/reference/**)",
+      "Read(/Cargo.lock)",
+      "Read(/target/**)"
+    ]
+  }
+}

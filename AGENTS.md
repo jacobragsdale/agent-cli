@@ -117,6 +117,8 @@ The deploy trace and the failed-DAG trace are in `fixtures/world/README.md`.
 
 ## Adding commands, domains and trials
 
+- Any change: the `agent-cli-dev` skill (`.agents/skills/agent-cli-dev/`)
+  says what to read, run and check for each kind.
 - A command: `scripts/new-command.sh`, then `docs/how-to/add-a-command.md`.
 - A domain: `docs/how-to/add-a-domain.md`, and first whether it earns one.
 - An agent trial: `docs/how-to/run-agent-trials.md`. Every miss becomes a
