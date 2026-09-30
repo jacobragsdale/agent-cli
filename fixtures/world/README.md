@@ -19,8 +19,9 @@ agent-cli k8s deployment list
 | Variable | Why |
 |---|---|
 | `AGENT_CLI_FIXTURES` | This directory. The fixtures build answers every HTTP request from `http/*.json` and turns the cache off; the fake kubectl serves `kubectl.json` |
-| `AGENT_CLI_CONFIG` | `config.toml` here: `[ado]`, `[azure]`, `[[k8s.scope]]` |
+| `AGENT_CLI_CONFIG` | `config.toml` here: `[ado]`, `[azure]`, `[[k8s.scope]]`, `[datadog]` |
 | `AGENT_CLI_NOW` | `2026-09-29T12:00:00Z`, the moment the world was recorded. Relative times (`--since 1d`, `--expires-within 30d`, ages) resolve against it, so they keep matching the recordings on any day |
+| `DD_ACCESS_TOKEN` | A stand-in Datadog token; the replayer never checks it |
 | `PATH` | `target/debug` (the fixtures build) and `scripts/fake` (`az`, `kubectl`, `kubelogin`) first. The fake `az` hands out a stand-in token; nothing checks it |
 
 A release build ignores `AGENT_CLI_FIXTURES`: the feature is not in it.
@@ -38,6 +39,9 @@ A release build ignores `AGENT_CLI_FIXTURES`: the feature is not in it.
 | k8s | Scope `prod` (context `aks-contoso-prod`, namespace `web`). Deployment `api` runs `contosoacr.azurecr.io/api:v1.4.2`, 3/3 ready. Deployment `worker` (`worker:v1.4.2`) is 0/1: pod `worker-5c4d3e9f1-q8zt1` is in CrashLoopBackOff with 23 restarts, BackOff events, and a previous log saying the database password was refused. Configmap `api-config`; secrets `api-env`, `worker-db`; SecretProviderClasses `api-kv` and `worker-kv`. |
 | kv | Vault `kv-contoso-prod`: `db-password` expires 2026-10-14 (within 30 days), `worker-db-password` expired 2026-09-20 (why the worker cannot log in), `api-key`, `orders-db-conn`. |
 | aks | Cluster `aks-contoso-prod` (Running). |
+| dd | Site `datadoghq.eu`, env `prod`. Services `api` and `worker`, tagged `kube_cluster_name:prod`, `kube_namespace:web`, so a row's `pod` is the k8s id (`prod/web/…`). |
+| | Monitor **4711** "[prod] api error rate above 5%" triggered at 21:36 on 09-28, two minutes after api `v1.4.2` rolled out (21:34:40), and recovered at 21:58 (OK now; groups per api pod). Monitor **4712** "[prod] worker crash-looping" has been in Alert since 21:41 for pod `worker-5c4d3e9f1-q8zt1`. No downtimes, no incidents. |
+| | Error logs 21:30–22:30 on 09-28: the worker pod's `password authentication failed for user "worker"` from 21:36:05 on, and api's `POST /orders 503 … upstream worker unavailable` 21:35–21:37 (trace ids match `dd span list --service api --status error` in that window). `trace.http.request.errors{service:api,env:prod}` peaks at 64 at 21:40. The event stream holds the rollout, both triggers and the recovery. |
 
 The deploy trace, for example (see AGENTS.md):
 
@@ -53,6 +57,7 @@ agent-cli ado run get 8812 --fields commit,pr,workitems     # PR 431, work items
 config.toml       the config agent-cli reads
 http/ado.json     Azure DevOps answers
 http/azure.json   Resource Graph, Key Vault and ACR answers
+http/dd.json      Datadog answers (api.datadoghq.eu)
 kubectl.json      what the fake kubectl knows: objects per context, and logs
 ```
 

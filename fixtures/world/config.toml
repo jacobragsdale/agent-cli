@@ -16,3 +16,8 @@ registries = ["contosoacr"]
 name = "prod"
 context = "aks-contoso-prod"
 namespaces = ["web"]
+
+[datadog]
+site = "datadoghq.eu"
+env = "prod"
+token_env = "DD_ACCESS_TOKEN"

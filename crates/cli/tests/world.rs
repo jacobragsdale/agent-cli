@@ -21,6 +21,7 @@ const DOMAINS: &[Domain] = &[
     agent_cli_azure::AKS,
     agent_cli_k8s::K8S,
     agent_cli_sql::DOMAIN,
+    agent_cli_dd::DOMAIN,
 ];
 
 struct Ran {
@@ -48,6 +49,7 @@ fn agent_cli(args: &[&str]) -> Ran {
         .env("AGENT_CLI_NOW", NOW)
         .env("PATH", path)
         .env("AZURE_CONFIG_DIR", format!("{world}/.azure-unused"))
+        .env("DD_ACCESS_TOKEN", "fixture-dd-token")
         .env_remove("AZURE_DEVOPS_EXT_PAT")
         .env_remove("AGENT_CLI_READ_ONLY")
         .output()
@@ -180,6 +182,96 @@ fn the_rest_of_the_world_answers_what_a_trial_is_likely_to_ask() {
         &["k8s", "event", "list"],
         &["k8s", "configmap", "get", "prod/web/api-config"],
         &["k8s", "secret", "list"],
+        &["dd", "monitor", "list"],
+        &["dd", "monitor", "get", "4712"],
+        &["dd", "downtime", "list"],
+        &[
+            "dd",
+            "log",
+            "list",
+            "--service",
+            "worker",
+            "--status",
+            "error",
+        ],
+        &[
+            "dd",
+            "log",
+            "list",
+            "--pod",
+            "prod/web/worker-5c4d3e9f1-q8zt1",
+        ],
+        &[
+            "dd",
+            "log",
+            "list",
+            "--pod",
+            "prod/web/worker-5c4d3e9f1-q8zt1",
+            "--status",
+            "error",
+            "--since",
+            "1d",
+        ],
+        &["dd", "log-count", "list", "--status", "error"],
+        &[
+            "dd",
+            "log-count",
+            "list",
+            "--status",
+            "error",
+            "--since",
+            "1d",
+        ],
+        &["dd", "event", "list"],
+        &["dd", "event", "list", "--since", "1d"],
+        &[
+            "dd",
+            "metric",
+            "get",
+            "sum:trace.http.request.errors{service:api,env:prod}.as_count()",
+            "--since",
+            "1d",
+        ],
+        &["dd", "metric", "list", "trace"],
+        &["dd", "service", "list"],
+        &["dd", "service", "get", "api"],
+        &[
+            "dd",
+            "service",
+            "get",
+            "api",
+            "--since",
+            "2026-09-28T21:30:00Z",
+            "--until",
+            "2026-09-28T22:30:00Z",
+        ],
+        &[
+            "dd",
+            "span",
+            "list",
+            "--service",
+            "api",
+            "--status",
+            "error",
+            "--since",
+            "2026-09-28T21:30:00Z",
+            "--until",
+            "2026-09-28T22:30:00Z",
+        ],
+        &["dd", "incident", "list"],
+        &["dd", "container", "list", "--namespace", "web"],
+        &["dd", "host", "list"],
+        &["dd", "dashboard", "list", "kubernetes"],
+        &[
+            "dd",
+            "event",
+            "list",
+            "--since",
+            "2026-09-28T21:00:00Z",
+            "--until",
+            "2026-09-28T23:00:00Z",
+        ],
+        &["doctor", "dd"],
     ] {
         ok(args);
     }
@@ -209,6 +301,87 @@ fn the_rest_of_the_world_answers_what_a_trial_is_likely_to_ask() {
         refs["secret_refs"][1]["kv"],
         json!(["kv-contoso-prod/db-password", "kv-contoso-prod/api-key"])
     );
+}
+
+#[test]
+fn datadog_shows_the_alert_at_the_deploy_the_errors_and_the_pod_to_hop_to() {
+    let rolled_out =
+        ok(&["k8s", "deployment", "list", "--fields", "id,updated"])[0]["updated"].clone();
+    assert_eq!(rolled_out, "2026-09-28T21:34:40Z");
+    let monitor = ok(&[
+        "dd",
+        "monitor",
+        "get",
+        "4711",
+        "--all-groups",
+        "--fields",
+        "name,state,triggered,groups",
+    ]);
+    assert_eq!(monitor["name"], "[prod] api error rate above 5%");
+    assert_eq!(
+        monitor["triggered"], "2026-09-28T21:36:00Z",
+        "two minutes after api v1.4.2 rolled out"
+    );
+    assert_eq!(monitor["state"], "OK");
+    assert_eq!(monitor["groups"][0]["resolved"], "2026-09-28T21:58:00Z");
+    assert_eq!(monitor["groups"][0]["pod"], "prod/web/api-7d9f8c6b5-x2k4q");
+
+    let spike = ok(&[
+        "dd",
+        "metric",
+        "get",
+        "sum:trace.http.request.errors{service:api,env:prod}.as_count()",
+        "--since",
+        "1d",
+        "--fields",
+        "max,max_at,last",
+    ]);
+    assert_eq!(
+        spike,
+        json!([{"max": 64.0, "max_at": "2026-09-28T21:40:00Z", "last": 0.0}]),
+        "api's request errors spiked at the rollout and are gone now"
+    );
+
+    let alerting = ok(&[
+        "dd", "monitor", "list", "--state", "Alert", "--fields", "id,name",
+    ]);
+    assert_eq!(
+        alerting,
+        json!([{"id": 4712, "name": "[prod] worker crash-looping"}])
+    );
+
+    let errors = ok(&[
+        "dd",
+        "log",
+        "list",
+        "--status",
+        "error",
+        "--since",
+        "2026-09-28T21:30:00Z",
+        "--until",
+        "2026-09-28T22:30:00Z",
+        "--fields",
+        "time,service,pod,message",
+    ]);
+    let first_crash = errors
+        .as_array()
+        .unwrap()
+        .iter()
+        .rfind(|row| row["service"] == "worker")
+        .unwrap();
+    assert_eq!(first_crash["time"], "2026-09-28T21:36:05.874Z");
+    assert_eq!(first_crash["pod"], "prod/web/worker-5c4d3e9f1-q8zt1");
+    assert!(
+        first_crash["message"]
+            .as_str()
+            .unwrap()
+            .contains("password authentication failed")
+    );
+
+    let pod = first_crash["pod"].as_str().unwrap();
+    let hop = ok(&["k8s", "pod", "get", pod, "--fields", "id,status,restarts"]);
+    assert_eq!(hop["id"], pod, "a dd row's pod is the k8s pod id");
+    assert_eq!(hop["restarts"], 23);
 }
 
 #[test]

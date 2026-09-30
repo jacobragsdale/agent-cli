@@ -1,0 +1,2549 @@
+[
+ {
+  "request": "POST https://api.datadoghq.eu/api/v2/logs/events/search",
+  "note": "dd log list --status error --since 2026-09-28T21:30:00Z --until 2026-09-28T22:30:00Z: the deploy window; the worker pod crash-loops from 21:36, api fails POST /orders until 21:57",
+  "body": {
+   "filter": {
+    "query": "env:prod status:error",
+    "from": "1790631000000",
+    "to": "1790634600000"
+   },
+   "sort": "-timestamp",
+   "page": {
+    "limit": 50
+   }
+  },
+  "answer": {
+   "data": [
+    {
+     "id": "AQAAAZIxdwor0003AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-28T21:37:44.120Z",
+      "status": "error",
+      "service": "worker",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "connect failed: FATAL: password authentication failed for user \"worker\"",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "kube_deployment:worker",
+       "version:v1.4.2"
+      ],
+      "attributes": {
+       "error": {
+        "kind": "PSQLException",
+        "message": "FATAL: password authentication failed for user \"worker\""
+       }
+      }
+     }
+    },
+    {
+     "id": "AQAAAZIxdapi0004AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-28T21:37:02.911Z",
+      "status": "error",
+      "service": "api",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "POST /orders 503 in 2510ms: upstream worker unavailable (connection refused)",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-x2k4q",
+       "service:api",
+       "kube_deployment:api",
+       "version:v1.4.2"
+      ],
+      "attributes": {
+       "error": {
+        "kind": "HttpRequestException",
+        "message": "Connection refused (worker.web.svc:8080)"
+       },
+       "dd": {
+        "trace_id": "1846223019175527734",
+        "span_id": "263746145596503962"
+       }
+      }
+     }
+    },
+    {
+     "id": "AQAAAZIxdwor0002AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-28T21:36:31.508Z",
+      "status": "error",
+      "service": "worker",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "connect failed: FATAL: password authentication failed for user \"worker\"",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "kube_deployment:worker",
+       "version:v1.4.2"
+      ],
+      "attributes": {
+       "error": {
+        "kind": "PSQLException",
+        "message": "FATAL: password authentication failed for user \"worker\""
+       }
+      }
+     }
+    },
+    {
+     "id": "AQAAAZIxdapi0003AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-28T21:36:12.345Z",
+      "status": "error",
+      "service": "api",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "POST /orders 503 in 2510ms: upstream worker unavailable (connection refused)",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-x2k4q",
+       "service:api",
+       "kube_deployment:api",
+       "version:v1.4.2"
+      ],
+      "attributes": {
+       "error": {
+        "kind": "HttpRequestException",
+        "message": "Connection refused (worker.web.svc:8080)"
+       },
+       "dd": {
+        "trace_id": "5417337734251113490",
+        "span_id": "773905390607301927"
+       }
+      }
+     }
+    },
+    {
+     "id": "AQAAAZIxdwor0001AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-28T21:36:05.874Z",
+      "status": "error",
+      "service": "worker",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "connect failed: FATAL: password authentication failed for user \"worker\"",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "kube_deployment:worker",
+       "version:v1.4.2"
+      ],
+      "attributes": {
+       "error": {
+        "kind": "PSQLException",
+        "message": "FATAL: password authentication failed for user \"worker\""
+       }
+      }
+     }
+    },
+    {
+     "id": "AQAAAZIxdapi0002AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-28T21:35:58.002Z",
+      "status": "error",
+      "service": "api",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "POST /orders 503 in 2510ms: upstream worker unavailable (connection refused)",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-x2k4q",
+       "service:api",
+       "kube_deployment:api",
+       "version:v1.4.2"
+      ],
+      "attributes": {
+       "error": {
+        "kind": "HttpRequestException",
+        "message": "Connection refused (worker.web.svc:8080)"
+       },
+       "dd": {
+        "trace_id": "7318029446513379201",
+        "span_id": "1045432778073339885"
+       }
+      }
+     }
+    }
+   ],
+   "meta": {
+    "elapsed": 41,
+    "status": "done",
+    "request_id": "pddv1ChZ3b3JsZC1yZXF1ZXN0"
+   }
+  }
+ },
+ {
+  "request": "POST https://api.datadoghq.eu/api/v2/logs/events/search",
+  "note": "dd log list --service worker --status error (last 15m)",
+  "body": {
+   "filter": {
+    "query": "service:worker env:prod status:error",
+    "from": "1790682300000",
+    "to": "1790683200000"
+   },
+   "sort": "-timestamp",
+   "page": {
+    "limit": 50
+   }
+  },
+  "answer": {
+   "data": [
+    {
+     "id": "AQAAAZIxdwor0090AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-29T11:47:13.905Z",
+      "status": "error",
+      "service": "worker",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "connect failed: FATAL: password authentication failed for user \"worker\"",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "kube_deployment:worker",
+       "version:v1.4.2"
+      ],
+      "attributes": {
+       "error": {
+        "kind": "PSQLException",
+        "message": "FATAL: password authentication failed for user \"worker\""
+       }
+      }
+     }
+    }
+   ],
+   "meta": {
+    "elapsed": 41,
+    "status": "done",
+    "request_id": "pddv1ChZ3b3JsZC1yZXF1ZXN0"
+   }
+  }
+ },
+ {
+  "request": "POST https://api.datadoghq.eu/api/v2/logs/events/search",
+  "note": "dd log list --pod prod/web/worker-5c4d3e9f1-q8zt1 (last 15m): its latest start",
+  "body": {
+   "filter": {
+    "query": "env:prod kube_cluster_name:prod kube_namespace:web pod_name:worker-5c4d3e9f1-q8zt1",
+    "from": "1790682300000",
+    "to": "1790683200000"
+   },
+   "sort": "-timestamp",
+   "page": {
+    "limit": 50
+   }
+  },
+  "answer": {
+   "data": [
+    {
+     "id": "AQAAAZIxdwor0090AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-29T11:47:13.905Z",
+      "status": "error",
+      "service": "worker",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "connect failed: FATAL: password authentication failed for user \"worker\"",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "kube_deployment:worker",
+       "version:v1.4.2"
+      ],
+      "attributes": {
+       "error": {
+        "kind": "PSQLException",
+        "message": "FATAL: password authentication failed for user \"worker\""
+       }
+      }
+     }
+    },
+    {
+     "id": "AQAAAZIxdwor0089AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-29T11:47:12.874Z",
+      "status": "info",
+      "service": "worker",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "connecting to orders-db.contoso.example:5432 as worker",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "kube_deployment:worker",
+       "version:v1.4.2"
+      ],
+      "attributes": {}
+     }
+    },
+    {
+     "id": "AQAAAZIxdwor0088AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-29T11:47:12.512Z",
+      "status": "info",
+      "service": "worker",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "reading database password from /mnt/secrets/worker-db-password",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "kube_deployment:worker",
+       "version:v1.4.2"
+      ],
+      "attributes": {}
+     }
+    },
+    {
+     "id": "AQAAAZIxdwor0087AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-29T11:47:10.100Z",
+      "status": "info",
+      "service": "worker",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "worker starting (version v1.4.2, commit 4be1c0d)",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "kube_deployment:worker",
+       "version:v1.4.2"
+      ],
+      "attributes": {}
+     }
+    }
+   ],
+   "meta": {
+    "elapsed": 41,
+    "status": "done",
+    "request_id": "pddv1ChZ3b3JsZC1yZXF1ZXN0"
+   }
+  }
+ },
+ {
+  "request": "POST https://api.datadoghq.eu/api/v2/logs/events/search",
+  "note": "dd log list --pod prod/web/worker-5c4d3e9f1-q8zt1 --status error --since 1d: the first failure was at 21:36:05 on 09-28",
+  "body": {
+   "filter": {
+    "query": "env:prod kube_cluster_name:prod kube_namespace:web pod_name:worker-5c4d3e9f1-q8zt1 status:error",
+    "from": "1790596800000",
+    "to": "1790683200000"
+   },
+   "sort": "-timestamp",
+   "page": {
+    "limit": 50
+   }
+  },
+  "answer": {
+   "data": [
+    {
+     "id": "AQAAAZIxdwor0090AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-29T11:47:13.905Z",
+      "status": "error",
+      "service": "worker",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "connect failed: FATAL: password authentication failed for user \"worker\"",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "kube_deployment:worker",
+       "version:v1.4.2"
+      ],
+      "attributes": {
+       "error": {
+        "kind": "PSQLException",
+        "message": "FATAL: password authentication failed for user \"worker\""
+       }
+      }
+     }
+    },
+    {
+     "id": "AQAAAZIxdwor0003AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-28T21:37:44.120Z",
+      "status": "error",
+      "service": "worker",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "connect failed: FATAL: password authentication failed for user \"worker\"",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "kube_deployment:worker",
+       "version:v1.4.2"
+      ],
+      "attributes": {
+       "error": {
+        "kind": "PSQLException",
+        "message": "FATAL: password authentication failed for user \"worker\""
+       }
+      }
+     }
+    },
+    {
+     "id": "AQAAAZIxdwor0002AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-28T21:36:31.508Z",
+      "status": "error",
+      "service": "worker",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "connect failed: FATAL: password authentication failed for user \"worker\"",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "kube_deployment:worker",
+       "version:v1.4.2"
+      ],
+      "attributes": {
+       "error": {
+        "kind": "PSQLException",
+        "message": "FATAL: password authentication failed for user \"worker\""
+       }
+      }
+     }
+    },
+    {
+     "id": "AQAAAZIxdwor0001AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-28T21:36:05.874Z",
+      "status": "error",
+      "service": "worker",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "connect failed: FATAL: password authentication failed for user \"worker\"",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "kube_deployment:worker",
+       "version:v1.4.2"
+      ],
+      "attributes": {
+       "error": {
+        "kind": "PSQLException",
+        "message": "FATAL: password authentication failed for user \"worker\""
+       }
+      }
+     }
+    }
+   ],
+   "meta": {
+    "elapsed": 41,
+    "status": "done",
+    "request_id": "pddv1ChZ3b3JsZC1yZXF1ZXN0"
+   }
+  }
+ },
+ {
+  "request": "POST https://api.datadoghq.eu/api/v2/logs/analytics/aggregate",
+  "note": "dd log-count list --status error (last 1h): only the worker errs now",
+  "body": {
+   "compute": [
+    {
+     "aggregation": "count",
+     "type": "total"
+    }
+   ],
+   "filter": {
+    "query": "env:prod status:error",
+    "from": "1790679600000",
+    "to": "1790683200000"
+   },
+   "group_by": [
+    {
+     "facet": "service",
+     "limit": 50,
+     "sort": {
+      "aggregation": "count",
+      "order": "desc",
+      "type": "measure"
+     }
+    }
+   ]
+  },
+  "answer": {
+   "data": {
+    "buckets": [
+     {
+      "by": {
+       "service": "worker"
+      },
+      "computes": {
+       "c0": 46
+      }
+     }
+    ]
+   },
+   "meta": {
+    "status": "done",
+    "elapsed": 22
+   }
+  }
+ },
+ {
+  "request": "POST https://api.datadoghq.eu/api/v2/logs/analytics/aggregate",
+  "note": "dd log-count list --status error --since 1d",
+  "body": {
+   "compute": [
+    {
+     "aggregation": "count",
+     "type": "total"
+    }
+   ],
+   "filter": {
+    "query": "env:prod status:error",
+    "from": "1790596800000",
+    "to": "1790683200000"
+   },
+   "group_by": [
+    {
+     "facet": "service",
+     "limit": 50,
+     "sort": {
+      "aggregation": "count",
+      "order": "desc",
+      "type": "measure"
+     }
+    }
+   ]
+  },
+  "answer": {
+   "data": {
+    "buckets": [
+     {
+      "by": {
+       "service": "worker"
+      },
+      "computes": {
+       "c0": 1840
+      }
+     },
+     {
+      "by": {
+       "service": "api"
+      },
+      "computes": {
+       "c0": 212
+      }
+     }
+    ]
+   },
+   "meta": {
+    "status": "done",
+    "elapsed": 31
+   }
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v1/monitor/search?per_page=50&page=0",
+  "note": "dd monitor list",
+  "answer": {
+   "monitors": [
+    {
+     "id": 4712,
+     "name": "[prod] worker crash-looping",
+     "status": "Alert",
+     "type": "query alert",
+     "classification": "metric",
+     "priority": 1,
+     "tags": [
+      "service:worker",
+      "env:prod",
+      "team:web"
+     ],
+     "query": "max(last_10m):sum:kubernetes.containers.restarts{kube_deployment:worker,env:prod} by {kube_cluster_name,kube_namespace,pod_name} > 3",
+     "last_triggered_ts": 1790631660,
+     "overall_state_modified": "2026-09-28T21:41:00+00:00",
+     "metrics": [
+      "kubernetes.containers.restarts"
+     ],
+     "creator": {
+      "handle": "jane@contoso.com",
+      "name": "Jane Doe",
+      "id": 1
+     }
+    },
+    {
+     "id": 4711,
+     "name": "[prod] api error rate above 5%",
+     "status": "OK",
+     "type": "query alert",
+     "classification": "metric",
+     "priority": 2,
+     "tags": [
+      "service:api",
+      "env:prod",
+      "team:web"
+     ],
+     "query": "sum(last_5m):sum:trace.http.request.errors{service:api,env:prod} by {kube_cluster_name,kube_namespace,pod_name}.as_count() / sum:trace.http.request.hits{service:api,env:prod} by {kube_cluster_name,kube_namespace,pod_name}.as_count() > 0.05",
+     "last_triggered_ts": 1790631360,
+     "overall_state_modified": "2026-09-28T21:58:00+00:00",
+     "metrics": [
+      "trace.http.request.errors",
+      "trace.http.request.hits"
+     ],
+     "creator": {
+      "handle": "jane@contoso.com",
+      "name": "Jane Doe",
+      "id": 1
+     }
+    }
+   ],
+   "metadata": {
+    "total_count": 2,
+    "page_count": 1,
+    "page": 0,
+    "per_page": 50
+   },
+   "counts": {
+    "status": [
+     {
+      "name": "Alert",
+      "count": 1
+     },
+     {
+      "name": "OK",
+      "count": 1
+     }
+    ]
+   }
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v1/monitor/search?query=status%3AAlert&per_page=50&page=0",
+  "note": "dd monitor list --state Alert: the worker; api recovered at 21:58",
+  "answer": {
+   "monitors": [
+    {
+     "id": 4712,
+     "name": "[prod] worker crash-looping",
+     "status": "Alert",
+     "type": "query alert",
+     "classification": "metric",
+     "priority": 1,
+     "tags": [
+      "service:worker",
+      "env:prod",
+      "team:web"
+     ],
+     "query": "max(last_10m):sum:kubernetes.containers.restarts{kube_deployment:worker,env:prod} by {kube_cluster_name,kube_namespace,pod_name} > 3",
+     "last_triggered_ts": 1790631660,
+     "overall_state_modified": "2026-09-28T21:41:00+00:00",
+     "metrics": [
+      "kubernetes.containers.restarts"
+     ],
+     "creator": {
+      "handle": "jane@contoso.com",
+      "name": "Jane Doe",
+      "id": 1
+     }
+    }
+   ],
+   "metadata": {
+    "total_count": 1,
+    "page_count": 1,
+    "page": 0,
+    "per_page": 50
+   },
+   "counts": {
+    "status": [
+     {
+      "name": "Alert",
+      "count": 1
+     }
+    ]
+   }
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v1/monitor/search?query=status%3A%28Alert+OR+Warn%29&per_page=50&page=0",
+  "note": "dd monitor list --state Alert,Warn",
+  "answer": {
+   "monitors": [
+    {
+     "id": 4712,
+     "name": "[prod] worker crash-looping",
+     "status": "Alert",
+     "type": "query alert",
+     "classification": "metric",
+     "priority": 1,
+     "tags": [
+      "service:worker",
+      "env:prod",
+      "team:web"
+     ],
+     "query": "max(last_10m):sum:kubernetes.containers.restarts{kube_deployment:worker,env:prod} by {kube_cluster_name,kube_namespace,pod_name} > 3",
+     "last_triggered_ts": 1790631660,
+     "overall_state_modified": "2026-09-28T21:41:00+00:00",
+     "metrics": [
+      "kubernetes.containers.restarts"
+     ],
+     "creator": {
+      "handle": "jane@contoso.com",
+      "name": "Jane Doe",
+      "id": 1
+     }
+    }
+   ],
+   "metadata": {
+    "total_count": 1,
+    "page_count": 1,
+    "page": 0,
+    "per_page": 50
+   },
+   "counts": {
+    "status": [
+     {
+      "name": "Alert",
+      "count": 1
+     }
+    ]
+   }
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v1/monitor/search?per_page=1",
+  "note": "doctor dd: the token reads monitors",
+  "answer": {
+   "monitors": [
+    {
+     "id": 4712,
+     "name": "[prod] worker crash-looping",
+     "status": "Alert",
+     "type": "query alert",
+     "classification": "metric",
+     "priority": 1,
+     "tags": [
+      "service:worker",
+      "env:prod",
+      "team:web"
+     ],
+     "query": "max(last_10m):sum:kubernetes.containers.restarts{kube_deployment:worker,env:prod} by {kube_cluster_name,kube_namespace,pod_name} > 3",
+     "last_triggered_ts": 1790631660,
+     "overall_state_modified": "2026-09-28T21:41:00+00:00",
+     "metrics": [
+      "kubernetes.containers.restarts"
+     ],
+     "creator": {
+      "handle": "jane@contoso.com",
+      "name": "Jane Doe",
+      "id": 1
+     }
+    }
+   ],
+   "metadata": {
+    "total_count": 2,
+    "page_count": 2,
+    "page": 0,
+    "per_page": 1
+   }
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v1/monitor/4711?group_states=all&with_downtimes=true",
+  "note": "monitor 4711 alerted 21:36, two minutes after api v1.4.2 rolled out (21:34:40), and recovered 21:58",
+  "answer": {
+   "id": 4711,
+   "name": "[prod] api error rate above 5%",
+   "type": "query alert",
+   "query": "sum(last_5m):sum:trace.http.request.errors{service:api,env:prod} by {kube_cluster_name,kube_namespace,pod_name}.as_count() / sum:trace.http.request.hits{service:api,env:prod} by {kube_cluster_name,kube_namespace,pod_name}.as_count() > 0.05",
+   "tags": [
+    "service:api",
+    "env:prod",
+    "team:web"
+   ],
+   "priority": 2,
+   "creator": {
+    "handle": "jane@contoso.com",
+    "name": "Jane Doe",
+    "id": 1
+   },
+   "message": "api is failing more than 5% of requests. Check the worker it posts orders to. @slack-contoso-web",
+   "overall_state": "OK",
+   "overall_state_modified": "2026-09-28T21:58:00+00:00",
+   "created": "2026-03-02T09:00:00.000000+00:00",
+   "modified": "2026-06-11T14:20:00.000000+00:00",
+   "multi": true,
+   "options": {
+    "thresholds": {
+     "critical": 0.05
+    },
+    "notify_no_data": false
+   },
+   "state": {
+    "groups": {
+     "kube_cluster_name:prod,kube_namespace:web,pod_name:api-7d9f8c6b5-x2k4q": {
+      "name": "kube_cluster_name:prod,kube_namespace:web,pod_name:api-7d9f8c6b5-x2k4q",
+      "status": "OK",
+      "last_triggered_ts": 1790631360,
+      "last_resolved_ts": 1790632680,
+      "last_nodata_ts": 0
+     },
+     "kube_cluster_name:prod,kube_namespace:web,pod_name:api-7d9f8c6b5-m3n5p": {
+      "name": "kube_cluster_name:prod,kube_namespace:web,pod_name:api-7d9f8c6b5-m3n5p",
+      "status": "OK",
+      "last_triggered_ts": 1790631360,
+      "last_resolved_ts": 1790632620,
+      "last_nodata_ts": 0
+     },
+     "kube_cluster_name:prod,kube_namespace:web,pod_name:api-7d9f8c6b5-r7t8v": {
+      "name": "kube_cluster_name:prod,kube_namespace:web,pod_name:api-7d9f8c6b5-r7t8v",
+      "status": "OK",
+      "last_triggered_ts": 0,
+      "last_resolved_ts": 0,
+      "last_nodata_ts": 0
+     }
+    }
+   },
+   "matching_downtimes": []
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v1/monitor/4712?group_states=all&with_downtimes=true",
+  "note": "monitor 4712: the worker pod has crash-looped since the v1.4.2 rollout",
+  "answer": {
+   "id": 4712,
+   "name": "[prod] worker crash-looping",
+   "type": "query alert",
+   "query": "max(last_10m):sum:kubernetes.containers.restarts{kube_deployment:worker,env:prod} by {kube_cluster_name,kube_namespace,pod_name} > 3",
+   "tags": [
+    "service:worker",
+    "env:prod",
+    "team:web"
+   ],
+   "priority": 1,
+   "creator": {
+    "handle": "jane@contoso.com",
+    "name": "Jane Doe",
+    "id": 1
+   },
+   "message": "worker pods restart in a loop; `k8s pod logs --previous` shows why. @slack-contoso-web",
+   "overall_state": "Alert",
+   "overall_state_modified": "2026-09-28T21:41:00+00:00",
+   "created": "2026-03-02T09:00:00.000000+00:00",
+   "modified": "2026-06-11T14:20:00.000000+00:00",
+   "multi": true,
+   "options": {
+    "thresholds": {
+     "critical": 0.05
+    },
+    "notify_no_data": false
+   },
+   "state": {
+    "groups": {
+     "kube_cluster_name:prod,kube_namespace:web,pod_name:worker-5c4d3e9f1-q8zt1": {
+      "name": "kube_cluster_name:prod,kube_namespace:web,pod_name:worker-5c4d3e9f1-q8zt1",
+      "status": "Alert",
+      "last_triggered_ts": 1790631660,
+      "last_resolved_ts": 0,
+      "last_nodata_ts": 0
+     }
+    }
+   },
+   "matching_downtimes": []
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v2/downtime?current_only=true&page%5Blimit%5D=50",
+  "note": "dd downtime list: nothing is muted",
+  "answer": {
+   "data": [],
+   "meta": {
+    "page": {
+     "total_filtered_count": 0
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v2/events?filter%5Bquery%5D=%2A&filter%5Bfrom%5D=1790629200000&filter%5Bto%5D=1790636400000&sort=-timestamp&page%5Blimit%5D=50",
+  "note": "dd event list --since 2026-09-28T21:00:00Z --until 2026-09-28T23:00:00Z: the rollout, then the alerts",
+  "answer": {
+   "data": [
+    {
+     "id": "AAAAAZIxev0005AAAAABBWkl4",
+     "type": "event",
+     "attributes": {
+      "timestamp": "2026-09-28T21:58:00Z",
+      "message": "api errors are back under 5%",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-x2k4q",
+       "service:api",
+       "monitor:4711",
+       "source:monitor alert"
+      ],
+      "attributes": {
+       "title": "[Recovered] [prod] api error rate above 5%",
+       "source_type_name": "monitor alert",
+       "status": "info",
+       "priority": "normal",
+       "timestamp": 1790632680000,
+       "hostname": "aks-nodepool1-12345678-vmss000001"
+      }
+     }
+    },
+    {
+     "id": "AAAAAZIxev0004AAAAABBWkl4",
+     "type": "event",
+     "attributes": {
+      "timestamp": "2026-09-28T21:41:00Z",
+      "message": "worker restarted 4 times in 10 minutes",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "monitor:4712",
+       "source:monitor alert"
+      ],
+      "attributes": {
+       "title": "[Triggered] [prod] worker crash-looping",
+       "source_type_name": "monitor alert",
+       "status": "info",
+       "priority": "normal",
+       "timestamp": 1790631660000,
+       "hostname": "aks-nodepool1-12345678-vmss000001"
+      }
+     }
+    },
+    {
+     "id": "AAAAAZIxev0002AAAAABBWkl4",
+     "type": "event",
+     "attributes": {
+      "timestamp": "2026-09-28T21:36:02Z",
+      "message": "Scaled up replica set worker-5c4d3e9f1 to 1",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "kube_deployment:worker",
+       "service:worker",
+       "source:kubernetes"
+      ],
+      "attributes": {
+       "title": "Events from the Deployment web/worker",
+       "source_type_name": "kubernetes",
+       "status": "info",
+       "priority": "normal",
+       "timestamp": 1790631362000,
+       "hostname": "aks-nodepool1-12345678-vmss000001"
+      }
+     }
+    },
+    {
+     "id": "AAAAAZIxev0003AAAAABBWkl4",
+     "type": "event",
+     "attributes": {
+      "timestamp": "2026-09-28T21:36:00Z",
+      "message": "api failed 9% of requests in 5 minutes",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-x2k4q",
+       "service:api",
+       "monitor:4711",
+       "source:monitor alert"
+      ],
+      "attributes": {
+       "title": "[Triggered] [prod] api error rate above 5%",
+       "source_type_name": "monitor alert",
+       "status": "info",
+       "priority": "normal",
+       "timestamp": 1790631360000,
+       "hostname": "aks-nodepool1-12345678-vmss000001"
+      }
+     }
+    },
+    {
+     "id": "AAAAAZIxev0001AAAAABBWkl4",
+     "type": "event",
+     "attributes": {
+      "timestamp": "2026-09-28T21:34:12Z",
+      "message": "Scaled up replica set api-7d9f8c6b5 to 3",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "kube_deployment:api",
+       "service:api",
+       "source:kubernetes"
+      ],
+      "attributes": {
+       "title": "Events from the Deployment web/api",
+       "source_type_name": "kubernetes",
+       "status": "info",
+       "priority": "normal",
+       "timestamp": 1790631252000,
+       "hostname": "aks-nodepool1-12345678-vmss000001"
+      }
+     }
+    }
+   ],
+   "meta": {
+    "page": {}
+   },
+   "links": {}
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v2/events?filter%5Bquery%5D=%2A&filter%5Bfrom%5D=1790596800000&filter%5Bto%5D=1790683200000&sort=-timestamp&page%5Blimit%5D=50",
+  "note": "dd event list --since 1d",
+  "answer": {
+   "data": [
+    {
+     "id": "AAAAAZIxev0006AAAAABBWkl4",
+     "type": "event",
+     "attributes": {
+      "timestamp": "2026-09-29T11:52:30Z",
+      "message": "Back-off restarting failed container worker in pod worker-5c4d3e9f1-q8zt1_web",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "source:kubernetes"
+      ],
+      "attributes": {
+       "title": "Events from the Pod web/worker-5c4d3e9f1-q8zt1",
+       "source_type_name": "kubernetes",
+       "status": "info",
+       "priority": "normal",
+       "timestamp": 1790682750000,
+       "hostname": "aks-nodepool1-12345678-vmss000001"
+      }
+     }
+    },
+    {
+     "id": "AAAAAZIxev0005AAAAABBWkl4",
+     "type": "event",
+     "attributes": {
+      "timestamp": "2026-09-28T21:58:00Z",
+      "message": "api errors are back under 5%",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-x2k4q",
+       "service:api",
+       "monitor:4711",
+       "source:monitor alert"
+      ],
+      "attributes": {
+       "title": "[Recovered] [prod] api error rate above 5%",
+       "source_type_name": "monitor alert",
+       "status": "info",
+       "priority": "normal",
+       "timestamp": 1790632680000,
+       "hostname": "aks-nodepool1-12345678-vmss000001"
+      }
+     }
+    },
+    {
+     "id": "AAAAAZIxev0004AAAAABBWkl4",
+     "type": "event",
+     "attributes": {
+      "timestamp": "2026-09-28T21:41:00Z",
+      "message": "worker restarted 4 times in 10 minutes",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "monitor:4712",
+       "source:monitor alert"
+      ],
+      "attributes": {
+       "title": "[Triggered] [prod] worker crash-looping",
+       "source_type_name": "monitor alert",
+       "status": "info",
+       "priority": "normal",
+       "timestamp": 1790631660000,
+       "hostname": "aks-nodepool1-12345678-vmss000001"
+      }
+     }
+    },
+    {
+     "id": "AAAAAZIxev0002AAAAABBWkl4",
+     "type": "event",
+     "attributes": {
+      "timestamp": "2026-09-28T21:36:02Z",
+      "message": "Scaled up replica set worker-5c4d3e9f1 to 1",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "kube_deployment:worker",
+       "service:worker",
+       "source:kubernetes"
+      ],
+      "attributes": {
+       "title": "Events from the Deployment web/worker",
+       "source_type_name": "kubernetes",
+       "status": "info",
+       "priority": "normal",
+       "timestamp": 1790631362000,
+       "hostname": "aks-nodepool1-12345678-vmss000001"
+      }
+     }
+    },
+    {
+     "id": "AAAAAZIxev0003AAAAABBWkl4",
+     "type": "event",
+     "attributes": {
+      "timestamp": "2026-09-28T21:36:00Z",
+      "message": "api failed 9% of requests in 5 minutes",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-x2k4q",
+       "service:api",
+       "monitor:4711",
+       "source:monitor alert"
+      ],
+      "attributes": {
+       "title": "[Triggered] [prod] api error rate above 5%",
+       "source_type_name": "monitor alert",
+       "status": "info",
+       "priority": "normal",
+       "timestamp": 1790631360000,
+       "hostname": "aks-nodepool1-12345678-vmss000001"
+      }
+     }
+    },
+    {
+     "id": "AAAAAZIxev0001AAAAABBWkl4",
+     "type": "event",
+     "attributes": {
+      "timestamp": "2026-09-28T21:34:12Z",
+      "message": "Scaled up replica set api-7d9f8c6b5 to 3",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "kube_deployment:api",
+       "service:api",
+       "source:kubernetes"
+      ],
+      "attributes": {
+       "title": "Events from the Deployment web/api",
+       "source_type_name": "kubernetes",
+       "status": "info",
+       "priority": "normal",
+       "timestamp": 1790631252000,
+       "hostname": "aks-nodepool1-12345678-vmss000001"
+      }
+     }
+    }
+   ],
+   "meta": {
+    "page": {}
+   },
+   "links": {}
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v2/events?filter%5Bquery%5D=%2A&filter%5Bfrom%5D=1790679600000&filter%5Bto%5D=1790683200000&sort=-timestamp&page%5Blimit%5D=50",
+  "note": "dd event list (last 1h)",
+  "answer": {
+   "data": [
+    {
+     "id": "AAAAAZIxev0006AAAAABBWkl4",
+     "type": "event",
+     "attributes": {
+      "timestamp": "2026-09-29T11:52:30Z",
+      "message": "Back-off restarting failed container worker in pod worker-5c4d3e9f1-q8zt1_web",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "source:kubernetes"
+      ],
+      "attributes": {
+       "title": "Events from the Pod web/worker-5c4d3e9f1-q8zt1",
+       "source_type_name": "kubernetes",
+       "status": "info",
+       "priority": "normal",
+       "timestamp": 1790682750000,
+       "hostname": "aks-nodepool1-12345678-vmss000001"
+      }
+     }
+    }
+   ],
+   "meta": {
+    "page": {}
+   },
+   "links": {}
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v1/query?from=1790596800&to=1790683200&query=sum%3Atrace.http.request.errors%7Bservice%3Aapi%2Cenv%3Aprod%7D.as_count%28%29",
+  "note": "dd metric get 'sum:trace.http.request.errors{service:api,env:prod}.as_count()' --since 1d: the spike at the v1.4.2 rollout",
+  "answer": {
+   "status": "ok",
+   "res_type": "time_series",
+   "resp_version": 1,
+   "query": "sum:trace.http.request.errors{service:api,env:prod}.as_count()",
+   "message": "",
+   "group_by": [],
+   "from_date": 1790596800000,
+   "to_date": 1790683200000,
+   "series": [
+    {
+     "metric": "trace.http.request.errors",
+     "display_name": "trace.http.request.errors",
+     "scope": "env:prod,service:api",
+     "tag_set": [],
+     "expression": "sum:trace.http.request.errors{service:api,env:prod}",
+     "aggr": "sum",
+     "interval": 300,
+     "length": 288,
+     "start": 1790596800000.0,
+     "end": 1790683199000.0,
+     "query_index": 0,
+     "pointlist": [
+      [1790596800000.0, 0.0],
+      [1790597100000.0, 0.0],
+      [1790597400000.0, 0.0],
+      [1790597700000.0, 0.0],
+      [1790598000000.0, 0.0],
+      [1790598300000.0, 0.0],
+      [1790598600000.0, 0.0],
+      [1790598900000.0, 0.0],
+      [1790599200000.0, 0.0],
+      [1790599500000.0, 0.0],
+      [1790599800000.0, 0.0],
+      [1790600100000.0, 0.0],
+      [1790600400000.0, 0.0],
+      [1790600700000.0, 0.0],
+      [1790601000000.0, 0.0],
+      [1790601300000.0, 0.0],
+      [1790601600000.0, 0.0],
+      [1790601900000.0, 0.0],
+      [1790602200000.0, 0.0],
+      [1790602500000.0, 0.0],
+      [1790602800000.0, 0.0],
+      [1790603100000.0, 0.0],
+      [1790603400000.0, 0.0],
+      [1790603700000.0, 0.0],
+      [1790604000000.0, 0.0],
+      [1790604300000.0, 0.0],
+      [1790604600000.0, 0.0],
+      [1790604900000.0, 0.0],
+      [1790605200000.0, 0.0],
+      [1790605500000.0, 0.0],
+      [1790605800000.0, 0.0],
+      [1790606100000.0, 0.0],
+      [1790606400000.0, 0.0],
+      [1790606700000.0, 0.0],
+      [1790607000000.0, 0.0],
+      [1790607300000.0, 0.0],
+      [1790607600000.0, 0.0],
+      [1790607900000.0, 0.0],
+      [1790608200000.0, 0.0],
+      [1790608500000.0, 0.0],
+      [1790608800000.0, 0.0],
+      [1790609100000.0, 0.0],
+      [1790609400000.0, 0.0],
+      [1790609700000.0, 0.0],
+      [1790610000000.0, 0.0],
+      [1790610300000.0, 0.0],
+      [1790610600000.0, 0.0],
+      [1790610900000.0, 0.0],
+      [1790611200000.0, 0.0],
+      [1790611500000.0, 0.0],
+      [1790611800000.0, 0.0],
+      [1790612100000.0, 0.0],
+      [1790612400000.0, 0.0],
+      [1790612700000.0, 0.0],
+      [1790613000000.0, 0.0],
+      [1790613300000.0, 0.0],
+      [1790613600000.0, 0.0],
+      [1790613900000.0, 0.0],
+      [1790614200000.0, 0.0],
+      [1790614500000.0, 0.0],
+      [1790614800000.0, 0.0],
+      [1790615100000.0, 0.0],
+      [1790615400000.0, 0.0],
+      [1790615700000.0, 0.0],
+      [1790616000000.0, 0.0],
+      [1790616300000.0, 0.0],
+      [1790616600000.0, 0.0],
+      [1790616900000.0, 0.0],
+      [1790617200000.0, 0.0],
+      [1790617500000.0, 0.0],
+      [1790617800000.0, 0.0],
+      [1790618100000.0, 0.0],
+      [1790618400000.0, 0.0],
+      [1790618700000.0, 0.0],
+      [1790619000000.0, 0.0],
+      [1790619300000.0, 0.0],
+      [1790619600000.0, 0.0],
+      [1790619900000.0, 0.0],
+      [1790620200000.0, 0.0],
+      [1790620500000.0, 0.0],
+      [1790620800000.0, 0.0],
+      [1790621100000.0, 0.0],
+      [1790621400000.0, 0.0],
+      [1790621700000.0, 0.0],
+      [1790622000000.0, 0.0],
+      [1790622300000.0, 0.0],
+      [1790622600000.0, 0.0],
+      [1790622900000.0, 0.0],
+      [1790623200000.0, 0.0],
+      [1790623500000.0, 0.0],
+      [1790623800000.0, 0.0],
+      [1790624100000.0, 0.0],
+      [1790624400000.0, 0.0],
+      [1790624700000.0, 0.0],
+      [1790625000000.0, 0.0],
+      [1790625300000.0, 0.0],
+      [1790625600000.0, 0.0],
+      [1790625900000.0, 0.0],
+      [1790626200000.0, 0.0],
+      [1790626500000.0, 0.0],
+      [1790626800000.0, 0.0],
+      [1790627100000.0, 0.0],
+      [1790627400000.0, 0.0],
+      [1790627700000.0, 0.0],
+      [1790628000000.0, 0.0],
+      [1790628300000.0, 0.0],
+      [1790628600000.0, 0.0],
+      [1790628900000.0, 0.0],
+      [1790629200000.0, 0.0],
+      [1790629500000.0, 0.0],
+      [1790629800000.0, 0.0],
+      [1790630100000.0, 0.0],
+      [1790630400000.0, 0.0],
+      [1790630700000.0, 0.0],
+      [1790631000000.0, 0.0],
+      [1790631300000.0, 31.0],
+      [1790631600000.0, 64.0],
+      [1790631900000.0, 58.0],
+      [1790632200000.0, 41.0],
+      [1790632500000.0, 18.0],
+      [1790632800000.0, 0.0],
+      [1790633100000.0, 0.0],
+      [1790633400000.0, 0.0],
+      [1790633700000.0, 0.0],
+      [1790634000000.0, 0.0],
+      [1790634300000.0, 0.0],
+      [1790634600000.0, 0.0],
+      [1790634900000.0, 0.0],
+      [1790635200000.0, 0.0],
+      [1790635500000.0, 0.0],
+      [1790635800000.0, 0.0],
+      [1790636100000.0, 0.0],
+      [1790636400000.0, 0.0],
+      [1790636700000.0, 0.0],
+      [1790637000000.0, 0.0],
+      [1790637300000.0, 0.0],
+      [1790637600000.0, 0.0],
+      [1790637900000.0, 0.0],
+      [1790638200000.0, 0.0],
+      [1790638500000.0, 0.0],
+      [1790638800000.0, 0.0],
+      [1790639100000.0, 0.0],
+      [1790639400000.0, 0.0],
+      [1790639700000.0, 0.0],
+      [1790640000000.0, 0.0],
+      [1790640300000.0, 0.0],
+      [1790640600000.0, 0.0],
+      [1790640900000.0, 0.0],
+      [1790641200000.0, 0.0],
+      [1790641500000.0, 0.0],
+      [1790641800000.0, 0.0],
+      [1790642100000.0, 0.0],
+      [1790642400000.0, 0.0],
+      [1790642700000.0, 0.0],
+      [1790643000000.0, 0.0],
+      [1790643300000.0, 0.0],
+      [1790643600000.0, 0.0],
+      [1790643900000.0, 0.0],
+      [1790644200000.0, 0.0],
+      [1790644500000.0, 0.0],
+      [1790644800000.0, 0.0],
+      [1790645100000.0, 0.0],
+      [1790645400000.0, 0.0],
+      [1790645700000.0, 0.0],
+      [1790646000000.0, 0.0],
+      [1790646300000.0, 0.0],
+      [1790646600000.0, 0.0],
+      [1790646900000.0, 0.0],
+      [1790647200000.0, 0.0],
+      [1790647500000.0, 0.0],
+      [1790647800000.0, 0.0],
+      [1790648100000.0, 0.0],
+      [1790648400000.0, 0.0],
+      [1790648700000.0, 0.0],
+      [1790649000000.0, 0.0],
+      [1790649300000.0, 0.0],
+      [1790649600000.0, 0.0],
+      [1790649900000.0, 0.0],
+      [1790650200000.0, 0.0],
+      [1790650500000.0, 0.0],
+      [1790650800000.0, 0.0],
+      [1790651100000.0, 0.0],
+      [1790651400000.0, 0.0],
+      [1790651700000.0, 0.0],
+      [1790652000000.0, 0.0],
+      [1790652300000.0, 0.0],
+      [1790652600000.0, 0.0],
+      [1790652900000.0, 0.0],
+      [1790653200000.0, 0.0],
+      [1790653500000.0, 0.0],
+      [1790653800000.0, 0.0],
+      [1790654100000.0, 0.0],
+      [1790654400000.0, 0.0],
+      [1790654700000.0, 0.0],
+      [1790655000000.0, 0.0],
+      [1790655300000.0, 0.0],
+      [1790655600000.0, 0.0],
+      [1790655900000.0, 0.0],
+      [1790656200000.0, 0.0],
+      [1790656500000.0, 0.0],
+      [1790656800000.0, 0.0],
+      [1790657100000.0, 0.0],
+      [1790657400000.0, 0.0],
+      [1790657700000.0, 0.0],
+      [1790658000000.0, 0.0],
+      [1790658300000.0, 0.0],
+      [1790658600000.0, 0.0],
+      [1790658900000.0, 0.0],
+      [1790659200000.0, 0.0],
+      [1790659500000.0, 0.0],
+      [1790659800000.0, 0.0],
+      [1790660100000.0, 0.0],
+      [1790660400000.0, 0.0],
+      [1790660700000.0, 0.0],
+      [1790661000000.0, 0.0],
+      [1790661300000.0, 0.0],
+      [1790661600000.0, 0.0],
+      [1790661900000.0, 0.0],
+      [1790662200000.0, 0.0],
+      [1790662500000.0, 0.0],
+      [1790662800000.0, 0.0],
+      [1790663100000.0, 0.0],
+      [1790663400000.0, 0.0],
+      [1790663700000.0, 0.0],
+      [1790664000000.0, 0.0],
+      [1790664300000.0, 0.0],
+      [1790664600000.0, 0.0],
+      [1790664900000.0, 0.0],
+      [1790665200000.0, 0.0],
+      [1790665500000.0, 0.0],
+      [1790665800000.0, 0.0],
+      [1790666100000.0, 0.0],
+      [1790666400000.0, 0.0],
+      [1790666700000.0, 0.0],
+      [1790667000000.0, 0.0],
+      [1790667300000.0, 0.0],
+      [1790667600000.0, 0.0],
+      [1790667900000.0, 0.0],
+      [1790668200000.0, 0.0],
+      [1790668500000.0, 0.0],
+      [1790668800000.0, 0.0],
+      [1790669100000.0, 0.0],
+      [1790669400000.0, 0.0],
+      [1790669700000.0, 0.0],
+      [1790670000000.0, 0.0],
+      [1790670300000.0, 0.0],
+      [1790670600000.0, 0.0],
+      [1790670900000.0, 0.0],
+      [1790671200000.0, 0.0],
+      [1790671500000.0, 0.0],
+      [1790671800000.0, 0.0],
+      [1790672100000.0, 0.0],
+      [1790672400000.0, 0.0],
+      [1790672700000.0, 0.0],
+      [1790673000000.0, 0.0],
+      [1790673300000.0, 0.0],
+      [1790673600000.0, 0.0],
+      [1790673900000.0, 0.0],
+      [1790674200000.0, 0.0],
+      [1790674500000.0, 0.0],
+      [1790674800000.0, 0.0],
+      [1790675100000.0, 0.0],
+      [1790675400000.0, 0.0],
+      [1790675700000.0, 0.0],
+      [1790676000000.0, 0.0],
+      [1790676300000.0, 0.0],
+      [1790676600000.0, 0.0],
+      [1790676900000.0, 0.0],
+      [1790677200000.0, 0.0],
+      [1790677500000.0, 0.0],
+      [1790677800000.0, 0.0],
+      [1790678100000.0, 0.0],
+      [1790678400000.0, 0.0],
+      [1790678700000.0, 0.0],
+      [1790679000000.0, 0.0],
+      [1790679300000.0, 0.0],
+      [1790679600000.0, 0.0],
+      [1790679900000.0, 0.0],
+      [1790680200000.0, 0.0],
+      [1790680500000.0, 0.0],
+      [1790680800000.0, 0.0],
+      [1790681100000.0, 0.0],
+      [1790681400000.0, 0.0],
+      [1790681700000.0, 0.0],
+      [1790682000000.0, 0.0],
+      [1790682300000.0, 0.0],
+      [1790682600000.0, 0.0],
+      [1790682900000.0, 0.0]
+     ],
+     "unit": [
+      {
+       "family": "network",
+       "name": "request",
+       "short_name": "req",
+       "plural": "requests",
+       "scale_factor": 1.0,
+       "id": 21
+      },
+      null
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v1/query?from=1790629200&to=1790636400&query=sum%3Atrace.http.request.errors%7Bservice%3Aapi%2Cenv%3Aprod%7D.as_count%28%29",
+  "note": "the same query over 21:00-23:00",
+  "answer": {
+   "status": "ok",
+   "res_type": "time_series",
+   "resp_version": 1,
+   "query": "sum:trace.http.request.errors{service:api,env:prod}.as_count()",
+   "message": "",
+   "group_by": [],
+   "from_date": 1790629200000,
+   "to_date": 1790636400000,
+   "series": [
+    {
+     "metric": "trace.http.request.errors",
+     "display_name": "trace.http.request.errors",
+     "scope": "env:prod,service:api",
+     "tag_set": [],
+     "expression": "sum:trace.http.request.errors{service:api,env:prod}",
+     "aggr": "sum",
+     "interval": 60,
+     "length": 120,
+     "start": 1790629200000.0,
+     "end": 1790636399000.0,
+     "query_index": 0,
+     "pointlist": [
+      [1790629200000.0, 0.0],
+      [1790629260000.0, 0.0],
+      [1790629320000.0, 0.0],
+      [1790629380000.0, 0.0],
+      [1790629440000.0, 0.0],
+      [1790629500000.0, 0.0],
+      [1790629560000.0, 0.0],
+      [1790629620000.0, 0.0],
+      [1790629680000.0, 0.0],
+      [1790629740000.0, 0.0],
+      [1790629800000.0, 0.0],
+      [1790629860000.0, 0.0],
+      [1790629920000.0, 0.0],
+      [1790629980000.0, 0.0],
+      [1790630040000.0, 0.0],
+      [1790630100000.0, 0.0],
+      [1790630160000.0, 0.0],
+      [1790630220000.0, 0.0],
+      [1790630280000.0, 0.0],
+      [1790630340000.0, 0.0],
+      [1790630400000.0, 0.0],
+      [1790630460000.0, 0.0],
+      [1790630520000.0, 0.0],
+      [1790630580000.0, 0.0],
+      [1790630640000.0, 0.0],
+      [1790630700000.0, 0.0],
+      [1790630760000.0, 0.0],
+      [1790630820000.0, 0.0],
+      [1790630880000.0, 0.0],
+      [1790630940000.0, 0.0],
+      [1790631000000.0, 0.0],
+      [1790631060000.0, 0.0],
+      [1790631120000.0, 0.0],
+      [1790631180000.0, 0.0],
+      [1790631240000.0, 0.0],
+      [1790631300000.0, 4.0],
+      [1790631360000.0, 6.0],
+      [1790631420000.0, 9.0],
+      [1790631480000.0, 12.0],
+      [1790631540000.0, 14.0],
+      [1790631600000.0, 13.0],
+      [1790631660000.0, 13.0],
+      [1790631720000.0, 12.0],
+      [1790631780000.0, 12.0],
+      [1790631840000.0, 11.0],
+      [1790631900000.0, 12.0],
+      [1790631960000.0, 11.0],
+      [1790632020000.0, 10.0],
+      [1790632080000.0, 9.0],
+      [1790632140000.0, 9.0],
+      [1790632200000.0, 8.0],
+      [1790632260000.0, 8.0],
+      [1790632320000.0, 6.0],
+      [1790632380000.0, 4.0],
+      [1790632440000.0, 3.0],
+      [1790632500000.0, 3.0],
+      [1790632560000.0, 2.0],
+      [1790632620000.0, 1.0],
+      [1790632680000.0, 0.0],
+      [1790632740000.0, 0.0],
+      [1790632800000.0, 0.0],
+      [1790632860000.0, 0.0],
+      [1790632920000.0, 0.0],
+      [1790632980000.0, 0.0],
+      [1790633040000.0, 0.0],
+      [1790633100000.0, 0.0],
+      [1790633160000.0, 0.0],
+      [1790633220000.0, 0.0],
+      [1790633280000.0, 0.0],
+      [1790633340000.0, 0.0],
+      [1790633400000.0, 0.0],
+      [1790633460000.0, 0.0],
+      [1790633520000.0, 0.0],
+      [1790633580000.0, 0.0],
+      [1790633640000.0, 0.0],
+      [1790633700000.0, 0.0],
+      [1790633760000.0, 0.0],
+      [1790633820000.0, 0.0],
+      [1790633880000.0, 0.0],
+      [1790633940000.0, 0.0],
+      [1790634000000.0, 0.0],
+      [1790634060000.0, 0.0],
+      [1790634120000.0, 0.0],
+      [1790634180000.0, 0.0],
+      [1790634240000.0, 0.0],
+      [1790634300000.0, 0.0],
+      [1790634360000.0, 0.0],
+      [1790634420000.0, 0.0],
+      [1790634480000.0, 0.0],
+      [1790634540000.0, 0.0],
+      [1790634600000.0, 0.0],
+      [1790634660000.0, 0.0],
+      [1790634720000.0, 0.0],
+      [1790634780000.0, 0.0],
+      [1790634840000.0, 0.0],
+      [1790634900000.0, 0.0],
+      [1790634960000.0, 0.0],
+      [1790635020000.0, 0.0],
+      [1790635080000.0, 0.0],
+      [1790635140000.0, 0.0],
+      [1790635200000.0, 0.0],
+      [1790635260000.0, 0.0],
+      [1790635320000.0, 0.0],
+      [1790635380000.0, 0.0],
+      [1790635440000.0, 0.0],
+      [1790635500000.0, 0.0],
+      [1790635560000.0, 0.0],
+      [1790635620000.0, 0.0],
+      [1790635680000.0, 0.0],
+      [1790635740000.0, 0.0],
+      [1790635800000.0, 0.0],
+      [1790635860000.0, 0.0],
+      [1790635920000.0, 0.0],
+      [1790635980000.0, 0.0],
+      [1790636040000.0, 0.0],
+      [1790636100000.0, 0.0],
+      [1790636160000.0, 0.0],
+      [1790636220000.0, 0.0],
+      [1790636280000.0, 0.0],
+      [1790636340000.0, 0.0]
+     ],
+     "unit": [
+      {
+       "family": "network",
+       "name": "request",
+       "short_name": "req",
+       "plural": "requests",
+       "scale_factor": 1.0,
+       "id": 21
+      },
+      null
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v1/metrics?from=1790679600",
+  "note": "dd metric list (active in the last hour)",
+  "answer": {
+   "from": "1790679600",
+   "metrics": [
+    "kubernetes.containers.restarts",
+    "kubernetes.cpu.usage.total",
+    "kubernetes.memory.usage",
+    "kubernetes.pods.running",
+    "trace.http.request.duration",
+    "trace.http.request.errors",
+    "trace.http.request.hits",
+    "system.cpu.user",
+    "system.mem.used"
+   ]
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v2/apm/services?filter%5Benv%5D=prod",
+  "note": "dd service list",
+  "answer": {
+   "data": {
+    "id": "services-prod",
+    "type": "services_list",
+    "attributes": {
+     "services": [
+      "api",
+      "worker"
+     ],
+     "metadata": [
+      {
+       "isTraced": true,
+       "isUsm": false
+      },
+      {
+       "isTraced": true,
+       "isUsm": false
+      }
+     ]
+    }
+   }
+  }
+ },
+ {
+  "request": "POST https://api.datadoghq.eu/api/v2/spans/analytics/aggregate",
+  "note": "dd service get api (last 1h): healthy",
+  "body": {
+   "data": {
+    "type": "aggregate_request",
+    "attributes": {
+     "compute": [
+      {
+       "aggregation": "count",
+       "type": "total"
+      },
+      {
+       "aggregation": "pc50",
+       "metric": "@duration",
+       "type": "total"
+      },
+      {
+       "aggregation": "pc95",
+       "metric": "@duration",
+       "type": "total"
+      },
+      {
+       "aggregation": "pc99",
+       "metric": "@duration",
+       "type": "total"
+      }
+     ],
+     "filter": {
+      "query": "service:api env:prod @_top_level:1",
+      "from": "1790679600000",
+      "to": "1790683200000"
+     },
+     "group_by": [
+      {
+       "facet": "resource_name",
+       "limit": 10,
+       "sort": {
+        "aggregation": "count",
+        "order": "desc"
+       },
+       "total": "__total__"
+      }
+     ]
+    }
+   }
+  },
+  "answer": {
+   "data": [
+    {
+     "id": "bucket-GET /orders/{id}",
+     "type": "bucket",
+     "attributes": {
+      "by": {
+       "resource_name": "GET /orders/{id}"
+      },
+      "compute": {
+       "c0": 3000,
+       "c1": 12000000.0,
+       "c2": 41000000.0,
+       "c3": 88000000.0
+      }
+     }
+    },
+    {
+     "id": "bucket-POST /orders",
+     "type": "bucket",
+     "attributes": {
+      "by": {
+       "resource_name": "POST /orders"
+      },
+      "compute": {
+       "c0": 600,
+       "c1": 21000000.0,
+       "c2": 65000000.0,
+       "c3": 120000000.0
+      }
+     }
+    },
+    {
+     "id": "bucket-__total__",
+     "type": "bucket",
+     "attributes": {
+      "by": {
+       "resource_name": "__total__"
+      },
+      "compute": {
+       "c0": 3600,
+       "c1": 13000000.0,
+       "c2": 48000000.0,
+       "c3": 97000000.0
+      }
+     }
+    }
+   ],
+   "meta": {
+    "status": "done"
+   }
+  }
+ },
+ {
+  "request": "POST https://api.datadoghq.eu/api/v2/spans/analytics/aggregate",
+  "note": "dd service get api (last 1h): healthy (errors)",
+  "body": {
+   "data": {
+    "type": "aggregate_request",
+    "attributes": {
+     "compute": [
+      {
+       "aggregation": "count",
+       "type": "total"
+      }
+     ],
+     "filter": {
+      "query": "service:api env:prod @_top_level:1 status:error",
+      "from": "1790679600000",
+      "to": "1790683200000"
+     },
+     "group_by": [
+      {
+       "facet": "resource_name",
+       "limit": 10,
+       "sort": {
+        "aggregation": "count",
+        "order": "desc"
+       },
+       "total": "__total__"
+      }
+     ]
+    }
+   }
+  },
+  "answer": {
+   "data": [],
+   "meta": {
+    "status": "done"
+   }
+  }
+ },
+ {
+  "request": "POST https://api.datadoghq.eu/api/v2/spans/analytics/aggregate",
+  "note": "dd service get api --since 2026-09-28T21:30:00Z --until 2026-09-28T22:30:00Z: POST /orders failed during the rollout",
+  "body": {
+   "data": {
+    "type": "aggregate_request",
+    "attributes": {
+     "compute": [
+      {
+       "aggregation": "count",
+       "type": "total"
+      },
+      {
+       "aggregation": "pc50",
+       "metric": "@duration",
+       "type": "total"
+      },
+      {
+       "aggregation": "pc95",
+       "metric": "@duration",
+       "type": "total"
+      },
+      {
+       "aggregation": "pc99",
+       "metric": "@duration",
+       "type": "total"
+      }
+     ],
+     "filter": {
+      "query": "service:api env:prod @_top_level:1",
+      "from": "1790631000000",
+      "to": "1790634600000"
+     },
+     "group_by": [
+      {
+       "facet": "resource_name",
+       "limit": 10,
+       "sort": {
+        "aggregation": "count",
+        "order": "desc"
+       },
+       "total": "__total__"
+      }
+     ]
+    }
+   }
+  },
+  "answer": {
+   "data": [
+    {
+     "id": "bucket-GET /orders/{id}",
+     "type": "bucket",
+     "attributes": {
+      "by": {
+       "resource_name": "GET /orders/{id}"
+      },
+      "compute": {
+       "c0": 3000,
+       "c1": 12000000.0,
+       "c2": 44000000.0,
+       "c3": 95000000.0
+      }
+     }
+    },
+    {
+     "id": "bucket-POST /orders",
+     "type": "bucket",
+     "attributes": {
+      "by": {
+       "resource_name": "POST /orders"
+      },
+      "compute": {
+       "c0": 600,
+       "c1": 30000000.0,
+       "c2": 2510000000.0,
+       "c3": 3000000000.0
+      }
+     }
+    },
+    {
+     "id": "bucket-__total__",
+     "type": "bucket",
+     "attributes": {
+      "by": {
+       "resource_name": "__total__"
+      },
+      "compute": {
+       "c0": 3600,
+       "c1": 13000000.0,
+       "c2": 95250000.0,
+       "c3": 2900000000.0
+      }
+     }
+    }
+   ],
+   "meta": {
+    "status": "done"
+   }
+  }
+ },
+ {
+  "request": "POST https://api.datadoghq.eu/api/v2/spans/analytics/aggregate",
+  "note": "dd service get api --since 2026-09-28T21:30:00Z --until 2026-09-28T22:30:00Z: POST /orders failed during the rollout (errors)",
+  "body": {
+   "data": {
+    "type": "aggregate_request",
+    "attributes": {
+     "compute": [
+      {
+       "aggregation": "count",
+       "type": "total"
+      }
+     ],
+     "filter": {
+      "query": "service:api env:prod @_top_level:1 status:error",
+      "from": "1790631000000",
+      "to": "1790634600000"
+     },
+     "group_by": [
+      {
+       "facet": "resource_name",
+       "limit": 10,
+       "sort": {
+        "aggregation": "count",
+        "order": "desc"
+       },
+       "total": "__total__"
+      }
+     ]
+    }
+   }
+  },
+  "answer": {
+   "data": [
+    {
+     "id": "bucket-POST /orders",
+     "type": "bucket",
+     "attributes": {
+      "by": {
+       "resource_name": "POST /orders"
+      },
+      "compute": {
+       "c0": 212
+      }
+     }
+    },
+    {
+     "id": "bucket-__total__",
+     "type": "bucket",
+     "attributes": {
+      "by": {
+       "resource_name": "__total__"
+      },
+      "compute": {
+       "c0": 212
+      }
+     }
+    }
+   ],
+   "meta": {
+    "status": "done"
+   }
+  }
+ },
+ {
+  "request": "POST https://api.datadoghq.eu/api/v2/spans/events/search",
+  "note": "dd span list --service api --status error --since 2026-09-28T21:30:00Z --until 2026-09-28T22:30:00Z; trace ids match the api error logs",
+  "body": {
+   "data": {
+    "type": "search_request",
+    "attributes": {
+     "filter": {
+      "query": "service:api env:prod status:error",
+      "from": "1790631000000",
+      "to": "1790634600000"
+     },
+     "sort": "-timestamp",
+     "page": {
+      "limit": 50
+     }
+    }
+   }
+  },
+  "answer": {
+   "data": [
+    {
+     "id": "AAAAAZIxsp7734",
+     "type": "spans",
+     "attributes": {
+      "trace_id": "1846223019175527734",
+      "span_id": "263746145596503962",
+      "parent_id": "0",
+      "service": "api",
+      "resource_name": "POST /orders",
+      "resource_hash": "a1b2c3d4e5f60718",
+      "env": "prod",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "type": "web",
+      "start_timestamp": "2026-09-28T21:37:00.401Z",
+      "end_timestamp": "2026-09-28T21:37:02.911Z",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-x2k4q",
+       "service:api",
+       "version:v1.4.2"
+      ],
+      "custom": {
+       "duration": 2510000000,
+       "operation_name": "aspnet_core.request",
+       "http": {
+        "method": "POST",
+        "status_code": "503",
+        "url": "/orders"
+       },
+       "error": {
+        "type": "HttpRequestException",
+        "message": "Connection refused (worker.web.svc:8080)"
+       }
+      }
+     }
+    },
+    {
+     "id": "AAAAAZIxsp3490",
+     "type": "spans",
+     "attributes": {
+      "trace_id": "5417337734251113490",
+      "span_id": "773905390607301927",
+      "parent_id": "0",
+      "service": "api",
+      "resource_name": "POST /orders",
+      "resource_hash": "a1b2c3d4e5f60718",
+      "env": "prod",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "type": "web",
+      "start_timestamp": "2026-09-28T21:36:09.835Z",
+      "end_timestamp": "2026-09-28T21:36:12.345Z",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-x2k4q",
+       "service:api",
+       "version:v1.4.2"
+      ],
+      "custom": {
+       "duration": 2510000000,
+       "operation_name": "aspnet_core.request",
+       "http": {
+        "method": "POST",
+        "status_code": "503",
+        "url": "/orders"
+       },
+       "error": {
+        "type": "HttpRequestException",
+        "message": "Connection refused (worker.web.svc:8080)"
+       }
+      }
+     }
+    },
+    {
+     "id": "AAAAAZIxsp9201",
+     "type": "spans",
+     "attributes": {
+      "trace_id": "7318029446513379201",
+      "span_id": "1045432778073339885",
+      "parent_id": "0",
+      "service": "api",
+      "resource_name": "POST /orders",
+      "resource_hash": "a1b2c3d4e5f60718",
+      "env": "prod",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "type": "web",
+      "start_timestamp": "2026-09-28T21:35:55.492Z",
+      "end_timestamp": "2026-09-28T21:35:58.002Z",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-x2k4q",
+       "service:api",
+       "version:v1.4.2"
+      ],
+      "custom": {
+       "duration": 2510000000,
+       "operation_name": "aspnet_core.request",
+       "http": {
+        "method": "POST",
+        "status_code": "503",
+        "url": "/orders"
+       },
+       "error": {
+        "type": "HttpRequestException",
+        "message": "Connection refused (worker.web.svc:8080)"
+       }
+      }
+     }
+    }
+   ],
+   "meta": {
+    "page": {}
+   }
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v2/incidents/search?query=state%3A%28active+OR+stable%29&sort=-created&page%5Bsize%5D=50",
+  "note": "dd incident list: nobody declared one",
+  "answer": {
+   "data": {
+    "type": "incidents_search_results",
+    "attributes": {
+     "total": 0,
+     "incidents": [],
+     "facets": {}
+    }
+   },
+   "meta": {
+    "pagination": {
+     "offset": 0,
+     "size": 0
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v2/containers?filter%5Btags%5D=kube_namespace%3Aweb&page%5Bsize%5D=50",
+  "note": "dd container list",
+  "answer": {
+   "data": [
+    {
+     "type": "container",
+     "id": "ctr-api-7d9f8c6b5-x2k4q",
+     "attributes": {
+      "name": "api",
+      "container_id": "3f7b3bbcdced7ed3504fffdb9604815a46b5bc296dc3bbbc917bb1149546a169",
+      "state": "running",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "image_name": "contosoacr.azurecr.io/api",
+      "image_tags": [
+       "v1.4.2"
+      ],
+      "image_digest": null,
+      "created_at": "2026-09-28T21:34:40",
+      "started_at": "2026-09-28T21:34:40",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-x2k4q",
+       "kube_deployment:api",
+       "kube_container_name:api",
+       "service:api"
+      ]
+     }
+    },
+    {
+     "type": "container",
+     "id": "ctr-api-7d9f8c6b5-m3n5p",
+     "attributes": {
+      "name": "api",
+      "container_id": "22eeb44ff4499f494008e9d2aae88f22dc123b6fa47253ea3b3b6e3eedb0f0f9",
+      "state": "running",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "image_name": "contosoacr.azurecr.io/api",
+      "image_tags": [
+       "v1.4.2"
+      ],
+      "image_digest": null,
+      "created_at": "2026-09-28T21:34:40",
+      "started_at": "2026-09-28T21:34:40",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-m3n5p",
+       "kube_deployment:api",
+       "kube_container_name:api",
+       "service:api"
+      ]
+     }
+    },
+    {
+     "type": "container",
+     "id": "ctr-api-7d9f8c6b5-r7t8v",
+     "attributes": {
+      "name": "api",
+      "container_id": "6a6b432672047884abd9d386175348193023c2366449336160ece219ac26bc66",
+      "state": "running",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "image_name": "contosoacr.azurecr.io/api",
+      "image_tags": [
+       "v1.4.2"
+      ],
+      "image_digest": null,
+      "created_at": "2026-09-28T21:34:40",
+      "started_at": "2026-09-28T21:34:40",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-r7t8v",
+       "kube_deployment:api",
+       "kube_container_name:api",
+       "service:api"
+      ]
+     }
+    },
+    {
+     "type": "container",
+     "id": "ctr-worker-5c4d3e9f1-q8zt1",
+     "attributes": {
+      "name": "worker",
+      "container_id": "805c0fa8f414b896d883b4ae38d6f99617f3d3e613079999ac749b04f86270a2",
+      "state": "exited",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "image_name": "contosoacr.azurecr.io/worker",
+      "image_tags": [
+       "v1.4.2"
+      ],
+      "image_digest": null,
+      "created_at": "2026-09-29T11:47:10",
+      "started_at": "2026-09-29T11:47:10",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "kube_deployment:worker",
+       "kube_container_name:worker",
+       "service:worker"
+      ]
+     }
+    }
+   ],
+   "meta": {
+    "pagination": {
+     "total": 4,
+     "limit": 50,
+     "type": "cursor_limit"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v2/containers?page%5Bsize%5D=50",
+  "note": "dd container list",
+  "answer": {
+   "data": [
+    {
+     "type": "container",
+     "id": "ctr-api-7d9f8c6b5-x2k4q",
+     "attributes": {
+      "name": "api",
+      "container_id": "3f7b3bbcdced7ed3504fffdb9604815a46b5bc296dc3bbbc917bb1149546a169",
+      "state": "running",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "image_name": "contosoacr.azurecr.io/api",
+      "image_tags": [
+       "v1.4.2"
+      ],
+      "image_digest": null,
+      "created_at": "2026-09-28T21:34:40",
+      "started_at": "2026-09-28T21:34:40",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-x2k4q",
+       "kube_deployment:api",
+       "kube_container_name:api",
+       "service:api"
+      ]
+     }
+    },
+    {
+     "type": "container",
+     "id": "ctr-api-7d9f8c6b5-m3n5p",
+     "attributes": {
+      "name": "api",
+      "container_id": "22eeb44ff4499f494008e9d2aae88f22dc123b6fa47253ea3b3b6e3eedb0f0f9",
+      "state": "running",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "image_name": "contosoacr.azurecr.io/api",
+      "image_tags": [
+       "v1.4.2"
+      ],
+      "image_digest": null,
+      "created_at": "2026-09-28T21:34:40",
+      "started_at": "2026-09-28T21:34:40",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-m3n5p",
+       "kube_deployment:api",
+       "kube_container_name:api",
+       "service:api"
+      ]
+     }
+    },
+    {
+     "type": "container",
+     "id": "ctr-api-7d9f8c6b5-r7t8v",
+     "attributes": {
+      "name": "api",
+      "container_id": "6a6b432672047884abd9d386175348193023c2366449336160ece219ac26bc66",
+      "state": "running",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "image_name": "contosoacr.azurecr.io/api",
+      "image_tags": [
+       "v1.4.2"
+      ],
+      "image_digest": null,
+      "created_at": "2026-09-28T21:34:40",
+      "started_at": "2026-09-28T21:34:40",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-r7t8v",
+       "kube_deployment:api",
+       "kube_container_name:api",
+       "service:api"
+      ]
+     }
+    },
+    {
+     "type": "container",
+     "id": "ctr-worker-5c4d3e9f1-q8zt1",
+     "attributes": {
+      "name": "worker",
+      "container_id": "805c0fa8f414b896d883b4ae38d6f99617f3d3e613079999ac749b04f86270a2",
+      "state": "exited",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "image_name": "contosoacr.azurecr.io/worker",
+      "image_tags": [
+       "v1.4.2"
+      ],
+      "image_digest": null,
+      "created_at": "2026-09-29T11:47:10",
+      "started_at": "2026-09-29T11:47:10",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "kube_deployment:worker",
+       "kube_container_name:worker",
+       "service:worker"
+      ]
+     }
+    }
+   ],
+   "meta": {
+    "pagination": {
+     "total": 4,
+     "limit": 50,
+     "type": "cursor_limit"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v1/hosts?count=50",
+  "note": "dd host list",
+  "answer": {
+   "host_list": [
+    {
+     "id": 1000001,
+     "name": "aks-nodepool1-12345678-vmss000001",
+     "host_name": "aks-nodepool1-12345678-vmss000001",
+     "up": true,
+     "last_reported_time": 1790683140,
+     "apps": [
+      "agent",
+      "kubernetes",
+      "docker"
+     ],
+     "is_muted": false,
+     "tags_by_source": {
+      "Datadog": [
+       "kube_cluster_name:prod",
+       "env:prod"
+      ]
+     }
+    },
+    {
+     "id": 1000002,
+     "name": "aks-nodepool1-12345678-vmss000002",
+     "host_name": "aks-nodepool1-12345678-vmss000002",
+     "up": true,
+     "last_reported_time": 1790683140,
+     "apps": [
+      "agent",
+      "kubernetes",
+      "docker"
+     ],
+     "is_muted": false,
+     "tags_by_source": {
+      "Datadog": [
+       "kube_cluster_name:prod",
+       "env:prod"
+      ]
+     }
+    }
+   ],
+   "total_matching": 2,
+   "total_returned": 2,
+   "exact_total_matching": true
+  }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v1/dashboard?count=1000&start=0",
+  "note": "dd dashboard list",
+  "answer": {
+   "dashboards": [
+    {
+     "id": "abc-def-001",
+     "title": "api service overview",
+     "url": "/dashboard/abc-def-001/api-service-overview",
+     "author_handle": "jane@contoso.com",
+     "created_at": "2026-03-02T09:00:00.000000+00:00",
+     "modified_at": "2026-09-10T08:12:00.000000+00:00",
+     "layout_type": "ordered"
+    },
+    {
+     "id": "abc-def-002",
+     "title": "Kubernetes pods overview (prod)",
+     "url": "/dashboard/abc-def-002/kubernetes-pods-overview-prod",
+     "author_handle": "jane@contoso.com",
+     "created_at": "2026-03-02T09:00:00.000000+00:00",
+     "modified_at": "2026-08-01T10:00:00.000000+00:00",
+     "layout_type": "ordered"
+    }
+   ]
+  }
+ }
+]
