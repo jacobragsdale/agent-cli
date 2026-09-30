@@ -106,6 +106,9 @@ pub struct Command {
     /// core's 60. For waits, which should use most of an agent shell's two
     /// minutes.
     pub timeout: Option<u64>,
+    /// The file its `command!` is in, as `file!()` gives it
+    /// (`crates/dd/src/monitor/list.rs`), for [`check_layout`]. Nothing prints it.
+    pub source: &'static str,
     pub args: fn() -> clap::Command,
     pub returns: fn() -> Schema,
     pub run: fn(&Ctx, &ArgMatches) -> Result<Value>,
@@ -212,6 +215,7 @@ macro_rules! command {
                     $(timeout = Some($timeout);)?
                     timeout
                 },
+                source: file!(),
                 args,
                 returns,
                 run,
@@ -238,6 +242,49 @@ pub fn invoke<A: FromArgMatches, R: Serialize>(
 ) -> Result<Value> {
     let args = A::from_arg_matches(matches).map_err(|error| Failure::usage(error.to_string()))?;
     Ok(serde_json::to_value(handler(ctx, args)?)?)
+}
+
+/// Each command in the file its path names: `src/<resource>/<verb>.rs` in its
+/// crate, or `src/<domain>/<resource>/<verb>.rs` in a crate holding several
+/// domains, a hyphen as an underscore. An agent then finds a command, and
+/// what one change touches, by its path alone. One line per command that is
+/// elsewhere.
+#[must_use]
+pub fn check_layout(domains: &[Domain]) -> Vec<String> {
+    let root = |command: &Command| {
+        command
+            .source
+            .split_once("/src/")
+            .map_or(command.source, |(root, _)| root)
+    };
+    let mut problems = Vec::new();
+    for domain in domains {
+        for command in domain.commands {
+            let crate_root = root(command);
+            let shared = domains.iter().any(|other| {
+                other.name != domain.name
+                    && other.commands.iter().any(|them| root(them) == crate_root)
+            });
+            let [name, resource, verb] = command.path;
+            let dir = if shared {
+                format!("{name}/")
+            } else {
+                String::new()
+            };
+            let want = format!(
+                "{crate_root}/src/{dir}{}/{verb}.rs",
+                resource.replace('-', "_")
+            );
+            if command.source != want {
+                problems.push(format!(
+                    "{}: defined in {}, not {want}",
+                    command.path.join(" "),
+                    command.source
+                ));
+            }
+        }
+    }
+    problems
 }
 
 /// Every way the registry breaks the rules that keep it usable at 1,000
@@ -622,6 +669,62 @@ fn is_kebab(word: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[derive(clap::Args)]
+    struct NoArgs {}
+
+    fn nothing(_: &Ctx, _: NoArgs) -> Result<Vec<String>> {
+        Ok(Vec::new())
+    }
+
+    crate::command! {
+        HERE = ["demo", "thing-one", "list"], Read,
+        "List things",
+        keywords: [],
+        example: "demo thing-one list",
+        run: nothing,
+    }
+
+    const PLACED: &[Command] = &[Command {
+        source: "crates/demo/src/thing_one/list.rs",
+        ..HERE
+    }];
+    const MISPLACED: &[Command] = &[HERE];
+    const ALSO_IN_DEMO: &[Command] = &[Command {
+        path: ["other", "thing", "get"],
+        source: "crates/demo/src/other/thing/get.rs",
+        ..HERE
+    }];
+
+    fn domain(name: &'static str, commands: &'static [Command]) -> Domain {
+        Domain {
+            name,
+            summary: "Demo",
+            commands,
+            synonyms: &[],
+            status: |_| String::new(),
+            doctor: |_| Vec::new(),
+        }
+    }
+
+    #[test]
+    fn a_command_lives_in_the_file_its_path_names() {
+        assert_eq!(HERE.source, "crates/core/src/registry.rs");
+        assert!(check_layout(&[domain("demo", PLACED)]).is_empty());
+        assert_eq!(
+            check_layout(&[domain("demo", MISPLACED)]),
+            [
+                "demo thing-one list: defined in crates/core/src/registry.rs, not crates/core/src/thing_one/list.rs"
+            ]
+        );
+        // Two domains in one crate: each command sits under its domain.
+        assert_eq!(
+            check_layout(&[domain("demo", PLACED), domain("other", ALSO_IN_DEMO)]),
+            [
+                "demo thing-one list: defined in crates/demo/src/thing_one/list.rs, not crates/demo/src/demo/thing_one/list.rs"
+            ]
+        );
+    }
 
     #[test]
     fn printed_command_lines_are_cut_where_the_prose_resumes() {

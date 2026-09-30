@@ -246,6 +246,62 @@ mod tests {
         );
     }
 
+    /// No source file passes 600 lines, so an agent can read a command's file
+    /// whole. `scripts/large-files.txt` lists the exceptions, each with the
+    /// count it may not grow past; one back under 600 leaves the list.
+    #[test]
+    fn no_source_file_is_too_long() {
+        const MAX: usize = 600;
+        fn walk(dir: &Path, found: &mut Vec<PathBuf>) {
+            for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    walk(&path, found);
+                } else if path.extension().is_some_and(|ext| ext == "rs") {
+                    found.push(path);
+                }
+            }
+        }
+        let repo = Path::new(REPO);
+        let list = std::fs::read_to_string(repo.join("scripts/large-files.txt")).unwrap();
+        let listed: Vec<(&str, usize)> = list
+            .lines()
+            .map(|line| line.split('#').next().unwrap_or_default().trim())
+            .filter(|line| !line.is_empty())
+            .map(|line| {
+                let (path, count) = line.split_once(' ').expect("PATH LINES");
+                (path, count.trim().parse().expect("a line count"))
+            })
+            .collect();
+        let mut sources = Vec::new();
+        for entry in std::fs::read_dir(repo.join("crates")).unwrap().flatten() {
+            walk(&entry.path().join("src"), &mut sources);
+        }
+        let mut problems = Vec::new();
+        for path in &sources {
+            let name = path.strip_prefix(repo).unwrap().display().to_string();
+            let lines = std::fs::read_to_string(path).unwrap().lines().count();
+            match listed.iter().find(|(listed, _)| *listed == name) {
+                Some((_, cap)) if lines > *cap => problems.push(format!(
+                    "{name}: {lines} lines, past the {cap} scripts/large-files.txt allows; split it"
+                )),
+                Some(_) if lines <= MAX => problems.push(format!(
+                    "{name}: {lines} lines; drop it from scripts/large-files.txt"
+                )),
+                None if lines > MAX => {
+                    problems.push(format!("{name}: {lines} lines (at most {MAX}); split it"));
+                }
+                _ => {}
+            }
+        }
+        for (name, _) in &listed {
+            if !repo.join(name).is_file() {
+                problems.push(format!("{name}: in scripts/large-files.txt, but gone"));
+            }
+        }
+        assert!(problems.is_empty(), "{problems:#?}");
+    }
+
     #[test]
     fn the_registry_keeps_every_rule() {
         assert_eq!(

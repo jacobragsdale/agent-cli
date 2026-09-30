@@ -10,7 +10,8 @@ a definition for details rather than reading whole files.
 - `Domain` (name, summary, commands, synonyms, status, doctor); `Effect`:
   Read, Write, Destructive, Reveal, Varies; `Check`: one doctor line.
 - `VERBS`, `SHARED_WORDS`, `SYNONYM_FLAGS`, `GLOBAL_FLAGS`, `BUILTINS`: the
-  closed vocabularies `check_registry` enforces.
+  closed vocabularies `check_registry` enforces. `check_layout`: each
+  command in `src/<resource>/<verb>.rs` (its `source`, from `file!()`).
 - `run`, `run_with`: the program and its in-process form; `command_help`:
   one command's `--help`. `Quality`, `quality`: search over labeled queries.
 

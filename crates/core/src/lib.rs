@@ -45,7 +45,7 @@ pub use http::{
 pub use process::{Output, run_until};
 pub use registry::{
     BUILTINS, Check, Command, Domain, Effect, GLOBAL_FLAGS, SHARED_WORDS, SYNONYM_FLAGS, VERBS,
-    check_registry,
+    check_layout, check_registry,
 };
 #[doc(hidden)]
 pub use registry::{args_of, invoke, returns_of};
