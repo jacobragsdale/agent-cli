@@ -19,20 +19,21 @@ on another site is exit 2). Rows name pods as the k8s id
 `cluster/namespace/pod` (`pod_ref`, from `kube_*` tags), and `--pod` takes
 one back (`kube_tags`).
 
-## Where things are
+## Where things are (`src/`)
+A command is `<resource>/<verb>.rs`: its args, rows, handler, `command!`
+and tests (`log_count/list.rs` is `dd log-count list`). Copy a sibling.
 - `lib.rs`: `DOMAIN`, whose `commands` registers every command (its order
-  is the listing's), status, doctor, and `testkit` (`dd`, `dd_with`,
-  `CONFIG`, `TOKEN`).
+  is the listing's). `doctor.rs`: status, doctor and the credential tests.
 - `client.rs`: `Dd::load(ctx)`, then `get(ctx, path, query)` a read,
   `search(ctx, path, body)` a POST that only reads, `change(...)` a write,
   `url`, `app` (web links). `Window` (`--since`/`--until` as ms or seconds),
   tag filters (`tags`, `kube_tags`, `any_of`, `search_query`), and row
   helpers `text`, `strings`, `tag`, `pod_ref`, `utc_ms`, `epoch`, `cut`,
   `limited`.
-- `logs.rs`: log list, log-count list, event list. `metric.rs`: metrics.
-- `monitor.rs`: monitors, and downtimes (create is the mute).
-- `apm.rs`: services, spans. `catalog.rs`: incidents, hosts, containers,
-  SLOs, dashboards.
+- `search.rs`: what the log, span and event searches share (`LogStatus`,
+  paging, `MESSAGE_MAX`).
+- `<resource>/mod.rs`: what its verbs share (`slo/mod.rs`: `SloRow`).
+- `testing.rs`: `dd`, `dd_with`, `CONFIG`, `TOKEN`, sample rows.
 
 ## Fixtures
 `fixtures/world/http/dd.json` (`api.datadoghq.eu`); facts

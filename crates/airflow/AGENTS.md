@@ -19,19 +19,22 @@ by `run_after`. `--dag` and `--run` stand in for leading pieces; a custom run
 id holding `/` still parses. Parsed by `Ref::parse`, resolved by
 `Client::resolve`.
 
-## Where things are
+## Where things are (`src/`)
+A command is `<resource>/<verb>.rs`: its args, rows, handler, `command!`
+and tests (`run/retry.rs` is `airflow run retry`). Copy a sibling.
 - `lib.rs`: `DOMAIN`, whose `commands` registers every command (its order
-  is the listing's), status, doctor, `instance list`, and `testkit`
-  (`airflow`, `airflow_with`, `paths`, `dry_run`, `API`, `CONFIG`, `TOKEN`).
+  is the listing's). `doctor.rs`: status and doctor.
 - `client.rs`: `Airflow::load(config)`, `open(ctx, instance)` or `locate`
   for a `Client`, which has `get(path)`, `public(path)` (no credential),
   `preview(path, body)` (a POST that only reads), `change(...)` (a write),
   `list(...)` (offset paging, 100 a page), `writable()`, `resolve(&mut Ref)`.
   Row helpers: `text`, `stamp`, `seconds`, `ti_id`, `note_more`,
   `Instance::pod`.
-- `dag.rs`: dag list, get, update; import errors.
-- `run.rs`: run list, get, create, wait, retry.
-- `task.rs`: task list, get, logs, retry.
+- `dag_run.rs`: `RUN_STATES` and `cleared_ids`, shared by several resources.
+- `<resource>/mod.rs`: what its verbs share (`run/mod.rs`: the run row,
+  `RunIdArgs`; `task/mod.rs`: the task row and id args).
+- `testing.rs`: `airflow`, `airflow_with`, `paths`, `dry_run`, `API`,
+  `CONFIG`, `TOKEN`, and sample `dag`, `run`, `ti` rows.
 
 ## Fixtures
 `fixtures/world/http/airflow.json` (`/api/v2` and `/auth/token`); facts

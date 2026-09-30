@@ -15,20 +15,21 @@ Every one-object verb also takes `namespace/name` or a name, with
 `--cluster` and `--namespace` filling in the rest; a ref and a flag that
 disagree is exit 2. `dd` and `airflow` rows print pods in this form.
 
-## Where things are
+## Where things are (`src/`)
+A command is `<resource>/<verb>.rs`: its args, rows, handler, `command!`
+and tests (`deployment/list.rs` is `k8s deployment list`). Copy a sibling.
 - `lib.rs`: `K8S`, whose `commands` registers every command (its order is
-  the listing's), status and doctor, and what every command shares:
+  the listing's). `doctor.rs`: status and doctor.
+- `kubectl.rs`, what every command shares:
   - `At` (the `--cluster`, `--namespace` args, flattened into each command's
     args): `listing(ctx)` for a list, `one(ctx)` for one object,
     `named(ctx, raw)` for an id. Scopes default through core's `pick`.
   - `Target`: `read(ctx, args)`, `json(ctx, args)`, `write(ctx, args)`
-    (always `Destructive`), `kubectl(args)` (the `Command`), `id(item)`,
-    `row_namespace(item)`.
-  - `items`, `age`, `limited` (the `--limit` note), `kubectl_error`.
-  - `context list`, and `fixtures` (`k8s(argv)`, `k8s_with(argv, config)`,
-    `SCOPES`) for tests.
-- `pod.rs`: pod list, get, logs, delete.
-- `objects.rs`: events, deployments, configmaps, secrets.
+    (always `Destructive`), `id(item)`, `row_namespace(item)`.
+  - `items`, `age`, `limited` (the `--limit` note), `digest`, `owner_of`,
+    `kubectl_error`.
+- `<resource>/mod.rs`: what its verbs share (`pod/mod.rs`: `PodRow`, `row`).
+- `testing.rs`: `k8s(argv)`, `k8s_with(argv, config)`, `SCOPES` for tests.
 
 ## Fixtures
 Tests run `scripts/fake/kubectl` (a Python stand-in: contexts `aks-qa` and

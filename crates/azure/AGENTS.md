@@ -20,20 +20,24 @@ and cached addresses too).
   `repo:tag` finds its registry, and two holders is exit 2.
 - aks: the cluster name; `k8s_scope` in its rows is the k8s scope id.
 
-## Where things are
+## Where things are (`src/`)
+A command is `<domain>/<resource>/<verb>.rs`: its args, rows, handler,
+`command!` and tests (`kv/secret/list.rs` is `kv secret list`).
 - `lib.rs`: `KV`, `ACR`, `AKS`, whose `commands` register every command
-  (their order is the listing's), status and doctor, and shared helpers:
-  `Azure::load`, `az_token`, `bearer` (a `Mint`), `allowed`, `missing`,
-  `narrow` (allowlists), `parallel` (bounded fan-out), `limited` (a list's
-  `--limit` note), `stamp`, `from_unix`, `text`, `refused_with`.
+  (their order is the listing's). `doctor.rs`: status and doctor of all
+  three. `config.rs`: `[azure]` (`Azure::load`). `testing.rs`: shared
+  scrubbed answers.
+- `client.rs`, what every domain shares: `az_token`, `bearer` (a `Mint`),
+  `ARM`, `VAULT`, `REGISTRY`, `allowed`, `missing`, `narrow` (allowlists),
+  `parallel` (bounded fan-out), `limited` (the `--limit` note), `stamp`,
+  `from_unix`, `text`, `refused_with`.
 - `graph.rs`: one Resource Graph query for every vault, registry and
   cluster, cached for `refresh`.
-- `kv.rs`: vault, secret, version; `get(ctx, vault, url)` and `pages` are
-  the door, `holder` finds which vault has a name.
-- `acr.rs`: registry, repo, tag, manifest; a `Session` per registry
-  exchanges the token and does `get`; `holder`, `image_ref`.
-- `aks.rs`: cluster list and connect (runs `az aks get-credentials` and
-  `kubelogin`).
+- `kv/mod.rs`: `get(ctx, vault, url)` and `pages` (the door), `holder`
+  (which vault has a name), `secret_ref`, `SecretRow`.
+- `acr/mod.rs`: a `Session` per registry exchanges the token and does
+  `get`; `holder`, `image_ref`, `registry_for`.
+- `aks/cluster/connect.rs` runs `az aks get-credentials` and `kubelogin`.
 
 ## Fixtures
 `fixtures/world/http/azure.json`; facts `fixtures/world/facts/{kv,acr,aks}.md`;

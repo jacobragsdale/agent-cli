@@ -43,7 +43,21 @@ plan is cheaper than reviewing a crate.
 ## 2. Create the crate
 
 Create `crates/<name>/` with a `Cargo.toml` copied from `crates/dd/Cargo.toml`
-(workspace version, edition, lints, `publish = false`) and a `src/lib.rs`.
+(workspace version, edition, lints, `publish = false`) and lay out `src/` as
+every crate does (`check_layout` holds the commands to it):
+
+```
+src/lib.rs               the index: mod lines and the Domain constant
+src/client.rs            the door every request goes through (step 4)
+src/doctor.rs            status and doctor (step 5)
+src/testing.rs           #[cfg(test)] helpers the crate's tests share
+src/<resource>/mod.rs    what that resource's verbs share, and their mod lines
+src/<resource>/<verb>.rs one command: args, rows, handler, command!, tests
+```
+
+Add a card, `crates/<name>/AGENTS.md` (at most 3 KB: what it is, config, ids,
+where things are, fixtures, quirks, what an agent can skip), and a
+`CLAUDE.md` beside it holding `@AGENTS.md`.
 The workspace takes every `crates/*` as a member. Then register it in three
 places:
 
@@ -155,17 +169,19 @@ pub const DOMAIN: Domain = Domain {
   call. Return an empty `Vec` when the domain has no section (and no
   credential in the environment), and give each `Check::failed` a hint.
 
-`Domain`, `Check`, `Config` and `Ctx` come from `agent_cli_core`. Give the
+`Domain`, `Check`, `Config`, `Ctx`, `check_registry` and `check_layout` come
+from `agent_cli_core`. Give the
 crate the first test ado and dd have, so every later step has a checkpoint:
 
 ```rust
 #[test]
 fn the_registry_keeps_every_rule() {
     assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
+    assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
 }
 ```
 
-Run `cargo test -p agent-cli-<name>` after each command you add.
+Run `scripts/check.sh <name>` after each command you add.
 
 ## 6. Settle word collisions
 
