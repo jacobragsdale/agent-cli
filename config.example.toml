@@ -104,3 +104,21 @@
 # read_only = true                       # refuse every change here: trigger,
 #                                        # pause, retry
 # k8s_scope = "prod"
+# [datadog]
+# Also read as [dd]. The credential is a Datadog personal access token (sent
+# as Authorization: Bearer), else the API + application key pair. Name where
+# each comes from with KEY_env or KEY_cmd; a key written here is refused.
+# With no key set at all: DD_ACCESS_TOKEN, else DD_API_KEY with DD_APP_KEY.
+# The credential goes only to https://api.<site>.
+# site = "datadoghq.eu"                  # default: DD_SITE, else datadoghq.com
+# env = "prod"                           # default --env for logs, spans, services
+# token_env = "DD_ACCESS_TOKEN"          # or token_cmd = "pup auth token" (reuses
+#                                        # a pup login; run again after a 401)
+# api_key_env = "DD_API_KEY"             # the fallback pair: both, each _env or _cmd
+# app_key_cmd = "pass show contoso/dd-app-key"
+#
+# The real guard is a token with read scopes only (logs_read_data,
+# timeseries_query, metrics_read, monitors_read, events_read, apm_read,
+# incident_read, hosts_read, slos_read, dashboards_read), plus
+# monitors_downtime only where agents may mute. pup (Datadog's CLI) covers
+# what dd does not; run it with PUP_READ_ONLY=1.

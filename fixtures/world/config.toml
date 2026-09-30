@@ -25,3 +25,7 @@ password_env = "AIRFLOW_PROD_PASSWORD"
 read_only = true
 k8s_scope = "prod"
 k8s_namespace = "web"
+[datadog]
+site = "datadoghq.eu"
+env = "prod"
+token_env = "DD_ACCESS_TOKEN"

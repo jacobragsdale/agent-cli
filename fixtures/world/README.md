@@ -21,7 +21,9 @@ agent-cli k8s deployment list
 | `AGENT_CLI_FIXTURES` | This directory. The fixtures build answers every HTTP request from `http/*.json` and turns the cache off; the fake kubectl serves `kubectl.json` |
 | `AGENT_CLI_CONFIG` | `config.toml` here: `[ado]`, `[azure]`, `[[k8s.scope]]`, `[[airflow.instance]]` |
 | `AIRFLOW_PROD_PASSWORD` | A stand-in; the recorded `/auth/token` answers any password |
+| `AGENT_CLI_CONFIG` | `config.toml` here: `[ado]`, `[azure]`, `[[k8s.scope]]`, `[datadog]` |
 | `AGENT_CLI_NOW` | `2026-09-29T12:00:00Z`, the moment the world was recorded. Relative times (`--since 1d`, `--expires-within 30d`, ages) resolve against it, so they keep matching the recordings on any day |
+| `DD_ACCESS_TOKEN` | A stand-in Datadog token; the replayer never checks it |
 | `PATH` | `target/debug` (the fixtures build) and `scripts/fake` (`az`, `kubectl`, `kubelogin`) first. The fake `az` hands out a stand-in token; nothing checks it |
 
 A release build ignores `AGENT_CLI_FIXTURES`: the feature is not in it.
@@ -42,6 +44,9 @@ A release build ignores `AGENT_CLI_FIXTURES`: the feature is not in it.
 | airflow | Instance `prod` (`https://airflow.contoso.example`, Airflow 3.3.2, read_only; sign-in with any password) runs KubernetesExecutor task pods in `prod/web` and logs remotely to Azure Blob. DAGs `etl_nightly` (daily at 00:00), `orders_export` (hourly), `reports_weekly` (paused). |
 | | Run `etl_nightly/scheduled__2026-09-29T00:00:00+00:00` **failed**: `extract_orders` and `transform_orders` succeeded, `load_orders` failed on try 2 with `ValueError: order 88123 has no customer_id` (`dags/etl_nightly.py:42`), `publish_report` is upstream_failed. Its pod `etl-nightly-load-orders-q8x1k2vz` (Failed, container `base`) is still in the cluster, with its log and events. |
 | | `customer_sync` is missing from the DAG list: import error **12**, `ModuleNotFoundError: No module named 'contoso_crm'`. |
+| dd | Site `datadoghq.eu`, env `prod`. Services `api` and `worker`, tagged `kube_cluster_name:prod`, `kube_namespace:web`, so a row's `pod` is the k8s id (`prod/web/…`). |
+| | Monitor **4711** "[prod] api error rate above 5%" triggered at 21:36 on 09-28, two minutes after api `v1.4.2` rolled out (21:34:40), and recovered at 21:58 (OK now; groups per api pod). Monitor **4712** "[prod] worker crash-looping" has been in Alert since 21:41 for pod `worker-5c4d3e9f1-q8zt1`. No downtimes, no incidents. |
+| | Error logs 21:30–22:30 on 09-28: the worker pod's `password authentication failed for user "worker"` from 21:36:05 on, and api's `POST /orders 503 … upstream worker unavailable` 21:35–21:37 (trace ids match `dd span list --service api --status error` in that window). `trace.http.request.errors{service:api,env:prod}` peaks at 64 at 21:40. The event stream holds the rollout, both triggers and the recovery. |
 
 The deploy trace, for example (see AGENTS.md):
 
@@ -68,6 +73,7 @@ config.toml       the config agent-cli reads
 http/ado.json     Azure DevOps answers
 http/azure.json   Resource Graph, Key Vault and ACR answers
 http/airflow.json Airflow's REST API (/api/v2 and /auth/token)
+http/dd.json      Datadog answers (api.datadoghq.eu)
 kubectl.json      what the fake kubectl knows: objects per context, and logs
 ```
 

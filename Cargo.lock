@@ -16,6 +16,7 @@ dependencies = [
  "agent-cli-airflow",
  "agent-cli-azure",
  "agent-cli-core",
+ "agent-cli-dd",
  "agent-cli-k8s",
  "agent-cli-sql",
  "serde_json",
@@ -76,6 +77,19 @@ dependencies = [
  "time",
  "toml",
  "ureq",
+]
+
+[[package]]
+name = "agent-cli-dd"
+version = "0.1.0"
+dependencies = [
+ "agent-cli-core",
+ "anyhow",
+ "clap",
+ "schemars",
+ "serde",
+ "serde_json",
+ "time",
 ]
 
 [[package]]

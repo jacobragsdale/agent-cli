@@ -15,6 +15,7 @@ const DOMAINS: &[Domain] = &[
     agent_cli_k8s::K8S,
     agent_cli_sql::DOMAIN,
     agent_cli_airflow::DOMAIN,
+    agent_cli_dd::DOMAIN,
 ];
 
 fn main() -> ExitCode {
@@ -98,6 +99,10 @@ username = "agent"
 password_env = "AIRFLOW_PROD_PASSWORD"
 read_only = true
 k8s_scope = "prod"
+[datadog]
+site = "datadoghq.eu"
+env = "prod"
+token_cmd = "pup auth token"
 "#;
         let setup = Setup::fake(FakeTransport::default()).with_config(config);
         let outcome = run(DOMAINS, &[], setup);
@@ -120,6 +125,7 @@ k8s_scope = "prod"
             "k8s 2 scopes",
             "sql 2 connections",
             "airflow 2 instances",
+            "dd eu",
         ] {
             assert!(config_line.contains(status), "{status}: {config_line}");
         }

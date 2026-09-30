@@ -25,6 +25,7 @@ agent-cli-sql.workspace = true
 agent-cli-azure.workspace = true
 agent-cli-k8s.workspace = true
 agent-cli-airflow.workspace = true
+agent-cli-dd.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
