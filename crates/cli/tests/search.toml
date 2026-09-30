@@ -518,3 +518,29 @@ expect = "ado approval reject"
 [[query]]
 text = "deny a pipeline gate"
 expect = "ado approval reject"
+
+# ---------- conventions phase: deploy trace ----------
+
+[[query]]
+text = "which image version is deployed in prod"
+expect = "k8s deployment list"
+
+[[query]]
+text = "list deployments with their images and ready pods"
+expect = "k8s deployment list"
+
+[[query]]
+text = "when did the api deployment last roll out"
+expect = "k8s deployment list"
+
+[[query]]
+text = "find the build for git tag v1.4.2"
+expect = "ado run list"
+
+[[query]]
+text = "which work items and pull request shipped in build 8812"
+expect = "ado run get"
+
+[[query]]
+text = "which kubernetes secrets and key vault secrets does a pod use"
+expect = "k8s pod get"

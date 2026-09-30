@@ -264,7 +264,7 @@ fn run_list(ctx: &Ctx, args: RunListArgs) -> Result<Vec<RunRow>> {
 command! {
     pub RUN_LIST = ["ado", "run", "list"], Read,
     "List pipeline runs (builds), newest first",
-    keywords: ["builds", "history", "recent", "latest", "failed", "status", "ci"],
+    keywords: ["builds", "history", "recent", "latest", "failed", "status", "ci", "tag", "git", "release"],
     example: "ado run list --branch refs/tags/v1.4.2 --fields id,pipeline,status,result,finished",
     run: run_list,
 }

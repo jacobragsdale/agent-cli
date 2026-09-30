@@ -14,7 +14,7 @@ mod pod;
 
 use std::process::Command;
 
-use agent_cli_core::{Check, Config, Ctx, Domain, Effect, Exit, Failure, Output, command};
+use agent_cli_core::{Check, Config, Ctx, Domain, Effect, Exit, Failure, Output, command, pick};
 use anyhow::{Context, Result};
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -31,6 +31,7 @@ pub const K8S: Domain = Domain {
         pod::POD_LOGS,
         pod::POD_DELETE,
         objects::EVENT_LIST,
+        objects::DEPLOYMENT_LIST,
         objects::DEPLOYMENT_RESTART,
         objects::DEPLOYMENT_SCALE,
         objects::CONFIGMAP_LIST,
@@ -50,6 +51,8 @@ pub const K8S: Domain = Domain {
         ("crash", &["pod", "previous", "restarts"]),
         ("oomkilled", &["pod", "restarts"]),
         ("rollout", &["deployment", "restart"]),
+        ("deployed", &["deployment", "images"]),
+        ("running in", &["deployment", "images"]),
         ("redeploy", &["deployment", "restart"]),
         ("bounce", &["restart"]),
         ("replicas", &["scale"]),
@@ -131,9 +134,9 @@ fn scopes(config: &Config) -> Result<Vec<Scope>> {
 }
 
 /// Where every k8s command reads or changes something.
-#[derive(clap::Args)]
+#[derive(Clone, clap::Args)]
 pub struct At {
-    /// The [[k8s.scope]] name; defaults to the only one
+    /// The [[k8s.scope]] name (or its kube context); defaults to the only one
     #[arg(long)]
     cluster: Option<String>,
     /// Defaults to the scope's only namespace
@@ -160,40 +163,59 @@ impl At {
         self.resolve(ctx, true)
     }
 
+    /// One object as an agent was handed it: its id (`cluster/namespace/name`,
+    /// as every row prints it), `namespace/name`, or a name, with `--cluster`
+    /// and `--namespace` filling in what it leaves out. A ref and a flag that
+    /// disagree is exit 2: the CLI never picks one.
+    fn named(&self, ctx: &Ctx, raw: &str) -> Result<(Target, String)> {
+        let parts: Vec<&str> = raw.trim().split('/').collect();
+        let (cluster, namespace, name) = match parts.as_slice() {
+            [name] => (None, None, *name),
+            [namespace, name] => (None, Some(*namespace), *name),
+            [cluster, namespace, name] => (Some(*cluster), Some(*namespace), *name),
+            _ => (None, None, ""),
+        };
+        if name.is_empty() || parts.iter().any(|part| part.is_empty()) {
+            return Err(Failure::usage(format!(
+                "{raw:?} is not NAME, NAMESPACE/NAME or CLUSTER/NAMESPACE/NAME"
+            ))
+            .into());
+        }
+        let merge = |held: Option<&str>, flag: &Option<String>, what: &str| match (held, flag) {
+            (Some(held), Some(flag)) if held != flag => Err(Failure::usage(format!(
+                "{raw} is in {what} {held}, and --{what} says {flag}"
+            ))),
+            (held, flag) => Ok(held.map(str::to_owned).or_else(|| flag.clone())),
+        };
+        let at = Self {
+            cluster: merge(cluster, &self.cluster, "cluster")?,
+            namespace: merge(namespace, &self.namespace, "namespace")?,
+        };
+        Ok((at.one(ctx)?, name.to_owned()))
+    }
+
     fn resolve(&self, ctx: &Ctx, single: bool) -> Result<Target> {
         let scopes = scopes(ctx.config())?;
-        let names = |scopes: &[Scope]| {
+        if scopes.is_empty() {
+            return Err(Failure::setup(format!("no [[k8s.scope]] in {}", ctx.config().path().display()))
+                .hint("agent-cli aks cluster connect NAME prints one to paste; config.example.toml shows the keys")
+                .into());
+        }
+        // A kube context names its scope too: an AKS cluster's is its name,
+        // which is what Datadog and `aks cluster list` call it.
+        let wanted = self.cluster.as_deref().map(|wanted| {
             scopes
                 .iter()
-                .map(|s| s.name.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
-        };
-        let scope = match (&self.cluster, scopes.as_slice()) {
-            (_, []) => {
-                return Err(Failure::setup(format!("no [[k8s.scope]] in {}", ctx.config().path().display()))
-                    .hint("agent-cli aks cluster connect <cluster> prints one to paste; config.example.toml shows the keys")
-                    .into());
-            }
-            (Some(wanted), _) => scopes
-                .iter()
-                .find(|scope| scope.name == *wanted)
-                .ok_or_else(|| {
-                    Failure::usage(format!(
-                        "no scope {wanted:?}; --cluster takes one of: {}",
-                        names(&scopes)
-                    ))
-                    .hint("agent-cli k8s context list")
-                })?,
-            (None, [only]) => only,
-            (None, _) => {
-                return Err(Failure::usage(format!(
-                    "more than one [[k8s.scope]]; name one with --cluster: {}",
-                    names(&scopes)
-                ))
-                .into());
-            }
-        };
+                .find(|scope| scope.name == wanted)
+                .or_else(|| scopes.iter().find(|scope| scope.context() == wanted))
+                .map_or(wanted, |scope| scope.name.as_str())
+        });
+        let scope = pick("scope", "--cluster", wanted, &scopes, |scope| &scope.name).map_err(
+            |failure| match failure.exit {
+                Exit::Usage if wanted.is_some() => failure.hint("agent-cli k8s context list"),
+                _ => failure,
+            },
+        )?;
         let listed = &scope.namespaces;
         let namespace = match (&self.namespace, listed.as_slice()) {
             (Some(wanted), []) => Some(wanted.clone()),
@@ -277,6 +299,17 @@ impl Target {
             .then(|| item["metadata"]["namespace"].as_str().map(str::to_owned))
             .flatten()
     }
+
+    /// An object's id, `cluster/namespace/name`: what every k8s command that
+    /// takes one object accepts, with no other flag.
+    fn id(&self, item: &Value) -> String {
+        let namespace = item["metadata"]["namespace"]
+            .as_str()
+            .or(self.namespace.as_deref())
+            .unwrap_or_default();
+        let name = item["metadata"]["name"].as_str().unwrap_or_default();
+        format!("{}/{namespace}/{name}", self.scope)
+    }
 }
 
 /// A child process. Tests put the repo's `scripts/fake` first on its PATH:
@@ -306,7 +339,7 @@ fn finished(output: Output) -> Result<String> {
         Failure::not_found(message)
     } else if message.contains("context \"") && message.contains("does not exist") {
         Failure::setup(message).hint(
-            "the kubeconfig has no such context: agent-cli aks cluster connect <cluster>, or fix [[k8s.scope]] context",
+            "the kubeconfig has no such context: agent-cli aks cluster connect NAME, or fix [[k8s.scope]] context",
         )
     } else if lower.contains("az login")
         || lower.contains("kubelogin")
@@ -371,7 +404,7 @@ fn non_empty(value: &Value) -> Option<&str> {
 /// `40m`, `6h`, `3d`, `2mo`, `2y`.
 fn age(stamp: &Value) -> Option<String> {
     let then = OffsetDateTime::parse(stamp.as_str()?, &Rfc3339).ok()?;
-    let seconds = (OffsetDateTime::now_utc() - then).whole_seconds().max(0);
+    let seconds = (agent_cli_core::now() - then).whole_seconds().max(0);
     let (minutes, hours, days) = (seconds / 60, seconds / 3600, seconds / 86_400);
     Some(match () {
         () if minutes < 1 => format!("{seconds}s"),
@@ -504,7 +537,7 @@ fn doctor(ctx: &Ctx) -> Vec<Check> {
                     let hint = if said.contains("Forbidden") {
                         "RBAC: this login may not list pods here; ask for a role, or narrow the scope's namespaces"
                     } else {
-                        "agent-cli aks cluster connect <cluster> refreshes the kubeconfig"
+                        "agent-cli aks cluster connect NAME refreshes the kubeconfig"
                     };
                     Check::failed(check, said, hint)
                 }

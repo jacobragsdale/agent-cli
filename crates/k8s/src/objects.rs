@@ -5,7 +5,7 @@
 
 use std::collections::BTreeMap;
 
-use agent_cli_core::{Ctx, Failure, Secret, command};
+use agent_cli_core::{Ctx, Failure, Secret, When, command};
 use anyhow::{Context, Result, bail};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -13,8 +13,8 @@ use serde_json::Value;
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
-use crate::pod::Changed;
-use crate::{At, age, items, limited};
+use crate::pod::{Changed, digest, owner_of};
+use crate::{At, Target, age, items, limited, non_empty};
 
 // ---------- k8s event list ----------
 
@@ -22,9 +22,12 @@ use crate::{At, age, items, limited};
 pub struct EventListArgs {
     #[command(flatten)]
     at: At,
-    /// Only events about this pod
+    /// Only events about this pod: its id, namespace/name or name
     #[arg(long)]
     pod: Option<String>,
+    /// Only events last seen after this
+    #[arg(long)]
+    since: Option<When>,
     #[arg(long, default_value_t = 50)]
     limit: usize,
 }
@@ -46,7 +49,14 @@ pub struct EventRow {
 }
 
 fn event_list(ctx: &Ctx, args: EventListArgs) -> Result<Vec<EventRow>> {
-    let target = args.at.listing(ctx)?;
+    // A pod's id names its namespace; a bare name keeps the listing's.
+    let (target, pod) = match args.pod.as_deref() {
+        Some(raw) if raw.contains('/') => {
+            let (target, pod) = args.at.named(ctx, raw)?;
+            (target, Some(pod))
+        }
+        other => (args.at.listing(ctx)?, other.map(str::to_owned)),
+    };
     let listed = target.json(ctx, &["get", "events", "-o", "json"])?;
     let stamp = |value: &Value| {
         value
@@ -55,8 +65,7 @@ fn event_list(ctx: &Ctx, args: EventListArgs) -> Result<Vec<EventRow>> {
     };
     let mut rows: Vec<(Option<OffsetDateTime>, EventRow)> = items(&listed)
         .filter(|item| {
-            args.pod
-                .as_deref()
+            pod.as_deref()
                 .is_none_or(|pod| item["involvedObject"]["name"].as_str() == Some(pod))
         })
         .map(|item| {
@@ -84,12 +93,15 @@ fn event_list(ctx: &Ctx, args: EventListArgs) -> Result<Vec<EventRow>> {
                     .as_i64()
                     .or_else(|| item["series"]["count"].as_i64())
                     .unwrap_or(1),
-                last_seen: last.and_then(|at| at.format(&Rfc3339).ok()),
+                last_seen: last.map(agent_cli_core::utc_time),
                 namespace: target.row_namespace(item),
             };
             (last, row)
         })
         .collect();
+    if let Some(since) = args.since {
+        rows.retain(|(last, _)| last.is_some_and(|last| last >= since.0));
+    }
     rows.sort_by_key(|(last, _)| std::cmp::Reverse(*last));
     Ok(limited(
         ctx,
@@ -102,7 +114,7 @@ command! {
     pub EVENT_LIST = ["k8s", "event", "list"], Read,
     "List Kubernetes events, newest first: warnings, back-offs, failed pulls",
     keywords: ["warning", "warnings", "backoff", "crashloop", "why", "failed", "pull", "scheduling", "oomkilled"],
-    example: "k8s event list --cluster qa --namespace dev --pod orders-worker-5c4d3e-q8zt --fields type,reason,message,last_seen",
+    example: "k8s event list --pod qa/dev/orders-worker-5c4d3e-q8zt --since 1h --fields type,reason,message,last_seen",
     run: event_list,
 }
 
@@ -118,6 +130,8 @@ pub struct ConfigMapListArgs {
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct ConfigMapRow {
+    /// `cluster/namespace/name`: what `configmap get` takes.
+    id: String,
     name: String,
     namespace: Option<String>,
     keys: Vec<String>,
@@ -130,6 +144,7 @@ fn configmap_list(ctx: &Ctx, args: ConfigMapListArgs) -> Result<Vec<ConfigMapRow
     let rows = items(&listed)
         .filter_map(|item| {
             Some(ConfigMapRow {
+                id: target.id(item),
                 name: item["metadata"]["name"].as_str()?.to_owned(),
                 namespace: target.row_namespace(item),
                 keys: data(item).into_keys().collect(),
@@ -159,13 +174,13 @@ command! {
     pub CONFIGMAP_LIST = ["k8s", "configmap", "list"], Read,
     "List configmaps and their keys",
     keywords: ["config", "settings", "environment", "keys"],
-    example: "k8s configmap list --cluster qa --namespace dev --fields name,keys",
+    example: "k8s configmap list --cluster qa --namespace dev --fields id,keys",
     run: configmap_list,
 }
 
 #[derive(clap::Args)]
 pub struct ConfigMapGetArgs {
-    /// The configmap's name
+    /// The configmap: its id (cluster/namespace/name), namespace/name, or name
     name: String,
     #[command(flatten)]
     at: At,
@@ -173,6 +188,7 @@ pub struct ConfigMapGetArgs {
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct ConfigMapDetail {
+    id: String,
     name: String,
     namespace: String,
     age: Option<String>,
@@ -181,10 +197,11 @@ pub struct ConfigMapDetail {
 }
 
 fn configmap_get(ctx: &Ctx, args: ConfigMapGetArgs) -> Result<ConfigMapDetail> {
-    let target = args.at.one(ctx)?;
-    let item = target.json(ctx, &["get", "configmap", &args.name, "-o", "json"])?;
+    let (target, name) = args.at.named(ctx, &args.name)?;
+    let item = target.json(ctx, &["get", "configmap", &name, "-o", "json"])?;
     Ok(ConfigMapDetail {
-        name: args.name,
+        id: target.id(&item),
+        name,
         namespace: target.namespace.unwrap_or_default(),
         age: age(&item["metadata"]["creationTimestamp"]),
         data: data(&item),
@@ -195,7 +212,7 @@ command! {
     pub CONFIGMAP_GET = ["k8s", "configmap", "get"], Read,
     "Show a configmap's keys and values (binary keys show their size only)",
     keywords: ["config", "settings", "environment", "values", "variables", "hold", "contents"],
-    example: "k8s configmap get orders-config --cluster qa --namespace dev",
+    example: "k8s configmap get qa/dev/orders-config",
     run: configmap_get,
 }
 
@@ -212,6 +229,8 @@ pub struct SecretListArgs {
 /// A secret's shape. There is no field its data could go in.
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct SecretRow {
+    /// `cluster/namespace/name`: what `secret get` takes.
+    id: String,
     name: String,
     namespace: Option<String>,
     /// Opaque, kubernetes.io/tls, kubernetes.io/dockerconfigjson…
@@ -228,6 +247,7 @@ fn secret_list(ctx: &Ctx, args: SecretListArgs) -> Result<Vec<SecretRow>> {
     let rows = items(&listed)
         .filter_map(|item| {
             Some(SecretRow {
+                id: target.id(item),
                 name: item["metadata"]["name"].as_str()?.to_owned(),
                 namespace: target.row_namespace(item),
                 kind: item["type"].as_str().unwrap_or("Opaque").to_owned(),
@@ -248,13 +268,13 @@ command! {
     pub SECRET_LIST = ["k8s", "secret", "list"], Read,
     "List Kubernetes secrets: type, key names and sizes (never values)",
     keywords: ["password", "credential", "tls", "keys", "cluster"],
-    example: "k8s secret list --cluster qa --namespace dev --fields name,type,keys",
+    example: "k8s secret list --cluster qa --namespace dev --fields id,type,keys",
     run: secret_list,
 }
 
 #[derive(clap::Args)]
 pub struct SecretGetArgs {
-    /// The secret's name
+    /// The secret: its id (cluster/namespace/name), namespace/name, or name
     name: String,
     /// Which key to decode
     key: String,
@@ -273,7 +293,8 @@ pub struct SecretValue {
 }
 
 fn secret_get(ctx: &Ctx, args: SecretGetArgs) -> Result<SecretValue> {
-    let target = args.at.one(ctx)?;
+    let (target, name) = args.at.named(ctx, &args.name)?;
+    let args = SecretGetArgs { name, ..args };
     let item = target.json(ctx, &["get", "secret", &args.name, "-o", "json"])?;
     let Some(encoded) = item["data"][&args.key].as_str() else {
         let keys: Vec<&str> = item["data"]
@@ -345,7 +366,149 @@ fn base64_decode(encoded: &str) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
+// ---------- k8s deployment list ----------
+
+#[derive(clap::Args)]
+pub struct DeploymentListArgs {
+    /// Part of the deployment name
+    name: Option<String>,
+    #[command(flatten)]
+    at: At,
+    /// Only deployments that rolled out after this
+    #[arg(long)]
+    since: Option<When>,
+    #[arg(long, default_value_t = 50)]
+    limit: usize,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct DeploymentRow {
+    /// `cluster/namespace/name`: what `deployment restart` and `scale` take.
+    id: String,
+    name: String,
+    /// Only when the listing spans namespaces.
+    namespace: Option<String>,
+    /// Pods ready of pods wanted: 2/3.
+    ready: String,
+    replicas: i64,
+    images: Vec<Image>,
+    /// When it last rolled out.
+    updated: Option<String>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct Image {
+    container: String,
+    /// What the pod template asks for, tag included: what `acr manifest get`
+    /// takes; the tag is the git tag that built it (`ado run list --branch`).
+    image: String,
+    /// The digest its pods run, when they report one.
+    digest: Option<String>,
+}
+
+fn deployment_list(ctx: &Ctx, args: DeploymentListArgs) -> Result<Vec<DeploymentRow>> {
+    let target = args.at.listing(ctx)?;
+    // One call: the pods say which digest each tag resolved to.
+    let listed = target.json(ctx, &["get", "deployments,pods", "-o", "json"])?;
+    let (deployments, pods): (Vec<&Value>, Vec<&Value>) =
+        items(&listed).partition(|item| item["kind"].as_str() == Some("Deployment"));
+    let mut rows: Vec<(Option<OffsetDateTime>, DeploymentRow)> = deployments
+        .into_iter()
+        .filter_map(|item| {
+            let name = item["metadata"]["name"].as_str()?;
+            if !args.name.as_deref().is_none_or(|part| name.contains(part)) {
+                return None;
+            }
+            let updated = rolled_out(item);
+            let wanted = item["spec"]["replicas"].as_i64().unwrap_or(1);
+            let namespace = item["metadata"]["namespace"].as_str();
+            let own: Vec<&&Value> = pods
+                .iter()
+                .filter(|pod| {
+                    pod["metadata"]["namespace"].as_str() == namespace
+                        && owner_of(pod).as_deref() == Some(&format!("Deployment/{name}"))
+                })
+                .collect();
+            let images = item["spec"]["template"]["spec"]["containers"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|container| {
+                    let name = non_empty(&container["name"])?;
+                    let image = non_empty(&container["image"]).unwrap_or_default();
+                    let digest = own
+                        .iter()
+                        .flat_map(|pod| {
+                            pod["status"]["containerStatuses"]
+                                .as_array()
+                                .into_iter()
+                                .flatten()
+                        })
+                        .filter(|status| status["name"].as_str() == Some(name))
+                        .find_map(|status| digest(&status["imageID"]));
+                    Some(Image {
+                        container: name.to_owned(),
+                        image: image.to_owned(),
+                        digest,
+                    })
+                })
+                .collect();
+            let row = DeploymentRow {
+                id: target.id(item),
+                name: name.to_owned(),
+                namespace: target.row_namespace(item),
+                ready: format!(
+                    "{}/{wanted}",
+                    item["status"]["readyReplicas"].as_i64().unwrap_or(0)
+                ),
+                replicas: wanted,
+                images,
+                updated: updated.map(agent_cli_core::utc_time),
+            };
+            Some((updated, row))
+        })
+        .collect();
+    if let Some(since) = args.since {
+        rows.retain(|(updated, _)| updated.is_some_and(|at| at >= since.0));
+    }
+    Ok(limited(
+        ctx,
+        rows.into_iter().map(|(_, row)| row).collect(),
+        args.limit,
+    ))
+}
+
+/// When a deployment last rolled out: its Progressing condition's last
+/// update, which moves with each new ReplicaSet, else when it was made.
+fn rolled_out(item: &Value) -> Option<OffsetDateTime> {
+    let stamp = |value: &Value| OffsetDateTime::parse(value.as_str()?, &Rfc3339).ok();
+    item["status"]["conditions"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|condition| condition["type"].as_str() == Some("Progressing"))
+        .and_then(|condition| stamp(&condition["lastUpdateTime"]))
+        .or_else(|| stamp(&item["metadata"]["creationTimestamp"]))
+}
+
+command! {
+    pub DEPLOYMENT_LIST = ["k8s", "deployment", "list"], Read,
+    "List deployments: ready pods, images with tag and digest, when they rolled out",
+    keywords: ["deployed", "running", "version", "image", "tag", "digest", "release", "rollout", "workloads"],
+    example: "k8s deployment list --cluster prod --namespace web --fields id,ready,images,updated",
+    run: deployment_list,
+}
+
 // ---------- k8s deployment restart / scale ----------
+
+/// A deployment's id (`cluster/namespace/name`) picks the scope and
+/// namespace; `KIND/NAME` or a bare name keeps the flags'.
+fn deployment_at(ctx: &Ctx, at: &At, raw: &str) -> Result<(Target, String)> {
+    if raw.matches('/').count() == 2 {
+        return at.named(ctx, raw);
+    }
+    Ok((at.one(ctx)?, raw.to_owned()))
+}
 
 /// The kinds `kubectl rollout restart` takes.
 const ROLLABLE: &[&str] = &["deployment", "statefulset", "daemonset"];
@@ -372,15 +535,15 @@ fn workload(raw: &str, allowed: &[&str], done: &str) -> Result<String> {
 
 #[derive(clap::Args)]
 pub struct RestartArgs {
-    /// A deployment's name, or statefulset/NAME or daemonset/NAME
+    /// A deployment's name or id (cluster/namespace/name), or statefulset/NAME, daemonset/NAME
     name: String,
     #[command(flatten)]
     at: At,
 }
 
 fn deployment_restart(ctx: &Ctx, args: RestartArgs) -> Result<Changed> {
-    let object = workload(&args.name, ROLLABLE, "restarted")?;
-    let target = args.at.one(ctx)?;
+    let (target, name) = deployment_at(ctx, &args.at, &args.name)?;
+    let object = workload(&name, ROLLABLE, "restarted")?;
     let said = target.write(ctx, &["rollout", "restart", &object])?;
     Ok(Changed::new(&target, object, &said, None, None))
 }
@@ -395,7 +558,7 @@ command! {
 
 #[derive(clap::Args)]
 pub struct ScaleArgs {
-    /// A deployment's name, or statefulset/NAME or replicaset/NAME
+    /// A deployment's name or id (cluster/namespace/name), or statefulset/NAME, replicaset/NAME
     name: String,
     /// How many pods it should run
     #[arg(long)]
@@ -405,8 +568,8 @@ pub struct ScaleArgs {
 }
 
 fn deployment_scale(ctx: &Ctx, args: ScaleArgs) -> Result<Changed> {
-    let object = workload(&args.name, SCALABLE, "scaled")?;
-    let target = args.at.one(ctx)?;
+    let (target, name) = deployment_at(ctx, &args.at, &args.name)?;
+    let object = workload(&name, SCALABLE, "scaled")?;
     // Read first: a name that is not there fails here with exit 4, and the
     // answer says what the count was.
     let before = target.json(ctx, &["get", &object, "-o", "json"])?;
@@ -630,10 +793,89 @@ mod tests {
         assert_eq!(
             outcome.json(),
             json!({"cluster": "qa", "namespace": "dev", "object": "deployment/orders-api",
-                   "said": "deployment/orders-api scaled", "replicas": 4, "previous": 3})
+                   "said": "deployment/orders-api scaled", "replicas": 4, "previous": 2})
         );
         let outcome = run(&["k8s", "deployment", "restart", "orders-api", "--yes"]);
         assert_eq!(outcome.json()["said"], "deployment/orders-api restarted");
+    }
+
+    #[test]
+    fn deployment_list_shows_ready_pods_images_with_digests_and_when_they_rolled_out() {
+        let outcome = run(&["k8s", "deployment", "list"]);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let rows = outcome.json();
+        assert_eq!(
+            rows[0],
+            json!({"id": "qa/dev/orders-api", "name": "orders-api", "ready": "2/2", "replicas": 2,
+                "images": [{"container": "api", "image": "contosoacr.azurecr.io/team/orders-api:1.2.3",
+                    "digest": "sha256:7f361af0fba5b2240abf4d78b24b30ae1ee06d320e9f0cdbabbcde359ae1a61b"}],
+                "updated": "2026-09-10T08:00:00Z"})
+        );
+        assert_eq!(rows[1]["ready"], "0/1", "the crash-looping worker");
+        assert_eq!(rows[2]["images"][1]["container"], "proxy");
+        let names = |argv: &[&str]| {
+            run(argv)
+                .json()
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|row| row["name"].as_str().unwrap().to_owned())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            names(&["k8s", "deployment", "list", "billing"]),
+            ["billing-api"]
+        );
+        assert!(names(&["k8s", "deployment", "list", "--since", "2026-09-11"]).is_empty());
+        assert_eq!(
+            names(&["k8s", "deployment", "list", "--since", "2026-09-09"]).len(),
+            3
+        );
+
+        let everywhere = k8s(&[
+            "k8s",
+            "deployment",
+            "list",
+            "--cluster",
+            "all",
+            "--fields",
+            "id,namespace",
+        ]);
+        assert_eq!(
+            everywhere.json()[3],
+            json!({"id": "all/qa/orders-api", "namespace": "qa"})
+        );
+    }
+
+    #[test]
+    fn events_narrow_to_a_pod_by_id_and_to_a_window() {
+        let outcome = k8s(&[
+            "k8s",
+            "event",
+            "list",
+            "--pod",
+            "qa/dev/orders-worker-5c4d3e-q8zt",
+            "--fields",
+            "reason,last_seen",
+        ]);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json(),
+            json!([{"reason": "BackOff", "last_seen": "2026-09-12T12:30:00Z"}])
+        );
+        let recent = run(&[
+            "k8s",
+            "event",
+            "list",
+            "--since",
+            "2026-09-12T11:00:00Z",
+            "--fields",
+            "reason",
+        ]);
+        assert_eq!(
+            recent.json(),
+            json!([{"reason": "BackOff"}, {"reason": "Pulled"}])
+        );
     }
 
     #[test]

@@ -10,12 +10,15 @@ use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::Value;
+use std::collections::BTreeSet;
 
 use crate::{At, Target, age, items, limited, non_empty};
 
 /// One pod as `kubectl get pods` lists it, with the owner resolved.
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct PodRow {
+    /// `cluster/namespace/name`: what `pod get`, `logs` and `delete` take.
+    id: String,
     name: String,
     /// Only when the listing spans namespaces.
     namespace: Option<String>,
@@ -30,12 +33,13 @@ pub struct PodRow {
     owner: Option<String>,
 }
 
-fn row(target_namespace: Option<String>, item: &Value) -> Option<PodRow> {
+fn row(target: &Target, item: &Value) -> Option<PodRow> {
     let name = item["metadata"]["name"].as_str()?;
     let containers = containers(item);
     Some(PodRow {
+        id: target.id(item),
         name: name.to_owned(),
-        namespace: target_namespace,
+        namespace: target.row_namespace(item),
         status: status_word(item),
         ready: format!(
             "{}/{}",
@@ -53,7 +57,10 @@ fn row(target_namespace: Option<String>, item: &Value) -> Option<PodRow> {
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct ContainerRow {
     name: String,
+    /// The image it runs, tag included: what `acr manifest get` takes.
     image: String,
+    /// The digest it is running, when the kubelet reports one.
+    digest: Option<String>,
     ready: bool,
     restarts: u64,
     /// Running, or why it waits or stopped: CrashLoopBackOff, Completed, ExitCode:137.
@@ -108,6 +115,7 @@ fn containers(item: &Value) -> Vec<ContainerRow> {
                     .or_else(|| non_empty(&spec["image"]))
                     .unwrap_or_default()
                     .to_owned(),
+                digest: status.and_then(|status| digest(&status["imageID"])),
                 ready: status.is_some_and(|status| status["ready"].as_bool() == Some(true)),
                 restarts: status
                     .and_then(|status| status["restartCount"].as_u64())
@@ -200,12 +208,19 @@ fn status_word(item: &Value) -> String {
     word
 }
 
+/// The `sha256:…` a container status's `imageID` ends in
+/// (`docker-pullable://…@sha256:…` or `…/api@sha256:…`).
+pub(crate) fn digest(image_id: &Value) -> Option<String> {
+    let (_, digest) = image_id.as_str()?.rsplit_once('@')?;
+    (!digest.is_empty()).then(|| digest.to_owned())
+}
+
 /// What made the pod, as `Kind/name`. A ReplicaSet named after a
 /// pod-template hash is a Deployment's, and is reported as that Deployment,
 /// which is the name `k8s deployment restart` takes.
 // ponytail: a Job's CronJob is not resolved; a ReplicaSet with no hash label
 // stays a ReplicaSet.
-fn owner_of(item: &Value) -> Option<String> {
+pub(crate) fn owner_of(item: &Value) -> Option<String> {
     let references = item["metadata"]["ownerReferences"].as_array()?;
     let owner = references
         .iter()
@@ -245,7 +260,7 @@ fn pod_list(ctx: &Ctx, args: PodListArgs) -> Result<Vec<PodRow>> {
                     .is_some_and(|name| name.contains(part))
             })
         })
-        .filter_map(|item| row(target.row_namespace(item), item))
+        .filter_map(|item| row(&target, item))
         .collect();
     Ok(limited(ctx, rows, args.limit))
 }
@@ -254,7 +269,7 @@ command! {
     pub POD_LIST = ["k8s", "pod", "list"], Read,
     "List pods with status, ready, restarts, age, node and owning deployment",
     keywords: ["containers", "restarting", "crashloop", "crashing", "running", "pending", "unhealthy"],
-    example: "k8s pod list --cluster qa --namespace dev --fields name,status,restarts,owner",
+    example: "k8s pod list --cluster qa --namespace dev --fields id,status,restarts,owner",
     run: pod_list,
 }
 
@@ -262,7 +277,7 @@ command! {
 
 #[derive(clap::Args)]
 pub struct PodGetArgs {
-    /// The pod's name
+    /// The pod: its id (cluster/namespace/name), namespace/name, or name
     pod: String,
     #[command(flatten)]
     at: At,
@@ -275,6 +290,7 @@ pub struct PodGetArgs {
 /// `--yaml`, only the name, namespace and the manifest in `text`.
 #[derive(Debug, Default, Serialize, JsonSchema)]
 pub struct PodDetail {
+    id: String,
     name: String,
     namespace: String,
     status: Option<String>,
@@ -285,10 +301,28 @@ pub struct PodDetail {
     ip: Option<String>,
     owner: Option<String>,
     containers: Vec<ContainerRow>,
+    /// The secrets it reads: names and keys only, never values.
+    secret_refs: Vec<SecretRef>,
     conditions: Vec<Condition>,
     labels: BTreeMap<String, String>,
     /// The manifest, with --yaml.
     text: Option<String>,
+}
+
+/// A secret a pod reads, by reference.
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct SecretRef {
+    /// env, envFrom, volume, pull or csi.
+    via: &'static str,
+    /// The Kubernetes secret's id: what `k8s secret get` takes.
+    secret: Option<String>,
+    /// The keys it reads; none listed is every key.
+    keys: Vec<String>,
+    /// The SecretProviderClass, for csi.
+    class: Option<String>,
+    /// The Key Vault secrets the class mounts, as `kv secret get` takes them
+    /// (`vault/name`).
+    kv: Vec<String>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -301,19 +335,22 @@ pub struct Condition {
 }
 
 fn pod_get(ctx: &Ctx, args: PodGetArgs) -> Result<PodDetail> {
-    let target = args.at.one(ctx)?;
+    let (target, pod) = args.at.named(ctx, &args.pod)?;
     let namespace = target.namespace.clone().unwrap_or_default();
+    let id = format!("{}/{namespace}/{pod}", target.scope);
     if args.yaml {
         return Ok(PodDetail {
-            text: Some(target.read(ctx, &["get", "pod", &args.pod, "-o", "yaml"])?),
-            name: args.pod,
+            text: Some(target.read(ctx, &["get", "pod", &pod, "-o", "yaml"])?),
+            id,
+            name: pod,
             namespace,
             ..PodDetail::default()
         });
     }
-    let item = target.json(ctx, &["get", "pod", &args.pod, "-o", "json"])?;
-    let summary = row(None, &item).unwrap_or_else(|| PodRow {
-        name: args.pod.clone(),
+    let item = target.json(ctx, &["get", "pod", &pod, "-o", "json"])?;
+    let summary = row(&target, &item).unwrap_or_else(|| PodRow {
+        id: id.clone(),
+        name: pod.clone(),
         namespace: None,
         status: status_word(&item),
         ready: String::new(),
@@ -323,6 +360,8 @@ fn pod_get(ctx: &Ctx, args: PodGetArgs) -> Result<PodDetail> {
         owner: None,
     });
     Ok(PodDetail {
+        secret_refs: secret_refs(ctx, &target, &item),
+        id,
         name: summary.name,
         namespace,
         status: Some(summary.status),
@@ -360,15 +399,133 @@ command! {
     pub POD_GET = ["k8s", "pod", "get"], Read,
     "Describe a pod: containers, images, states, last termination reason, owner",
     keywords: ["describe", "crashloop", "why", "oomkilled", "image", "yaml", "manifest", "conditions"],
-    example: "k8s pod get orders-api-7d9f5b-abc12 --cluster qa --namespace dev",
+    example: "k8s pod get qa/dev/orders-api-7d9f5b-abc12 --fields status,containers,secret_refs",
     run: pod_get,
+}
+
+/// Every secret the pod's spec names: env and envFrom of every container,
+/// secret volumes, image pull secrets, and CSI volumes with their
+/// SecretProviderClass read (one kubectl call per class) to name the Key
+/// Vault secrets behind them: the join an agent cannot cheaply do.
+fn secret_refs(ctx: &Ctx, target: &Target, item: &Value) -> Vec<SecretRef> {
+    let spec = &item["spec"];
+    let id = |name: &str| {
+        let namespace = target.namespace.as_deref().unwrap_or_default();
+        format!("{}/{namespace}/{name}", target.scope)
+    };
+    // (via, secret) -> keys, in a stable order.
+    let mut named: BTreeMap<(&'static str, String), BTreeSet<String>> = BTreeMap::new();
+    let mut every = |via: &'static str, secret: &str, key: Option<&str>| {
+        let keys = named.entry((via, secret.to_owned())).or_default();
+        keys.extend(key.map(str::to_owned));
+    };
+    let containers = spec["containers"]
+        .as_array()
+        .into_iter()
+        .chain(spec["initContainers"].as_array())
+        .flatten();
+    for container in containers {
+        for env in container["env"].as_array().into_iter().flatten() {
+            let reference = &env["valueFrom"]["secretKeyRef"];
+            if let Some(secret) = non_empty(&reference["name"]) {
+                every("env", secret, non_empty(&reference["key"]));
+            }
+        }
+        for from in container["envFrom"].as_array().into_iter().flatten() {
+            if let Some(secret) = non_empty(&from["secretRef"]["name"]) {
+                every("envFrom", secret, None);
+            }
+        }
+    }
+    let mut classes = Vec::new();
+    for volume in spec["volumes"].as_array().into_iter().flatten() {
+        if let Some(secret) = non_empty(&volume["secret"]["secretName"]) {
+            let items = volume["secret"]["items"].as_array();
+            every("volume", secret, None);
+            for item in items.into_iter().flatten() {
+                every("volume", secret, non_empty(&item["key"]));
+            }
+        }
+        let csi = &volume["csi"];
+        if csi["driver"].as_str() == Some("secrets-store.csi.k8s.io")
+            && let Some(class) = non_empty(&csi["volumeAttributes"]["secretProviderClass"])
+        {
+            classes.push(class.to_owned());
+        }
+    }
+    for pull in spec["imagePullSecrets"].as_array().into_iter().flatten() {
+        if let Some(secret) = non_empty(&pull["name"]) {
+            every("pull", secret, None);
+        }
+    }
+    let mut refs: Vec<SecretRef> = named
+        .into_iter()
+        .map(|((via, secret), keys)| SecretRef {
+            via,
+            secret: Some(id(&secret)),
+            keys: keys.into_iter().collect(),
+            class: None,
+            kv: Vec::new(),
+        })
+        .collect();
+    for class in classes {
+        let kv = match target.json(ctx, &["get", "secretproviderclass", &class, "-o", "json"]) {
+            Ok(found) => key_vault_ids(&found),
+            Err(error) => {
+                ctx.note(format!("[SecretProviderClass {class} not read: {error:#}]"));
+                Vec::new()
+            }
+        };
+        refs.push(SecretRef {
+            via: "csi",
+            secret: None,
+            keys: Vec::new(),
+            class: Some(class),
+            kv,
+        });
+    }
+    refs
+}
+
+/// The Key Vault secrets an Azure SecretProviderClass mounts, as `vault/name`:
+/// `parameters.keyvaultName` and each `objectName` in the `objects` YAML
+/// string whose `objectType` is a secret or a certificate (a certificate's
+/// value is its backing secret); keys are not secrets.
+fn key_vault_ids(class: &Value) -> Vec<String> {
+    let parameters = &class["spec"]["parameters"];
+    let Some(vault) = non_empty(&parameters["keyvaultName"]) else {
+        return Vec::new();
+    };
+    let objects = parameters["objects"].as_str().unwrap_or_default();
+    let field = |line: &str, key: &str| {
+        line.trim()
+            .trim_start_matches("- ")
+            .trim()
+            .strip_prefix(key)
+            .map(|value| value.trim().trim_matches(['"', '\'']).to_owned())
+    };
+    let mut found: Vec<(String, String)> = Vec::new();
+    for line in objects.lines() {
+        if let Some(name) = field(line, "objectName:") {
+            found.push((name, "secret".to_owned()));
+        } else if let Some(kind) = field(line, "objectType:")
+            && let Some(last) = found.last_mut()
+        {
+            last.1 = kind.to_ascii_lowercase();
+        }
+    }
+    found
+        .into_iter()
+        .filter(|(name, kind)| !name.is_empty() && matches!(kind.as_str(), "secret" | "cert"))
+        .map(|(name, _)| format!("{vault}/{name}"))
+        .collect()
 }
 
 // ---------- k8s pod logs ----------
 
 #[derive(clap::Args)]
 pub struct PodLogsArgs {
-    /// The pod's name
+    /// The pod: its id (cluster/namespace/name), namespace/name, or name
     pod: String,
     #[command(flatten)]
     at: At,
@@ -388,6 +545,7 @@ pub struct PodLogsArgs {
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct Logs {
+    /// The pod's id.
     pod: String,
     namespace: String,
     container: Option<String>,
@@ -397,9 +555,9 @@ pub struct Logs {
 }
 
 fn pod_logs(ctx: &Ctx, args: PodLogsArgs) -> Result<Logs> {
-    let target = args.at.one(ctx)?;
+    let (target, pod) = args.at.named(ctx, &args.pod)?;
     let tail = format!("--tail={}", args.tail);
-    let mut argv = vec!["logs", args.pod.as_str(), tail.as_str()];
+    let mut argv = vec!["logs", pod.as_str(), tail.as_str()];
     if let Some(container) = &args.container {
         argv.extend(["-c", container]);
     }
@@ -413,9 +571,10 @@ fn pod_logs(ctx: &Ctx, args: PodLogsArgs) -> Result<Logs> {
         argv.push(since);
     }
     let text = target.read(ctx, &argv)?;
+    let namespace = target.namespace.unwrap_or_default();
     Ok(Logs {
-        pod: args.pod,
-        namespace: target.namespace.unwrap_or_default(),
+        pod: format!("{}/{namespace}/{pod}", target.scope),
+        namespace,
         container: args.container,
         lines: text.lines().count(),
         text,
@@ -426,7 +585,7 @@ command! {
     pub POD_LOGS = ["k8s", "pod", "logs"], Read,
     "Read the last lines of a pod's log, or of the run before its last restart",
     keywords: ["log", "output", "stdout", "stderr", "tail", "crash", "error", "previous", "container"],
-    example: "k8s pod logs orders-worker-5c4d3e-q8zt --cluster qa --namespace dev --previous --tail 50",
+    example: "k8s pod logs qa/dev/orders-worker-5c4d3e-q8zt --previous --tail 50",
     run: pod_logs,
 }
 
@@ -434,7 +593,7 @@ command! {
 
 #[derive(clap::Args)]
 pub struct PodDeleteArgs {
-    /// The pod's name
+    /// The pod: its id (cluster/namespace/name), namespace/name, or name
     pod: String,
     #[command(flatten)]
     at: At,
@@ -456,13 +615,13 @@ pub struct Changed {
 }
 
 fn pod_delete(ctx: &Ctx, args: PodDeleteArgs) -> Result<Changed> {
-    let target = args.at.one(ctx)?;
+    let (target, pod) = args.at.named(ctx, &args.pod)?;
     // --wait=false: the pod goes Terminating and a controller replaces it;
     // waiting for the grace period would spend the deadline on nothing.
-    let said = target.write(ctx, &["delete", "pod", &args.pod, "--wait=false"])?;
+    let said = target.write(ctx, &["delete", "pod", &pod, "--wait=false"])?;
     Ok(Changed::new(
         &target,
-        format!("pod/{}", args.pod),
+        format!("pod/{pod}"),
         &said,
         None,
         None,
@@ -621,8 +780,9 @@ pub(crate) mod tests {
         assert_eq!(
             pod["containers"][0],
             json!({
-                "name": "api", "image": "contosoacr.azurecr.io/team/orders-worker:1.2.3", "ready": false,
-                "restarts": 17, "state": "CrashLoopBackOff", "last_termination": "Error (exit 1)",
+                "name": "api", "image": "contosoacr.azurecr.io/team/orders-worker:1.2.3",
+                "digest": "sha256:656e536a8d9d94acc380c0e37def06fffd0fcd9d8639b7d8caced4c537ab29b1",
+                "ready": false, "restarts": 17, "state": "CrashLoopBackOff", "last_termination": "Error (exit 1)",
             })
         );
         assert_eq!(
@@ -650,6 +810,89 @@ pub(crate) mod tests {
             "{}",
             outcome.stderr
         );
+    }
+
+    #[test]
+    fn an_id_names_the_scope_and_namespace_and_a_disagreeing_flag_is_refused() {
+        let outcome = k8s(&[
+            "k8s",
+            "pod",
+            "get",
+            "qa/dev/redis-0",
+            "--fields",
+            "id,name,namespace",
+        ]);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json(),
+            json!({"id": "qa/dev/redis-0", "name": "redis-0", "namespace": "dev"})
+        );
+        let outcome = k8s(&[
+            "k8s",
+            "pod",
+            "get",
+            "dev/redis-0",
+            "--cluster",
+            "aks-qa",
+            "--fields",
+            "id",
+        ]);
+        assert_eq!(
+            outcome.code, 0,
+            "a kube context names its scope: {outcome:?}"
+        );
+        assert_eq!(outcome.json(), json!({"id": "qa/dev/redis-0"}));
+        let outcome = k8s(&["k8s", "pod", "get", "qa/dev/redis-0", "--namespace", "qa"]);
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("qa/dev/redis-0 is in namespace dev, and --namespace says qa"),
+            "{}",
+            outcome.stderr
+        );
+        let listed = run(&["k8s", "pod", "list", "--fields", "id"]);
+        assert_eq!(listed.json()[0]["id"], "qa/dev/orders-api-7d9f5b-abc12");
+        let logs = k8s(&[
+            "k8s",
+            "pod",
+            "logs",
+            "qa/dev/redis-0",
+            "--tail",
+            "1",
+            "--fields",
+            "pod,lines",
+        ]);
+        assert_eq!(logs.json(), json!({"pod": "qa/dev/redis-0", "lines": 1}));
+    }
+
+    #[test]
+    fn pod_get_names_every_secret_it_reads_and_the_key_vault_secrets_behind_its_csi_class() {
+        let outcome = run(&[
+            "k8s",
+            "pod",
+            "get",
+            "orders-api-7d9f5b-abc12",
+            "--fields",
+            "secret_refs",
+        ]);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json()["secret_refs"],
+            json!([
+                {"via": "env", "secret": "qa/dev/orders-db", "keys": ["password", "username"]},
+                {"via": "envFrom", "secret": "qa/dev/orders-env"},
+                {"via": "pull", "secret": "qa/dev/acr-pull"},
+                {"via": "volume", "secret": "qa/dev/orders-tls"},
+                {"via": "csi", "class": "orders-kv", "kv": ["kv-contoso-dev/db-password", "kv-contoso-dev/api-cert"]},
+            ])
+        );
+        assert!(
+            !outcome.stdout.contains("aHVudGVyMg"),
+            "names only, never values"
+        );
+        let other = run(&["k8s", "pod", "get", "redis-0", "--fields", "secret_refs"]);
+        assert_eq!(other.stdout.trim(), "{}", "{other:?}");
     }
 
     #[test]
