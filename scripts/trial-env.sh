@@ -8,14 +8,18 @@
 #
 # AGENT_CLI_FIXTURES replays <world>/http/*.json instead of the network (only
 # in a build with the fixtures feature) and serves <world>/kubectl.json from
-# the fake kubectl; PATH puts scripts/fake (az, kubectl, kubelogin) and the
-# fixtures build first; AGENT_CLI_NOW freezes the clock the world was recorded
-# at, so relative times such as --since 1d resolve to recorded URLs.
+# the fake kubectl; AGENT_CLI_FIXTURES_MATCH=loose answers a request the world
+# did not record with the closest recording of its method and path (an agent
+# picks its own --since and --limit), or a 404; PATH puts scripts/fake (az,
+# kubectl, kubelogin) and the fixtures build first; AGENT_CLI_NOW freezes the
+# clock the world was recorded at, so relative times such as --since 1d
+# resolve to recorded URLs.
 set -eu
 repo=$(cd "$(dirname "$0")/.." && pwd)
 world=$(cd "${1:-$repo/fixtures/world}" && pwd)
 cat <<ENV
 export AGENT_CLI_FIXTURES='$world'
+export AGENT_CLI_FIXTURES_MATCH=loose
 export AGENT_CLI_CONFIG='$world/config.toml'
 export AGENT_CLI_NOW='2026-09-29T12:00:00Z'
 export PATH='$repo/target/debug:$repo/scripts/fake':"\$PATH"

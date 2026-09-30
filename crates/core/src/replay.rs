@@ -23,6 +23,13 @@
 //! 200, `headers` to none; `answer` is JSON, `text` a body as it is. A
 //! request with no recording is an error naming the closest one, and the
 //! body that was sent, which is what to record next.
+//!
+//! `AGENT_CLI_FIXTURES_MATCH=loose` is for trials, where an agent picks its
+//! own windows and limits (`--since 2d`, `--limit 10`): a miss is answered by
+//! the closest recording of the same method and path, whatever its query and
+//! body, and a path with no recording at all by a plain 404, as a service
+//! would for a thing that does not exist. Nothing says so: an agent in a
+//! trial should see a service, not the harness. Tests stay strict.
 
 use std::path::Path;
 use std::time::Duration;
@@ -40,7 +47,8 @@ pub(crate) fn from_env(mut setup: Setup) -> Setup {
     let Some(dir) = std::env::var_os("AGENT_CLI_FIXTURES").filter(|dir| !dir.is_empty()) else {
         return setup;
     };
-    setup.transport = Box::new(Replay::load(Path::new(&dir)));
+    let loose = std::env::var("AGENT_CLI_FIXTURES_MATCH").is_ok_and(|mode| mode == "loose");
+    setup.transport = Box::new(Replay::load(Path::new(&dir), loose));
     setup.cache_dir = None;
     setup
 }
@@ -78,20 +86,48 @@ pub(crate) struct Replay {
     exchanges: Vec<Exchange>,
     /// Why the recordings could not be read; every request then fails with it.
     problem: Option<String>,
+    /// A miss gets the closest recording of its method and path, or a 404.
+    loose: bool,
 }
 
 impl Replay {
-    pub(crate) fn load(dir: &Path) -> Self {
-        match read(dir) {
-            Ok(exchanges) => Self {
-                exchanges,
-                problem: None,
-            },
-            Err(error) => Self {
-                exchanges: Vec::new(),
-                problem: Some(format!("{error:#}")),
-            },
+    pub(crate) fn load(dir: &Path, loose: bool) -> Self {
+        let (exchanges, problem) = match read(dir) {
+            Ok(exchanges) => (exchanges, None),
+            Err(error) => (Vec::new(), Some(format!("{error:#}"))),
+        };
+        Self {
+            exchanges,
+            problem,
+            loose,
         }
+    }
+
+    /// The recording of `wanted`'s method and path whose query and body are
+    /// closest to the ones sent.
+    fn closest_on_path(&self, wanted: &str, body: Option<&Value>) -> Option<&Exchange> {
+        let path = |key: &str| key.split('?').next().unwrap_or_default().to_owned();
+        let sent = format!(
+            "{wanted} {}",
+            body.map(Value::to_string).unwrap_or_default()
+        );
+        self.exchanges
+            .iter()
+            .filter(|exchange| path(&exchange.key) == path(wanted))
+            .map(|exchange| {
+                let recorded = format!(
+                    "{} {}",
+                    exchange.key,
+                    exchange
+                        .body
+                        .as_ref()
+                        .map(Value::to_string)
+                        .unwrap_or_default()
+                );
+                (strsim::normalized_levenshtein(&recorded, &sent), exchange)
+            })
+            .max_by(|a, b| a.0.total_cmp(&b.0))
+            .map(|(_, exchange)| exchange)
     }
 }
 
@@ -199,8 +235,22 @@ impl Transport for Replay {
         let found = same_url
             .iter()
             .find(|exchange| exchange.body.is_some() && exchange.body == body)
-            .or_else(|| same_url.iter().find(|exchange| exchange.body.is_none()));
+            .or_else(|| same_url.iter().find(|exchange| exchange.body.is_none()))
+            .copied()
+            .or_else(|| {
+                self.loose
+                    .then(|| self.closest_on_path(&wanted, body.as_ref()))
+                    .flatten()
+            });
         let Some(exchange) = found else {
+            if self.loose {
+                return Ok(Response {
+                    status: 404,
+                    headers: Vec::new(),
+                    body: r#"{"message":"Not Found"}"#.to_owned(),
+                    url: request.url.clone(),
+                });
+            }
             return Err(miss(
                 &self.exchanges,
                 &wanted,
@@ -250,12 +300,16 @@ mod tests {
     use crate::http::Method;
 
     fn replay(files: &[(&str, &str)]) -> Replay {
+        load(files, false)
+    }
+
+    fn load(files: &[(&str, &str)], loose: bool) -> Replay {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir(dir.path().join("http")).unwrap();
         for (name, text) in files {
             std::fs::write(dir.path().join("http").join(name), text).unwrap();
         }
-        Replay::load(dir.path())
+        Replay::load(dir.path(), loose)
     }
 
     fn send(replay: &Replay, request: Request<'_>) -> Result<Response> {
@@ -309,6 +363,35 @@ mod tests {
             error,
             r#"fixtures: POST https://h.example/q is recorded, but not with this body; body sent: {"query":"two"}"#
         );
+    }
+
+    #[test]
+    fn loose_answers_a_miss_with_the_closest_query_and_body_on_its_path_or_a_404() {
+        let files = [(
+            "a.json",
+            r#"[{"request": "GET https://h.example/runs?limit=50&since=2026-09-28", "answer": ["day"]},
+                {"request": "GET https://h.example/runs?limit=50", "answer": ["all"]},
+                {"request": "GET https://h.example/runs/7", "answer": {"id": 7}},
+                {"request": "POST https://h.example/q", "body": {"query": "state = 'Active'"}, "answer": ["active"]},
+                {"request": "POST https://h.example/q", "body": {"query": "state = 'Closed' and type = 'Bug'"}, "answer": ["bugs"]}]"#,
+        )];
+        let loose = load(&files, true);
+        let got = send(
+            &loose,
+            Request::get("https://h.example/runs?limit=10&since=2026-09-27"),
+        );
+        assert_eq!(got.unwrap().body, r#"["day"]"#);
+        let got = send(&loose, Request::get("https://h.example/runs?limit=10")).unwrap();
+        assert_eq!(got.body, r#"["all"]"#);
+        let wiql = json!({"query": "state in ('New', 'Active')"});
+        let got = send(&loose, Request::query("https://h.example/q", wiql.clone())).unwrap();
+        assert_eq!(got.body, r#"["active"]"#);
+        let gone = send(&loose, Request::get("https://h.example/runs/8")).unwrap();
+        assert_eq!((gone.status, gone.body.contains("fixtures")), (404, false));
+
+        let strict = load(&files, false);
+        assert!(send(&strict, Request::get("https://h.example/runs?limit=10")).is_err());
+        assert!(send(&strict, Request::query("https://h.example/q", wiql)).is_err());
     }
 
     #[test]

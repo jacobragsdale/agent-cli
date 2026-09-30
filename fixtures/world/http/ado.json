@@ -1871,6 +1871,73 @@
   }
  },
  {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemsbatch?api-version=7.1",
+  "body": {
+   "ids": [
+    1218,
+    1215
+   ],
+   "fields": [
+    "System.WorkItemType",
+    "System.Title",
+    "System.State",
+    "System.AssignedTo",
+    "System.IterationPath",
+    "System.AreaPath",
+    "Microsoft.VSTS.Common.Priority",
+    "System.Tags",
+    "System.ChangedDate",
+    "System.Id"
+   ],
+   "errorPolicy": "omit"
+  },
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "id": 1218,
+     "rev": 2,
+     "fields": {
+      "System.Id": 1218,
+      "System.WorkItemType": "Bug",
+      "System.Title": "worker crash-loops in prod after the database password rotation",
+      "System.State": "New",
+      "System.AssignedTo": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "System.AreaPath": "Fabrikam\\api",
+      "Microsoft.VSTS.Common.Priority": 1,
+      "System.Tags": "prod; worker",
+      "System.ChangedDate": "2026-09-29T11:40:03.550Z"
+     }
+    },
+    {
+     "id": 1215,
+     "rev": 3,
+     "fields": {
+      "System.Id": 1215,
+      "System.WorkItemType": "Task",
+      "System.Title": "Add jitter to the retry backoff",
+      "System.State": "Active",
+      "System.AssignedTo": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "System.AreaPath": "Fabrikam\\api",
+      "Microsoft.VSTS.Common.Priority": 2,
+      "System.Tags": "retry; orders",
+      "System.ChangedDate": "2026-09-29T09:12:44.901Z"
+     }
+    }
+   ]
+  }
+ },
+ {
   "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/wit/wiql?$top=20000&api-version=7.1",
   "body": {
    "query": "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.AssignedTo] = @Me ORDER BY [System.ChangedDate] DESC"
@@ -1953,6 +2020,26 @@
     }
    ]
   }
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/wit/wiql?$top=20000&api-version=7.1",
+  "body": {
+   "query": "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.AssignedTo] = @Me AND [System.State] IN ('New', 'Active') AND [System.IterationPath] = @CurrentIteration ORDER BY [System.ChangedDate] DESC"
+  },
+  "answer": {
+   "queryType": "flat",
+   "workItems": [
+    {
+     "id": 1218,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1218"
+    },
+    {
+     "id": 1215,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1215"
+    }
+   ]
+  },
+  "note": "my unresolved items this sprint: --iteration @current --state New --state Active"
  },
  {
   "request": "GET https://dev.azure.com/contoso/_apis/wit/workitems/1207?$expand=relations&api-version=7.1",

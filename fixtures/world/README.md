@@ -19,9 +19,9 @@ agent-cli k8s deployment list
 | Variable | Why |
 |---|---|
 | `AGENT_CLI_FIXTURES` | This directory. The fixtures build answers every HTTP request from `http/*.json` and turns the cache off; the fake kubectl serves `kubectl.json` |
-| `AGENT_CLI_CONFIG` | `config.toml` here: `[ado]`, `[azure]`, `[[k8s.scope]]`, `[[airflow.instance]]` |
+| `AGENT_CLI_FIXTURES_MATCH` | `loose`: a request with no recording gets the closest recording of its method and path, whatever its query or body, and a path never recorded gets a 404. Agents pick their own windows and limits, and a trial should show them a service, not the harness. Unset it to see what a command would need recorded |
+| `AGENT_CLI_CONFIG` | `config.toml` here: `[ado]`, `[azure]`, `[[k8s.scope]]`, `[[airflow.instance]]`, `[datadog]` |
 | `AIRFLOW_PROD_PASSWORD` | A stand-in; the recorded `/auth/token` answers any password |
-| `AGENT_CLI_CONFIG` | `config.toml` here: `[ado]`, `[azure]`, `[[k8s.scope]]`, `[datadog]` |
 | `AGENT_CLI_NOW` | `2026-09-29T12:00:00Z`, the moment the world was recorded. Relative times (`--since 1d`, `--expires-within 30d`, ages) resolve against it, so they keep matching the recordings on any day |
 | `DD_ACCESS_TOKEN` | A stand-in Datadog token; the replayer never checks it |
 | `PATH` | `target/debug` (the fixtures build) and `scripts/fake` (`az`, `kubectl`, `kubelogin`) first. The fake `az` hands out a stand-in token; nothing checks it |
@@ -101,8 +101,10 @@ and `metadata.name` are what the fake filters on). Logs are keyed
 
 ## Extend it
 
-1. Run the command against the world. A request with no recording fails with
-   the one it wanted, the closest recording, and the body it sent:
+1. Run the command against the world with strict matching
+   (`unset AGENT_CLI_FIXTURES_MATCH`; the tests always match strictly). A
+   request with no recording fails with the one it wanted, the closest
+   recording, and the body it sent:
 
    ```
    error: fixtures: no recorded answer for GET https://…/build/builds/8813?api-version=7.1; closest recorded: GET https://…/build/builds/8812?api-version=7.1

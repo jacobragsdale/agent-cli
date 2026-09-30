@@ -52,6 +52,7 @@ fn agent_cli(args: &[&str]) -> Ran {
         .env("AZURE_CONFIG_DIR", format!("{world}/.azure-unused"))
         .env("AIRFLOW_PROD_PASSWORD", "stand-in")
         .env("DD_ACCESS_TOKEN", "fixture-dd-token")
+        .env_remove("AGENT_CLI_FIXTURES_MATCH")
         .env_remove("AZURE_DEVOPS_EXT_PAT")
         .env_remove("AGENT_CLI_READ_ONLY")
         .output()
@@ -145,6 +146,22 @@ fn the_deploy_trace_runs_from_the_cluster_to_the_work_items() {
         "id",
     ]);
     assert_eq!(mine, json!([{"id": 1218}, {"id": 1215}, {"id": 1207}]));
+    let unresolved = ok(&[
+        "ado",
+        "workitem",
+        "list",
+        "--assignee",
+        "@me",
+        "--iteration",
+        "@current",
+        "--state",
+        "New",
+        "--state",
+        "Active",
+        "--fields",
+        "id",
+    ]);
+    assert_eq!(unresolved, json!([{"id": 1218}, {"id": 1215}]));
 }
 
 #[test]
