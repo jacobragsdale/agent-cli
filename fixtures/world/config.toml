@@ -21,11 +21,11 @@ namespaces = ["web"]
 name = "prod"
 base_url = "https://airflow.contoso.example"
 username = "agent"
-password_env = "AIRFLOW_PROD_PASSWORD"
+password_cmd = "echo stand-in"
 read_only = true
 k8s_scope = "prod"
 k8s_namespace = "web"
 [datadog]
 site = "datadoghq.eu"
 env = "prod"
-token_env = "DD_ACCESS_TOKEN"
+token_cmd = "echo fixture-dd-token"

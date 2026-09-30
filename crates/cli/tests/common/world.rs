@@ -50,8 +50,6 @@ pub fn agent_cli(args: &[&str]) -> Ran {
         .env("AGENT_CLI_NOW", NOW)
         .env("PATH", path)
         .env("AZURE_CONFIG_DIR", format!("{world}/.azure-unused"))
-        .env("AIRFLOW_PROD_PASSWORD", "stand-in")
-        .env("DD_ACCESS_TOKEN", "fixture-dd-token")
         .env_remove("AGENT_CLI_FIXTURES_MATCH")
         .env_remove("AZURE_DEVOPS_EXT_PAT")
         .env_remove("AGENT_CLI_READ_ONLY")
