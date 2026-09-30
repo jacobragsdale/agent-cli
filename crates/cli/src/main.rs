@@ -22,7 +22,10 @@ fn main() -> ExitCode {
 
 #[cfg(test)]
 mod tests {
-    use agent_cli_core::testing::{assert_read_only_refuses, assert_search_quality};
+    use agent_cli_core::Setup;
+    use agent_cli_core::testing::{
+        FakeTransport, assert_read_only_refuses, assert_search_quality, run,
+    };
 
     use super::DOMAINS;
 
@@ -42,5 +45,68 @@ mod tests {
     #[test]
     fn read_only_mode_refuses_every_change() {
         assert_read_only_refuses(DOMAINS);
+    }
+
+    /// Every section set, with names as long as real ones get: the overview
+    /// still fits in 1 KB (check_registry also holds it at the cap for every
+    /// domain), and each domain's status line says something.
+    #[test]
+    fn the_overview_fits_with_every_domain_configured() {
+        let config = r#"
+[ado]
+org = "contoso-engineering-platform"
+project = "Fabrikam Fiber Commerce"
+
+[azure]
+vaults = ["kv-contoso-prod-westeurope", "kv-contoso-staging-westeurope"]
+registries = "contosoacr"
+
+[[k8s.scope]]
+name = "prod"
+context = "aks-contoso-prod-westeurope"
+namespaces = ["web", "jobs"]
+
+[[k8s.scope]]
+name = "staging"
+
+[[sql.connection]]
+name = "reporting"
+kind = "mssql"
+host = "sql-contoso-reporting.database.windows.net"
+database = "reporting"
+user = "reader"
+password_env = "REPORTING_PASSWORD"
+
+[[sql.connection]]
+name = "ledger"
+kind = "oracle"
+host = "ledger.contoso.example"
+service = "LEDGER"
+user = "reader"
+password_cmd = "pass show contoso/ledger"
+"#;
+        let setup = Setup::fake(FakeTransport::default()).with_config(config);
+        let outcome = run(DOMAINS, &[], setup);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert!(
+            outcome.stdout.len() <= 1024,
+            "{} bytes:\n{}",
+            outcome.stdout.len(),
+            outcome.stdout
+        );
+        let config_line = outcome
+            .stdout
+            .lines()
+            .find(|line| line.starts_with("Config:"))
+            .unwrap();
+        for status in [
+            "ado contoso-engineeri\u{2026}",
+            "kv 2 vaults",
+            "acr 1 registry",
+            "k8s 2 scopes",
+            "sql 2 connections",
+        ] {
+            assert!(config_line.contains(status), "{status}: {config_line}");
+        }
     }
 }
