@@ -1,0 +1,18 @@
+# The contoso world's config: what agent-cli reads when a trial runs against
+# fixtures/world (scripts/trial-env.sh points AGENT_CLI_CONFIG here).
+# Synthetic names only; nothing here reaches a real service.
+
+[ado]
+org = "contoso"
+project = "Fabrikam"
+team = "Fabrikam Team"
+
+[azure]
+subscriptions = ["00000000-0000-4000-8000-000000005b01"]
+vaults = ["kv-contoso-prod"]
+registries = ["contosoacr"]
+
+[[k8s.scope]]
+name = "prod"
+context = "aks-contoso-prod"
+namespaces = ["web"]

@@ -1,0 +1,666 @@
+{
+ "contexts": {
+  "aks-contoso-prod": [
+   {
+    "kind": "Deployment",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "api",
+     "namespace": "web",
+     "creationTimestamp": "2025-06-02T11:00:00Z",
+     "labels": {
+      "app": "api"
+     }
+    },
+    "spec": {
+     "replicas": 3,
+     "selector": {
+      "matchLabels": {
+       "app": "api"
+      }
+     },
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "api",
+         "image": "contosoacr.azurecr.io/api:v1.4.2"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "replicas": 3,
+     "readyReplicas": 3,
+     "updatedReplicas": 3,
+     "conditions": [
+      {
+       "type": "Available",
+       "status": "True",
+       "lastUpdateTime": "2026-09-28T21:34:40Z"
+      },
+      {
+       "type": "Progressing",
+       "status": "True",
+       "reason": "NewReplicaSetAvailable",
+       "lastUpdateTime": "2026-09-28T21:34:40Z"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Deployment",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "worker",
+     "namespace": "web",
+     "creationTimestamp": "2025-06-02T11:00:00Z",
+     "labels": {
+      "app": "worker"
+     }
+    },
+    "spec": {
+     "replicas": 1,
+     "selector": {
+      "matchLabels": {
+       "app": "worker"
+      }
+     },
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "worker",
+         "image": "contosoacr.azurecr.io/worker:v1.4.2"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "replicas": 1,
+     "readyReplicas": 0,
+     "updatedReplicas": 1,
+     "conditions": [
+      {
+       "type": "Available",
+       "status": "False",
+       "lastUpdateTime": "2026-09-28T21:36:02Z"
+      },
+      {
+       "type": "Progressing",
+       "status": "True",
+       "reason": "NewReplicaSetAvailable",
+       "lastUpdateTime": "2026-09-28T21:36:02Z"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "api-7d9f8c6b5-x2k4q",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-28T21:34:12Z",
+     "labels": {
+      "app": "api",
+      "pod-template-hash": "7d9f8c6b5"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "ReplicaSet",
+       "name": "api-7d9f8c6b5",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-system-31415926-vmss000001",
+     "containers": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/api:v1.4.2",
+       "env": [
+        {
+         "name": "DB_USER",
+         "valueFrom": {
+          "secretKeyRef": {
+           "name": "api-env",
+           "key": "DB_USER"
+          }
+         }
+        },
+        {
+         "name": "LOG_LEVEL",
+         "valueFrom": {
+          "configMapKeyRef": {
+           "name": "api-config",
+           "key": "LOG_LEVEL"
+          }
+         }
+        }
+       ],
+       "envFrom": [
+        {
+         "configMapRef": {
+          "name": "api-config"
+         }
+        }
+       ],
+       "volumeMounts": [
+        {
+         "name": "kv",
+         "mountPath": "/mnt/secrets",
+         "readOnly": true
+        }
+       ]
+      }
+     ],
+     "volumes": [
+      {
+       "name": "kv",
+       "csi": {
+        "driver": "secrets-store.csi.k8s.io",
+        "readOnly": true,
+        "volumeAttributes": {
+         "secretProviderClass": "api-kv"
+        }
+       }
+      }
+     ],
+     "imagePullSecrets": []
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.1.17",
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ],
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/api:v1.4.2",
+       "imageID": "contosoacr.azurecr.io/api@sha256:7a72fa7948c3b5e299c40bdb1ebeb125e313c32d4262e130a8206115054663d3",
+       "ready": true,
+       "restartCount": 0,
+       "state": {
+        "running": {
+         "startedAt": "2026-09-28T21:34:40Z"
+        }
+       }
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "api-7d9f8c6b5-m3n5p",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-28T21:34:12Z",
+     "labels": {
+      "app": "api",
+      "pod-template-hash": "7d9f8c6b5"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "ReplicaSet",
+       "name": "api-7d9f8c6b5",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-system-31415926-vmss000001",
+     "containers": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/api:v1.4.2",
+       "env": [
+        {
+         "name": "DB_USER",
+         "valueFrom": {
+          "secretKeyRef": {
+           "name": "api-env",
+           "key": "DB_USER"
+          }
+         }
+        },
+        {
+         "name": "LOG_LEVEL",
+         "valueFrom": {
+          "configMapKeyRef": {
+           "name": "api-config",
+           "key": "LOG_LEVEL"
+          }
+         }
+        }
+       ],
+       "envFrom": [
+        {
+         "configMapRef": {
+          "name": "api-config"
+         }
+        }
+       ],
+       "volumeMounts": [
+        {
+         "name": "kv",
+         "mountPath": "/mnt/secrets",
+         "readOnly": true
+        }
+       ]
+      }
+     ],
+     "volumes": [
+      {
+       "name": "kv",
+       "csi": {
+        "driver": "secrets-store.csi.k8s.io",
+        "readOnly": true,
+        "volumeAttributes": {
+         "secretProviderClass": "api-kv"
+        }
+       }
+      }
+     ],
+     "imagePullSecrets": []
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.1.17",
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ],
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/api:v1.4.2",
+       "imageID": "contosoacr.azurecr.io/api@sha256:7a72fa7948c3b5e299c40bdb1ebeb125e313c32d4262e130a8206115054663d3",
+       "ready": true,
+       "restartCount": 0,
+       "state": {
+        "running": {
+         "startedAt": "2026-09-28T21:34:40Z"
+        }
+       }
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "api-7d9f8c6b5-r7t8v",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-28T21:34:12Z",
+     "labels": {
+      "app": "api",
+      "pod-template-hash": "7d9f8c6b5"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "ReplicaSet",
+       "name": "api-7d9f8c6b5",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-system-31415926-vmss000001",
+     "containers": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/api:v1.4.2",
+       "env": [
+        {
+         "name": "DB_USER",
+         "valueFrom": {
+          "secretKeyRef": {
+           "name": "api-env",
+           "key": "DB_USER"
+          }
+         }
+        },
+        {
+         "name": "LOG_LEVEL",
+         "valueFrom": {
+          "configMapKeyRef": {
+           "name": "api-config",
+           "key": "LOG_LEVEL"
+          }
+         }
+        }
+       ],
+       "envFrom": [
+        {
+         "configMapRef": {
+          "name": "api-config"
+         }
+        }
+       ],
+       "volumeMounts": [
+        {
+         "name": "kv",
+         "mountPath": "/mnt/secrets",
+         "readOnly": true
+        }
+       ]
+      }
+     ],
+     "volumes": [
+      {
+       "name": "kv",
+       "csi": {
+        "driver": "secrets-store.csi.k8s.io",
+        "readOnly": true,
+        "volumeAttributes": {
+         "secretProviderClass": "api-kv"
+        }
+       }
+      }
+     ],
+     "imagePullSecrets": []
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.1.17",
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ],
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/api:v1.4.2",
+       "imageID": "contosoacr.azurecr.io/api@sha256:7a72fa7948c3b5e299c40bdb1ebeb125e313c32d4262e130a8206115054663d3",
+       "ready": true,
+       "restartCount": 0,
+       "state": {
+        "running": {
+         "startedAt": "2026-09-28T21:34:40Z"
+        }
+       }
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "worker-5c4d3e9f1-q8zt1",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-28T21:34:12Z",
+     "labels": {
+      "app": "worker",
+      "pod-template-hash": "5c4d3e9f1"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "ReplicaSet",
+       "name": "worker-5c4d3e9f1",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-system-31415926-vmss000001",
+     "containers": [
+      {
+       "name": "worker",
+       "image": "contosoacr.azurecr.io/worker:v1.4.2",
+       "env": [
+        {
+         "name": "DB_USER",
+         "valueFrom": {
+          "secretKeyRef": {
+           "name": "worker-db",
+           "key": "username"
+          }
+         }
+        }
+       ],
+       "volumeMounts": [
+        {
+         "name": "kv",
+         "mountPath": "/mnt/secrets",
+         "readOnly": true
+        }
+       ]
+      }
+     ],
+     "volumes": [
+      {
+       "name": "kv",
+       "csi": {
+        "driver": "secrets-store.csi.k8s.io",
+        "readOnly": true,
+        "volumeAttributes": {
+         "secretProviderClass": "worker-kv"
+        }
+       }
+      }
+     ],
+     "imagePullSecrets": []
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.1.17",
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "False",
+       "reason": "ContainersNotReady",
+       "message": "containers with unready status: [worker]"
+      }
+     ],
+     "containerStatuses": [
+      {
+       "name": "worker",
+       "image": "contosoacr.azurecr.io/worker:v1.4.2",
+       "imageID": "contosoacr.azurecr.io/worker@sha256:0bdbdea4bfb8c2015fac6e1b5d750e6ed21374b592b8ed275cb1650230c8c7ff",
+       "ready": false,
+       "restartCount": 23,
+       "state": {
+        "waiting": {
+         "reason": "CrashLoopBackOff",
+         "message": "back-off 5m0s restarting failed container"
+        }
+       },
+       "lastState": {
+        "terminated": {
+         "reason": "Error",
+         "exitCode": 1,
+         "startedAt": "2026-09-29T11:47:12Z",
+         "finishedAt": "2026-09-29T11:47:14Z"
+        }
+       }
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Event",
+    "metadata": {
+     "name": "worker.back-off",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T09:02:10Z"
+    },
+    "type": "Warning",
+    "reason": "BackOff",
+    "count": 23,
+    "message": "Back-off restarting failed container worker in pod worker-5c4d3e9f1-q8zt1_web",
+    "firstTimestamp": "2026-09-29T09:02:10Z",
+    "lastTimestamp": "2026-09-29T11:52:30Z",
+    "involvedObject": {
+     "kind": "Pod",
+     "name": "worker-5c4d3e9f1-q8zt1",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "kubelet"
+    }
+   },
+   {
+    "kind": "Event",
+    "metadata": {
+     "name": "worker.unhealthy",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T09:02:02Z"
+    },
+    "type": "Warning",
+    "reason": "Unhealthy",
+    "count": 61,
+    "message": "Readiness probe failed: Get \"http://10.244.1.21:8080/ready\": dial tcp 10.244.1.21:8080: connect: connection refused",
+    "firstTimestamp": "2026-09-29T09:02:02Z",
+    "lastTimestamp": "2026-09-29T11:47:13Z",
+    "involvedObject": {
+     "kind": "Pod",
+     "name": "worker-5c4d3e9f1-q8zt1",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "kubelet"
+    }
+   },
+   {
+    "kind": "Event",
+    "metadata": {
+     "name": "worker.pulled",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-28T21:36:05Z"
+    },
+    "type": "Normal",
+    "reason": "Pulled",
+    "count": 23,
+    "message": "Container image \"contosoacr.azurecr.io/worker:v1.4.2\" already present on machine",
+    "firstTimestamp": "2026-09-28T21:36:05Z",
+    "lastTimestamp": "2026-09-29T11:47:11Z",
+    "involvedObject": {
+     "kind": "Pod",
+     "name": "worker-5c4d3e9f1-q8zt1",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "kubelet"
+    }
+   },
+   {
+    "kind": "Event",
+    "metadata": {
+     "name": "api.scaled",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-28T21:34:12Z"
+    },
+    "type": "Normal",
+    "reason": "ScalingReplicaSet",
+    "count": 1,
+    "message": "Scaled up replica set api-7d9f8c6b5 to 3",
+    "firstTimestamp": "2026-09-28T21:34:12Z",
+    "lastTimestamp": "2026-09-28T21:34:12Z",
+    "involvedObject": {
+     "kind": "Deployment",
+     "name": "api",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "kubelet"
+    }
+   },
+   {
+    "kind": "ConfigMap",
+    "metadata": {
+     "name": "api-config",
+     "namespace": "web",
+     "creationTimestamp": "2025-06-02T11:00:00Z"
+    },
+    "data": {
+     "LOG_LEVEL": "info",
+     "ORDERS_URL": "http://orders.web.svc.cluster.local",
+     "RETRY_MAX": "5",
+     "DB_HOST": "orders-db.contoso.example"
+    }
+   },
+   {
+    "kind": "Secret",
+    "metadata": {
+     "name": "api-env",
+     "namespace": "web",
+     "creationTimestamp": "2025-06-02T11:00:00Z"
+    },
+    "type": "Opaque",
+    "data": {
+     "DB_USER": "YXBp"
+    }
+   },
+   {
+    "kind": "Secret",
+    "metadata": {
+     "name": "worker-db",
+     "namespace": "web",
+     "creationTimestamp": "2025-06-02T11:00:00Z"
+    },
+    "type": "Opaque",
+    "data": {
+     "username": "d29ya2Vy"
+    }
+   },
+   {
+    "kind": "SecretProviderClass",
+    "apiVersion": "secrets-store.csi.x-k8s.io/v1",
+    "metadata": {
+     "name": "api-kv",
+     "namespace": "web"
+    },
+    "spec": {
+     "provider": "azure",
+     "parameters": {
+      "keyvaultName": "kv-contoso-prod",
+      "usePodIdentity": "false",
+      "tenantId": "00000000-0000-4000-8000-0000000007e1",
+      "objects": "array:\n  - |\n    objectName: db-password\n    objectType: secret\n  - |\n    objectName: api-key\n    objectType: secret\n"
+     }
+    }
+   },
+   {
+    "kind": "SecretProviderClass",
+    "apiVersion": "secrets-store.csi.x-k8s.io/v1",
+    "metadata": {
+     "name": "worker-kv",
+     "namespace": "web"
+    },
+    "spec": {
+     "provider": "azure",
+     "parameters": {
+      "keyvaultName": "kv-contoso-prod",
+      "usePodIdentity": "false",
+      "tenantId": "00000000-0000-4000-8000-0000000007e1",
+      "objects": "array:\n  - |\n    objectName: worker-db-password\n    objectType: secret\n"
+     }
+    }
+   }
+  ]
+ },
+ "logs": {
+  "aks-contoso-prod/web/worker-5c4d3e9f1-q8zt1/worker/previous": "2026-09-29T11:47:10.100Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:11.137Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:12.174Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:13.211Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:12.512Z INFO  reading database password from /mnt/secrets/worker-db-password\n2026-09-29T11:47:12.874Z INFO  connecting to orders-db.contoso.example:5432 as worker\n2026-09-29T11:47:13.905Z ERROR connect failed: FATAL: password authentication failed for user \"worker\" (SQLSTATE 28P01)\n2026-09-29T11:47:13.906Z ERROR the password in /mnt/secrets/worker-db-password is the one Key Vault held before it expired on 2026-09-20\n2026-09-29T11:47:14.010Z FATAL cannot start without the orders database; exiting with status 1\n",
+  "aks-contoso-prod/web/worker-5c4d3e9f1-q8zt1/worker": "2026-09-29T11:47:10.100Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:11.137Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:12.174Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:13.211Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:12.512Z INFO  reading database password from /mnt/secrets/worker-db-password\n2026-09-29T11:47:12.874Z INFO  connecting to orders-db.contoso.example:5432 as worker\n",
+  "aks-contoso-prod/web/api-7d9f8c6b5-x2k4q/api": "2026-09-29T11:50:00.000Z INFO  GET /orders/1050 200 13ms\n2026-09-29T11:51:00.000Z INFO  GET /orders/1051 200 14ms\n2026-09-29T11:52:00.000Z INFO  GET /orders/1052 200 15ms\n2026-09-29T11:53:00.000Z INFO  GET /orders/1053 200 16ms\n2026-09-29T11:54:00.000Z INFO  GET /orders/1054 200 17ms\n2026-09-29T11:55:00.000Z INFO  GET /orders/1055 200 18ms\n2026-09-29T11:56:00.000Z INFO  GET /orders/1056 200 12ms\n2026-09-29T11:57:00.000Z INFO  GET /orders/1057 200 13ms\n2026-09-29T11:58:00.000Z INFO  GET /orders/1058 200 14ms\n2026-09-29T11:59:00.000Z INFO  GET /orders/1059 200 15ms\n"
+ }
+}

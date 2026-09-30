@@ -1,0 +1,308 @@
+[
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "the Resource Graph inventory every kv, acr and aks command starts from; any body",
+  "answer": {
+   "totalRecords": 3,
+   "count": 3,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod",
+     "name": "kv-contoso-prod",
+     "type": "microsoft.keyvault/vaults",
+     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "loginServer": "",
+     "vaultUri": "https://kv-contoso-prod.vault.azure.net/",
+     "kubernetesVersion": "",
+     "currentKubernetesVersion": "",
+     "powerState": ""
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr",
+     "name": "contosoacr",
+     "type": "microsoft.containerregistry/registries",
+     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "loginServer": "contosoacr.azurecr.io",
+     "vaultUri": "",
+     "kubernetesVersion": "",
+     "currentKubernetesVersion": "",
+     "powerState": ""
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod",
+     "name": "aks-contoso-prod",
+     "type": "microsoft.containerservice/managedclusters",
+     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "loginServer": "",
+     "vaultUri": "",
+     "kubernetesVersion": "1.30",
+     "currentKubernetesVersion": "1.30.4",
+     "powerState": "Running"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-prod.vault.azure.net/secrets?api-version=7.4&maxresults=25",
+  "note": "db-password expires within 30 days of AGENT_CLI_NOW; worker-db-password has expired",
+  "answer": {
+   "value": [
+    {
+     "id": "https://kv-contoso-prod.vault.azure.net/secrets/db-password",
+     "contentType": "text/plain",
+     "tags": {
+      "owner": "platform",
+      "rotates": "180d"
+     },
+     "attributes": {
+      "enabled": true,
+      "created": 1773478800,
+      "updated": 1773478800,
+      "exp": 1791968400
+     }
+    },
+    {
+     "id": "https://kv-contoso-prod.vault.azure.net/secrets/api-key",
+     "contentType": "text/plain",
+     "tags": {
+      "owner": "api"
+     },
+     "attributes": {
+      "enabled": true,
+      "created": 1772359200,
+      "updated": 1772359200,
+      "exp": 1803895200
+     }
+    },
+    {
+     "id": "https://kv-contoso-prod.vault.azure.net/secrets/orders-db-conn",
+     "contentType": "application/x-connection-string",
+     "tags": {
+      "owner": "platform"
+     },
+     "attributes": {
+      "enabled": true,
+      "created": 1762072200,
+      "updated": 1762072200
+     }
+    },
+    {
+     "id": "https://kv-contoso-prod.vault.azure.net/secrets/worker-db-password",
+     "contentType": "text/plain",
+     "tags": {
+      "owner": "platform",
+      "rotates": "180d"
+     },
+     "attributes": {
+      "enabled": true,
+      "created": 1773997200,
+      "updated": 1773997200,
+      "exp": 1789894800
+     }
+    }
+   ],
+   "nextLink": null
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-prod.vault.azure.net/secrets/db-password/versions?api-version=7.4&maxresults=25",
+  "answer": {
+   "value": [
+    {
+     "id": "https://kv-contoso-prod.vault.azure.net/secrets/db-password/4c1f9e2a7b3d4e5f8a9b0c1d2e3f4a5b",
+     "attributes": {
+      "enabled": true,
+      "created": 1773478800,
+      "updated": 1773478800,
+      "exp": 1791968400
+     }
+    },
+    {
+     "id": "https://kv-contoso-prod.vault.azure.net/secrets/db-password/0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d",
+     "attributes": {
+      "enabled": false,
+      "created": 1757840400,
+      "updated": 1773478800,
+      "exp": 1773478800
+     }
+    }
+   ],
+   "nextLink": null
+  }
+ },
+ {
+  "request": "POST https://contosoacr.azurecr.io/oauth2/exchange",
+  "note": "the registry's token chain; any body",
+  "answer": {
+   "refresh_token": "fixture-acr-refresh-token"
+  }
+ },
+ {
+  "request": "POST https://contosoacr.azurecr.io/oauth2/token",
+  "answer": {
+   "access_token": "fixture-acr-access-token"
+  }
+ },
+ {
+  "request": "GET https://contosoacr.azurecr.io/acr/v1/_catalog?n=100",
+  "answer": {
+   "repositories": [
+    "api",
+    "worker"
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosoacr.azurecr.io/acr/v1/api",
+  "answer": {
+   "registry": "contosoacr.azurecr.io",
+   "imageName": "api",
+   "tagCount": 3,
+   "manifestCount": 4,
+   "createdTime": "2025-06-02T10:00:00.1234567Z",
+   "lastUpdateTime": "2026-09-28T21:02:40.5510000Z"
+  }
+ },
+ {
+  "request": "GET https://contosoacr.azurecr.io/acr/v1/worker",
+  "answer": {
+   "registry": "contosoacr.azurecr.io",
+   "imageName": "worker",
+   "tagCount": 2,
+   "manifestCount": 2,
+   "createdTime": "2025-06-02T10:00:00.1234567Z",
+   "lastUpdateTime": "2026-09-28T21:02:58.0120000Z"
+  }
+ },
+ {
+  "request": "GET https://contosoacr.azurecr.io/acr/v1/api/_tags?n=100&orderby=timedesc",
+  "answer": {
+   "registry": "contosoacr.azurecr.io",
+   "imageName": "api",
+   "tags": [
+    {
+     "name": "v1.4.2",
+     "digest": "sha256:7a72fa7948c3b5e299c40bdb1ebeb125e313c32d4262e130a8206115054663d3",
+     "createdTime": "2026-09-28T21:02:40.5510000Z",
+     "lastUpdateTime": "2026-09-28T21:02:40.5510000Z",
+     "signed": false
+    },
+    {
+     "name": "v1.4.1",
+     "digest": "sha256:1cece757efdc67b82dee1d04bc2ae9cf4d261bcf64843eb33fb6e09f877c8bda",
+     "createdTime": "2026-09-15T16:20:11.0000000Z",
+     "lastUpdateTime": "2026-09-15T16:20:11.0000000Z",
+     "signed": false
+    },
+    {
+     "name": "v1.4.0",
+     "digest": "sha256:d8df34deba794f365489d274678919f6f3f99f1c4c1cd316deac4f98a6912e5a",
+     "createdTime": "2026-09-02T13:05:47.0000000Z",
+     "lastUpdateTime": "2026-09-02T13:05:47.0000000Z",
+     "signed": false
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosoacr.azurecr.io/acr/v1/worker/_tags?n=100&orderby=timedesc",
+  "answer": {
+   "registry": "contosoacr.azurecr.io",
+   "imageName": "worker",
+   "tags": [
+    {
+     "name": "v1.4.2",
+     "digest": "sha256:0bdbdea4bfb8c2015fac6e1b5d750e6ed21374b592b8ed275cb1650230c8c7ff",
+     "createdTime": "2026-09-28T21:02:58.0120000Z",
+     "lastUpdateTime": "2026-09-28T21:02:58.0120000Z",
+     "signed": false
+    },
+    {
+     "name": "v1.4.1",
+     "digest": "sha256:c7c42f6aa30348c715579417a2a63e399a4baef65879437e534a3671ef53fcfc",
+     "createdTime": "2026-09-15T16:20:30.0000000Z",
+     "lastUpdateTime": "2026-09-15T16:20:30.0000000Z",
+     "signed": false
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosoacr.azurecr.io/acr/v1/api/_manifests/v1.4.2",
+  "answer": {
+   "registry": "contosoacr.azurecr.io",
+   "imageName": "api",
+   "manifest": {
+    "digest": "sha256:7a72fa7948c3b5e299c40bdb1ebeb125e313c32d4262e130a8206115054663d3",
+    "imageSize": 84200113,
+    "createdTime": "2026-09-28T21:02:40.5510000Z",
+    "lastUpdateTime": "2026-09-28T21:02:40.5510000Z",
+    "architecture": "amd64",
+    "os": "linux",
+    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+    "tags": [
+     "v1.4.2"
+    ]
+   }
+  }
+ },
+ {
+  "request": "GET https://contosoacr.azurecr.io/acr/v1/api/_manifests/sha256:7a72fa7948c3b5e299c40bdb1ebeb125e313c32d4262e130a8206115054663d3",
+  "answer": {
+   "registry": "contosoacr.azurecr.io",
+   "imageName": "api",
+   "manifest": {
+    "digest": "sha256:7a72fa7948c3b5e299c40bdb1ebeb125e313c32d4262e130a8206115054663d3",
+    "imageSize": 84200113,
+    "createdTime": "2026-09-28T21:02:40.5510000Z",
+    "lastUpdateTime": "2026-09-28T21:02:40.5510000Z",
+    "architecture": "amd64",
+    "os": "linux",
+    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+    "tags": [
+     "v1.4.2"
+    ]
+   }
+  }
+ },
+ {
+  "request": "GET https://contosoacr.azurecr.io/acr/v1/worker/_manifests/v1.4.2",
+  "answer": {
+   "registry": "contosoacr.azurecr.io",
+   "imageName": "worker",
+   "manifest": {
+    "digest": "sha256:0bdbdea4bfb8c2015fac6e1b5d750e6ed21374b592b8ed275cb1650230c8c7ff",
+    "imageSize": 61002880,
+    "createdTime": "2026-09-28T21:02:58.0120000Z",
+    "architecture": "amd64",
+    "os": "linux",
+    "tags": [
+     "v1.4.2"
+    ]
+   }
+  }
+ },
+ {
+  "request": "GET https://contosoacr.azurecr.io/acr/v1/worker/_manifests/sha256:0bdbdea4bfb8c2015fac6e1b5d750e6ed21374b592b8ed275cb1650230c8c7ff",
+  "answer": {
+   "registry": "contosoacr.azurecr.io",
+   "imageName": "worker",
+   "manifest": {
+    "digest": "sha256:0bdbdea4bfb8c2015fac6e1b5d750e6ed21374b592b8ed275cb1650230c8c7ff",
+    "imageSize": 61002880,
+    "createdTime": "2026-09-28T21:02:58.0120000Z",
+    "architecture": "amd64",
+    "os": "linux",
+    "tags": [
+     "v1.4.2"
+    ]
+   }
+  }
+ }
+]

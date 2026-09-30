@@ -2,3 +2,4 @@
 /.claude/
 /.port-notes/
 config.toml
+!/fixtures/world/config.toml

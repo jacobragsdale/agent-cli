@@ -1,0 +1,2294 @@
+[
+ {
+  "request": "GET https://dev.azure.com/contoso/_apis/connectionData?api-version=7.1-preview",
+  "note": "who @me is: Jane Doe",
+  "answer": {
+   "authenticatedUser": {
+    "id": "00000000-0000-4000-8000-0000000000e1",
+    "providerDisplayName": "Jane Doe",
+    "properties": {
+     "Account": {
+      "$type": "System.String",
+      "$value": "jane@contoso.com"
+     }
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/_apis/projects/Fabrikam?api-version=7.1",
+  "answer": {
+   "id": "00000000-0000-4000-8000-00000000f001",
+   "name": "Fabrikam"
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories?api-version=7.1",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "id": "00000000-0000-4000-8000-0000000a0001",
+     "name": "api",
+     "defaultBranch": "refs/heads/main",
+     "size": 18423117,
+     "project": {
+      "id": "00000000-0000-4000-8000-00000000f001",
+      "name": "Fabrikam"
+     },
+     "remoteUrl": "https://dev.azure.com/contoso/Fabrikam/_git/api",
+     "sshUrl": "git@ssh.dev.azure.com:v3/contoso/Fabrikam/api",
+     "webUrl": "https://dev.azure.com/contoso/Fabrikam/_git/api"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api?api-version=7.1",
+  "answer": {
+   "id": "00000000-0000-4000-8000-0000000a0001",
+   "name": "api",
+   "defaultBranch": "refs/heads/main",
+   "size": 18423117,
+   "project": {
+    "id": "00000000-0000-4000-8000-00000000f001",
+    "name": "Fabrikam"
+   },
+   "remoteUrl": "https://dev.azure.com/contoso/Fabrikam/_git/api",
+   "sshUrl": "git@ssh.dev.azure.com:v3/contoso/Fabrikam/api",
+   "webUrl": "https://dev.azure.com/contoso/Fabrikam/_git/api"
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/refs?filter=heads/&$top=101&api-version=7.1",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "name": "refs/heads/main"
+    },
+    {
+     "name": "refs/heads/1215-retry-jitter"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/definitions?includeLatestBuilds=true&queryOrder=definitionNameAscending&$top=51&api-version=7.1",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "id": 12,
+     "name": "api-ci",
+     "path": "\\",
+     "queueStatus": "enabled",
+     "latestBuild": {
+      "id": 8812,
+      "status": "completed",
+      "result": "succeeded",
+      "sourceBranch": "refs/tags/v1.4.2",
+      "finishTime": "2026-09-28T21:03:11.4830000Z"
+     },
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/definition?definitionId=12"
+      }
+     }
+    },
+    {
+     "id": 15,
+     "name": "db-migrations",
+     "path": "\\",
+     "queueStatus": "enabled",
+     "latestBuild": {
+      "id": 8811,
+      "status": "inProgress",
+      "sourceBranch": "refs/heads/main"
+     },
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/definition?definitionId=15"
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds?queryOrder=queueTimeDescending&$top=51&api-version=7.1",
+  "note": "ado run list",
+  "answer": {
+   "count": 4,
+   "value": [
+    {
+     "id": 8811,
+     "buildNumber": "20260928.1",
+     "status": "inProgress",
+     "definition": {
+      "id": 15,
+      "name": "db-migrations"
+     },
+     "sourceBranch": "refs/heads/main",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Sam Lee",
+      "uniqueName": "sam@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e2"
+     },
+     "reason": "manual",
+     "queueTime": "2026-09-28T22:10:00.0000000Z",
+     "startTime": "2026-09-28T22:10:06.0000000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8811"
+      }
+     }
+    },
+    {
+     "id": 8812,
+     "buildNumber": "20260928.3",
+     "status": "completed",
+     "result": "succeeded",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/tags/v1.4.2",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "manual",
+     "queueTime": "2026-09-28T20:55:02.1830000Z",
+     "startTime": "2026-09-28T20:55:09.4410000Z",
+     "finishTime": "2026-09-28T21:03:11.4830000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8812"
+      }
+     }
+    },
+    {
+     "id": 8809,
+     "buildNumber": "20260928.2",
+     "status": "completed",
+     "result": "failed",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/tags/v1.4.2",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "individualCI",
+     "queueTime": "2026-09-28T20:31:47.0270000Z",
+     "startTime": "2026-09-28T20:31:55.6620000Z",
+     "finishTime": "2026-09-28T20:44:02.9170000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8809"
+      }
+     }
+    },
+    {
+     "id": 8801,
+     "buildNumber": "20260928.1",
+     "status": "completed",
+     "result": "succeeded",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/heads/main",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "individualCI",
+     "queueTime": "2026-09-28T20:14:31.5100000Z",
+     "startTime": "2026-09-28T20:14:38.0020000Z",
+     "finishTime": "2026-09-28T20:22:50.7730000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8801"
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds?queryOrder=queueTimeDescending&$top=51&branchName=refs%2Ftags%2Fv1.4.2&api-version=7.1",
+  "note": "the git tag an image was built from",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "id": 8812,
+     "buildNumber": "20260928.3",
+     "status": "completed",
+     "result": "succeeded",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/tags/v1.4.2",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "manual",
+     "queueTime": "2026-09-28T20:55:02.1830000Z",
+     "startTime": "2026-09-28T20:55:09.4410000Z",
+     "finishTime": "2026-09-28T21:03:11.4830000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8812"
+      }
+     }
+    },
+    {
+     "id": 8809,
+     "buildNumber": "20260928.2",
+     "status": "completed",
+     "result": "failed",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/tags/v1.4.2",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "individualCI",
+     "queueTime": "2026-09-28T20:31:47.0270000Z",
+     "startTime": "2026-09-28T20:31:55.6620000Z",
+     "finishTime": "2026-09-28T20:44:02.9170000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8809"
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds?queryOrder=queueTimeDescending&$top=51&branchName=refs%2Fheads%2Fv1.4.2&api-version=7.1",
+  "note": "a bare v1.4.2 is tried as a branch first",
+  "answer": {
+   "count": 0,
+   "value": []
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds?queryOrder=queueTimeDescending&$top=51&branchName=refs%2Fheads%2Fmain&api-version=7.1",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "id": 8811,
+     "buildNumber": "20260928.1",
+     "status": "inProgress",
+     "definition": {
+      "id": 15,
+      "name": "db-migrations"
+     },
+     "sourceBranch": "refs/heads/main",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Sam Lee",
+      "uniqueName": "sam@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e2"
+     },
+     "reason": "manual",
+     "queueTime": "2026-09-28T22:10:00.0000000Z",
+     "startTime": "2026-09-28T22:10:06.0000000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8811"
+      }
+     }
+    },
+    {
+     "id": 8801,
+     "buildNumber": "20260928.1",
+     "status": "completed",
+     "result": "succeeded",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/heads/main",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "individualCI",
+     "queueTime": "2026-09-28T20:14:31.5100000Z",
+     "startTime": "2026-09-28T20:14:38.0020000Z",
+     "finishTime": "2026-09-28T20:22:50.7730000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8801"
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds?queryOrder=queueTimeDescending&$top=51&minTime=2026-09-28T12%3A00%3A00Z&api-version=7.1",
+  "note": "--since 1d at AGENT_CLI_NOW",
+  "answer": {
+   "count": 4,
+   "value": [
+    {
+     "id": 8811,
+     "buildNumber": "20260928.1",
+     "status": "inProgress",
+     "definition": {
+      "id": 15,
+      "name": "db-migrations"
+     },
+     "sourceBranch": "refs/heads/main",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Sam Lee",
+      "uniqueName": "sam@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e2"
+     },
+     "reason": "manual",
+     "queueTime": "2026-09-28T22:10:00.0000000Z",
+     "startTime": "2026-09-28T22:10:06.0000000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8811"
+      }
+     }
+    },
+    {
+     "id": 8812,
+     "buildNumber": "20260928.3",
+     "status": "completed",
+     "result": "succeeded",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/tags/v1.4.2",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "manual",
+     "queueTime": "2026-09-28T20:55:02.1830000Z",
+     "startTime": "2026-09-28T20:55:09.4410000Z",
+     "finishTime": "2026-09-28T21:03:11.4830000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8812"
+      }
+     }
+    },
+    {
+     "id": 8809,
+     "buildNumber": "20260928.2",
+     "status": "completed",
+     "result": "failed",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/tags/v1.4.2",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "individualCI",
+     "queueTime": "2026-09-28T20:31:47.0270000Z",
+     "startTime": "2026-09-28T20:31:55.6620000Z",
+     "finishTime": "2026-09-28T20:44:02.9170000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8809"
+      }
+     }
+    },
+    {
+     "id": 8801,
+     "buildNumber": "20260928.1",
+     "status": "completed",
+     "result": "succeeded",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/heads/main",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "individualCI",
+     "queueTime": "2026-09-28T20:14:31.5100000Z",
+     "startTime": "2026-09-28T20:14:38.0020000Z",
+     "finishTime": "2026-09-28T20:22:50.7730000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8801"
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8812?api-version=7.1",
+  "answer": {
+   "id": 8812,
+   "buildNumber": "20260928.3",
+   "status": "completed",
+   "result": "succeeded",
+   "definition": {
+    "id": 12,
+    "name": "api-ci"
+   },
+   "sourceBranch": "refs/tags/v1.4.2",
+   "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+   "repository": {
+    "id": "00000000-0000-4000-8000-0000000a0001",
+    "type": "TfsGit",
+    "name": "api"
+   },
+   "requestedFor": {
+    "displayName": "Jane Doe",
+    "uniqueName": "jane@contoso.com",
+    "id": "00000000-0000-4000-8000-0000000000e1"
+   },
+   "reason": "manual",
+   "queueTime": "2026-09-28T20:55:02.1830000Z",
+   "startTime": "2026-09-28T20:55:09.4410000Z",
+   "finishTime": "2026-09-28T21:03:11.4830000Z",
+   "triggerInfo": {},
+   "_links": {
+    "web": {
+     "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8812"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8809?api-version=7.1",
+  "answer": {
+   "id": 8809,
+   "buildNumber": "20260928.2",
+   "status": "completed",
+   "result": "failed",
+   "definition": {
+    "id": 12,
+    "name": "api-ci"
+   },
+   "sourceBranch": "refs/tags/v1.4.2",
+   "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+   "repository": {
+    "id": "00000000-0000-4000-8000-0000000a0001",
+    "type": "TfsGit",
+    "name": "api"
+   },
+   "requestedFor": {
+    "displayName": "Jane Doe",
+    "uniqueName": "jane@contoso.com",
+    "id": "00000000-0000-4000-8000-0000000000e1"
+   },
+   "reason": "individualCI",
+   "queueTime": "2026-09-28T20:31:47.0270000Z",
+   "startTime": "2026-09-28T20:31:55.6620000Z",
+   "finishTime": "2026-09-28T20:44:02.9170000Z",
+   "triggerInfo": {},
+   "_links": {
+    "web": {
+     "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8809"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8801?api-version=7.1",
+  "answer": {
+   "id": 8801,
+   "buildNumber": "20260928.1",
+   "status": "completed",
+   "result": "succeeded",
+   "definition": {
+    "id": 12,
+    "name": "api-ci"
+   },
+   "sourceBranch": "refs/heads/main",
+   "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+   "repository": {
+    "id": "00000000-0000-4000-8000-0000000a0001",
+    "type": "TfsGit",
+    "name": "api"
+   },
+   "requestedFor": {
+    "displayName": "Jane Doe",
+    "uniqueName": "jane@contoso.com",
+    "id": "00000000-0000-4000-8000-0000000000e1"
+   },
+   "reason": "individualCI",
+   "queueTime": "2026-09-28T20:14:31.5100000Z",
+   "startTime": "2026-09-28T20:14:38.0020000Z",
+   "finishTime": "2026-09-28T20:22:50.7730000Z",
+   "triggerInfo": {},
+   "_links": {
+    "web": {
+     "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8801"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8811?api-version=7.1",
+  "answer": {
+   "id": 8811,
+   "buildNumber": "20260928.1",
+   "status": "inProgress",
+   "definition": {
+    "id": 15,
+    "name": "db-migrations"
+   },
+   "sourceBranch": "refs/heads/main",
+   "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+   "repository": {
+    "id": "00000000-0000-4000-8000-0000000a0001",
+    "type": "TfsGit",
+    "name": "api"
+   },
+   "requestedFor": {
+    "displayName": "Sam Lee",
+    "uniqueName": "sam@contoso.com",
+    "id": "00000000-0000-4000-8000-0000000000e2"
+   },
+   "reason": "manual",
+   "queueTime": "2026-09-28T22:10:00.0000000Z",
+   "startTime": "2026-09-28T22:10:06.0000000Z",
+   "triggerInfo": {},
+   "_links": {
+    "web": {
+     "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8811"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8812/timeline?api-version=7.1",
+  "answer": {
+   "records": [
+    {
+     "id": "s1",
+     "parentId": null,
+     "type": "Stage",
+     "name": "Build",
+     "state": "completed",
+     "result": "succeeded",
+     "log": null,
+     "startTime": "2026-09-28T20:31:56Z",
+     "finishTime": "2026-09-28T20:44:01Z",
+     "issues": []
+    },
+    {
+     "id": "p1",
+     "parentId": "s1",
+     "type": "Phase",
+     "name": "Build",
+     "state": "completed",
+     "result": "succeeded",
+     "log": {
+      "id": 2
+     },
+     "startTime": "2026-09-28T20:31:56Z",
+     "finishTime": "2026-09-28T20:44:01Z",
+     "issues": []
+    },
+    {
+     "id": "j1",
+     "parentId": "p1",
+     "type": "Job",
+     "name": "Build and test",
+     "state": "completed",
+     "result": "succeeded",
+     "log": null,
+     "startTime": "2026-09-28T20:31:57Z",
+     "finishTime": "2026-09-28T20:44:00Z",
+     "issues": []
+    },
+    {
+     "id": "t1",
+     "parentId": "j1",
+     "type": "Task",
+     "name": "Checkout api@refs/tags/v1.4.2",
+     "state": "completed",
+     "result": "succeeded",
+     "log": {
+      "id": 4
+     },
+     "startTime": "2026-09-28T20:31:58Z",
+     "finishTime": "2026-09-28T20:32:05Z",
+     "issues": []
+    },
+    {
+     "id": "t2",
+     "parentId": "j1",
+     "type": "Task",
+     "name": "Build image",
+     "state": "completed",
+     "result": "succeeded",
+     "log": {
+      "id": 5
+     },
+     "startTime": "2026-09-28T20:32:05Z",
+     "finishTime": "2026-09-28T20:39:12Z",
+     "issues": []
+    },
+    {
+     "id": "t3",
+     "parentId": "j1",
+     "type": "Task",
+     "name": "Run tests",
+     "state": "completed",
+     "result": "succeeded",
+     "log": {
+      "id": 7
+     },
+     "startTime": "2026-09-28T20:39:12Z",
+     "finishTime": "2026-09-28T20:43:58Z",
+     "issues": []
+    },
+    {
+     "id": "t4",
+     "parentId": "j1",
+     "type": "Task",
+     "name": "Push image to contosoacr",
+     "state": "completed",
+     "result": "succeeded",
+     "log": {
+      "id": 8
+     },
+     "startTime": "2026-09-28T20:43:58Z",
+     "finishTime": "2026-09-28T20:44:00Z",
+     "issues": []
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8809/timeline?api-version=7.1",
+  "answer": {
+   "records": [
+    {
+     "id": "s1",
+     "parentId": null,
+     "type": "Stage",
+     "name": "Build",
+     "state": "completed",
+     "result": "failed",
+     "log": null,
+     "startTime": "2026-09-28T20:31:56Z",
+     "finishTime": "2026-09-28T20:44:01Z",
+     "issues": []
+    },
+    {
+     "id": "p1",
+     "parentId": "s1",
+     "type": "Phase",
+     "name": "Build",
+     "state": "completed",
+     "result": "failed",
+     "log": {
+      "id": 2
+     },
+     "startTime": "2026-09-28T20:31:56Z",
+     "finishTime": "2026-09-28T20:44:01Z",
+     "issues": []
+    },
+    {
+     "id": "j1",
+     "parentId": "p1",
+     "type": "Job",
+     "name": "Build and test",
+     "state": "completed",
+     "result": "failed",
+     "log": null,
+     "startTime": "2026-09-28T20:31:57Z",
+     "finishTime": "2026-09-28T20:44:00Z",
+     "issues": []
+    },
+    {
+     "id": "t1",
+     "parentId": "j1",
+     "type": "Task",
+     "name": "Checkout api@refs/tags/v1.4.2",
+     "state": "completed",
+     "result": "succeeded",
+     "log": {
+      "id": 4
+     },
+     "startTime": "2026-09-28T20:31:58Z",
+     "finishTime": "2026-09-28T20:32:05Z",
+     "issues": []
+    },
+    {
+     "id": "t2",
+     "parentId": "j1",
+     "type": "Task",
+     "name": "Build image",
+     "state": "completed",
+     "result": "succeeded",
+     "log": {
+      "id": 5
+     },
+     "startTime": "2026-09-28T20:32:05Z",
+     "finishTime": "2026-09-28T20:39:12Z",
+     "issues": []
+    },
+    {
+     "id": "t3",
+     "parentId": "j1",
+     "type": "Task",
+     "name": "Run tests",
+     "state": "completed",
+     "result": "failed",
+     "log": {
+      "id": 7
+     },
+     "startTime": "2026-09-28T20:39:12Z",
+     "finishTime": "2026-09-28T20:43:58Z",
+     "issues": [
+      {
+       "type": "error",
+       "message": "3 tests failed: OrdersClientTests.RetriesOn429 timed out after 30s (and 2 more)"
+      },
+      {
+       "type": "error",
+       "message": "Bash exited with code '1'."
+      }
+     ]
+    },
+    {
+     "id": "t4",
+     "parentId": "j1",
+     "type": "Task",
+     "name": "Push image to contosoacr",
+     "state": "completed",
+     "result": "skipped",
+     "log": {
+      "id": 8
+     },
+     "startTime": "2026-09-28T20:43:58Z",
+     "finishTime": "2026-09-28T20:44:00Z",
+     "issues": []
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8801/timeline?api-version=7.1",
+  "answer": {
+   "records": [
+    {
+     "id": "s1",
+     "parentId": null,
+     "type": "Stage",
+     "name": "Build",
+     "state": "completed",
+     "result": "succeeded",
+     "log": null,
+     "startTime": "2026-09-28T20:31:56Z",
+     "finishTime": "2026-09-28T20:44:01Z",
+     "issues": []
+    },
+    {
+     "id": "p1",
+     "parentId": "s1",
+     "type": "Phase",
+     "name": "Build",
+     "state": "completed",
+     "result": "succeeded",
+     "log": {
+      "id": 2
+     },
+     "startTime": "2026-09-28T20:31:56Z",
+     "finishTime": "2026-09-28T20:44:01Z",
+     "issues": []
+    },
+    {
+     "id": "j1",
+     "parentId": "p1",
+     "type": "Job",
+     "name": "Build and test",
+     "state": "completed",
+     "result": "succeeded",
+     "log": null,
+     "startTime": "2026-09-28T20:31:57Z",
+     "finishTime": "2026-09-28T20:44:00Z",
+     "issues": []
+    },
+    {
+     "id": "t1",
+     "parentId": "j1",
+     "type": "Task",
+     "name": "Checkout api@refs/tags/v1.4.2",
+     "state": "completed",
+     "result": "succeeded",
+     "log": {
+      "id": 4
+     },
+     "startTime": "2026-09-28T20:31:58Z",
+     "finishTime": "2026-09-28T20:32:05Z",
+     "issues": []
+    },
+    {
+     "id": "t2",
+     "parentId": "j1",
+     "type": "Task",
+     "name": "Build image",
+     "state": "completed",
+     "result": "succeeded",
+     "log": {
+      "id": 5
+     },
+     "startTime": "2026-09-28T20:32:05Z",
+     "finishTime": "2026-09-28T20:39:12Z",
+     "issues": []
+    },
+    {
+     "id": "t3",
+     "parentId": "j1",
+     "type": "Task",
+     "name": "Run tests",
+     "state": "completed",
+     "result": "succeeded",
+     "log": {
+      "id": 7
+     },
+     "startTime": "2026-09-28T20:39:12Z",
+     "finishTime": "2026-09-28T20:43:58Z",
+     "issues": []
+    },
+    {
+     "id": "t4",
+     "parentId": "j1",
+     "type": "Task",
+     "name": "Push image to contosoacr",
+     "state": "completed",
+     "result": "succeeded",
+     "log": {
+      "id": 8
+     },
+     "startTime": "2026-09-28T20:43:58Z",
+     "finishTime": "2026-09-28T20:44:00Z",
+     "issues": []
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8811/timeline?api-version=7.1",
+  "answer": {
+   "records": [
+    {
+     "id": "m1",
+     "parentId": null,
+     "type": "Task",
+     "name": "Wait for approval: prod",
+     "state": "completed",
+     "result": null,
+     "log": null,
+     "startTime": "2026-09-28T22:10:07Z",
+     "finishTime": null,
+     "issues": []
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8812/workitems?api-version=7.1",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "id": "1207",
+     "url": "x"
+    },
+    {
+     "id": "1210",
+     "url": "x"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8809/workitems?api-version=7.1",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "id": "1207",
+     "url": "x"
+    },
+    {
+     "id": "1210",
+     "url": "x"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8801/workitems?api-version=7.1",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "id": "1207",
+     "url": "x"
+    },
+    {
+     "id": "1210",
+     "url": "x"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8811/workitems?api-version=7.1",
+  "answer": {
+   "count": 0,
+   "value": []
+  }
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/pullrequestquery?api-version=7.1",
+  "note": "the pull request whose merge commit the v1.4.2 tag points at",
+  "body": {
+   "queries": [
+    {
+     "type": "lastMergeCommit",
+     "items": [
+      "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+     ]
+    }
+   ]
+  },
+  "answer": {
+   "results": [
+    {
+     "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9": [
+      {
+       "pullRequestId": 431,
+       "codeReviewId": 431,
+       "status": "completed",
+       "repository": {
+        "id": "00000000-0000-4000-8000-0000000a0001",
+        "name": "api",
+        "project": {
+         "id": "00000000-0000-4000-8000-00000000f001",
+         "name": "Fabrikam"
+        }
+       },
+       "title": "Retry on 429 from the orders service",
+       "description": "Retries orders-service calls that answer **429**, honouring `Retry-After`, up to 5 times.\n\nFixes AB#1207 and AB#1210.",
+       "createdBy": {
+        "displayName": "Jane Doe",
+        "uniqueName": "jane@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e1"
+       },
+       "creationDate": "2026-09-27T15:02:11.8830000Z",
+       "closedDate": "2026-09-28T20:14:00.1210000Z",
+       "sourceRefName": "refs/heads/1207-retry-on-429",
+       "targetRefName": "refs/heads/main",
+       "mergeStatus": "succeeded",
+       "isDraft": false,
+       "lastMergeSourceCommit": {
+        "commitId": "9d31e0a7c2b4f6e8a0c2e4f6a8b0c2d4e6f8a0b2"
+       },
+       "lastMergeCommit": {
+        "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+       },
+       "reviewers": [
+        {
+         "displayName": "Sam Lee",
+         "uniqueName": "sam@contoso.com",
+         "id": "00000000-0000-4000-8000-0000000000e2",
+         "vote": 10,
+         "isRequired": true
+        },
+        {
+         "displayName": "Priya Patel",
+         "uniqueName": "priya@contoso.com",
+         "id": "00000000-0000-4000-8000-0000000000e3",
+         "vote": 10
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8809/logs?api-version=7.1",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "id": 7,
+     "lineCount": 20
+    },
+    {
+     "id": 5,
+     "lineCount": 412
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8809/logs/7?startLine=0&api-version=7.1",
+  "answer": {
+   "count": 20,
+   "value": [
+    "2026-09-28T20:39:12.1034512Z ##[section]Starting: Run tests",
+    "2026-09-28T20:39:12.1120331Z dotnet test tests/Api.Tests --configuration Release --logger trx",
+    "2026-09-28T20:39:40.4412210Z   Determining projects to restore...",
+    "2026-09-28T20:40:02.0081733Z   Api.Tests -> /home/vsts/work/1/s/tests/Api.Tests/bin/Release/net8.0/Api.Tests.dll",
+    "2026-09-28T20:40:02.9920417Z Starting test execution, please wait...",
+    "2026-09-28T20:40:03.5516120Z A total of 1 test files matched the specified pattern.",
+    "2026-09-28T20:43:33.7701882Z   Failed OrdersClientTests.RetriesOn429 [30 s]",
+    "2026-09-28T20:43:33.7702951Z   Error Message:",
+    "2026-09-28T20:43:33.7703410Z    System.TimeoutException: The orders stub did not answer the third retry within 30s (Retry-After: 29)",
+    "2026-09-28T20:43:33.7704118Z   Stack Trace:",
+    "2026-09-28T20:43:33.7704822Z      at Api.Tests.OrdersClientTests.RetriesOn429() in /home/vsts/work/1/s/tests/Api.Tests/OrdersClientTests.cs:line 58",
+    "2026-09-28T20:43:41.1200543Z   Failed OrdersClientTests.GivesUpAfterMaxRetries [8 s]",
+    "2026-09-28T20:43:41.1201734Z   Error Message:",
+    "2026-09-28T20:43:41.1202209Z    Assert.Equal() Failure: Expected: 5, Actual: 4",
+    "2026-09-28T20:43:57.3301128Z   Failed OrdersClientTests.LogsRetryCount [1 s]",
+    "2026-09-28T20:43:57.3302210Z   Error Message:",
+    "2026-09-28T20:43:57.3302871Z    Expected log line 'retry 3 of 5' was not written",
+    "2026-09-28T20:43:57.9910041Z Failed!  - Failed:     3, Passed:   211, Skipped:     0, Total:   214, Duration: 3 m 54 s",
+    "2026-09-28T20:43:58.0122309Z ##[error]Bash exited with code '1'.",
+    "2026-09-28T20:43:58.0131184Z ##[section]Finishing: Run tests"
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8809/logs/7?startLine=10&api-version=7.1",
+  "note": "--tail 10",
+  "answer": {
+   "count": 10,
+   "value": [
+    "2026-09-28T20:43:33.7704822Z      at Api.Tests.OrdersClientTests.RetriesOn429() in /home/vsts/work/1/s/tests/Api.Tests/OrdersClientTests.cs:line 58",
+    "2026-09-28T20:43:41.1200543Z   Failed OrdersClientTests.GivesUpAfterMaxRetries [8 s]",
+    "2026-09-28T20:43:41.1201734Z   Error Message:",
+    "2026-09-28T20:43:41.1202209Z    Assert.Equal() Failure: Expected: 5, Actual: 4",
+    "2026-09-28T20:43:57.3301128Z   Failed OrdersClientTests.LogsRetryCount [1 s]",
+    "2026-09-28T20:43:57.3302210Z   Error Message:",
+    "2026-09-28T20:43:57.3302871Z    Expected log line 'retry 3 of 5' was not written",
+    "2026-09-28T20:43:57.9910041Z Failed!  - Failed:     3, Passed:   211, Skipped:     0, Total:   214, Duration: 3 m 54 s",
+    "2026-09-28T20:43:58.0122309Z ##[error]Bash exited with code '1'.",
+    "2026-09-28T20:43:58.0131184Z ##[section]Finishing: Run tests"
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8809/logs/7?startLine=15&api-version=7.1",
+  "note": "--tail 5",
+  "answer": {
+   "count": 5,
+   "value": [
+    "2026-09-28T20:43:57.3302210Z   Error Message:",
+    "2026-09-28T20:43:57.3302871Z    Expected log line 'retry 3 of 5' was not written",
+    "2026-09-28T20:43:57.9910041Z Failed!  - Failed:     3, Passed:   211, Skipped:     0, Total:   214, Duration: 3 m 54 s",
+    "2026-09-28T20:43:58.0122309Z ##[error]Bash exited with code '1'.",
+    "2026-09-28T20:43:58.0131184Z ##[section]Finishing: Run tests"
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/definitions?name=api-ci&api-version=7.1",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "id": 12,
+     "name": "api-ci",
+     "path": "\\"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/definitions?name=db-migrations&api-version=7.1",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "id": 15,
+     "name": "db-migrations",
+     "path": "\\"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds?queryOrder=queueTimeDescending&$top=51&definitions=12&api-version=7.1",
+  "answer": {
+   "count": 3,
+   "value": [
+    {
+     "id": 8812,
+     "buildNumber": "20260928.3",
+     "status": "completed",
+     "result": "succeeded",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/tags/v1.4.2",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "manual",
+     "queueTime": "2026-09-28T20:55:02.1830000Z",
+     "startTime": "2026-09-28T20:55:09.4410000Z",
+     "finishTime": "2026-09-28T21:03:11.4830000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8812"
+      }
+     }
+    },
+    {
+     "id": 8809,
+     "buildNumber": "20260928.2",
+     "status": "completed",
+     "result": "failed",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/tags/v1.4.2",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "individualCI",
+     "queueTime": "2026-09-28T20:31:47.0270000Z",
+     "startTime": "2026-09-28T20:31:55.6620000Z",
+     "finishTime": "2026-09-28T20:44:02.9170000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8809"
+      }
+     }
+    },
+    {
+     "id": 8801,
+     "buildNumber": "20260928.1",
+     "status": "completed",
+     "result": "succeeded",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/heads/main",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "individualCI",
+     "queueTime": "2026-09-28T20:14:31.5100000Z",
+     "startTime": "2026-09-28T20:14:38.0020000Z",
+     "finishTime": "2026-09-28T20:22:50.7730000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8801"
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds?queryOrder=queueTimeDescending&$top=51&definitions=12&branchName=refs%2Ftags%2Fv1.4.2&api-version=7.1",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "id": 8812,
+     "buildNumber": "20260928.3",
+     "status": "completed",
+     "result": "succeeded",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/tags/v1.4.2",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "manual",
+     "queueTime": "2026-09-28T20:55:02.1830000Z",
+     "startTime": "2026-09-28T20:55:09.4410000Z",
+     "finishTime": "2026-09-28T21:03:11.4830000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8812"
+      }
+     }
+    },
+    {
+     "id": 8809,
+     "buildNumber": "20260928.2",
+     "status": "completed",
+     "result": "failed",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/tags/v1.4.2",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "individualCI",
+     "queueTime": "2026-09-28T20:31:47.0270000Z",
+     "startTime": "2026-09-28T20:31:55.6620000Z",
+     "finishTime": "2026-09-28T20:44:02.9170000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8809"
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds?queryOrder=queueTimeDescending&$top=51&definitions=15&api-version=7.1",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "id": 8811,
+     "buildNumber": "20260928.1",
+     "status": "inProgress",
+     "definition": {
+      "id": 15,
+      "name": "db-migrations"
+     },
+     "sourceBranch": "refs/heads/main",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Sam Lee",
+      "uniqueName": "sam@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e2"
+     },
+     "reason": "manual",
+     "queueTime": "2026-09-28T22:10:00.0000000Z",
+     "startTime": "2026-09-28T22:10:06.0000000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8811"
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds?queryOrder=queueTimeDescending&$top=51&resultFilter=failed&api-version=7.1",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "id": 8809,
+     "buildNumber": "20260928.2",
+     "status": "completed",
+     "result": "failed",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/tags/v1.4.2",
+     "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "individualCI",
+     "queueTime": "2026-09-28T20:31:47.0270000Z",
+     "startTime": "2026-09-28T20:31:55.6620000Z",
+     "finishTime": "2026-09-28T20:44:02.9170000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8809"
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/pullrequests?searchCriteria.status=all&$top=51&$skip=0&api-version=7.1",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "pullRequestId": 436,
+     "status": "active",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "name": "api",
+      "project": {
+       "id": "00000000-0000-4000-8000-00000000f001",
+       "name": "Fabrikam"
+      }
+     },
+     "title": "Add jitter to the retry backoff",
+     "createdBy": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "creationDate": "2026-09-29T09:10:05.4100000Z",
+     "sourceRefName": "refs/heads/1215-retry-jitter",
+     "targetRefName": "refs/heads/main",
+     "mergeStatus": "succeeded",
+     "isDraft": false,
+     "reviewers": [
+      {
+       "displayName": "Sam Lee",
+       "uniqueName": "sam@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e2",
+       "vote": 0,
+       "isRequired": true
+      }
+     ]
+    },
+    {
+     "pullRequestId": 431,
+     "codeReviewId": 431,
+     "status": "completed",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "name": "api",
+      "project": {
+       "id": "00000000-0000-4000-8000-00000000f001",
+       "name": "Fabrikam"
+      }
+     },
+     "title": "Retry on 429 from the orders service",
+     "description": "Retries orders-service calls that answer **429**, honouring `Retry-After`, up to 5 times.\n\nFixes AB#1207 and AB#1210.",
+     "createdBy": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "creationDate": "2026-09-27T15:02:11.8830000Z",
+     "closedDate": "2026-09-28T20:14:00.1210000Z",
+     "sourceRefName": "refs/heads/1207-retry-on-429",
+     "targetRefName": "refs/heads/main",
+     "mergeStatus": "succeeded",
+     "isDraft": false,
+     "lastMergeSourceCommit": {
+      "commitId": "9d31e0a7c2b4f6e8a0c2e4f6a8b0c2d4e6f8a0b2"
+     },
+     "lastMergeCommit": {
+      "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+     },
+     "reviewers": [
+      {
+       "displayName": "Sam Lee",
+       "uniqueName": "sam@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e2",
+       "vote": 10,
+       "isRequired": true
+      },
+      {
+       "displayName": "Priya Patel",
+       "uniqueName": "priya@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e3",
+       "vote": 10
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/pullrequests?searchCriteria.status=completed&$top=51&$skip=0&api-version=7.1",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "pullRequestId": 431,
+     "codeReviewId": 431,
+     "status": "completed",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "name": "api",
+      "project": {
+       "id": "00000000-0000-4000-8000-00000000f001",
+       "name": "Fabrikam"
+      }
+     },
+     "title": "Retry on 429 from the orders service",
+     "description": "Retries orders-service calls that answer **429**, honouring `Retry-After`, up to 5 times.\n\nFixes AB#1207 and AB#1210.",
+     "createdBy": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "creationDate": "2026-09-27T15:02:11.8830000Z",
+     "closedDate": "2026-09-28T20:14:00.1210000Z",
+     "sourceRefName": "refs/heads/1207-retry-on-429",
+     "targetRefName": "refs/heads/main",
+     "mergeStatus": "succeeded",
+     "isDraft": false,
+     "lastMergeSourceCommit": {
+      "commitId": "9d31e0a7c2b4f6e8a0c2e4f6a8b0c2d4e6f8a0b2"
+     },
+     "lastMergeCommit": {
+      "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+     },
+     "reviewers": [
+      {
+       "displayName": "Sam Lee",
+       "uniqueName": "sam@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e2",
+       "vote": 10,
+       "isRequired": true
+      },
+      {
+       "displayName": "Priya Patel",
+       "uniqueName": "priya@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e3",
+       "vote": 10
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/pullrequests?searchCriteria.status=active&searchCriteria.creatorId=00000000-0000-4000-8000-0000000000e1&$top=51&$skip=0&api-version=7.1",
+  "note": "--author @me",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "pullRequestId": 436,
+     "status": "active",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "name": "api",
+      "project": {
+       "id": "00000000-0000-4000-8000-00000000f001",
+       "name": "Fabrikam"
+      }
+     },
+     "title": "Add jitter to the retry backoff",
+     "createdBy": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "creationDate": "2026-09-29T09:10:05.4100000Z",
+     "sourceRefName": "refs/heads/1215-retry-jitter",
+     "targetRefName": "refs/heads/main",
+     "mergeStatus": "succeeded",
+     "isDraft": false,
+     "reviewers": [
+      {
+       "displayName": "Sam Lee",
+       "uniqueName": "sam@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e2",
+       "vote": 0,
+       "isRequired": true
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemsbatch?api-version=7.1",
+  "body": {
+   "ids": [
+    1207,
+    1210
+   ],
+   "fields": [
+    "System.WorkItemType",
+    "System.Title",
+    "System.State",
+    "System.AssignedTo",
+    "System.IterationPath",
+    "System.AreaPath",
+    "Microsoft.VSTS.Common.Priority",
+    "System.Tags",
+    "System.ChangedDate",
+    "System.Id"
+   ],
+   "errorPolicy": "omit"
+  },
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "id": 1207,
+     "rev": 9,
+     "fields": {
+      "System.Id": 1207,
+      "System.WorkItemType": "User Story",
+      "System.Title": "Retry orders-service calls on 429",
+      "System.State": "Resolved",
+      "System.AssignedTo": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "System.AreaPath": "Fabrikam\\api",
+      "Microsoft.VSTS.Common.Priority": 2,
+      "System.Tags": "retry; orders",
+      "System.ChangedDate": "2026-09-28T21:05:40.263Z"
+     }
+    },
+    {
+     "id": 1210,
+     "rev": 4,
+     "fields": {
+      "System.Id": 1210,
+      "System.WorkItemType": "Task",
+      "System.Title": "Log the retry count on each attempt",
+      "System.State": "Resolved",
+      "System.AssignedTo": {
+       "displayName": "Sam Lee",
+       "uniqueName": "sam@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e2"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "System.AreaPath": "Fabrikam\\api",
+      "Microsoft.VSTS.Common.Priority": 3,
+      "System.Tags": "retry; orders",
+      "System.ChangedDate": "2026-09-28T20:20:02.117Z"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemsbatch?api-version=7.1",
+  "body": {
+   "ids": [
+    1218,
+    1215,
+    1207
+   ],
+   "fields": [
+    "System.WorkItemType",
+    "System.Title",
+    "System.State",
+    "System.AssignedTo",
+    "System.IterationPath",
+    "System.AreaPath",
+    "Microsoft.VSTS.Common.Priority",
+    "System.Tags",
+    "System.ChangedDate",
+    "System.Id"
+   ],
+   "errorPolicy": "omit"
+  },
+  "answer": {
+   "count": 3,
+   "value": [
+    {
+     "id": 1218,
+     "rev": 2,
+     "fields": {
+      "System.Id": 1218,
+      "System.WorkItemType": "Bug",
+      "System.Title": "worker crash-loops in prod after the database password rotation",
+      "System.State": "New",
+      "System.AssignedTo": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "System.AreaPath": "Fabrikam\\api",
+      "Microsoft.VSTS.Common.Priority": 1,
+      "System.Tags": "prod; worker",
+      "System.ChangedDate": "2026-09-29T11:40:03.550Z"
+     }
+    },
+    {
+     "id": 1215,
+     "rev": 3,
+     "fields": {
+      "System.Id": 1215,
+      "System.WorkItemType": "Task",
+      "System.Title": "Add jitter to the retry backoff",
+      "System.State": "Active",
+      "System.AssignedTo": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "System.AreaPath": "Fabrikam\\api",
+      "Microsoft.VSTS.Common.Priority": 2,
+      "System.Tags": "retry; orders",
+      "System.ChangedDate": "2026-09-29T09:12:44.901Z"
+     }
+    },
+    {
+     "id": 1207,
+     "rev": 9,
+     "fields": {
+      "System.Id": 1207,
+      "System.WorkItemType": "User Story",
+      "System.Title": "Retry orders-service calls on 429",
+      "System.State": "Resolved",
+      "System.AssignedTo": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "System.AreaPath": "Fabrikam\\api",
+      "Microsoft.VSTS.Common.Priority": 2,
+      "System.Tags": "retry; orders",
+      "System.ChangedDate": "2026-09-28T21:05:40.263Z"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemsbatch?api-version=7.1",
+  "body": {
+   "ids": [
+    1215
+   ],
+   "fields": [
+    "System.WorkItemType",
+    "System.Title",
+    "System.State",
+    "System.AssignedTo",
+    "System.IterationPath",
+    "System.AreaPath",
+    "Microsoft.VSTS.Common.Priority",
+    "System.Tags",
+    "System.ChangedDate",
+    "System.Id"
+   ],
+   "errorPolicy": "omit"
+  },
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "id": 1215,
+     "rev": 3,
+     "fields": {
+      "System.Id": 1215,
+      "System.WorkItemType": "Task",
+      "System.Title": "Add jitter to the retry backoff",
+      "System.State": "Active",
+      "System.AssignedTo": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "System.AreaPath": "Fabrikam\\api",
+      "Microsoft.VSTS.Common.Priority": 2,
+      "System.Tags": "retry; orders",
+      "System.ChangedDate": "2026-09-29T09:12:44.901Z"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/wit/wiql?$top=20000&api-version=7.1",
+  "body": {
+   "query": "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.AssignedTo] = @Me ORDER BY [System.ChangedDate] DESC"
+  },
+  "answer": {
+   "queryType": "flat",
+   "workItems": [
+    {
+     "id": 1218,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1218"
+    },
+    {
+     "id": 1215,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1215"
+    },
+    {
+     "id": 1207,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1207"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/wit/wiql?$top=20000&api-version=7.1",
+  "body": {
+   "query": "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.AssignedTo] = @Me AND [System.IterationPath] = @CurrentIteration ORDER BY [System.ChangedDate] DESC"
+  },
+  "answer": {
+   "queryType": "flat",
+   "workItems": [
+    {
+     "id": 1218,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1218"
+    },
+    {
+     "id": 1215,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1215"
+    },
+    {
+     "id": 1207,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1207"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/wit/wiql?$top=20000&api-version=7.1",
+  "body": {
+   "query": "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.IterationPath] = @CurrentIteration AND [System.AssignedTo] = @Me ORDER BY [System.ChangedDate] DESC"
+  },
+  "answer": {
+   "queryType": "flat",
+   "workItems": [
+    {
+     "id": 1218,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1218"
+    },
+    {
+     "id": 1215,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1215"
+    },
+    {
+     "id": 1207,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1207"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/wit/wiql?$top=20000&api-version=7.1",
+  "body": {
+   "query": "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.AssignedTo] = @Me AND [System.State] = 'Active' ORDER BY [System.ChangedDate] DESC"
+  },
+  "answer": {
+   "queryType": "flat",
+   "workItems": [
+    {
+     "id": 1215,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1215"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/_apis/wit/workitems/1207?$expand=relations&api-version=7.1",
+  "answer": {
+   "id": 1207,
+   "rev": 9,
+   "fields": {
+    "System.Id": 1207,
+    "System.WorkItemType": "User Story",
+    "System.Title": "Retry orders-service calls on 429",
+    "System.State": "Resolved",
+    "System.AssignedTo": {
+     "displayName": "Jane Doe",
+     "uniqueName": "jane@contoso.com",
+     "id": "00000000-0000-4000-8000-0000000000e1"
+    },
+    "System.IterationPath": "Fabrikam\\Sprint 42",
+    "System.AreaPath": "Fabrikam\\api",
+    "Microsoft.VSTS.Common.Priority": 2,
+    "System.Tags": "retry; orders",
+    "System.ChangedDate": "2026-09-28T21:05:40.263Z",
+    "System.Description": "<p>Calls to the orders service that answer <b>429</b> are retried, honouring <code>Retry-After</code>.</p>",
+    "Microsoft.VSTS.Common.AcceptanceCriteria": "<ul><li>Up to 5 retries</li><li>Each retry is logged with its count</li></ul>"
+   },
+   "relations": [
+    {
+     "rel": "System.LinkTypes.Hierarchy-Forward",
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1210"
+    },
+    {
+     "rel": "ArtifactLink",
+     "url": "vstfs:///Git/PullRequestId/00000000-0000-4000-8000-00000000f001%2F00000000-0000-4000-8000-0000000a0001%2F431",
+     "attributes": {
+      "name": "Pull Request"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workItems/1207/comments?$top=5&order=desc&api-version=7.1-preview.4",
+  "answer": {
+   "totalCount": 1,
+   "comments": [
+    {
+     "id": 5512,
+     "createdBy": {
+      "displayName": "Sam Lee",
+      "uniqueName": "sam@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e2"
+     },
+     "createdDate": "2026-09-28T21:05:40.263Z",
+     "text": "<p>Shipped in v1.4.2 (build 8812).</p>"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/_apis/wit/workitems/1210?$expand=relations&api-version=7.1",
+  "answer": {
+   "id": 1210,
+   "rev": 4,
+   "fields": {
+    "System.Id": 1210,
+    "System.WorkItemType": "Task",
+    "System.Title": "Log the retry count on each attempt",
+    "System.State": "Resolved",
+    "System.AssignedTo": {
+     "displayName": "Sam Lee",
+     "uniqueName": "sam@contoso.com",
+     "id": "00000000-0000-4000-8000-0000000000e2"
+    },
+    "System.IterationPath": "Fabrikam\\Sprint 42",
+    "System.AreaPath": "Fabrikam\\api",
+    "Microsoft.VSTS.Common.Priority": 3,
+    "System.Tags": "retry; orders",
+    "System.ChangedDate": "2026-09-28T20:20:02.117Z"
+   }
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/_apis/wit/workitems/1215?$expand=relations&api-version=7.1",
+  "answer": {
+   "id": 1215,
+   "rev": 3,
+   "fields": {
+    "System.Id": 1215,
+    "System.WorkItemType": "Task",
+    "System.Title": "Add jitter to the retry backoff",
+    "System.State": "Active",
+    "System.AssignedTo": {
+     "displayName": "Jane Doe",
+     "uniqueName": "jane@contoso.com",
+     "id": "00000000-0000-4000-8000-0000000000e1"
+    },
+    "System.IterationPath": "Fabrikam\\Sprint 42",
+    "System.AreaPath": "Fabrikam\\api",
+    "Microsoft.VSTS.Common.Priority": 2,
+    "System.Tags": "retry; orders",
+    "System.ChangedDate": "2026-09-29T09:12:44.901Z"
+   }
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/_apis/wit/workitems/1218?$expand=relations&api-version=7.1",
+  "answer": {
+   "id": 1218,
+   "rev": 2,
+   "fields": {
+    "System.Id": 1218,
+    "System.WorkItemType": "Bug",
+    "System.Title": "worker crash-loops in prod after the database password rotation",
+    "System.State": "New",
+    "System.AssignedTo": {
+     "displayName": "Jane Doe",
+     "uniqueName": "jane@contoso.com",
+     "id": "00000000-0000-4000-8000-0000000000e1"
+    },
+    "System.IterationPath": "Fabrikam\\Sprint 42",
+    "System.AreaPath": "Fabrikam\\api",
+    "Microsoft.VSTS.Common.Priority": 1,
+    "System.Tags": "prod; worker",
+    "System.ChangedDate": "2026-09-29T11:40:03.550Z"
+   }
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workItems/1210/comments?$top=5&order=desc&api-version=7.1-preview.4",
+  "answer": {
+   "totalCount": 0,
+   "comments": []
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workItems/1215/comments?$top=5&order=desc&api-version=7.1-preview.4",
+  "answer": {
+   "totalCount": 0,
+   "comments": []
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workItems/1218/comments?$top=5&order=desc&api-version=7.1-preview.4",
+  "answer": {
+   "totalCount": 0,
+   "comments": []
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/pullrequests/431?api-version=7.1",
+  "answer": {
+   "pullRequestId": 431,
+   "codeReviewId": 431,
+   "status": "completed",
+   "repository": {
+    "id": "00000000-0000-4000-8000-0000000a0001",
+    "name": "api",
+    "project": {
+     "id": "00000000-0000-4000-8000-00000000f001",
+     "name": "Fabrikam"
+    }
+   },
+   "title": "Retry on 429 from the orders service",
+   "description": "Retries orders-service calls that answer **429**, honouring `Retry-After`, up to 5 times.\n\nFixes AB#1207 and AB#1210.",
+   "createdBy": {
+    "displayName": "Jane Doe",
+    "uniqueName": "jane@contoso.com",
+    "id": "00000000-0000-4000-8000-0000000000e1"
+   },
+   "creationDate": "2026-09-27T15:02:11.8830000Z",
+   "closedDate": "2026-09-28T20:14:00.1210000Z",
+   "sourceRefName": "refs/heads/1207-retry-on-429",
+   "targetRefName": "refs/heads/main",
+   "mergeStatus": "succeeded",
+   "isDraft": false,
+   "lastMergeSourceCommit": {
+    "commitId": "9d31e0a7c2b4f6e8a0c2e4f6a8b0c2d4e6f8a0b2"
+   },
+   "lastMergeCommit": {
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+   },
+   "reviewers": [
+    {
+     "displayName": "Sam Lee",
+     "uniqueName": "sam@contoso.com",
+     "id": "00000000-0000-4000-8000-0000000000e2",
+     "vote": 10,
+     "isRequired": true
+    },
+    {
+     "displayName": "Priya Patel",
+     "uniqueName": "priya@contoso.com",
+     "id": "00000000-0000-4000-8000-0000000000e3",
+     "vote": 10
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/pullRequests/431/workitems?api-version=7.1",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "id": "1207",
+     "url": "x"
+    },
+    {
+     "id": "1210",
+     "url": "x"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/policy/evaluations?artifactId=vstfs%3A%2F%2F%2FCodeReview%2FCodeReviewId%2F00000000-0000-4000-8000-00000000f001%2F431&api-version=7.1-preview.1",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "status": "approved",
+     "configuration": {
+      "type": {
+       "displayName": "Minimum number of reviewers"
+      },
+      "settings": {}
+     }
+    },
+    {
+     "status": "approved",
+     "configuration": {
+      "type": {
+       "displayName": "Build"
+      },
+      "settings": {
+       "displayName": "api-ci"
+      }
+     },
+     "context": {
+      "buildId": 8799
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/pullRequests/431/threads?api-version=7.1",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "id": 1,
+     "status": "fixed",
+     "lastUpdatedDate": "2026-09-28T09:00:00Z",
+     "comments": [
+      {
+       "author": {
+        "displayName": "Sam Lee",
+        "uniqueName": "sam@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e2"
+       },
+       "content": "Cap the retries at 5?",
+       "commentType": "text"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/pullrequests?searchCriteria.status=active&$top=51&$skip=0&api-version=7.1",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "pullRequestId": 436,
+     "status": "active",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "name": "api",
+      "project": {
+       "id": "00000000-0000-4000-8000-00000000f001",
+       "name": "Fabrikam"
+      }
+     },
+     "title": "Add jitter to the retry backoff",
+     "createdBy": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "creationDate": "2026-09-29T09:10:05.4100000Z",
+     "sourceRefName": "refs/heads/1215-retry-jitter",
+     "targetRefName": "refs/heads/main",
+     "mergeStatus": "succeeded",
+     "isDraft": false,
+     "reviewers": [
+      {
+       "displayName": "Sam Lee",
+       "uniqueName": "sam@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e2",
+       "vote": 0,
+       "isRequired": true
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/pipelines/approvals?state=pending&$expand=steps&top=51&api-version=7.1-preview.1",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "id": "00000000-0000-4000-8000-0000000000a1",
+     "status": "pending",
+     "instructions": "Apply migration 0042 to prod (adds orders.retry_count)",
+     "createdOn": "2026-09-28T22:10:07.5500000Z",
+     "pipeline": {
+      "id": 15,
+      "name": "db-migrations",
+      "owner": {
+       "id": 8811,
+       "name": "20260928.1"
+      }
+     },
+     "steps": [
+      {
+       "assignedApprover": {
+        "displayName": "Release Managers"
+       },
+       "status": "pending"
+      }
+     ]
+    }
+   ]
+  }
+ }
+]

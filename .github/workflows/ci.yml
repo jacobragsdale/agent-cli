@@ -26,6 +26,9 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
+      # The trial build: HTTP replayed from fixtures/world (never released).
+      - run: cargo clippy --workspace --all-targets --features agent-cli/fixtures -- -D warnings
+      - run: cargo test --workspace --features agent-cli/fixtures
       - run: cargo build --release --workspace
 
   # The sql integration tests against a real SQL Server. Oracle stays local
