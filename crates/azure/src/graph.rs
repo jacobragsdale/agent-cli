@@ -9,7 +9,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::{ARM, Azure, bearer, text};
+use crate::client::{ARM, bearer, text};
+use crate::config::Azure;
 
 const URL: &str = "https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01";
 
@@ -178,7 +179,7 @@ fn body(azure: &Azure, skip: Option<&str>) -> Value {
 /// `NoValidSubscriptionsInQueryRequest`, when the login has rights on none of
 /// the subscriptions in scope. Both mean the same, and neither reads that way.
 fn explain(error: anyhow::Error) -> anyhow::Error {
-    let nothing = crate::refused_with(&error) == Some(403)
+    let nothing = crate::client::refused_with(&error) == Some(403)
         || format!("{error:#}").contains("NoValidSubscriptionsInQueryRequest");
     if nothing {
         return error.context("the login can see no subscriptions in scope; run `az account list`");
@@ -192,7 +193,7 @@ mod tests {
     use agent_cli_core::{Exit, Setup};
 
     use super::*;
-    use crate::fixtures;
+    use crate::testing;
 
     fn read(answers: Vec<Answer>, config: &str) -> (Result<Inventory>, FakeTransport) {
         let transport = FakeTransport::answering(answers);
@@ -206,10 +207,10 @@ mod tests {
         let (inventory, transport) = read(
             vec![
                 Answer::json(&json!({
-                    "data": [fixtures::vault("kv-contoso"), fixtures::cluster("aks-contoso")],
+                    "data": [testing::vault("kv-contoso"), testing::cluster("aks-contoso")],
                     "$skipToken": "page-2",
                 })),
-                fixtures::inventory(vec![fixtures::registry("contosoacr")]),
+                testing::inventory(vec![testing::registry("contosoacr")]),
             ],
             "",
         );
@@ -243,7 +244,7 @@ mod tests {
 
     #[test]
     fn subscriptions_are_named_only_when_the_config_names_them() {
-        let (_, transport) = read(vec![fixtures::inventory(vec![])], "");
+        let (_, transport) = read(vec![testing::inventory(vec![])], "");
         let body = transport.sent()[0].body.clone().unwrap();
         assert!(body.get("subscriptions").is_none(), "{body}");
         assert!(
@@ -254,7 +255,7 @@ mod tests {
         );
 
         let (_, transport) = read(
-            vec![fixtures::inventory(vec![])],
+            vec![testing::inventory(vec![])],
             "[azure]\nsubscriptions = [\"00000000-0000-0000-0000-000000000001\", \" \"]\n",
         );
         assert_eq!(
@@ -275,7 +276,7 @@ mod tests {
     fn a_truncated_answer_an_empty_body_and_a_forbidden_login_are_errors() {
         let (inventory, _) = read(
             vec![Answer::json(
-                &json!({"data": [fixtures::vault("kv-a")], "resultTruncated": "true"}),
+                &json!({"data": [testing::vault("kv-a")], "resultTruncated": "true"}),
             )],
             "",
         );

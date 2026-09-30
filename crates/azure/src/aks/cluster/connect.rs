@@ -1,18 +1,16 @@
-//! `aks`: AKS clusters. `cluster list` reads the Resource Graph inventory;
-//! `cluster connect` is az-tui's `setup` for one cluster, without the config
-//! file writing: `az aks get-credentials` then `kubelogin convert-kubeconfig`,
-//! and a ready-to-paste `[[k8s.scope]]` block for the k8s domain.
+//! `aks cluster connect`.
 
 use std::process::Command;
 
-use agent_cli_core::{Check, Config, Ctx, Effect, Failure, Op, Output, command, run_until};
+use agent_cli_core::{Ctx, Effect, Failure, Op, Output, command, run_until};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Value, json};
 
+use crate::client::{first_line, program};
+use crate::config::Azure;
 use crate::graph::{Cluster, inventory};
-use crate::{Azure, first_line, limited, program};
 
 /// Namespaces every AKS cluster has that nobody wants a scope for.
 const SYSTEM_NAMESPACES: &[&str] = &[
@@ -30,48 +28,6 @@ const SYSTEM_NAMESPACES: &[&str] = &[
     "aks-istio-ingress",
     "aks-istio-egress",
 ];
-
-// ---------- aks cluster list ----------
-
-#[derive(clap::Args)]
-pub struct ClusterListArgs {
-    #[arg(long, default_value_t = 50)]
-    limit: usize,
-}
-
-/// A cluster, and the name the k8s domain knows it by.
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct ClusterRow {
-    #[serde(flatten)]
-    cluster: Cluster,
-    /// The `[[k8s.scope]]` name `aks cluster connect` writes for it: what
-    /// `k8s … --cluster` takes (k8s also accepts the context, which is the
-    /// cluster's name).
-    k8s_scope: String,
-}
-
-fn cluster_list(ctx: &Ctx, args: ClusterListArgs) -> Result<Vec<ClusterRow>> {
-    let azure = Azure::load(ctx)?;
-    let rows = inventory(ctx, &azure)?
-        .clusters
-        .into_iter()
-        .map(|cluster| ClusterRow {
-            k8s_scope: cluster.name.clone(),
-            cluster,
-        })
-        .collect();
-    Ok(limited(ctx, rows, args.limit))
-}
-
-command! {
-    pub CLUSTER_LIST = ["aks", "cluster", "list"], Read,
-    "List the AKS clusters the az login reaches, with version and power state",
-    keywords: ["kubernetes", "clusters", "managed", "running", "stopped", "version"],
-    example: "aks cluster list --fields name,k8s_scope,power_state",
-    run: cluster_list,
-}
-
-// ---------- aks cluster connect ----------
 
 #[derive(clap::Args)]
 pub struct ClusterConnectArgs {
@@ -268,81 +224,13 @@ command! {
     run: cluster_connect,
 }
 
-// ---------- overview and doctor ----------
-
-pub fn status(config: &Config) -> String {
-    match config.section::<Azure>("azure") {
-        Ok(_) => String::new(),
-        Err(_) => "aks config broken".to_owned(),
-    }
-}
-
-/// The login, the clusters in reach, and `kubelogin` on PATH, which a cluster
-/// with Entra ID sign-in needs.
-pub fn doctor(ctx: &Ctx) -> Vec<Check> {
-    if !ctx.config().has_section("azure") {
-        return Vec::new();
-    }
-    let mut checks = Vec::new();
-    let Some(azure) = crate::doctor_login(ctx, &mut checks, &[]) else {
-        return checks;
-    };
-    checks.push(match inventory(ctx, &azure) {
-        Ok(found) => Check::ok(
-            "clusters",
-            format!("{} AKS clusters in reach", found.clusters.len()),
-        ),
-        Err(error) => Check::failed(
-            "clusters",
-            format!("{error:#}"),
-            "az account list; check [azure] subscriptions",
-        ),
-    });
-    let mut version = program("kubelogin");
-    version.arg("--version");
-    checks.push(match ctx.read(version) {
-        Ok(output) if output.status.success() => {
-            Check::ok("kubelogin", first_line(&output.stdout).to_owned())
-        }
-        Ok(output) => Check::failed("kubelogin", first_line(&output.stderr).to_owned(), "reinstall kubelogin"),
-        Err(error) => Check::failed(
-            "kubelogin",
-            format!("{error:#}"),
-            "install kubelogin (https://azure.github.io/kubelogin/); a cluster with Entra ID sign-in needs it",
-        ),
-    });
-    checks
-}
-
 #[cfg(test)]
 mod tests {
     use agent_cli_core::testing::assert_dry_run;
     use serde_json::json;
 
     use crate::AKS;
-    use crate::fixtures::{self, azure};
-
-    #[test]
-    fn cluster_list_reads_the_inventory() {
-        let (outcome, _) = azure(
-            &[AKS],
-            &["aks", "cluster", "list"],
-            vec![fixtures::inventory(vec![
-                fixtures::cluster("aks-contoso-dev"),
-                fixtures::vault("kv-contoso"),
-            ])],
-        );
-        assert_eq!(outcome.code, 0, "{outcome:?}");
-        assert_eq!(
-            outcome.json(),
-            json!([{
-                "name": "aks-contoso-dev", "resource_group": "rg-contoso",
-                "subscription": "00000000-0000-0000-0000-000000000001", "location": "eastus",
-                "kubernetes_version": "1.30.4", "power_state": "Running",
-                "k8s_scope": "aks-contoso-dev",
-            }])
-        );
-    }
+    use crate::testing::{self, azure};
 
     #[test]
     fn a_dry_run_connect_plans_both_commands_and_runs_neither() {
@@ -369,7 +257,7 @@ mod tests {
         let plans = assert_dry_run(
             &[AKS],
             &["aks", "cluster", "connect", "aks-contoso-dev"],
-            vec![fixtures::inventory(vec![fixtures::cluster(
+            vec![testing::inventory(vec![testing::cluster(
                 "aks-contoso-dev",
             )])],
         );
@@ -403,13 +291,13 @@ mod tests {
 
     #[test]
     fn a_name_in_two_places_is_ambiguous_and_one_nowhere_is_not_found() {
-        let mut other = fixtures::cluster("aks-contoso-dev");
+        let mut other = testing::cluster("aks-contoso-dev");
         other["resourceGroup"] = json!("rg-fabrikam");
         let (outcome, _) = azure(
             &[AKS],
             &["aks", "cluster", "connect", "aks-contoso-dev", "--dry-run"],
-            vec![fixtures::inventory(vec![
-                fixtures::cluster("aks-contoso-dev"),
+            vec![testing::inventory(vec![
+                testing::cluster("aks-contoso-dev"),
                 other,
             ])],
         );
@@ -428,29 +316,8 @@ mod tests {
         let (outcome, _) = azure(
             &[AKS],
             &["aks", "cluster", "connect", "aks-nope"],
-            vec![fixtures::inventory(vec![])],
+            vec![testing::inventory(vec![])],
         );
         assert_eq!(outcome.code, 4, "{outcome:?}");
-    }
-
-    #[test]
-    fn doctor_counts_the_clusters_and_finds_kubelogin() {
-        let (ctx, _) = fixtures::doctor_ctx(
-            vec![fixtures::inventory(vec![fixtures::cluster(
-                "aks-contoso-dev",
-            )])],
-            "[azure]\n",
-        );
-        let checks = super::doctor(&ctx);
-        assert_eq!(
-            fixtures::rows(&checks),
-            [
-                ("az login".to_owned(), true),
-                ("clusters".to_owned(), true),
-                ("kubelogin".to_owned(), true),
-            ]
-        );
-        assert_eq!(checks[1].detail, "1 AKS clusters in reach");
-        assert_eq!(checks[2].detail, "kubelogin version v0.1.4-fake");
     }
 }

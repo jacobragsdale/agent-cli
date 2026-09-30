@@ -10,9 +10,6 @@ crates/airflow/src/client.rs 1048
 crates/airflow/src/dag.rs 691
 crates/airflow/src/run.rs 922
 crates/airflow/src/task.rs 1071
-crates/azure/src/acr.rs 1342
-crates/azure/src/kv.rs 1288
-crates/azure/src/lib.rs 632
 crates/core/src/discover.rs 749
 crates/core/src/dispatch.rs 669
 crates/core/src/http.rs 939
