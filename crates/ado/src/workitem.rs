@@ -156,15 +156,21 @@ pub struct ListArgs {
     /// A tag it carries (repeatable)
     #[arg(long)]
     tag: Vec<String>,
+    /// 1 (highest) to 4 (repeatable)
+    #[arg(long, value_delimiter = ',')]
+    priority: Vec<i64>,
     /// Words in the title or description
     #[arg(long)]
     text: Option<String>,
-    /// Changed after this
+    /// Changed (or --date created) after this
     #[arg(long)]
     since: Option<When>,
-    /// Changed before this
+    /// Changed (or --date created) before this
     #[arg(long)]
     until: Option<When>,
+    /// Which date --since and --until compare, and the newest first
+    #[arg(long, value_enum, default_value = "changed")]
+    date: DateField,
     /// Children of this work item
     #[arg(long)]
     parent: Option<i64>,
@@ -176,7 +182,13 @@ pub struct ListArgs {
     limit: usize,
 }
 
-/// The WHERE clause the flags spell, newest change first. `iteration` is the
+#[derive(Clone, Copy, clap::ValueEnum)]
+enum DateField {
+    Changed,
+    Created,
+}
+
+/// The WHERE clause the flags spell, newest change (or creation) first. `iteration` is the
 /// iteration condition already worked out, since `@current` may need a read.
 fn wiql(args: &ListArgs, iteration: Option<String>) -> String {
     let mut conditions = vec!["[System.TeamProject] = @project".to_owned()];
@@ -200,18 +212,29 @@ fn wiql(args: &ListArgs, iteration: Option<String>) -> String {
     for tag in &args.tag {
         conditions.push(format!("[System.Tags] CONTAINS {}", quoted(tag)));
     }
+    if !args.priority.is_empty() {
+        let priorities: Vec<String> = args.priority.iter().map(i64::to_string).collect();
+        conditions.push(format!(
+            "[Microsoft.VSTS.Common.Priority] IN ({})",
+            priorities.join(", ")
+        ));
+    }
     if let Some(words) = &args.text {
         conditions.push(format!(
             "([System.Title] CONTAINS {0} OR [System.Description] CONTAINS WORDS {0})",
             quoted(words)
         ));
     }
+    let date = match args.date {
+        DateField::Changed => "System.ChangedDate",
+        DateField::Created => "System.CreatedDate",
+    };
     // Compared to the second, with timePrecision on the request.
     if let Some(since) = args.since {
-        conditions.push(format!("[System.ChangedDate] >= '{}'", since.utc()));
+        conditions.push(format!("[{date}] >= '{}'", since.utc()));
     }
     if let Some(until) = args.until {
-        conditions.push(format!("[System.ChangedDate] <= '{}'", until.utc()));
+        conditions.push(format!("[{date}] <= '{}'", until.utc()));
     }
     if let Some(parent) = args.parent {
         conditions.push(format!("[System.Parent] = {parent}"));
@@ -220,7 +243,7 @@ fn wiql(args: &ListArgs, iteration: Option<String>) -> String {
         conditions.push(format!("({raw})"));
     }
     format!(
-        "SELECT [System.Id] FROM WorkItems WHERE {} ORDER BY [System.ChangedDate] DESC",
+        "SELECT [System.Id] FROM WorkItems WHERE {} ORDER BY [{date}] DESC",
         conditions.join(" AND ")
     )
 }
@@ -333,7 +356,7 @@ fn workitem_list(ctx: &Ctx, args: ListArgs) -> Result<Vec<WorkItemRow>> {
 command! {
     pub WORKITEM_LIST = ["ado", "workitem", "list"], Read,
     "List work items matching filters (live WIQL)",
-    keywords: ["query", "find", "search", "assigned", "my", "mine", "sprint", "active", "open", "resolved", "wiql"],
+    keywords: ["query", "find", "search", "assigned", "my", "mine", "sprint", "active", "open", "resolved", "wiql", "high", "urgent", "filed", "opened", "created"],
     example: "ado workitem list --assignee @me --state Active --fields id,title,state",
     run: workitem_list,
 }
@@ -776,7 +799,7 @@ fn moved_on(error: anyhow::Error, id: i64) -> anyhow::Error {
 command! {
     pub WORKITEM_UPDATE = ["ado", "workitem", "update"], Write,
     "Change a work item's state, assignee, title, iteration, tags or description",
-    keywords: ["edit", "move", "reassign", "close", "resolve", "reopen", "set", "rev"],
+    keywords: ["edit", "move", "reassign", "close", "resolve", "reopen", "set", "rev", "markdown"],
     example: "ado workitem update 42 --state Active --assignee @me --if-rev 7",
     run: workitem_update,
 }
@@ -1291,6 +1314,43 @@ mod tests {
             ),
             "{query}"
         );
+    }
+
+    #[test]
+    fn priorities_are_one_condition_and_date_created_moves_the_window_and_the_order() {
+        let (outcome, transport) = ado(
+            &[
+                "ado",
+                "workitem",
+                "list",
+                "--type",
+                "Bug",
+                "--priority",
+                "1,2",
+                "--date",
+                "created",
+                "--since",
+                "7d",
+            ],
+            vec![wiql(&[])],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let query = query_of(&transport, 0);
+        assert!(
+            query.contains(
+                "AND [System.WorkItemType] = 'Bug' AND [Microsoft.VSTS.Common.Priority] IN (1, 2) \
+                 AND [System.CreatedDate] >= '"
+            ),
+            "{query}"
+        );
+        assert!(
+            query.ends_with("ORDER BY [System.CreatedDate] DESC"),
+            "{query}"
+        );
+        assert!(!query.contains("ChangedDate"), "{query}");
+
+        let (outcome, _) = ado(&["ado", "workitem", "list", "--priority", "high"], vec![]);
+        assert_eq!(outcome.code, 2, "{outcome:?}");
     }
 
     #[test]

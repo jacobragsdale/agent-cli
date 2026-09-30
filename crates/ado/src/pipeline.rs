@@ -177,6 +177,21 @@ enum RunResult {
     Canceled,
 }
 
+/// Why a run was queued, as Azure DevOps names it.
+#[derive(Clone, Copy, clap::ValueEnum)]
+#[value(rename_all = "camelCase")]
+enum RunReason {
+    Manual,
+    #[value(name = "individualCI")]
+    IndividualCi,
+    #[value(name = "batchedCI")]
+    BatchedCi,
+    Schedule,
+    PullRequest,
+    BuildCompletion,
+    ResourceTrigger,
+}
+
 #[derive(clap::Args)]
 pub struct RunListArgs {
     /// Pipeline name or id
@@ -197,6 +212,12 @@ pub struct RunListArgs {
     /// Finished runs with this result
     #[arg(long, value_enum)]
     result: Option<RunResult>,
+    /// Who queued it: name, email or @me
+    #[arg(long)]
+    requested_by: Option<String>,
+    /// Why it ran: a push (individualCI, batchedCI), a PR, a schedule, by hand …
+    #[arg(long, value_enum, ignore_case = true)]
+    reason: Option<RunReason>,
     /// Most rows to return
     #[arg(long, default_value_t = 50)]
     limit: usize,
@@ -232,6 +253,22 @@ fn run_list(ctx: &Ctx, args: RunListArgs) -> Result<Vec<RunRow>> {
         };
         query.push_str(&format!("&resultFilter={result}"));
     }
+    if let Some(who) = &args.requested_by {
+        // The builds API takes the person by name, as `az pipelines runs
+        // list --requested-for` sends them.
+        let who = if who.trim().eq_ignore_ascii_case("@me") {
+            ado.me(ctx)?.name
+        } else {
+            who.trim().to_owned()
+        };
+        query.push_str(&format!("&requestedFor={}", query_value(&who)));
+    }
+    if let Some(reason) = args
+        .reason
+        .and_then(|reason| clap::ValueEnum::to_possible_value(&reason))
+    {
+        query.push_str(&format!("&reasonFilter={}", reason.get_name()));
+    }
     // A bare name is a branch or a tag (images are tagged with the git tag
     // that built them): the branch first, the tag when no branch has runs.
     let refs: Vec<Option<String>> = match args.branch.as_deref().map(str::trim) {
@@ -264,7 +301,7 @@ fn run_list(ctx: &Ctx, args: RunListArgs) -> Result<Vec<RunRow>> {
 command! {
     pub RUN_LIST = ["ado", "run", "list"], Read,
     "List pipeline runs (builds), newest first",
-    keywords: ["builds", "history", "recent", "latest", "failed", "status", "ci", "tag", "git", "release"],
+    keywords: ["builds", "history", "recent", "latest", "failed", "status", "ci", "tag", "git", "release", "started", "triggered", "queued", "manual", "scheduled", "pr"],
     example: "ado run list --branch refs/tags/v1.4.2 --fields id,pipeline,status,result,finished",
     run: run_list,
 }
@@ -994,6 +1031,61 @@ mod tests {
                 "{CODE}/build/definitions?includeLatestBuilds=true&queryOrder=definitionNameAscending&$top=2&name=%2Aweb%2A&repositoryId=r-1&repositoryType=TfsGit&api-version=7.1"
             )
         );
+    }
+
+    #[test]
+    fn run_list_filters_by_who_queued_it_and_why() {
+        let me = Answer::json(&json!({"authenticatedUser": {"id": "u-1",
+            "providerDisplayName": "Jane Doe", "properties": {"Account": {"$value": "jane@contoso.com"}}}}));
+        let (outcome, transport) = ado(
+            &[
+                "ado",
+                "run",
+                "list",
+                "--requested-by",
+                "@me",
+                "--reason",
+                "manual",
+                "--since",
+                "2026-09-29",
+                "--fields",
+                "id,requested_by,reason",
+            ],
+            vec![me, page(vec![build(991, "completed", Some("succeeded"))])],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json(),
+            json!([{"id": 991, "requested_by": "Jane Doe", "reason": "individualCI"}])
+        );
+        assert_eq!(
+            urls(&transport)[1],
+            format!(
+                "{CODE}/build/builds?queryOrder=queueTimeDescending&$top=51&minTime=2026-09-29T00%3A00%3A00Z&requestedFor=Jane+Doe&reasonFilter=manual&api-version=7.1"
+            )
+        );
+
+        let (outcome, transport) = ado(
+            &[
+                "ado",
+                "run",
+                "list",
+                "--requested-by",
+                "sam@contoso.com",
+                "--reason",
+                "individualci",
+            ],
+            vec![page(vec![])],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert!(
+            urls(&transport)[0]
+                .contains("&requestedFor=sam%40contoso.com&reasonFilter=individualCI&"),
+            "{:?}",
+            urls(&transport)
+        );
+        let (outcome, _) = ado(&["ado", "run", "list", "--reason", "push"], vec![]);
+        assert_eq!(outcome.code, 2, "{outcome:?}");
     }
 
     #[test]

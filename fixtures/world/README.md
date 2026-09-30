@@ -35,7 +35,8 @@ A release build ignores `AGENT_CLI_FIXTURES`: the feature is not in it.
 | ado | Org `contoso`, project `Fabrikam`, team `Fabrikam Team`, repo `api`. You are Jane Doe (`@me`). |
 | | PR **431** "Retry on 429 from the orders service" (reviewers Sam Lee and Priya Patel, both approved) merged commit `4be1c0d2…` into `main`; it closes work items **1207** and **1210**. |
 | | Git tag `v1.4.2` on that commit triggered `api-ci` run **8809**, which **failed** in "Run tests" (`OrdersClientTests.RetriesOn429` timed out; `ado run logs 8809`); the re-run **8812** succeeded and pushed the image. |
-| | Assigned to `@me` in Sprint 42: **1218** (Bug, New: the worker crash loop), **1215** (Task, Active: retry jitter, PR 436 open), **1207** (Resolved). |
+| | Assigned to `@me` in Sprint 42: **1218** (Bug, New, priority 1: the worker crash loop), **1215** (Task, Active: retry jitter, PR 436 open), **1207** (Resolved). |
+| | No open pull request waits on your review (`ado pr list --vote none`); Sam Lee has not voted on 436. You queued runs 8812, 8809 and 8801 (`--requested-by @me`); Sam Lee queued 8811 by hand. |
 | | A pending approval: `db-migrations` run 8811, "Apply migration 0042 to prod". |
 | acr | Registry `contosoacr` (`contosoacr.azurecr.io`): `api` tags `v1.4.2`, `v1.4.1`, `v1.4.0`; `worker` tags `v1.4.2`, `v1.4.1`. The `v1.4.2` digests match what the pods run. |
 | k8s | Scope `prod` (context `aks-contoso-prod`, namespace `web`). Deployment `api` runs `contosoacr.azurecr.io/api:v1.4.2`, 3/3 ready. Deployment `worker` (`worker:v1.4.2`) is 0/1: pod `worker-5c4d3e9f1-q8zt1` is in CrashLoopBackOff with 23 restarts, BackOff events, and a previous log saying the database password was refused. Configmap `api-config`; secrets `api-env`, `worker-db`; SecretProviderClasses `api-kv` and `worker-kv`. |

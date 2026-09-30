@@ -56,7 +56,14 @@ pub const SYNONYM_FLAGS: &[(&str, &str)] = &[
 ];
 
 /// Flags that name a person; their help must say `@me` works.
-const IDENTITY_FLAGS: &[&str] = &["assignee", "author", "reviewer", "creator", "owner"];
+const IDENTITY_FLAGS: &[&str] = &[
+    "assignee",
+    "author",
+    "reviewer",
+    "creator",
+    "owner",
+    "requested-by",
+];
 
 /// Words that are one domain's synonym and another's resource, each with
 /// labeled queries for both readings in `search.toml`. Anything else that

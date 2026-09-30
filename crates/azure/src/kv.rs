@@ -199,12 +199,34 @@ pub struct SecretListArgs {
     /// Only disabled secrets
     #[arg(long)]
     disabled: bool,
+    /// Only secrets tagged key, or key=value, any case (repeatable)
+    #[arg(long)]
+    tag: Vec<String>,
+    /// Only secrets whose content type contains this, any case
+    #[arg(long)]
+    content_type: Option<String>,
+    /// True for certificates' backing secrets only, false for none of them
+    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
+    managed: Option<bool>,
     #[arg(long, default_value_t = 50)]
     limit: usize,
 }
 
+/// Whether `tags` holds `wanted`: `key` or `key=value`, both any case.
+fn tagged(tags: &BTreeMap<String, String>, wanted: &str) -> bool {
+    let (key, value) = match wanted.split_once('=') {
+        Some((key, value)) => (key.trim(), Some(value.trim())),
+        None => (wanted.trim(), None),
+    };
+    tags.iter().any(|(held, held_value)| {
+        held.eq_ignore_ascii_case(key)
+            && value.is_none_or(|value| held_value.eq_ignore_ascii_case(value))
+    })
+}
+
 fn secret_list(ctx: &Ctx, args: SecretListArgs) -> Result<Vec<SecretRow>> {
     let within = args.expires_within.map(|span| span.0);
+    let content_type = args.content_type.as_deref().map(str::to_ascii_lowercase);
     // A secret's id reads its one vault and matches its name exactly.
     let (only, exact) = match args.name.as_deref().map(|raw| secret_ref(raw, None, None)) {
         Some(Ok(found)) if found.vault.is_some() => (found.vault.into_iter().collect(), true),
@@ -239,6 +261,15 @@ fn secret_list(ctx: &Ctx, args: SecretListArgs) -> Result<Vec<SecretRow>> {
             })
         })
         .filter(|row| !args.disabled || !row.enabled)
+        .filter(|row| args.tag.iter().all(|tag| tagged(&row.tags, tag)))
+        .filter(|row| {
+            content_type.as_deref().is_none_or(|wanted| {
+                row.content_type
+                    .as_deref()
+                    .is_some_and(|held| held.to_ascii_lowercase().contains(wanted))
+            })
+        })
+        .filter(|row| args.managed.is_none_or(|managed| row.managed == managed))
         .filter(|row| !args.expired || expiry(row).is_some_and(|at| at < now))
         .filter(|row| {
             // Something already expired is inside every window.
@@ -272,7 +303,7 @@ fn read_all(ctx: &Ctx, azure: &Azure, vaults: &[Vault]) -> Result<Vec<SecretRow>
 command! {
     pub SECRET_LIST = ["kv", "secret", "list"], Read,
     "List Key Vault secrets with expiry and tags (names and metadata, never values)",
-    keywords: ["password", "credential", "expiring", "expired", "disabled", "vaults", "contains", "find"],
+    keywords: ["password", "credential", "expiring", "expired", "disabled", "vaults", "contains", "find", "tagged", "certificate"],
     example: "kv secret list db --expires-within 30d --fields id,expires",
     run: secret_list,
 }
@@ -811,6 +842,54 @@ mod tests {
             "a bad window is caught before anything is sent: {outcome:?}"
         );
         assert!(transport.sent().is_empty());
+    }
+
+    #[test]
+    fn tags_content_type_and_managed_narrow_the_listing_here() {
+        let answer = Answer::json(&json!({"value": [
+            {"id": "https://kv-contoso-dev.vault.azure.net/secrets/db-password", "contentType": "text/plain",
+                "tags": {"Team": "Platform", "rotates": "180d"}, "attributes": {}},
+            {"id": "https://kv-contoso-dev.vault.azure.net/secrets/api-key", "contentType": "text/plain",
+                "tags": {"team": "api"}, "attributes": {}},
+            {"id": "https://kv-contoso-dev.vault.azure.net/secrets/web-tls", "contentType": "application/x-pkcs12",
+                "managed": true, "tags": {"team": "platform"}, "attributes": {}},
+        ]}));
+        let names = |argv: &[&str]| {
+            let (outcome, transport) = azure(
+                &[KV],
+                argv,
+                vec![
+                    fixtures::inventory(vec![fixtures::vault("kv-contoso-dev")]),
+                    answer.clone(),
+                ],
+            );
+            assert_eq!(outcome.code, 0, "{outcome:?}");
+            assert_eq!(
+                transport.sent()[1].url,
+                "https://kv-contoso-dev.vault.azure.net/secrets?api-version=7.4&maxresults=25",
+                "Key Vault filters nothing itself: the listing is read whole"
+            );
+            outcome
+                .json()
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|r| r["name"].as_str().unwrap().to_owned())
+                .collect::<Vec<_>>()
+        };
+        let list = |extra: &[&str]| names(&[&["kv", "secret", "list"][..], extra].concat());
+        assert_eq!(
+            list(&["--tag", "team=platform"]),
+            ["db-password", "web-tls"]
+        );
+        assert_eq!(
+            list(&["--tag", "team=platform", "--tag", "rotates"]),
+            ["db-password"]
+        );
+        assert_eq!(list(&["--tag", "owner"]), Vec::<String>::new());
+        assert_eq!(list(&["--content-type", "PKCS12"]), ["web-tls"]);
+        assert_eq!(list(&["--managed", "false"]), ["api-key", "db-password"]);
+        assert_eq!(list(&["--managed"]), ["web-tls"]);
     }
 
     #[test]

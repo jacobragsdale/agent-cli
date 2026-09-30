@@ -62,6 +62,7 @@ pub const DOMAIN: Domain = Domain {
         ("backlog", &["workitem"]),
         ("work item", &["workitem"]),
         ("work items", &["workitem"]),
+        ("prs", &["pr"]),
         ("pull request", &["pr"]),
         ("pull requests", &["pr"]),
         ("merge request", &["pr"]),

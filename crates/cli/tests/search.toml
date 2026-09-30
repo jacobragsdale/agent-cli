@@ -519,6 +519,76 @@ expect = "ado approval reject"
 text = "deny a pipeline gate"
 expect = "ado approval reject"
 
+# ---------- parity with the old CLIs: filters and long text ----------
+
+[[query]]
+text = "which pull requests are waiting for my review"
+expect = "ado pr list"
+
+[[query]]
+text = "which pull requests still need my vote"
+expect = "ado pr list"
+
+[[query]]
+text = "list PRs Sam approved"
+expect = "ado pr list"
+
+[[query]]
+text = "runs I started today"
+expect = "ado run list"
+
+[[query]]
+text = "builds triggered by a pull request"
+expect = "ado run list"
+
+[[query]]
+text = "which scheduled builds ran last night"
+expect = "ado run list"
+
+[[query]]
+text = "high priority bugs"
+expect = "ado workitem list"
+
+[[query]]
+text = "bugs filed this week"
+expect = "ado workitem list"
+
+[[query]]
+text = "work items created since Monday"
+expect = "ado workitem list"
+
+[[query]]
+text = "secrets tagged team=platform"
+expect = "kv secret list"
+
+[[query]]
+text = "which key vault secrets are certificates"
+expect = "kv secret list"
+
+[[query]]
+text = "images not updated since last year"
+expect = "acr repo list"
+
+[[query]]
+text = "stale container repositories nobody pushed to in 90 days"
+expect = "acr repo list"
+
+[[query]]
+text = "write the work item description from a markdown file"
+expect = "ado workitem update"
+
+[[query]]
+text = "open a pull request with its description piped from stdin"
+expect = "ado pr create"
+
+[[query]]
+text = "run the sql in a file"
+expect = "sql query run"
+
+[[query]]
+text = "benchmark a query but stop reading after 100 rows"
+expect = "sql query bench"
+
 # ---------- conventions phase: deploy trace ----------
 
 [[query]]

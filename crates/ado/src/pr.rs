@@ -246,6 +246,9 @@ pub struct PrListArgs {
     /// A reviewer: name, email or @me
     #[arg(long)]
     reviewer: Option<String>,
+    /// The --reviewer's own vote (@me's without one); none is not yet voted (repeatable)
+    #[arg(long, value_delimiter = ',', value_parser = ["approved", "suggestions", "waiting", "rejected", "none"])]
+    vote: Vec<String>,
     /// The branch it merges into
     #[arg(long)]
     target: Option<String>,
@@ -267,8 +270,23 @@ pub struct PrListArgs {
 }
 
 /// A page of the search; more is read only while fewer than `--limit + 1`
-/// rows have matched (drafts are filtered here, the rest by Azure DevOps).
+/// rows have matched (drafts and votes are filtered here, the rest by Azure
+/// DevOps).
 const PR_PAGE: usize = 100;
+
+/// The vote the reviewer with identity `id` has cast on `pr`, in words: none
+/// when they have not, or review only through a group.
+fn vote_of(pr: &Value, id: &str) -> &'static str {
+    let vote = list(&pr["reviewers"])
+        .iter()
+        .find(|reviewer| {
+            reviewer["id"]
+                .as_str()
+                .is_some_and(|held| held.eq_ignore_ascii_case(id))
+        })
+        .and_then(|reviewer| reviewer["vote"].as_i64());
+    vote_word(vote.unwrap_or_default())
+}
 
 fn pr_list(ctx: &Ctx, args: PrListArgs) -> Result<Vec<PrRow>> {
     let ado = Ado::load(ctx)?;
@@ -285,11 +303,14 @@ fn pr_list(ctx: &Ctx, args: PrListArgs) -> Result<Vec<PrRow>> {
             ado.identity(ctx, who)?
         ));
     }
-    if let Some(who) = &args.reviewer {
-        criteria.push_str(&format!(
-            "&searchCriteria.reviewerId={}",
-            ado.identity(ctx, who)?
-        ));
+    // A vote is someone's: the reviewer's, or yours when none is named.
+    let reviewer = match (&args.reviewer, args.vote.is_empty()) {
+        (Some(who), _) => Some(ado.identity(ctx, who)?),
+        (None, false) => Some(ado.identity(ctx, "@me")?),
+        (None, true) => None,
+    };
+    if let Some(id) = &reviewer {
+        criteria.push_str(&format!("&searchCriteria.reviewerId={id}"));
     }
     for (key, branch) in [
         ("targetRefName", &args.target),
@@ -328,6 +349,12 @@ fn pr_list(ctx: &Ctx, args: PrListArgs) -> Result<Vec<PrRow>> {
                     args.draft
                         .is_none_or(|draft| pr["isDraft"].as_bool().unwrap_or_default() == draft)
                 })
+                .filter(|pr| {
+                    args.vote.is_empty()
+                        || reviewer
+                            .as_deref()
+                            .is_some_and(|id| args.vote.iter().any(|vote| vote == vote_of(pr, id)))
+                })
                 .map(|pr| pr_row(&ado, pr)),
         );
         if rows.len() > args.limit || found.len() < page {
@@ -347,9 +374,9 @@ fn pr_list(ctx: &Ctx, args: PrListArgs) -> Result<Vec<PrRow>> {
 
 command! {
     pub PR_LIST = ["ado", "pr", "list"], Read,
-    "List pull requests by repo, author, reviewer, branch or status",
-    keywords: ["open", "active", "mine", "reviewer", "pending", "waiting", "drafts"],
-    example: "ado pr list --reviewer @me --fields id,title,author,repo",
+    "List pull requests by repo, author, reviewer and their vote, branch or status",
+    keywords: ["open", "active", "mine", "reviewer", "pending", "waiting", "drafts", "queue", "unreviewed", "approved"],
+    example: "ado pr list --vote none --fields id,title,author,repo",
     run: pr_list,
 }
 
@@ -1250,6 +1277,70 @@ mod tests {
             "{:?}",
             urls(&transport)
         );
+    }
+
+    #[test]
+    fn a_vote_filter_is_the_reviewers_own_vote_and_yours_without_one() {
+        let mut approved = pr(2, false);
+        approved["reviewers"] = json!([{"id": "U-1", "displayName": "Jane Doe", "vote": 10}]);
+        let mut waiting = pr(3, false);
+        waiting["reviewers"] = json!([{"id": "u-1", "displayName": "Jane Doe", "vote": -5}]);
+        let (outcome, transport) = ado(
+            &["ado", "pr", "list", "--vote", "none", "--fields", "id"],
+            vec![
+                me(),
+                page(vec![pr(1, false), approved.clone(), waiting.clone()]),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json(), json!([{"id": 1}]), "only a group reviews 1");
+        assert_eq!(
+            urls(&transport)[1],
+            format!(
+                "{CODE}/git/pullrequests?searchCriteria.status=active&searchCriteria.reviewerId=u-1&$top=51&$skip=0&api-version=7.1"
+            )
+        );
+
+        let (outcome, _) = ado(
+            &[
+                "ado",
+                "pr",
+                "list",
+                "--vote",
+                "waiting,approved",
+                "--fields",
+                "id",
+            ],
+            vec![me(), page(vec![pr(1, false), approved, waiting])],
+        );
+        assert_eq!(outcome.json(), json!([{"id": 2}, {"id": 3}]));
+
+        let sam = Answer::json(&json!({"count": 1, "value": [{"id": "u-2",
+            "providerDisplayName": "Sam Lee", "properties": {"Mail": {"$value": "sam@contoso.com"}}}]}));
+        let (outcome, transport) = ado(
+            &[
+                "ado",
+                "pr",
+                "list",
+                "--reviewer",
+                "sam@contoso.com",
+                "--vote",
+                "approved",
+                "--fields",
+                "id",
+            ],
+            vec![sam, page(vec![pr(1, false)])],
+        );
+        assert_eq!(outcome.json(), json!([{"id": 1}]), "Sam approved 1");
+        assert!(
+            urls(&transport)[1].contains("&searchCriteria.reviewerId=u-2&"),
+            "{:?}",
+            urls(&transport)
+        );
+
+        let (outcome, transport) = ado(&["ado", "pr", "list", "--vote", "lgtm"], vec![]);
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(transport.sent().is_empty());
     }
 
     #[test]

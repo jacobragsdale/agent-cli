@@ -165,6 +165,49 @@ fn the_deploy_trace_runs_from_the_cluster_to_the_work_items() {
 }
 
 #[test]
+fn the_world_answers_the_filters_the_old_clis_had() {
+    let queue = ok(&["ado", "pr", "list", "--vote", "none", "--fields", "id"]);
+    assert_eq!(queue, json!([]), "nothing waits on your review");
+    let urgent = ok(&[
+        "ado",
+        "workitem",
+        "list",
+        "--type",
+        "Bug",
+        "--priority",
+        "1,2",
+        "--fields",
+        "id,priority",
+    ]);
+    assert_eq!(urgent, json!([{"id": 1218, "priority": 1}]));
+    let yours = ok(&[
+        "ado",
+        "run",
+        "list",
+        "--requested-by",
+        "@me",
+        "--fields",
+        "id",
+    ]);
+    assert_eq!(yours, json!([{"id": 8812}, {"id": 8809}, {"id": 8801}]));
+    let platform = ok(&[
+        "kv",
+        "secret",
+        "list",
+        "--tag",
+        "owner=platform",
+        "--fields",
+        "name",
+    ]);
+    assert_eq!(
+        platform,
+        json!([{"name": "db-password"}, {"name": "orders-db-conn"}, {"name": "worker-db-password"}])
+    );
+    let stale = ok(&["acr", "repo", "list", "--until", "30d", "--fields", "id"]);
+    assert_eq!(stale, json!([]), "both images were pushed on 09-28");
+}
+
+#[test]
 fn the_rest_of_the_world_answers_what_a_trial_is_likely_to_ask() {
     for args in [
         &["ado", "run", "get", "8809", "--fields", "failed"][..],

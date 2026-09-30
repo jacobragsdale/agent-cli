@@ -50,6 +50,17 @@
 - [ ] sql `object list` `modified` is the server's local time with no offset; UTC needs the server's zone
 - [ ] The fixture world's `AGENT_CLI_NOW` lives in `scripts/trial-env.sh` and `crates/cli/tests/world.rs`; move it into the world directory if a second world appears
 
+## Parity with the old CLIs (the audit of ticket-tui, az-tui and sql-bench)
+
+- [x] Long text: `-` reads stdin and `--NAME-file PATH` a file wherever long text goes in (work item and PR descriptions and acceptance criteria, both comments, SQL, airflow `--conf`); comments keep ticket-tui's 64 KiB cap; `check_registry` holds every stdin argument to its file flag
+- [x] `ado pr list --vote`: the `--reviewer`'s own vote, yours without one (ticket-tui's `reviewer:@me vote:none`)
+- [ ] `ado pr list --build succeeded|failed|running|none`: the PR search carries no build or policy status, so it costs one policy-evaluations read per PR (what `pr get` does); build it, capped, if agents ask for it
+- [x] `ado run list --requested-by` (`requestedFor`) and `--reason` (`reasonFilter`)
+- [x] `ado workitem list --priority` (repeatable) and `--date created|changed`, which date `--since/--until` compare (default changed)
+- [x] `kv secret list --tag key[=value]`, `--content-type`, `--managed`; `acr repo list --until` (last pushed before)
+- [x] `sql query bench --max-rows`, as `query run` has it
+- [ ] ADO shapes the parity filters added, to confirm live: builds `requestedFor` by display name (as `az pipelines runs list --requested-for` sends it) and `reasonFilter`; WIQL `[Microsoft.VSTS.Common.Priority] IN (1, 2)` and `[System.CreatedDate]` under `timePrecision`; PR search `reviewerId` rows carrying the reviewer's own vote (a group member who has not voted is absent, which reads as none)
+
 ## From the 2026-09-30 trial (docs/trials/2026-09-30.md)
 
 - [ ] Two labeled queries still land second: "v1.4.2 build" (`ado pipeline list` above `ado run list`; a version-shaped word could mean a tag) and t04's whole sentence (`k8s pod logs` above `k8s pod list`)

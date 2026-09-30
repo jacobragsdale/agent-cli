@@ -290,9 +290,12 @@ pub struct RepoListArgs {
     /// Only this registry (repeatable; within [azure] registries)
     #[arg(long)]
     registry: Vec<String>,
-    /// Only repositories pushed to after this
+    /// Only repositories last pushed to after this
     #[arg(long)]
     since: Option<When>,
+    /// Only repositories last pushed to before this: stale ones
+    #[arg(long)]
+    until: Option<When>,
     #[arg(long, default_value_t = 50)]
     limit: usize,
 }
@@ -312,7 +315,7 @@ pub struct RepoRow {
 }
 
 fn repo_list(ctx: &Ctx, args: RepoListArgs) -> Result<Vec<RepoRow>> {
-    let within = args.since;
+    let window = args.since.is_some() || args.until.is_some();
     let azure = Azure::load(ctx)?;
     let registries = narrow(
         &inventory(ctx, &azure)?.registries,
@@ -354,7 +357,7 @@ fn repo_list(ctx: &Ctx, args: RepoListArgs) -> Result<Vec<RepoRow>> {
     }
     let total = names.len();
     // Without a time filter only the rows that will print need attributes.
-    if within.is_none() {
+    if !window {
         names.truncate(args.limit);
     }
     let filled = fill(ctx, &azure, &sessions, &names)?;
@@ -362,12 +365,17 @@ fn repo_list(ctx: &Ctx, args: RepoListArgs) -> Result<Vec<RepoRow>> {
         .into_iter()
         .zip(filled)
         .filter(|(_, held)| {
-            within.is_none_or(|since| {
-                held.updated
-                    .as_deref()
-                    .and_then(crate::parse_stamp)
-                    .is_some_and(|at| at >= since.0)
-            })
+            if !window {
+                return true;
+            }
+            // A repository whose date did not load is in no window.
+            held.updated
+                .as_deref()
+                .and_then(crate::parse_stamp)
+                .is_some_and(|at| {
+                    args.since.is_none_or(|since| at >= since.0)
+                        && args.until.is_none_or(|until| at <= until.0)
+                })
         })
         .map(|((index, repository), held)| RepoRow {
             id: format!("{}/{repository}", registries[index].login_server),
@@ -379,7 +387,7 @@ fn repo_list(ctx: &Ctx, args: RepoListArgs) -> Result<Vec<RepoRow>> {
             updated: held.updated,
         })
         .collect();
-    if within.is_none() && total > rows.len() {
+    if !window && total > rows.len() {
         ctx.note(format!("[{} of {total}; --limit N]", rows.len()));
         return Ok(rows);
     }
@@ -436,7 +444,7 @@ fn fill(
 command! {
     pub REPO_LIST = ["acr", "repo", "list"], Read,
     "List container image repositories with tag counts and last push",
-    keywords: ["image", "images", "repository", "repositories", "pushed", "recent", "docker"],
+    keywords: ["image", "images", "repository", "repositories", "pushed", "recent", "docker", "stale", "old", "unused"],
     example: "acr repo list api --since 7d --fields id,tag_count,updated",
     run: repo_list,
 }
@@ -1276,15 +1284,15 @@ mod tests {
             "the inventory and the attributes came from the cache"
         );
 
-        for (since, want) in [
-            (
-                "2026-09-01",
-                json!([{"id": "contosoacr.azurecr.io/team/api"}]),
-            ),
-            ("2026-09-12T00:00:00Z", json!([])),
+        let api = json!([{"id": "contosoacr.azurecr.io/team/api"}]);
+        for (flag, at, want) in [
+            ("--since", "2026-09-01", api.clone()),
+            ("--since", "2026-09-12T00:00:00Z", json!([])),
+            ("--until", "2026-09-12T00:00:00Z", api),
+            ("--until", "2026-09-01", json!([])),
         ] {
             let (outcome, _) = run(
-                &["acr", "repo", "list", "--since", since, "--fields", "id"],
+                &["acr", "repo", "list", flag, at, "--fields", "id"],
                 vec![
                     exchanged(),
                     issued("t"),
@@ -1297,7 +1305,11 @@ mod tests {
                 ],
             );
             assert_eq!(outcome.code, 0, "{outcome:?}");
-            assert_eq!(outcome.json(), want, "pushed since {since}");
+            assert_eq!(
+                outcome.json(),
+                want,
+                "last pushed {flag} {at}, and gone has no date"
+            );
         }
     }
 

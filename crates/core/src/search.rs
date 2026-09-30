@@ -70,6 +70,20 @@ const SYNONYMS: &[(&str, &[&str])] = &[
     ("tail", &["stream", "ws", "logs"]),
     ("follow", &["stream", "ws", "logs"]),
     ("realtime", &["stream", "ws"]),
+    // A time asks for a window, which every command filtering by time takes
+    // as --since.
+    ("today", &["since"]),
+    ("yesterday", &["since"]),
+    ("night", &["since"]),
+    ("hour", &["since"]),
+    ("hours", &["since"]),
+    ("day", &["since"]),
+    ("days", &["since"]),
+    ("week", &["since"]),
+    ("weeks", &["since"]),
+    ("month", &["since"]),
+    ("months", &["since"]),
+    ("ago", &["since"]),
 ];
 
 /// Path, summary, keywords, arg names, return field names.

@@ -17,7 +17,7 @@ Generated from the registry by `crates/cli` (`UPDATE_DOCS=1 cargo test -p agent-
 | [`ado team list`](#ado-team-list) | read | List the project's teams (for [ado] team, which @current needs) |
 | [`ado repo list`](#ado-repo-list) | read | List the project's Git repositories |
 | [`ado repo get`](#ado-repo-get) | read | Show a repository: its URLs, default branch and branches |
-| [`ado pr list`](#ado-pr-list) | read | List pull requests by repo, author, reviewer, branch or status |
+| [`ado pr list`](#ado-pr-list) | read | List pull requests by repo, author, reviewer and their vote, branch or status |
 | [`ado pr get`](#ado-pr-get) | read | Show a pull request: reviewers and votes, work items, policies, threads |
 | [`ado pr create`](#ado-pr-create) | write | Open a pull request linked to work items, or reuse the one already open |
 | [`ado pr vote`](#ado-pr-vote) | write | Record your vote on a pull request: approve, suggest, reject or none |
@@ -42,18 +42,20 @@ Generated from the registry by `crates/cli` (`UPDATE_DOCS=1 cargo test -p agent-
 
 ```text
 agent-cli ado workitem list — List work items matching filters (live WIQL)
-  --assignee str   Name, email or @me
-  --state str[]    Active, "In Progress" … (repeatable)
-  --type str[]     Bug, "User Story", Task … (repeatable)
-  --iteration str  Iteration path, or @current for the team's sprint
-  --area str       Area path (children included)
-  --tag str[]      A tag it carries (repeatable)
-  --text str       Words in the title or description
-  --since time     Changed after this
-  --until time     Changed before this
-  --parent int     Children of this work item
-  --wiql str       Raw WIQL WHERE clause, ANDed with the rest
-  --limit int      Most rows to return (default 50)
+  --assignee str          Name, email or @me
+  --state str[]           Active, "In Progress" … (repeatable)
+  --type str[]            Bug, "User Story", Task … (repeatable)
+  --iteration str         Iteration path, or @current for the team's sprint
+  --area str              Area path (children included)
+  --tag str[]             A tag it carries (repeatable)
+  --priority int[]        1 (highest) to 4 (repeatable)
+  --text str              Words in the title or description
+  --since time            Changed (or --date created) after this
+  --until time            Changed (or --date created) before this
+  --date changed|created  Which date --since and --until compare, and the newest first (default changed)
+  --parent int            Children of this work item
+  --wiql str              Raw WIQL WHERE clause, ANDed with the rest
+  --limit int             Most rows to return (default 50)
 A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
 Returns: [{id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev}]
 Read. Globals: --fields --raw --timeout --output
@@ -173,11 +175,12 @@ e.g. agent-cli ado repo get web --fields remote_url,default_branch
 ### ado pr list
 
 ```text
-agent-cli ado pr list — List pull requests by repo, author, reviewer, branch or status
+agent-cli ado pr list — List pull requests by repo, author, reviewer and their vote, branch or status
   --repo str                    The repository, by name
   --status active|completed|abandoned|all  Which pull requests (default active)
   --author str                  Who opened it: name, email or @me
   --reviewer str                A reviewer: name, email or @me
+  --vote approved|suggestions|waiting|rejected|none[]  The --reviewer's own vote (@me's without one); none is not yet voted (repeatable)
   --target str                  The branch it merges into
   --source str                  The branch it merges from
   --draft true|false            True for drafts only, false for none
@@ -187,7 +190,7 @@ agent-cli ado pr list — List pull requests by repo, author, reviewer, branch o
 A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
 Returns: [{id,repo,title,author,status,is_draft,source,target,merge_status,auto_complete,created,reviewers[{name,vote,required}],url}]
 Read. Globals: --fields --raw --timeout --output
-e.g. agent-cli ado pr list --reviewer @me --fields id,title,author,repo
+e.g. agent-cli ado pr list --vote none --fields id,title,author,repo
 ```
 
 ### ado pr get
@@ -312,6 +315,8 @@ agent-cli ado run list — List pipeline runs (builds), newest first
   --until time                  Queued before this
   --status inProgress|notStarted|cancelling|completed|all  Runs in this state
   --result succeeded|partiallySucceeded|failed|canceled  Finished runs with this result
+  --requested-by str            Who queued it: name, email or @me
+  --reason manual|individualCI|batchedCI|schedule|pullRequest|buildCompletion|resourceTrigger  Why it ran: a push (individualCI, batchedCI), a PR, a schedule, by hand …
   --limit int                   Most rows to return (default 50)
 A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
 Returns: [{id,pipeline,pipeline_id,build_number,status,result,branch,commit,requested_by,reason,queued,started,finished,url}]
@@ -434,6 +439,9 @@ agent-cli kv secret list — List Key Vault secrets with expiry and tags (names 
   --expires-within duration  Only secrets expiring within this long, or already expired
   --expired                  Only secrets whose expiry has passed
   --disabled                 Only disabled secrets
+  --tag str[]                Only secrets tagged key, or key=value, any case (repeatable)
+  --content-type str         Only secrets whose content type contains this, any case
+  --managed true|false       True for certificates' backing secrets only, false for none of them
   --limit int                (default 50)
 A duration is 500ms, 30s, 15m, 2h, 7d, 1w.
 Returns: [{id,vault,name,enabled,content_type,expires,created,updated,managed,tags}]
@@ -490,7 +498,8 @@ e.g. agent-cli kv vault list --fields name,resource_group,uri
 agent-cli acr repo list — List container image repositories with tag counts and last push
   <name> str        Part of the repository name, any case
   --registry str[]  Only this registry (repeatable; within [azure] registries)
-  --since time      Only repositories pushed to after this
+  --since time      Only repositories last pushed to after this
+  --until time      Only repositories last pushed to before this: stale ones
   --limit int       (default 50)
 A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
 Returns: [{id,registry,repository,tag_count,manifest_count,created,updated}]
