@@ -1,0 +1,1893 @@
+[
+ {
+  "request": "POST https://airflow.contoso.example/auth/token",
+  "note": "any username and password sign in; the JWT is a stand-in",
+  "status": 201,
+  "answer": {
+   "access_token": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.Y29udG9zby13b3JsZA.c3RhbmQtaW4"
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/version",
+  "answer": {
+   "version": "3.3.2",
+   "git_version": null
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/monitor/health",
+  "answer": {
+   "metadatabase": {
+    "status": "healthy"
+   },
+   "scheduler": {
+    "status": "healthy",
+    "latest_scheduler_heartbeat": "2026-09-29T11:59:58.101+00:00"
+   },
+   "triggerer": {
+    "status": "healthy",
+    "latest_triggerer_heartbeat": "2026-09-29T11:59:57.020+00:00"
+   },
+   "dag_processor": {
+    "status": "healthy",
+    "latest_dag_processor_heartbeat": "2026-09-29T11:59:59.330+00:00"
+   }
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/importErrors?limit=1",
+  "answer": {
+   "import_errors": [
+    {
+     "import_error_id": 12,
+     "timestamp": "2026-09-29T11:58:01.537+00:00",
+     "filename": "customer_sync.py",
+     "bundle_name": "dags-folder",
+     "stack_trace": "Traceback (most recent call last):\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"/opt/airflow/dags/customer_sync.py\", line 5, in <module>\n    from contoso_crm import Client\nModuleNotFoundError: No module named 'contoso_crm'\n"
+    }
+   ],
+   "total_entries": 1
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags?order_by=dag_id&limit=50&offset=0",
+  "note": "customer_sync is missing: its file fails to import (importErrors 12)",
+  "answer": {
+   "dags": [
+    {
+     "dag_id": "etl_nightly",
+     "dag_display_name": "etl_nightly",
+     "is_paused": false,
+     "is_stale": false,
+     "last_parsed_time": "2026-09-29T11:58:02.412345+00:00",
+     "last_expired": null,
+     "bundle_name": "dags-folder",
+     "bundle_version": null,
+     "relative_fileloc": "etl_nightly.py",
+     "fileloc": "/opt/airflow/dags/etl_nightly.py",
+     "description": "Loads yesterday's orders into the warehouse",
+     "timetable_summary": "0 0 * * *",
+     "timetable_description": "At 00:00",
+     "tags": [
+      {
+       "name": "etl",
+       "dag_id": "etl_nightly"
+      },
+      {
+       "name": "orders",
+       "dag_id": "etl_nightly"
+      }
+     ],
+     "max_active_tasks": 16,
+     "max_active_runs": 1,
+     "max_consecutive_failed_dag_runs": 0,
+     "has_task_concurrency_limits": false,
+     "has_import_errors": false,
+     "next_dagrun_logical_date": "2026-09-30T00:00:00+00:00",
+     "next_dagrun_data_interval_start": "2026-09-30T00:00:00+00:00",
+     "next_dagrun_data_interval_end": "2026-09-30T00:00:00+00:00",
+     "next_dagrun_run_after": "2026-09-30T00:00:00+00:00",
+     "owners": [
+      "data-eng"
+     ],
+     "file_token": "Ii9vcHQvYWlyZmxvdy9kYWdzIg.contoso"
+    },
+    {
+     "dag_id": "orders_export",
+     "dag_display_name": "orders_export",
+     "is_paused": false,
+     "is_stale": false,
+     "last_parsed_time": "2026-09-29T11:58:02.412345+00:00",
+     "last_expired": null,
+     "bundle_name": "dags-folder",
+     "bundle_version": null,
+     "relative_fileloc": "orders_export.py",
+     "fileloc": "/opt/airflow/dags/orders_export.py",
+     "description": "Exports new orders to finance",
+     "timetable_summary": "@hourly",
+     "timetable_description": "At the start of every hour",
+     "tags": [
+      {
+       "name": "orders",
+       "dag_id": "orders_export"
+      }
+     ],
+     "max_active_tasks": 16,
+     "max_active_runs": 1,
+     "max_consecutive_failed_dag_runs": 0,
+     "has_task_concurrency_limits": false,
+     "has_import_errors": false,
+     "next_dagrun_logical_date": "2026-09-29T12:00:00+00:00",
+     "next_dagrun_data_interval_start": "2026-09-29T12:00:00+00:00",
+     "next_dagrun_data_interval_end": "2026-09-29T12:00:00+00:00",
+     "next_dagrun_run_after": "2026-09-29T12:00:00+00:00",
+     "owners": [
+      "data-eng"
+     ],
+     "file_token": "Ii9vcHQvYWlyZmxvdy9kYWdzIg.contoso"
+    },
+    {
+     "dag_id": "reports_weekly",
+     "dag_display_name": "reports_weekly",
+     "is_paused": true,
+     "is_stale": false,
+     "last_parsed_time": "2026-09-29T11:58:02.412345+00:00",
+     "last_expired": null,
+     "bundle_name": "dags-folder",
+     "bundle_version": null,
+     "relative_fileloc": "reports_weekly.py",
+     "fileloc": "/opt/airflow/dags/reports_weekly.py",
+     "description": "Weekly sales report, paused since the report moved",
+     "timetable_summary": "0 6 * * 1",
+     "timetable_description": "At 06:00, only on Monday",
+     "tags": [
+      {
+       "name": "reports",
+       "dag_id": "reports_weekly"
+      }
+     ],
+     "max_active_tasks": 16,
+     "max_active_runs": 1,
+     "max_consecutive_failed_dag_runs": 0,
+     "has_task_concurrency_limits": false,
+     "has_import_errors": false,
+     "next_dagrun_logical_date": null,
+     "next_dagrun_data_interval_start": null,
+     "next_dagrun_data_interval_end": null,
+     "next_dagrun_run_after": null,
+     "owners": [
+      "analytics"
+     ],
+     "file_token": "Ii9vcHQvYWlyZmxvdy9kYWdzIg.contoso"
+    }
+   ],
+   "total_entries": 3
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags?order_by=dag_id&paused=true&limit=50&offset=0",
+  "answer": {
+   "dags": [
+    {
+     "dag_id": "reports_weekly",
+     "dag_display_name": "reports_weekly",
+     "is_paused": true,
+     "is_stale": false,
+     "last_parsed_time": "2026-09-29T11:58:02.412345+00:00",
+     "last_expired": null,
+     "bundle_name": "dags-folder",
+     "bundle_version": null,
+     "relative_fileloc": "reports_weekly.py",
+     "fileloc": "/opt/airflow/dags/reports_weekly.py",
+     "description": "Weekly sales report, paused since the report moved",
+     "timetable_summary": "0 6 * * 1",
+     "timetable_description": "At 06:00, only on Monday",
+     "tags": [
+      {
+       "name": "reports",
+       "dag_id": "reports_weekly"
+      }
+     ],
+     "max_active_tasks": 16,
+     "max_active_runs": 1,
+     "max_consecutive_failed_dag_runs": 0,
+     "has_task_concurrency_limits": false,
+     "has_import_errors": false,
+     "next_dagrun_logical_date": null,
+     "next_dagrun_data_interval_start": null,
+     "next_dagrun_data_interval_end": null,
+     "next_dagrun_run_after": null,
+     "owners": [
+      "analytics"
+     ],
+     "file_token": "Ii9vcHQvYWlyZmxvdy9kYWdzIg.contoso"
+    }
+   ],
+   "total_entries": 1
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags?order_by=dag_id&paused=false&limit=50&offset=0",
+  "answer": {
+   "dags": [
+    {
+     "dag_id": "etl_nightly",
+     "dag_display_name": "etl_nightly",
+     "is_paused": false,
+     "is_stale": false,
+     "last_parsed_time": "2026-09-29T11:58:02.412345+00:00",
+     "last_expired": null,
+     "bundle_name": "dags-folder",
+     "bundle_version": null,
+     "relative_fileloc": "etl_nightly.py",
+     "fileloc": "/opt/airflow/dags/etl_nightly.py",
+     "description": "Loads yesterday's orders into the warehouse",
+     "timetable_summary": "0 0 * * *",
+     "timetable_description": "At 00:00",
+     "tags": [
+      {
+       "name": "etl",
+       "dag_id": "etl_nightly"
+      },
+      {
+       "name": "orders",
+       "dag_id": "etl_nightly"
+      }
+     ],
+     "max_active_tasks": 16,
+     "max_active_runs": 1,
+     "max_consecutive_failed_dag_runs": 0,
+     "has_task_concurrency_limits": false,
+     "has_import_errors": false,
+     "next_dagrun_logical_date": "2026-09-30T00:00:00+00:00",
+     "next_dagrun_data_interval_start": "2026-09-30T00:00:00+00:00",
+     "next_dagrun_data_interval_end": "2026-09-30T00:00:00+00:00",
+     "next_dagrun_run_after": "2026-09-30T00:00:00+00:00",
+     "owners": [
+      "data-eng"
+     ],
+     "file_token": "Ii9vcHQvYWlyZmxvdy9kYWdzIg.contoso"
+    },
+    {
+     "dag_id": "orders_export",
+     "dag_display_name": "orders_export",
+     "is_paused": false,
+     "is_stale": false,
+     "last_parsed_time": "2026-09-29T11:58:02.412345+00:00",
+     "last_expired": null,
+     "bundle_name": "dags-folder",
+     "bundle_version": null,
+     "relative_fileloc": "orders_export.py",
+     "fileloc": "/opt/airflow/dags/orders_export.py",
+     "description": "Exports new orders to finance",
+     "timetable_summary": "@hourly",
+     "timetable_description": "At the start of every hour",
+     "tags": [
+      {
+       "name": "orders",
+       "dag_id": "orders_export"
+      }
+     ],
+     "max_active_tasks": 16,
+     "max_active_runs": 1,
+     "max_consecutive_failed_dag_runs": 0,
+     "has_task_concurrency_limits": false,
+     "has_import_errors": false,
+     "next_dagrun_logical_date": "2026-09-29T12:00:00+00:00",
+     "next_dagrun_data_interval_start": "2026-09-29T12:00:00+00:00",
+     "next_dagrun_data_interval_end": "2026-09-29T12:00:00+00:00",
+     "next_dagrun_run_after": "2026-09-29T12:00:00+00:00",
+     "owners": [
+      "data-eng"
+     ],
+     "file_token": "Ii9vcHQvYWlyZmxvdy9kYWdzIg.contoso"
+    }
+   ],
+   "total_entries": 2
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags?order_by=dag_id&last_dag_run_state=failed&limit=50&offset=0",
+  "answer": {
+   "dags": [
+    {
+     "dag_id": "etl_nightly",
+     "dag_display_name": "etl_nightly",
+     "is_paused": false,
+     "is_stale": false,
+     "last_parsed_time": "2026-09-29T11:58:02.412345+00:00",
+     "last_expired": null,
+     "bundle_name": "dags-folder",
+     "bundle_version": null,
+     "relative_fileloc": "etl_nightly.py",
+     "fileloc": "/opt/airflow/dags/etl_nightly.py",
+     "description": "Loads yesterday's orders into the warehouse",
+     "timetable_summary": "0 0 * * *",
+     "timetable_description": "At 00:00",
+     "tags": [
+      {
+       "name": "etl",
+       "dag_id": "etl_nightly"
+      },
+      {
+       "name": "orders",
+       "dag_id": "etl_nightly"
+      }
+     ],
+     "max_active_tasks": 16,
+     "max_active_runs": 1,
+     "max_consecutive_failed_dag_runs": 0,
+     "has_task_concurrency_limits": false,
+     "has_import_errors": false,
+     "next_dagrun_logical_date": "2026-09-30T00:00:00+00:00",
+     "next_dagrun_data_interval_start": "2026-09-30T00:00:00+00:00",
+     "next_dagrun_data_interval_end": "2026-09-30T00:00:00+00:00",
+     "next_dagrun_run_after": "2026-09-30T00:00:00+00:00",
+     "owners": [
+      "data-eng"
+     ],
+     "file_token": "Ii9vcHQvYWlyZmxvdy9kYWdzIg.contoso"
+    }
+   ],
+   "total_entries": 1
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly",
+  "answer": {
+   "dag_id": "etl_nightly",
+   "dag_display_name": "etl_nightly",
+   "is_paused": false,
+   "is_stale": false,
+   "last_parsed_time": "2026-09-29T11:58:02.412345+00:00",
+   "last_expired": null,
+   "bundle_name": "dags-folder",
+   "bundle_version": null,
+   "relative_fileloc": "etl_nightly.py",
+   "fileloc": "/opt/airflow/dags/etl_nightly.py",
+   "description": "Loads yesterday's orders into the warehouse",
+   "timetable_summary": "0 0 * * *",
+   "timetable_description": "At 00:00",
+   "tags": [
+    {
+     "name": "etl",
+     "dag_id": "etl_nightly"
+    },
+    {
+     "name": "orders",
+     "dag_id": "etl_nightly"
+    }
+   ],
+   "max_active_tasks": 16,
+   "max_active_runs": 1,
+   "max_consecutive_failed_dag_runs": 0,
+   "has_task_concurrency_limits": false,
+   "has_import_errors": false,
+   "next_dagrun_logical_date": "2026-09-30T00:00:00+00:00",
+   "next_dagrun_data_interval_start": "2026-09-30T00:00:00+00:00",
+   "next_dagrun_data_interval_end": "2026-09-30T00:00:00+00:00",
+   "next_dagrun_run_after": "2026-09-30T00:00:00+00:00",
+   "owners": [
+    "data-eng"
+   ],
+   "file_token": "Ii9vcHQvYWlyZmxvdy9kYWdzIg.contoso"
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/details",
+  "answer": {
+   "dag_id": "etl_nightly",
+   "dag_display_name": "etl_nightly",
+   "is_paused": false,
+   "is_stale": false,
+   "last_parsed_time": "2026-09-29T11:58:02.412345+00:00",
+   "last_expired": null,
+   "bundle_name": "dags-folder",
+   "bundle_version": null,
+   "relative_fileloc": "etl_nightly.py",
+   "fileloc": "/opt/airflow/dags/etl_nightly.py",
+   "description": "Loads yesterday's orders into the warehouse",
+   "timetable_summary": "0 0 * * *",
+   "timetable_description": "At 00:00",
+   "tags": [
+    {
+     "name": "etl",
+     "dag_id": "etl_nightly"
+    },
+    {
+     "name": "orders",
+     "dag_id": "etl_nightly"
+    }
+   ],
+   "max_active_tasks": 16,
+   "max_active_runs": 1,
+   "max_consecutive_failed_dag_runs": 0,
+   "has_task_concurrency_limits": false,
+   "has_import_errors": false,
+   "next_dagrun_logical_date": "2026-09-30T00:00:00+00:00",
+   "next_dagrun_data_interval_start": "2026-09-30T00:00:00+00:00",
+   "next_dagrun_data_interval_end": "2026-09-30T00:00:00+00:00",
+   "next_dagrun_run_after": "2026-09-30T00:00:00+00:00",
+   "owners": [
+    "data-eng"
+   ],
+   "file_token": "Ii9vcHQvYWlyZmxvdy9kYWdzIg.contoso",
+   "catchup": false,
+   "dag_run_timeout": null,
+   "asset_expression": null,
+   "doc_md": null,
+   "start_date": "2025-06-01T00:00:00+00:00",
+   "end_date": null,
+   "is_paused_upon_creation": null,
+   "params": {
+    "day": {
+     "__class": "airflow.sdk.definitions.param.Param",
+     "value": null,
+     "description": "The day to load (default: the logical date's)",
+     "schema": {
+      "type": [
+       "null",
+       "string"
+      ],
+      "format": "date"
+     },
+     "source": null
+    },
+    "full_reload": {
+     "__class": "airflow.sdk.definitions.param.Param",
+     "value": false,
+     "description": "Reload every order, not just the day's",
+     "schema": {
+      "type": "boolean"
+     },
+     "source": null
+    }
+   },
+   "render_template_as_native_obj": false,
+   "template_search_path": null,
+   "timezone": "UTC",
+   "last_parsed": "2026-09-29T11:58:02.412345+00:00",
+   "concurrency": 16,
+   "latest_dag_version": {
+    "id": "0199e5a4-0000-7000-8000-000000000007",
+    "version_number": 7,
+    "dag_id": "etl_nightly",
+    "bundle_name": "dags-folder",
+    "bundle_version": null,
+    "created_at": "2026-09-24T09:12:00+00:00",
+    "bundle_url": null
+   }
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/orders_export/details",
+  "answer": {
+   "dag_id": "orders_export",
+   "dag_display_name": "orders_export",
+   "is_paused": false,
+   "is_stale": false,
+   "last_parsed_time": "2026-09-29T11:58:02.412345+00:00",
+   "last_expired": null,
+   "bundle_name": "dags-folder",
+   "bundle_version": null,
+   "relative_fileloc": "orders_export.py",
+   "fileloc": "/opt/airflow/dags/orders_export.py",
+   "description": "Exports new orders to finance",
+   "timetable_summary": "@hourly",
+   "timetable_description": "At the start of every hour",
+   "tags": [
+    {
+     "name": "orders",
+     "dag_id": "orders_export"
+    }
+   ],
+   "max_active_tasks": 16,
+   "max_active_runs": 1,
+   "max_consecutive_failed_dag_runs": 0,
+   "has_task_concurrency_limits": false,
+   "has_import_errors": false,
+   "next_dagrun_logical_date": "2026-09-29T12:00:00+00:00",
+   "next_dagrun_data_interval_start": "2026-09-29T12:00:00+00:00",
+   "next_dagrun_data_interval_end": "2026-09-29T12:00:00+00:00",
+   "next_dagrun_run_after": "2026-09-29T12:00:00+00:00",
+   "owners": [
+    "data-eng"
+   ],
+   "file_token": "Ii9vcHQvYWlyZmxvdy9kYWdzIg.contoso",
+   "catchup": false,
+   "params": {},
+   "latest_dag_version": null,
+   "last_parsed": "2026-09-29T11:58:02.412345+00:00"
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/reports_weekly/details",
+  "answer": {
+   "dag_id": "reports_weekly",
+   "dag_display_name": "reports_weekly",
+   "is_paused": true,
+   "is_stale": false,
+   "last_parsed_time": "2026-09-29T11:58:02.412345+00:00",
+   "last_expired": null,
+   "bundle_name": "dags-folder",
+   "bundle_version": null,
+   "relative_fileloc": "reports_weekly.py",
+   "fileloc": "/opt/airflow/dags/reports_weekly.py",
+   "description": "Weekly sales report, paused since the report moved",
+   "timetable_summary": "0 6 * * 1",
+   "timetable_description": "At 06:00, only on Monday",
+   "tags": [
+    {
+     "name": "reports",
+     "dag_id": "reports_weekly"
+    }
+   ],
+   "max_active_tasks": 16,
+   "max_active_runs": 1,
+   "max_consecutive_failed_dag_runs": 0,
+   "has_task_concurrency_limits": false,
+   "has_import_errors": false,
+   "next_dagrun_logical_date": null,
+   "next_dagrun_data_interval_start": null,
+   "next_dagrun_data_interval_end": null,
+   "next_dagrun_run_after": null,
+   "owners": [
+    "analytics"
+   ],
+   "file_token": "Ii9vcHQvYWlyZmxvdy9kYWdzIg.contoso",
+   "catchup": false,
+   "params": {},
+   "latest_dag_version": null,
+   "last_parsed": "2026-09-29T11:58:02.412345+00:00"
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns?order_by=-run_after&limit=5",
+  "answer": {
+   "dag_runs": [
+    {
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "queued_at": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:00:04.221+00:00",
+     "end_date": "2026-09-29T00:43:58.873+00:00",
+     "data_interval_start": "2026-09-29T00:00:00+00:00",
+     "data_interval_end": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-29T00:43:58.873+00:00",
+     "run_type": "scheduled",
+     "state": "failed",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    },
+    {
+     "dag_run_id": "scheduled__2026-09-28T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-28T00:00:00+00:00",
+     "queued_at": "2026-09-28T00:00:00+00:00",
+     "start_date": "2026-09-28T00:00:03.912+00:00",
+     "end_date": "2026-09-28T00:39:41.105+00:00",
+     "data_interval_start": "2026-09-28T00:00:00+00:00",
+     "data_interval_end": "2026-09-28T00:00:00+00:00",
+     "run_after": "2026-09-28T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-28T00:39:41.105+00:00",
+     "run_type": "scheduled",
+     "state": "success",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    },
+    {
+     "dag_run_id": "scheduled__2026-09-27T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-27T00:00:00+00:00",
+     "queued_at": "2026-09-27T00:00:00+00:00",
+     "start_date": "2026-09-27T00:00:04.018+00:00",
+     "end_date": "2026-09-27T00:38:12.660+00:00",
+     "data_interval_start": "2026-09-27T00:00:00+00:00",
+     "data_interval_end": "2026-09-27T00:00:00+00:00",
+     "run_after": "2026-09-27T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-27T00:38:12.660+00:00",
+     "run_type": "scheduled",
+     "state": "success",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    }
+   ],
+   "total_entries": 3
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/orders_export/dagRuns?order_by=-run_after&limit=5",
+  "answer": {
+   "dag_runs": [
+    {
+     "dag_run_id": "scheduled__2026-09-29T11:00:00+00:00",
+     "dag_id": "orders_export",
+     "logical_date": "2026-09-29T11:00:00+00:00",
+     "queued_at": "2026-09-29T11:00:00+00:00",
+     "start_date": "2026-09-29T11:00:02.5+00:00",
+     "end_date": "2026-09-29T11:03:10.8+00:00",
+     "data_interval_start": "2026-09-29T11:00:00+00:00",
+     "data_interval_end": "2026-09-29T11:00:00+00:00",
+     "run_after": "2026-09-29T11:00:00+00:00",
+     "last_scheduling_decision": "2026-09-29T11:03:10.8+00:00",
+     "run_type": "scheduled",
+     "state": "success",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "orders_export",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    }
+   ],
+   "total_entries": 1
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/reports_weekly/dagRuns?order_by=-run_after&limit=5",
+  "answer": {
+   "dag_runs": [],
+   "total_entries": 0
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns?order_by=-run_after&limit=1",
+  "note": "etl_nightly/latest",
+  "answer": {
+   "dag_runs": [
+    {
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "queued_at": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:00:04.221+00:00",
+     "end_date": "2026-09-29T00:43:58.873+00:00",
+     "data_interval_start": "2026-09-29T00:00:00+00:00",
+     "data_interval_end": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-29T00:43:58.873+00:00",
+     "run_type": "scheduled",
+     "state": "failed",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    }
+   ],
+   "total_entries": 1
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns?order_by=-run_after&limit=50&offset=0",
+  "answer": {
+   "dag_runs": [
+    {
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "queued_at": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:00:04.221+00:00",
+     "end_date": "2026-09-29T00:43:58.873+00:00",
+     "data_interval_start": "2026-09-29T00:00:00+00:00",
+     "data_interval_end": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-29T00:43:58.873+00:00",
+     "run_type": "scheduled",
+     "state": "failed",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    },
+    {
+     "dag_run_id": "scheduled__2026-09-28T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-28T00:00:00+00:00",
+     "queued_at": "2026-09-28T00:00:00+00:00",
+     "start_date": "2026-09-28T00:00:03.912+00:00",
+     "end_date": "2026-09-28T00:39:41.105+00:00",
+     "data_interval_start": "2026-09-28T00:00:00+00:00",
+     "data_interval_end": "2026-09-28T00:00:00+00:00",
+     "run_after": "2026-09-28T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-28T00:39:41.105+00:00",
+     "run_type": "scheduled",
+     "state": "success",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    },
+    {
+     "dag_run_id": "scheduled__2026-09-27T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-27T00:00:00+00:00",
+     "queued_at": "2026-09-27T00:00:00+00:00",
+     "start_date": "2026-09-27T00:00:04.018+00:00",
+     "end_date": "2026-09-27T00:38:12.660+00:00",
+     "data_interval_start": "2026-09-27T00:00:00+00:00",
+     "data_interval_end": "2026-09-27T00:00:00+00:00",
+     "run_after": "2026-09-27T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-27T00:38:12.660+00:00",
+     "run_type": "scheduled",
+     "state": "success",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    }
+   ],
+   "total_entries": 3
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns?order_by=-run_after&state=failed&limit=50&offset=0",
+  "answer": {
+   "dag_runs": [
+    {
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "queued_at": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:00:04.221+00:00",
+     "end_date": "2026-09-29T00:43:58.873+00:00",
+     "data_interval_start": "2026-09-29T00:00:00+00:00",
+     "data_interval_end": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-29T00:43:58.873+00:00",
+     "run_type": "scheduled",
+     "state": "failed",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    }
+   ],
+   "total_entries": 1
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns?order_by=-run_after&state=failed&run_after_gte=2026-09-28T12%3A00%3A00Z&limit=50&offset=0",
+  "answer": {
+   "dag_runs": [
+    {
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "queued_at": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:00:04.221+00:00",
+     "end_date": "2026-09-29T00:43:58.873+00:00",
+     "data_interval_start": "2026-09-29T00:00:00+00:00",
+     "data_interval_end": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-29T00:43:58.873+00:00",
+     "run_type": "scheduled",
+     "state": "failed",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    }
+   ],
+   "total_entries": 1
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/~/dagRuns?order_by=-run_after&limit=50&offset=0",
+  "answer": {
+   "dag_runs": [
+    {
+     "dag_run_id": "scheduled__2026-09-29T11:00:00+00:00",
+     "dag_id": "orders_export",
+     "logical_date": "2026-09-29T11:00:00+00:00",
+     "queued_at": "2026-09-29T11:00:00+00:00",
+     "start_date": "2026-09-29T11:00:02.5+00:00",
+     "end_date": "2026-09-29T11:03:10.8+00:00",
+     "data_interval_start": "2026-09-29T11:00:00+00:00",
+     "data_interval_end": "2026-09-29T11:00:00+00:00",
+     "run_after": "2026-09-29T11:00:00+00:00",
+     "last_scheduling_decision": "2026-09-29T11:03:10.8+00:00",
+     "run_type": "scheduled",
+     "state": "success",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "orders_export",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    },
+    {
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "queued_at": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:00:04.221+00:00",
+     "end_date": "2026-09-29T00:43:58.873+00:00",
+     "data_interval_start": "2026-09-29T00:00:00+00:00",
+     "data_interval_end": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-29T00:43:58.873+00:00",
+     "run_type": "scheduled",
+     "state": "failed",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    },
+    {
+     "dag_run_id": "scheduled__2026-09-28T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-28T00:00:00+00:00",
+     "queued_at": "2026-09-28T00:00:00+00:00",
+     "start_date": "2026-09-28T00:00:03.912+00:00",
+     "end_date": "2026-09-28T00:39:41.105+00:00",
+     "data_interval_start": "2026-09-28T00:00:00+00:00",
+     "data_interval_end": "2026-09-28T00:00:00+00:00",
+     "run_after": "2026-09-28T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-28T00:39:41.105+00:00",
+     "run_type": "scheduled",
+     "state": "success",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    },
+    {
+     "dag_run_id": "scheduled__2026-09-27T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-27T00:00:00+00:00",
+     "queued_at": "2026-09-27T00:00:00+00:00",
+     "start_date": "2026-09-27T00:00:04.018+00:00",
+     "end_date": "2026-09-27T00:38:12.660+00:00",
+     "data_interval_start": "2026-09-27T00:00:00+00:00",
+     "data_interval_end": "2026-09-27T00:00:00+00:00",
+     "run_after": "2026-09-27T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-27T00:38:12.660+00:00",
+     "run_type": "scheduled",
+     "state": "success",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    }
+   ],
+   "total_entries": 4
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/~/dagRuns?order_by=-run_after&run_after_gte=2026-09-28T12%3A00%3A00Z&limit=50&offset=0",
+  "answer": {
+   "dag_runs": [
+    {
+     "dag_run_id": "scheduled__2026-09-29T11:00:00+00:00",
+     "dag_id": "orders_export",
+     "logical_date": "2026-09-29T11:00:00+00:00",
+     "queued_at": "2026-09-29T11:00:00+00:00",
+     "start_date": "2026-09-29T11:00:02.5+00:00",
+     "end_date": "2026-09-29T11:03:10.8+00:00",
+     "data_interval_start": "2026-09-29T11:00:00+00:00",
+     "data_interval_end": "2026-09-29T11:00:00+00:00",
+     "run_after": "2026-09-29T11:00:00+00:00",
+     "last_scheduling_decision": "2026-09-29T11:03:10.8+00:00",
+     "run_type": "scheduled",
+     "state": "success",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "orders_export",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    },
+    {
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "queued_at": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:00:04.221+00:00",
+     "end_date": "2026-09-29T00:43:58.873+00:00",
+     "data_interval_start": "2026-09-29T00:00:00+00:00",
+     "data_interval_end": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-29T00:43:58.873+00:00",
+     "run_type": "scheduled",
+     "state": "failed",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    }
+   ],
+   "total_entries": 2
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/~/dagRuns?order_by=-run_after&state=failed&limit=50&offset=0",
+  "answer": {
+   "dag_runs": [
+    {
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "queued_at": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:00:04.221+00:00",
+     "end_date": "2026-09-29T00:43:58.873+00:00",
+     "data_interval_start": "2026-09-29T00:00:00+00:00",
+     "data_interval_end": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-29T00:43:58.873+00:00",
+     "run_type": "scheduled",
+     "state": "failed",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    }
+   ],
+   "total_entries": 1
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/~/dagRuns?order_by=-run_after&state=failed&run_after_gte=2026-09-28T12%3A00%3A00Z&limit=50&offset=0",
+  "answer": {
+   "dag_runs": [
+    {
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "queued_at": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:00:04.221+00:00",
+     "end_date": "2026-09-29T00:43:58.873+00:00",
+     "data_interval_start": "2026-09-29T00:00:00+00:00",
+     "data_interval_end": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-29T00:43:58.873+00:00",
+     "run_type": "scheduled",
+     "state": "failed",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    }
+   ],
+   "total_entries": 1
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-29T00%3A00%3A00%2B00%3A00",
+  "note": "last night's etl_nightly run: load_orders failed on its second try",
+  "answer": {
+   "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+   "dag_id": "etl_nightly",
+   "logical_date": "2026-09-29T00:00:00+00:00",
+   "queued_at": "2026-09-29T00:00:00+00:00",
+   "start_date": "2026-09-29T00:00:04.221+00:00",
+   "end_date": "2026-09-29T00:43:58.873+00:00",
+   "data_interval_start": "2026-09-29T00:00:00+00:00",
+   "data_interval_end": "2026-09-29T00:00:00+00:00",
+   "run_after": "2026-09-29T00:00:00+00:00",
+   "last_scheduling_decision": "2026-09-29T00:43:58.873+00:00",
+   "run_type": "scheduled",
+   "state": "failed",
+   "triggered_by": "timetable",
+   "conf": {},
+   "note": null,
+   "dag_versions": [
+    {
+     "id": "0199e5a4-0000-7000-8000-000000000007",
+     "version_number": 7,
+     "dag_id": "etl_nightly",
+     "bundle_name": "dags-folder",
+     "bundle_version": null,
+     "created_at": "2026-09-24T09:12:00+00:00",
+     "bundle_url": null
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-29T00%3A00%3A00%2B00%3A00/taskInstances?limit=100&offset=0",
+  "answer": {
+   "task_instances": [
+    {
+     "id": "0199e5b1-0000-7000-8000-000000015131",
+     "task_id": "extract_orders",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:00:06.1+00:00",
+     "end_date": "2026-09-29T00:12:40.7+00:00",
+     "duration": 754.6,
+     "state": "success",
+     "try_number": 1,
+     "max_tries": 1,
+     "task_display_name": "extract_orders",
+     "hostname": "etl-nightly-extract-orders-a1b2c3d4",
+     "unixname": "airflow",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": "2026-09-29T00:00:06.1+00:00",
+     "scheduled_when": "2026-09-29T00:00:06.1+00:00",
+     "pid": 7,
+     "executor": null,
+     "executor_config": "{}",
+     "note": null,
+     "rendered_map_index": null,
+     "rendered_fields": {
+      "op_kwargs": {
+       "day": "2026-09-28"
+      }
+     },
+     "trigger": null,
+     "triggerer_job": null,
+     "dag_version": null
+    },
+    {
+     "id": "0199e5b1-0000-7000-8000-000000017381",
+     "task_id": "transform_orders",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:12:44.0+00:00",
+     "end_date": "2026-09-29T00:40:51.3+00:00",
+     "duration": 1687.3,
+     "state": "success",
+     "try_number": 1,
+     "max_tries": 1,
+     "task_display_name": "transform_orders",
+     "hostname": "etl-nightly-transform-orders-e5f6g7h8",
+     "unixname": "airflow",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": "2026-09-29T00:12:44.0+00:00",
+     "scheduled_when": "2026-09-29T00:12:44.0+00:00",
+     "pid": 7,
+     "executor": null,
+     "executor_config": "{}",
+     "note": null,
+     "rendered_map_index": null,
+     "rendered_fields": {
+      "op_kwargs": {
+       "day": "2026-09-28"
+      }
+     },
+     "trigger": null,
+     "triggerer_job": null,
+     "dag_version": null
+    },
+    {
+     "id": "0199e5b1-0000-7000-8000-000000011662",
+     "task_id": "load_orders",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:41:07.02+00:00",
+     "end_date": "2026-09-29T00:43:55.41+00:00",
+     "duration": 168.39,
+     "state": "failed",
+     "try_number": 2,
+     "max_tries": 1,
+     "task_display_name": "load_orders",
+     "hostname": "etl-nightly-load-orders-q8x1k2vz",
+     "unixname": "airflow",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": "2026-09-29T00:41:07.02+00:00",
+     "scheduled_when": "2026-09-29T00:41:07.02+00:00",
+     "pid": 7,
+     "executor": null,
+     "executor_config": "{}",
+     "note": null,
+     "rendered_map_index": null,
+     "rendered_fields": {
+      "op_kwargs": {
+       "day": "2026-09-28"
+      }
+     },
+     "trigger": null,
+     "triggerer_job": null,
+     "dag_version": null
+    },
+    {
+     "id": "0199e5b1-0000-7000-8000-000000015220",
+     "task_id": "publish_report",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "start_date": null,
+     "end_date": "2026-09-29T00:43:58.1+00:00",
+     "duration": null,
+     "state": "upstream_failed",
+     "try_number": 0,
+     "max_tries": 1,
+     "task_display_name": "publish_report",
+     "hostname": null,
+     "unixname": null,
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": null,
+     "scheduled_when": null,
+     "pid": null,
+     "executor": null,
+     "executor_config": "{}",
+     "note": null,
+     "rendered_map_index": null,
+     "rendered_fields": {},
+     "trigger": null,
+     "triggerer_job": null,
+     "dag_version": null
+    }
+   ],
+   "total_entries": 4
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-29T00%3A00%3A00%2B00%3A00/taskInstances?state=failed&limit=100&offset=0",
+  "answer": {
+   "task_instances": [
+    {
+     "id": "0199e5b1-0000-7000-8000-000000011662",
+     "task_id": "load_orders",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:41:07.02+00:00",
+     "end_date": "2026-09-29T00:43:55.41+00:00",
+     "duration": 168.39,
+     "state": "failed",
+     "try_number": 2,
+     "max_tries": 1,
+     "task_display_name": "load_orders",
+     "hostname": "etl-nightly-load-orders-q8x1k2vz",
+     "unixname": "airflow",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": "2026-09-29T00:41:07.02+00:00",
+     "scheduled_when": "2026-09-29T00:41:07.02+00:00",
+     "pid": 7,
+     "executor": null,
+     "executor_config": "{}",
+     "note": null,
+     "rendered_map_index": null,
+     "rendered_fields": {
+      "op_kwargs": {
+       "day": "2026-09-28"
+      }
+     },
+     "trigger": null,
+     "triggerer_job": null,
+     "dag_version": null
+    }
+   ],
+   "total_entries": 1
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-29T00%3A00%3A00%2B00%3A00/taskInstances?order_by=start_date&limit=50&offset=0",
+  "answer": {
+   "task_instances": [
+    {
+     "id": "0199e5b1-0000-7000-8000-000000015131",
+     "task_id": "extract_orders",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:00:06.1+00:00",
+     "end_date": "2026-09-29T00:12:40.7+00:00",
+     "duration": 754.6,
+     "state": "success",
+     "try_number": 1,
+     "max_tries": 1,
+     "task_display_name": "extract_orders",
+     "hostname": "etl-nightly-extract-orders-a1b2c3d4",
+     "unixname": "airflow",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": "2026-09-29T00:00:06.1+00:00",
+     "scheduled_when": "2026-09-29T00:00:06.1+00:00",
+     "pid": 7,
+     "executor": null,
+     "executor_config": "{}",
+     "note": null,
+     "rendered_map_index": null,
+     "rendered_fields": {
+      "op_kwargs": {
+       "day": "2026-09-28"
+      }
+     },
+     "trigger": null,
+     "triggerer_job": null,
+     "dag_version": null
+    },
+    {
+     "id": "0199e5b1-0000-7000-8000-000000017381",
+     "task_id": "transform_orders",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:12:44.0+00:00",
+     "end_date": "2026-09-29T00:40:51.3+00:00",
+     "duration": 1687.3,
+     "state": "success",
+     "try_number": 1,
+     "max_tries": 1,
+     "task_display_name": "transform_orders",
+     "hostname": "etl-nightly-transform-orders-e5f6g7h8",
+     "unixname": "airflow",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": "2026-09-29T00:12:44.0+00:00",
+     "scheduled_when": "2026-09-29T00:12:44.0+00:00",
+     "pid": 7,
+     "executor": null,
+     "executor_config": "{}",
+     "note": null,
+     "rendered_map_index": null,
+     "rendered_fields": {
+      "op_kwargs": {
+       "day": "2026-09-28"
+      }
+     },
+     "trigger": null,
+     "triggerer_job": null,
+     "dag_version": null
+    },
+    {
+     "id": "0199e5b1-0000-7000-8000-000000011662",
+     "task_id": "load_orders",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:41:07.02+00:00",
+     "end_date": "2026-09-29T00:43:55.41+00:00",
+     "duration": 168.39,
+     "state": "failed",
+     "try_number": 2,
+     "max_tries": 1,
+     "task_display_name": "load_orders",
+     "hostname": "etl-nightly-load-orders-q8x1k2vz",
+     "unixname": "airflow",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": "2026-09-29T00:41:07.02+00:00",
+     "scheduled_when": "2026-09-29T00:41:07.02+00:00",
+     "pid": 7,
+     "executor": null,
+     "executor_config": "{}",
+     "note": null,
+     "rendered_map_index": null,
+     "rendered_fields": {
+      "op_kwargs": {
+       "day": "2026-09-28"
+      }
+     },
+     "trigger": null,
+     "triggerer_job": null,
+     "dag_version": null
+    },
+    {
+     "id": "0199e5b1-0000-7000-8000-000000015220",
+     "task_id": "publish_report",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "start_date": null,
+     "end_date": "2026-09-29T00:43:58.1+00:00",
+     "duration": null,
+     "state": "upstream_failed",
+     "try_number": 0,
+     "max_tries": 1,
+     "task_display_name": "publish_report",
+     "hostname": null,
+     "unixname": null,
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": null,
+     "scheduled_when": null,
+     "pid": null,
+     "executor": null,
+     "executor_config": "{}",
+     "note": null,
+     "rendered_map_index": null,
+     "rendered_fields": {},
+     "trigger": null,
+     "triggerer_job": null,
+     "dag_version": null
+    }
+   ],
+   "total_entries": 4
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-29T00%3A00%3A00%2B00%3A00/taskInstances?order_by=start_date&state=failed&limit=50&offset=0",
+  "answer": {
+   "task_instances": [
+    {
+     "id": "0199e5b1-0000-7000-8000-000000011662",
+     "task_id": "load_orders",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "run_after": "2026-09-29T00:00:00+00:00",
+     "start_date": "2026-09-29T00:41:07.02+00:00",
+     "end_date": "2026-09-29T00:43:55.41+00:00",
+     "duration": 168.39,
+     "state": "failed",
+     "try_number": 2,
+     "max_tries": 1,
+     "task_display_name": "load_orders",
+     "hostname": "etl-nightly-load-orders-q8x1k2vz",
+     "unixname": "airflow",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": "2026-09-29T00:41:07.02+00:00",
+     "scheduled_when": "2026-09-29T00:41:07.02+00:00",
+     "pid": 7,
+     "executor": null,
+     "executor_config": "{}",
+     "note": null,
+     "rendered_map_index": null,
+     "rendered_fields": {
+      "op_kwargs": {
+       "day": "2026-09-28"
+      }
+     },
+     "trigger": null,
+     "triggerer_job": null,
+     "dag_version": null
+    }
+   ],
+   "total_entries": 1
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-29T00%3A00%3A00%2B00%3A00/taskInstances/load_orders",
+  "answer": {
+   "id": "0199e5b1-0000-7000-8000-000000011662",
+   "task_id": "load_orders",
+   "dag_id": "etl_nightly",
+   "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+   "map_index": -1,
+   "logical_date": "2026-09-29T00:00:00+00:00",
+   "run_after": "2026-09-29T00:00:00+00:00",
+   "start_date": "2026-09-29T00:41:07.02+00:00",
+   "end_date": "2026-09-29T00:43:55.41+00:00",
+   "duration": 168.39,
+   "state": "failed",
+   "try_number": 2,
+   "max_tries": 1,
+   "task_display_name": "load_orders",
+   "hostname": "etl-nightly-load-orders-q8x1k2vz",
+   "unixname": "airflow",
+   "pool": "default_pool",
+   "pool_slots": 1,
+   "queue": "default",
+   "priority_weight": 1,
+   "operator": "PythonOperator",
+   "queued_when": "2026-09-29T00:41:07.02+00:00",
+   "scheduled_when": "2026-09-29T00:41:07.02+00:00",
+   "pid": 7,
+   "executor": null,
+   "executor_config": "{}",
+   "note": null,
+   "rendered_map_index": null,
+   "rendered_fields": {
+    "op_kwargs": {
+     "day": "2026-09-28"
+    }
+   },
+   "trigger": null,
+   "triggerer_job": null,
+   "dag_version": null
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-29T00%3A00%3A00%2B00%3A00/taskInstances/load_orders/tries",
+  "answer": {
+   "task_instances": [
+    {
+     "task_id": "load_orders",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "start_date": "2026-09-29T00:40:53.8+00:00",
+     "end_date": "2026-09-29T00:40:58.9+00:00",
+     "duration": 5.1,
+     "state": "failed",
+     "try_number": 1,
+     "max_tries": 1,
+     "task_display_name": "load_orders",
+     "hostname": "etl-nightly-load-orders-m2p7r4tw",
+     "unixname": "airflow",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": "2026-09-29T00:40:53.8+00:00",
+     "scheduled_when": "2026-09-29T00:40:53.8+00:00",
+     "pid": 7,
+     "executor": null,
+     "executor_config": "{}",
+     "dag_version": null
+    },
+    {
+     "task_id": "load_orders",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "start_date": "2026-09-29T00:41:07.02+00:00",
+     "end_date": "2026-09-29T00:43:55.41+00:00",
+     "duration": 168.39,
+     "state": "failed",
+     "try_number": 2,
+     "max_tries": 1,
+     "task_display_name": "load_orders",
+     "hostname": "etl-nightly-load-orders-q8x1k2vz",
+     "unixname": "airflow",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": "2026-09-29T00:41:07.02+00:00",
+     "scheduled_when": "2026-09-29T00:41:07.02+00:00",
+     "pid": 7,
+     "executor": null,
+     "executor_config": "{}",
+     "dag_version": null
+    }
+   ],
+   "total_entries": 2
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-29T00%3A00%3A00%2B00%3A00/taskInstances/load_orders/tries/2",
+  "answer": {
+   "task_id": "load_orders",
+   "dag_id": "etl_nightly",
+   "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+   "map_index": -1,
+   "start_date": "2026-09-29T00:41:07.02+00:00",
+   "end_date": "2026-09-29T00:43:55.41+00:00",
+   "duration": 168.39,
+   "state": "failed",
+   "try_number": 2,
+   "max_tries": 1,
+   "task_display_name": "load_orders",
+   "hostname": "etl-nightly-load-orders-q8x1k2vz",
+   "unixname": "airflow",
+   "pool": "default_pool",
+   "pool_slots": 1,
+   "queue": "default",
+   "priority_weight": 1,
+   "operator": "PythonOperator",
+   "queued_when": "2026-09-29T00:41:07.02+00:00",
+   "scheduled_when": "2026-09-29T00:41:07.02+00:00",
+   "pid": 7,
+   "executor": null,
+   "executor_config": "{}",
+   "dag_version": null
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-29T00%3A00%3A00%2B00%3A00/taskInstances/load_orders/logs/2?full_content=true&map_index=-1",
+  "note": "remote logging to Azure Blob keeps the log after the pod is gone",
+  "answer": {
+   "content": [
+    {
+     "event": "::group::Log message source details",
+     "timestamp": null
+    },
+    {
+     "event": "Found remote logs:",
+     "timestamp": null
+    },
+    {
+     "event": "  * https://contosoairflowlogs.blob.core.windows.net/airflow-logs/dag_id=etl_nightly/run_id=scheduled__2026-09-29T00:00:00+00:00/task_id=load_orders/attempt=2.log",
+     "timestamp": null
+    },
+    {
+     "event": "::endgroup::",
+     "timestamp": null
+    },
+    {
+     "timestamp": "2026-09-29T00:41:07.120511Z",
+     "level": "info",
+     "logger": "airflow.sdk.execution_time.task_runner",
+     "event": "Task instance is in running state",
+     "ti_id": "0199e5b1-0000-7000-8000-000000011662"
+    },
+    {
+     "timestamp": "2026-09-29T00:41:07.244103Z",
+     "level": "info",
+     "logger": "task",
+     "event": "Loading orders for 2026-09-28",
+     "rows": 48213
+    },
+    {
+     "timestamp": "2026-09-29T00:43:54.991870Z",
+     "level": "warning",
+     "logger": "task",
+     "event": "Order without a customer",
+     "order_id": 88123
+    },
+    {
+     "timestamp": "2026-09-29T00:43:55.004213Z",
+     "level": "error",
+     "logger": "task",
+     "event": "Task failed with exception",
+     "error_detail": [
+      {
+       "exc_type": "ValueError",
+       "exc_value": "order 88123 has no customer_id",
+       "exc_notes": [],
+       "syntax_error": null,
+       "is_cause": false,
+       "frames": [
+        {
+         "filename": "/home/airflow/.local/lib/python3.12/site-packages/airflow/sdk/execution_time/task_runner.py",
+         "lineno": 875,
+         "name": "run"
+        },
+        {
+         "filename": "/home/airflow/.local/lib/python3.12/site-packages/airflow/sdk/execution_time/task_runner.py",
+         "lineno": 1162,
+         "name": "_execute_task"
+        },
+        {
+         "filename": "/home/airflow/.local/lib/python3.12/site-packages/airflow/providers/standard/operators/python.py",
+         "lineno": 216,
+         "name": "execute_callable"
+        },
+        {
+         "filename": "/opt/airflow/dags/etl_nightly.py",
+         "lineno": 42,
+         "name": "load_orders"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "timestamp": "2026-09-29T00:43:55.310442Z",
+     "level": "info",
+     "logger": "task",
+     "event": "Marking task as FAILED.",
+     "dag_id": "etl_nightly",
+     "task_id": "load_orders"
+    }
+   ],
+   "continuation_token": null
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-29T00%3A00%3A00%2B00%3A00/taskInstances/extract_orders",
+  "answer": {
+   "id": "0199e5b1-0000-7000-8000-000000015131",
+   "task_id": "extract_orders",
+   "dag_id": "etl_nightly",
+   "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+   "map_index": -1,
+   "logical_date": "2026-09-29T00:00:00+00:00",
+   "run_after": "2026-09-29T00:00:00+00:00",
+   "start_date": "2026-09-29T00:00:06.1+00:00",
+   "end_date": "2026-09-29T00:12:40.7+00:00",
+   "duration": 754.6,
+   "state": "success",
+   "try_number": 1,
+   "max_tries": 1,
+   "task_display_name": "extract_orders",
+   "hostname": "etl-nightly-extract-orders-a1b2c3d4",
+   "unixname": "airflow",
+   "pool": "default_pool",
+   "pool_slots": 1,
+   "queue": "default",
+   "priority_weight": 1,
+   "operator": "PythonOperator",
+   "queued_when": "2026-09-29T00:00:06.1+00:00",
+   "scheduled_when": "2026-09-29T00:00:06.1+00:00",
+   "pid": 7,
+   "executor": null,
+   "executor_config": "{}",
+   "note": null,
+   "rendered_map_index": null,
+   "rendered_fields": {
+    "op_kwargs": {
+     "day": "2026-09-28"
+    }
+   },
+   "trigger": null,
+   "triggerer_job": null,
+   "dag_version": null
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-29T00%3A00%3A00%2B00%3A00/taskInstances/extract_orders/tries",
+  "answer": {
+   "task_instances": [
+    {
+     "task_id": "extract_orders",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "start_date": "2026-09-29T00:00:06.1+00:00",
+     "end_date": "2026-09-29T00:12:40.7+00:00",
+     "duration": 754.6,
+     "state": "success",
+     "try_number": 1,
+     "max_tries": 1,
+     "task_display_name": "extract_orders",
+     "hostname": "etl-nightly-extract-orders-a1b2c3d4",
+     "unixname": "airflow",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": "2026-09-29T00:00:06.1+00:00",
+     "scheduled_when": "2026-09-29T00:00:06.1+00:00",
+     "pid": 7,
+     "executor": null,
+     "executor_config": "{}",
+     "dag_version": null
+    }
+   ],
+   "total_entries": 1
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/importErrors?order_by=-timestamp&limit=50&offset=0",
+  "answer": {
+   "import_errors": [
+    {
+     "import_error_id": 12,
+     "timestamp": "2026-09-29T11:58:01.537+00:00",
+     "filename": "customer_sync.py",
+     "bundle_name": "dags-folder",
+     "stack_trace": "Traceback (most recent call last):\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"/opt/airflow/dags/customer_sync.py\", line 5, in <module>\n    from contoso_crm import Client\nModuleNotFoundError: No module named 'contoso_crm'\n"
+    }
+   ],
+   "total_entries": 1
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/importErrors/12",
+  "answer": {
+   "import_error_id": 12,
+   "timestamp": "2026-09-29T11:58:01.537+00:00",
+   "filename": "customer_sync.py",
+   "bundle_name": "dags-folder",
+   "stack_trace": "Traceback (most recent call last):\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"/opt/airflow/dags/customer_sync.py\", line 5, in <module>\n    from contoso_crm import Client\nModuleNotFoundError: No module named 'contoso_crm'\n"
+  }
+ }
+]

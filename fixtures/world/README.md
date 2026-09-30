@@ -19,7 +19,8 @@ agent-cli k8s deployment list
 | Variable | Why |
 |---|---|
 | `AGENT_CLI_FIXTURES` | This directory. The fixtures build answers every HTTP request from `http/*.json` and turns the cache off; the fake kubectl serves `kubectl.json` |
-| `AGENT_CLI_CONFIG` | `config.toml` here: `[ado]`, `[azure]`, `[[k8s.scope]]` |
+| `AGENT_CLI_CONFIG` | `config.toml` here: `[ado]`, `[azure]`, `[[k8s.scope]]`, `[[airflow.instance]]` |
+| `AIRFLOW_PROD_PASSWORD` | A stand-in; the recorded `/auth/token` answers any password |
 | `AGENT_CLI_NOW` | `2026-09-29T12:00:00Z`, the moment the world was recorded. Relative times (`--since 1d`, `--expires-within 30d`, ages) resolve against it, so they keep matching the recordings on any day |
 | `PATH` | `target/debug` (the fixtures build) and `scripts/fake` (`az`, `kubectl`, `kubelogin`) first. The fake `az` hands out a stand-in token; nothing checks it |
 
@@ -38,6 +39,9 @@ A release build ignores `AGENT_CLI_FIXTURES`: the feature is not in it.
 | k8s | Scope `prod` (context `aks-contoso-prod`, namespace `web`). Deployment `api` runs `contosoacr.azurecr.io/api:v1.4.2`, 3/3 ready. Deployment `worker` (`worker:v1.4.2`) is 0/1: pod `worker-5c4d3e9f1-q8zt1` is in CrashLoopBackOff with 23 restarts, BackOff events, and a previous log saying the database password was refused. Configmap `api-config`; secrets `api-env`, `worker-db`; SecretProviderClasses `api-kv` and `worker-kv`. |
 | kv | Vault `kv-contoso-prod`: `db-password` expires 2026-10-14 (within 30 days), `worker-db-password` expired 2026-09-20 (why the worker cannot log in), `api-key`, `orders-db-conn`. |
 | aks | Cluster `aks-contoso-prod` (Running). |
+| airflow | Instance `prod` (`https://airflow.contoso.example`, Airflow 3.3.2, read_only; sign-in with any password) runs KubernetesExecutor task pods in `prod/web` and logs remotely to Azure Blob. DAGs `etl_nightly` (daily at 00:00), `orders_export` (hourly), `reports_weekly` (paused). |
+| | Run `etl_nightly/scheduled__2026-09-29T00:00:00+00:00` **failed**: `extract_orders` and `transform_orders` succeeded, `load_orders` failed on try 2 with `ValueError: order 88123 has no customer_id` (`dags/etl_nightly.py:42`), `publish_report` is upstream_failed. Its pod `etl-nightly-load-orders-q8x1k2vz` (Failed, container `base`) is still in the cluster, with its log and events. |
+| | `customer_sync` is missing from the DAG list: import error **12**, `ModuleNotFoundError: No module named 'contoso_crm'`. |
 
 The deploy trace, for example (see AGENTS.md):
 
@@ -47,12 +51,23 @@ agent-cli ado run list --branch refs/tags/v1.4.2 --fields id,result
 agent-cli ado run get 8812 --fields commit,pr,workitems     # PR 431, work items 1207 and 1210
 ```
 
+Why last night's DAG failed, and the hop to its pod:
+
+```sh
+agent-cli airflow run list --dag etl_nightly --state failed --since 1d --fields id
+agent-cli airflow run get etl_nightly/latest --fields failed      # …/load_orders/2
+agent-cli airflow task logs etl_nightly/latest/load_orders/2 --tail 20 --fields error
+agent-cli airflow task get etl_nightly/latest/load_orders --fields pod
+agent-cli k8s pod logs prod/web/etl-nightly-load-orders-q8x1k2vz --tail 20
+```
+
 ## Files
 
 ```
 config.toml       the config agent-cli reads
 http/ado.json     Azure DevOps answers
 http/azure.json   Resource Graph, Key Vault and ACR answers
+http/airflow.json Airflow's REST API (/api/v2 and /auth/token)
 kubectl.json      what the fake kubectl knows: objects per context, and logs
 ```
 

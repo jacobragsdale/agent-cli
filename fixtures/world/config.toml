@@ -16,3 +16,12 @@ registries = ["contosoacr"]
 name = "prod"
 context = "aks-contoso-prod"
 namespaces = ["web"]
+
+[[airflow.instance]]
+name = "prod"
+base_url = "https://airflow.contoso.example"
+username = "agent"
+password_env = "AIRFLOW_PROD_PASSWORD"
+read_only = true
+k8s_scope = "prod"
+k8s_namespace = "web"
