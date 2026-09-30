@@ -49,5 +49,5 @@ pub use registry::{
 #[doc(hidden)]
 pub use registry::{args_of, invoke, returns_of};
 pub use search::{Quality, quality};
-pub use secret::{Secret, redact};
+pub use secret::{Secret, redact, redact_value};
 pub use when::{Span, When, now, utc, utc_time};
