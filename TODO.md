@@ -66,3 +66,4 @@
 - [x] Two labeled queries still land second: "v1.4.2 build" (`ado pipeline list` above `ado run list`; a version-shaped word could mean a tag) and t04's whole sentence (`k8s pod logs` above `k8s pod list`). Search now reads a version as `tag` and "how many" as a list, and `k8s pod logs`' summary no longer says "last restart"
 - [ ] Next round: three runs per cell, tokens and wall time per run, compared task by task with this baseline
 - [ ] The one-line global CLAUDE.md note that agent-cli exists (PLAN phase 4; the README gives the line), once the live runs pass
+- [ ] Listings say "1 commands" (`agent-cli ado pipeline`): pluralize the count
