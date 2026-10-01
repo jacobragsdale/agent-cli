@@ -5,6 +5,8 @@
 
 use agent_cli_core::{Failure, status_of};
 use anyhow::Result;
+use schemars::JsonSchema;
+use serde::Serialize;
 
 use crate::client::{Ado, Kind, query_value, segment};
 
@@ -447,6 +449,59 @@ fn decode(raw: &str) -> String {
         }
     }
     String::from_utf8_lossy(&out).into_owned()
+}
+
+/// What a verb taking `ID…` prints: the object for one id, an array in the
+/// order given for several.
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(untagged)]
+pub enum Each<T> {
+    One(T),
+    Several(Vec<T>),
+}
+
+/// `one` over each of `ids`, so several ids cost the agent one call. One id
+/// answers or fails as `one` does. With several, every id has its turn; a
+/// failed one then fails the command with the others as data. An error that
+/// is no `Failure` (a dry run stops at each change, after planning it) is
+/// returned as it is.
+pub(crate) fn each<T: Serialize>(
+    ids: &[String],
+    mut one: impl FnMut(&str) -> Result<T>,
+) -> Result<Each<T>> {
+    fn failure_of(error: &anyhow::Error) -> Option<&Failure> {
+        error
+            .chain()
+            .find_map(|cause| cause.downcast_ref::<Failure>())
+    }
+    if let [id] = ids {
+        return one(id).map(Each::One);
+    }
+    let (mut rows, mut failed) = (Vec::new(), Vec::new());
+    for id in ids {
+        match one(id) {
+            Ok(row) => rows.push(row),
+            Err(error) => failed.push((id, error)),
+        }
+    }
+    if let Some(at) = failed
+        .iter()
+        .position(|(_, error)| failure_of(error).is_none())
+    {
+        return Err(failed.swap_remove(at).1);
+    }
+    let Some(first) = failed.first().and_then(|(_, error)| failure_of(error)) else {
+        return Ok(Each::Several(rows));
+    };
+    let message = failed
+        .iter()
+        .map(|(id, error)| format!("{id}: {error:#}"))
+        .collect::<Vec<_>>()
+        .join("; ");
+    let mut failure = Failure::new(first.exit, message).with_data(&rows);
+    failure.hint.clone_from(&first.hint);
+    failure.status = first.status;
+    Err(failure.into())
 }
 
 #[cfg(test)]

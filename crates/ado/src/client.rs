@@ -348,7 +348,7 @@ impl Ado {
         found.ok_or_else(|| wrong(format!("{raw} is not a {} URL", kind.noun())))
     }
 
-    fn cache_key(&self, what: &str) -> String {
+    pub(crate) fn cache_key(&self, what: &str) -> String {
         format!("ado:{}:{what}", self.org.to_ascii_lowercase())
     }
 

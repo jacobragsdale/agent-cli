@@ -310,3 +310,24 @@ fn f5_a_pipeline_edit_is_previewed_and_its_template_error_read() {
         "{expanded}"
     );
 }
+
+#[test]
+fn several_files_are_read_in_one_call_in_the_order_given() {
+    const AT: &str = "api@4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9";
+    let both = ok(&[
+        "ado",
+        "file",
+        "get",
+        &format!("{AT}:tests/Api.Tests/OrdersClientTests.cs:58"),
+        &format!("{AT}:src/Orders/OrderClient.cs:22"),
+        "--fields",
+        "path,lines",
+    ]);
+    assert_eq!(
+        both,
+        json!([
+            {"path": "tests/Api.Tests/OrdersClientTests.cs", "lines": "38-61"},
+            {"path": "src/Orders/OrderClient.cs", "lines": "2-37"}
+        ])
+    );
+}

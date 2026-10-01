@@ -26,7 +26,7 @@
 | [`ado pr abandon`](#ado-pr-abandon) | destructive | Abandon (close) a pull request, discarding its changes |
 | [`ado thread list`](#ado-thread-list) | read | List a pull request's review threads with the code each comment is on |
 | [`ado thread comment`](#ado-thread-comment) | write | Reply to a pull request review thread, and resolve it with --resolve |
-| [`ado thread update`](#ado-thread-update) | write | Resolve, reopen or close a pull request review thread |
+| [`ado thread update`](#ado-thread-update) | write | Resolve, reopen or close pull request review threads |
 | [`ado pipeline list`](#ado-pipeline-list) | read | List build pipelines with their last run |
 | [`ado pipeline get`](#ado-pipeline-get) | read | Show a pipeline's definition: the YAML file it runs and its default branch |
 | [`ado pipeline preview`](#ado-pipeline-preview) | read | Expand a pipeline's YAML, or an edit of it, without running it |
@@ -193,10 +193,10 @@ e.g. agent-cli ado diff get 436 --file '*.cs' --fields at,path,hunks
 
 ```text
 agent-cli ado file get — Show a file in a repository at a branch, tag or commit, around a line
- *<file> str  The file: REPO[@REF]:PATH[:LINE[-LINE]] as code list, thread list and diff get print it, its web URL, or a path with --repo
-  --repo str  The repository, when FILE is a bare path
-  --ref str   The branch, tag or commit (default: the repository's default branch)
-  --line str  The line, or lines A-B, to show (one line shows 20 either side)
+ *<file> str[]  The file: REPO[@REF]:PATH[:LINE[-LINE]] as code list, thread list and diff get print it, its web URL, or a path with --repo. Several print an array, in order
+  --repo str    The repository, when FILE is a bare path
+  --ref str     The branch, tag or commit (default: the repository's default branch)
+  --line str    The line, or lines A-B, to show (one line shows 20 either side)
 Returns: {id,repo,path,ref,commit,lines,total,text}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado file get api@main:src/Program.cs:42
@@ -385,8 +385,8 @@ e.g. agent-cli ado thread comment 436/7 'Capped at 30 s in 9f1c2e4' --resolve
 ### ado thread update
 
 ```text
-agent-cli ado thread update — Resolve, reopen or close a pull request review thread
- *<id> str                      The thread: PR/THREAD (436/7) as thread list and pr get print it, or its web URL
+agent-cli ado thread update — Resolve, reopen or close pull request review threads
+ *<id> str[]                    The thread: PR/THREAD (436/7) as thread list and pr get print it, or its web URL. Several print an array, in order
  *--status active|fixed|wontFix|closed|byDesign|pending  fixed resolves it, active reopens it
   --pr str                      The pull request, when the id is the thread's number alone
 Returns: {id,status}

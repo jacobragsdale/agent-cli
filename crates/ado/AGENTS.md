@@ -17,6 +17,7 @@ approval by its GUID; a pipeline by id or name (`Ado::pipeline_id`). In
 `ids.rs`, with their URLs: a file `[PROJECT/]REPO[@REF]:PATH[:LINE[-LINE]]`
 (`FileId`, printed by `file_id`), `REPO@BASE..HEAD` (`Range`), a thread
 `436/7` (`thread_id`). A bare ref is a branch, else a tag (`resolving`).
+`each` runs a verb over `ID…` (`Each`: one object, or an array).
 
 ## Where things are (`src/`)
 A command is `<resource>/<verb>.rs`: its args, rows, handler, `command!`
@@ -36,8 +37,7 @@ and tests (`approval/list.rs` is `ado approval list`). Copy a sibling.
   workitem, pr and run share. `markdown.rs`: rich text to Markdown and back.
 - `<resource>/mod.rs`: what its verbs share (`pr/mod.rs`: the PR row,
   `latest_iteration`; `run/mod.rs`: `RunRow`; `file/mod.rs`: `fetch` a file
-  at a ref; `thread/mod.rs`: `fetch_threads`, placed on the head; `diff/mod.rs`:
-  the line diff).
+  at a ref; `thread/mod.rs`: `fetch_threads`; `diff/mod.rs`: the line diff).
 - `testing.rs`: `ado`, `ado_with`, `ado_piped`, `urls`, `dry_run`, `CONFIG`,
   `CODE`, and sample answers (`page`, `item`, `wiql`, `pr`, `build`, …).
 
@@ -55,5 +55,4 @@ checks `crates/cli/tests/world_ado.rs`; queries `crates/ado/search.toml`.
 - `@me` resolves through connection data, cached for a day.
 
 ## Never needed
-Other crates' sources, `docs/plans/`, `docs/reference/`, and the
-other domains' fixtures.
+Other crates' sources and fixtures, `docs/plans/`, `docs/reference/`.

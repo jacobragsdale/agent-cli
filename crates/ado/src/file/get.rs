@@ -4,14 +4,15 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::client::{Ado, text};
-use crate::ids::{FileId, resolving, with_repo};
+use crate::ids::{Each, FileId, each, resolving, with_repo};
 
 use super::{fetch, numbered, text_of};
 
 #[derive(clap::Args)]
 pub struct FileGetArgs {
-    /// The file: REPO[@REF]:PATH[:LINE[-LINE]] as code list, thread list and diff get print it, its web URL, or a path with --repo
-    file: String,
+    /// The file: REPO[@REF]:PATH[:LINE[-LINE]] as code list, thread list and diff get print it, its web URL, or a path with --repo. Several print an array, in order
+    #[arg(required = true)]
+    file: Vec<String>,
     /// The repository, when FILE is a bare path
     #[arg(long)]
     repo: Option<String>,
@@ -48,17 +49,21 @@ const AROUND: usize = 20;
 /// The most lines one call shows.
 const MAX_LINES: usize = 400;
 
-fn file_get(ctx: &Ctx, args: FileGetArgs) -> Result<FileText> {
+fn file_get(ctx: &Ctx, args: FileGetArgs) -> Result<Each<FileText>> {
     let ado = Ado::load(ctx)?;
+    each(&args.file, |file| file_one(ctx, &ado, &args, file))
+}
+
+fn file_one(ctx: &Ctx, ado: &Ado, args: &FileGetArgs, file: &str) -> Result<FileText> {
     let id = FileId::parse(
-        &ado,
-        &with_repo(&args.file, args.repo.as_deref()),
+        ado,
+        &with_repo(file, args.repo.as_deref()),
         args.reference.as_deref(),
         args.line.as_deref(),
     )?;
     id.agree_repo(args.repo.as_deref())?;
     if id.path.is_empty() {
-        return Err(Failure::usage(format!("{} names no file", args.file))
+        return Err(Failure::usage(format!("{file} names no file"))
             .hint(format!("agent-cli ado file list {}", id.at(None)))
             .into());
     }
@@ -66,8 +71,8 @@ fn file_get(ctx: &Ctx, args: FileGetArgs) -> Result<FileText> {
     let item = resolving(&refs, |reading| {
         fetch(
             ctx,
-            &ado,
-            id.project(&ado),
+            ado,
+            id.project(ado),
             &id.repo,
             &id.path,
             reading.first(),
@@ -233,6 +238,36 @@ mod tests {
         assert_eq!(outcome.code, 2, "{outcome:?}");
         assert!(
             outcome.stderr.contains("binary file (5 bytes)"),
+            "{}",
+            outcome.stderr
+        );
+    }
+
+    #[test]
+    fn several_files_print_an_array_in_order_and_a_refused_one_fails_with_the_rest() {
+        let (outcome, transport) = ado(
+            &["ado", "file", "get", "web:src/x.cs:2", "web:src/y.cs:1-2"],
+            vec![file(3), file(3)],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let got = outcome.json();
+        assert_eq!(got[0]["id"], "web:src/x.cs");
+        assert_eq!(got[1]["id"], "web:src/y.cs:1-2");
+        assert!(urls(&transport)[1].contains("path=%2Fsrc%2Fy.cs"));
+
+        let (outcome, _) = ado(
+            &["ado", "file", "get", "web:logo.png", "web:src/x.cs:2"],
+            vec![
+                Answer::json(&json!({"path": "/logo.png", "content": "PNG\u{0}"})),
+                file(3),
+            ],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert_eq!(outcome.json()[0]["id"], "web:src/x.cs");
+        assert!(
+            outcome
+                .stderr
+                .contains("web:logo.png: web:logo.png is a binary file"),
             "{}",
             outcome.stderr
         );
