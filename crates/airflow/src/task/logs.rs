@@ -105,6 +105,11 @@ fn task_logs(ctx: &Ctx, args: TaskLogsArgs) -> Result<TaskLogs> {
         })
         .and_then(|file| failing_line(&rendered.lines, &file))
         .map(|line| format!("{}:{line}", id.dag));
+    if let Some(at) = &at {
+        ctx.note(format!(
+            "[the failing line in the DAG's code: agent-cli airflow source get {at}]"
+        ));
+    }
     let lines = rendered.lines.len();
     let kept = if args.tail == 0 {
         lines

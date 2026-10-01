@@ -1929,6 +1929,26 @@
   }
  },
  {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-29T00%3A00%3A00%2B00%3A00/taskInstances/extract_orders/xcomEntries/extract_window?deserialize=true&stringify=false",
+  "note": "the day extract_orders read: 2026-09-28, all 48,213 rows of it",
+  "answer": {
+   "key": "extract_window",
+   "timestamp": "2026-09-29T00:00:07.311+00:00",
+   "logical_date": "2026-09-29T00:00:00+00:00",
+   "map_index": -1,
+   "task_id": "extract_orders",
+   "dag_id": "etl_nightly",
+   "run_id": "scheduled__2026-09-29T00:00:00+00:00",
+   "dag_display_name": "etl_nightly",
+   "value": {
+    "day": "2026-09-28",
+    "start": "2026-09-28T00:00:00+00:00",
+    "end": "2026-09-29T00:00:00+00:00",
+    "rows": 48213
+   }
+  }
+ },
+ {
   "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-29T00%3A00%3A00%2B00%3A00/taskInstances/extract_orders/xcomEntries/return_value?deserialize=true&stringify=false",
   "note": "order 88123 has no customer_id: what load_orders raised on",
   "answer": {
