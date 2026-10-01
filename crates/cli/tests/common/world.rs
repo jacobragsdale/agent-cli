@@ -7,7 +7,7 @@
 use std::process::Command;
 
 use agent_cli_core::Domain;
-use agent_cli_core::testing::{non_utc_times, printed_command_problems};
+use agent_cli_core::testing::{next_command, non_utc_times, printed_command_problems};
 use serde_json::Value;
 
 const REPO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../..");
@@ -70,6 +70,22 @@ pub fn agent_cli(args: &[&str]) -> Ran {
         );
     }
     ran
+}
+
+/// Runs `args`, then each command its `[next: …]` note names, until one
+/// names none: the trace an agent walks by notes alone, one run per step.
+#[allow(dead_code)] // not every world_*.rs walks notes
+pub fn follow(args: &[&str]) -> Vec<Ran> {
+    let mut argv: Vec<String> = args.iter().map(|arg| (*arg).to_owned()).collect();
+    let mut walked = Vec::new();
+    loop {
+        let ran = agent_cli(&argv.iter().map(String::as_str).collect::<Vec<_>>());
+        let next = next_command(&ran.stderr);
+        walked.push(ran);
+        let Some(next) = next else { return walked };
+        assert!(walked.len() < 10, "notes loop: {argv:?} → {next:?}");
+        argv = next;
+    }
 }
 
 pub fn ok(args: &[&str]) -> Value {

@@ -50,4 +50,5 @@ a definition for details rather than reading whole files.
   gives an `Outcome` (`code`, `.json()`); `transport.sent()` is what went out.
 - `Setup::with_env`, `with_stdin`, `with_config`, `read_only`.
 - `assert_dry_run`, `assert_read_only_refuses`, `assert_search_quality`,
-  `printed_command_problems`, `non_utc_times`.
+  `printed_command_problems`, `non_utc_times`, `next_command` (the argv a
+  `[next: agent-cli …]` note names; world tests' `follow` walks them).

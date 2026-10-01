@@ -288,6 +288,15 @@ pub fn printed_command_problems(domains: &[Domain], text: &str) -> Vec<String> {
         .collect()
 }
 
+/// The argv of the command a `[next: agent-cli …]` note in `text` names:
+/// what an agent following notes runs next.
+#[must_use]
+pub fn next_command(text: &str) -> Option<Vec<String>> {
+    let (_, rest) = text.split_once("[next: ")?;
+    let line = crate::registry::printed_commands(rest).into_iter().next()?;
+    crate::dispatch::shell_words(&line).ok()
+}
+
 /// Runs `argv --dry-run` over `answers` (the reads before its first change)
 /// and asserts it stopped at a planned change with no write verb reaching the
 /// transport. Returns what it would have done. Every write command's tests

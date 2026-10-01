@@ -89,3 +89,13 @@
 - [ ] Airflow 3 shapes to confirm live: `dagSources/{dag_id}` as JSON (`version_number` is not used, so `source get` shows the latest version, not the one a failed run used); `Filling up the DagBag from <path>` in task logs and frame paths ending in `relative_fileloc` under versioned bundles; xcom `deserialize=true` (Airflow 2 needed `enable_xcom_deserialize_support`) and `stringify=false`; pools' `slots: -1` as unlimited; `variable_key_pattern` and `connection_id_pattern` as `%`/`_` patterns; connections masking `password`, and `schema` holding an mssql database, which `sql_conn` relies on
 - [ ] From the chains trial (docs/trials/chains-2026-09-30.md): `ado file get --path P --repo R` and `ado file get REPO PATH` were each tried once; take them if a second round tries them again. Other commands that compute a next hop (`thread list`, `code list`) might note it as `task logs` now does, if agents miss it
 
+
+## Chains, round 2 (docs/plans/chains-2.md)
+
+- [ ] 1. `[next: …]` notes on `ado run get|create`, `ado pr get`, `airflow run get`, `dd monitor get`, `k8s pod get`; world traces walked by notes alone
+- [ ] 2. Failures to a line: `airflow import-error get` `repo_file`, `ado run get` `errors[{message,at}]`, `ado test list`, `file get` resolving a frame path by suffix
+- [ ] 3. `at` on `dd log list`/`span list` from `error.stack`; `ado commit list REPO[:PATH]` with `pr` and `diff`
+- [ ] 4. `k8s pod list --kv`, `k8s deployment list --image`
+- [ ] 5. `k8s deployment wait`
+- [ ] 6. Several ids: `ado file get`, `ado thread update`
+- [ ] The trial after phase 2, then after phase 5 (flows F8 to F13)
