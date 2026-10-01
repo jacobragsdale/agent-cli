@@ -3832,7 +3832,7 @@
        "linenumber": "42",
        "columnnumber": "29",
        "code": "CS0117",
-       "logFileLineNumber": "57"
+       "logFileLineNumber": "16"
       }
      },
      {
@@ -4844,6 +4844,451 @@
   "targetCommit": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
   "aheadCount": 1,
   "behindCount": 0
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/airflow-dags/items?scopePath=%2F&recursionLevel=OneLevel&api-version=7.1",
+ "exact": [
+  "scopePath",
+  "recursionLevel"
+ ],
+ "note": "airflow-dags' root: the DAG folder, the README and the requirements the workers install",
+ "answer": {
+  "count": 4,
+  "value": [
+   {
+    "objectId": "5e7a9c1b3d5f7a9e1c3b5d7f9a1c3e5b7d9f1a3c",
+    "gitObjectType": "tree",
+    "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+    "path": "/",
+    "isFolder": true
+   },
+   {
+    "objectId": "6f8b0d2e4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b",
+    "gitObjectType": "blob",
+    "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+    "path": "/README.md"
+   },
+   {
+    "objectId": "7a9c1e3f5b7d9f1a3c5e7a9b1d3f5a7c9e1b3d5f",
+    "gitObjectType": "tree",
+    "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+    "path": "/dags",
+    "isFolder": true
+   },
+   {
+    "objectId": "4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f",
+    "gitObjectType": "blob",
+    "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+    "path": "/requirements.txt"
+   }
+  ]
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/airflow-dags/items?scopePath=%2F&recursionLevel=Full&api-version=7.1",
+ "exact": [
+  "scopePath",
+  "recursionLevel"
+ ],
+ "note": "airflow-dags' whole tree: four DAGs, the README and requirements.txt",
+ "answer": {
+  "count": 8,
+  "value": [
+   {
+    "objectId": "5e7a9c1b3d5f7a9e1c3b5d7f9a1c3e5b7d9f1a3c",
+    "gitObjectType": "tree",
+    "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+    "path": "/",
+    "isFolder": true
+   },
+   {
+    "objectId": "6f8b0d2e4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b",
+    "gitObjectType": "blob",
+    "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+    "path": "/README.md"
+   },
+   {
+    "objectId": "7a9c1e3f5b7d9f1a3c5e7a9b1d3f5a7c9e1b3d5f",
+    "gitObjectType": "tree",
+    "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+    "path": "/dags",
+    "isFolder": true
+   },
+   {
+    "objectId": "3b5d7f9a1c3e5a7c9e1b3d5f7a9c1e3b5d7f9a1c",
+    "gitObjectType": "blob",
+    "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+    "path": "/dags/customer_sync.py"
+   },
+   {
+    "objectId": "006c34c4ba91d66cee18c7f65d5b7f764b8286e9",
+    "gitObjectType": "blob",
+    "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+    "path": "/dags/etl_nightly.py"
+   },
+   {
+    "objectId": "9e1b3d5f7a9c1e3b5d7f9a1c3e5a7c9e1b3d5f7a",
+    "gitObjectType": "blob",
+    "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+    "path": "/dags/orders_export.py"
+   },
+   {
+    "objectId": "2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c",
+    "gitObjectType": "blob",
+    "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+    "path": "/dags/reports_weekly.py"
+   },
+   {
+    "objectId": "4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f",
+    "gitObjectType": "blob",
+    "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+    "path": "/requirements.txt"
+   }
+  ]
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/airflow-dags/items?path=%2Frequirements.txt&includeContent=true&$format=json&api-version=7.1",
+ "exact": [
+  "path"
+ ],
+ "note": "the packages the workers install: contoso-orders (etl_nightly.py imports it) but not contoso-crm, which customer_sync.py imports (import error 12)",
+ "answer": {
+  "objectId": "4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f",
+  "gitObjectType": "blob",
+  "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+  "path": "/requirements.txt",
+  "content": "# What the prod Airflow workers pip install beside Airflow itself, which\n# the worker image pins. A DAG that imports a package not listed here fails\n# to import on the workers.\napache-airflow-providers-standard==1.9.0\napache-airflow-providers-http==5.3.3\napache-airflow-providers-microsoft-azure==12.6.1\napache-airflow-providers-microsoft-mssql==4.3.2\ncontoso-orders==2.4.0\n"
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/airflow-dags/items?path=%2FREADME.md&includeContent=true&$format=json&api-version=7.1",
+ "exact": [
+  "path"
+ ],
+ "answer": {
+  "objectId": "6f8b0d2e4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b",
+  "gitObjectType": "blob",
+  "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+  "path": "/README.md",
+  "content": "# airflow-dags\n\nThe DAGs the prod Airflow instance (https://airflow.contoso.example) runs, from `dags/`.\n\nA package a DAG imports goes in `requirements.txt`; the worker image installs it on its next deploy.\n"
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/airflow-dags/commits?searchCriteria.$top=51&searchCriteria.itemPath=%2Fdags%2Fcustomer_sync.py&api-version=7.1",
+ "exact": [
+  "searchCriteria.itemPath"
+ ],
+ "note": "customer_sync.py's history: Sam Lee pushed it straight to main five minutes before import error 12",
+ "answer": {
+  "count": 1,
+  "value": [
+   {
+    "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+    "parents": [
+     "8f2a4c6e0b1d3f5a7c9e2b4d6f8a0c1e3b5d7f9a"
+    ],
+    "author": {
+     "name": "Sam Lee",
+     "email": "sam@contoso.com",
+     "date": "2026-09-29T11:52:37Z"
+    },
+    "committer": {
+     "name": "Sam Lee",
+     "email": "sam@contoso.com",
+     "date": "2026-09-29T11:53:10Z"
+    },
+    "comment": "Add hourly customer sync from the CRM",
+    "changeCounts": {
+     "Add": 1,
+     "Edit": 0,
+     "Delete": 0
+    },
+    "url": "https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0003/commits/b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+    "remoteUrl": "https://dev.azure.com/contoso/Fabrikam/_git/airflow-dags/commit/b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9"
+   }
+  ]
+ }
+}
+,
+{
+ "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/airflow-dags/pullrequestquery?api-version=7.1",
+ "body": {
+  "queries": [
+   {
+    "type": "lastMergeCommit",
+    "items": [
+     "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9"
+    ]
+   }
+  ]
+ },
+ "note": "no pull request merged customer_sync.py",
+ "answer": {
+  "results": [
+   {}
+  ]
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/commits?searchCriteria.$top=51&api-version=7.1",
+ "exact": [
+  "searchCriteria.itemPath"
+ ],
+ "note": "api's history on main: PR 431's merge (v1.4.2) and its head, the orders client (v1.4.1), the pipeline and the first commit",
+ "answer": {
+  "count": 5,
+  "value": [
+   {
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "parents": [
+     "2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b",
+     "9d31e0a7c2b4f6e8a0c2e4f6a8b0c2d4e6f8a0b2"
+    ],
+    "author": {
+     "name": "Jane Doe",
+     "email": "jane@contoso.com",
+     "date": "2026-09-28T20:14:00Z"
+    },
+    "committer": {
+     "name": "Jane Doe",
+     "email": "jane@contoso.com",
+     "date": "2026-09-28T20:14:00Z"
+    },
+    "comment": "Merged PR 431: Retry on 429 from the orders service\n\nRetries orders-service calls that answer 429, honouring Retry-After, up to 5 times.\n\nFixes AB#1207 and AB#1210.",
+    "changeCounts": {
+     "Add": 0,
+     "Edit": 1,
+     "Delete": 0
+    },
+    "url": "https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/commits/4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "remoteUrl": "https://dev.azure.com/contoso/Fabrikam/_git/api/commit/4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+   },
+   {
+    "commitId": "9d31e0a7c2b4f6e8a0c2e4f6a8b0c2d4e6f8a0b2",
+    "parents": [
+     "2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b"
+    ],
+    "author": {
+     "name": "Jane Doe",
+     "email": "jane@contoso.com",
+     "date": "2026-09-27T14:48:30Z"
+    },
+    "committer": {
+     "name": "Jane Doe",
+     "email": "jane@contoso.com",
+     "date": "2026-09-27T14:48:30Z"
+    },
+    "comment": "Retry on 429 from the orders service",
+    "changeCounts": {
+     "Add": 0,
+     "Edit": 2,
+     "Delete": 0
+    },
+    "url": "https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/commits/9d31e0a7c2b4f6e8a0c2e4f6a8b0c2d4e6f8a0b2",
+    "remoteUrl": "https://dev.azure.com/contoso/Fabrikam/_git/api/commit/9d31e0a7c2b4f6e8a0c2e4f6a8b0c2d4e6f8a0b2"
+   },
+   {
+    "commitId": "2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b",
+    "parents": [
+     "7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c"
+    ],
+    "author": {
+     "name": "Sam Lee",
+     "email": "sam@contoso.com",
+     "date": "2026-09-15T16:20:41Z"
+    },
+    "committer": {
+     "name": "Sam Lee",
+     "email": "sam@contoso.com",
+     "date": "2026-09-15T16:22:08Z"
+    },
+    "comment": "Add the orders service client",
+    "changeCounts": {
+     "Add": 0,
+     "Edit": 1,
+     "Delete": 0
+    },
+    "url": "https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/commits/2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b",
+    "remoteUrl": "https://dev.azure.com/contoso/Fabrikam/_git/api/commit/2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b"
+   },
+   {
+    "commitId": "7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c",
+    "parents": [
+     "0c2e4a6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c"
+    ],
+    "author": {
+     "name": "Priya Patel",
+     "email": "priya@contoso.com",
+     "date": "2026-09-10T10:05:12Z"
+    },
+    "committer": {
+     "name": "Priya Patel",
+     "email": "priya@contoso.com",
+     "date": "2026-09-10T10:05:12Z"
+    },
+    "comment": "Add the api-ci pipeline and its dotnet-test template",
+    "changeCounts": {
+     "Add": 2,
+     "Edit": 0,
+     "Delete": 0
+    },
+    "url": "https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/commits/7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c",
+    "remoteUrl": "https://dev.azure.com/contoso/Fabrikam/_git/api/commit/7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c"
+   },
+   {
+    "commitId": "0c2e4a6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c",
+    "parents": [],
+    "author": {
+     "name": "Sam Lee",
+     "email": "sam@contoso.com",
+     "date": "2026-09-08T09:30:00Z"
+    },
+    "committer": {
+     "name": "Sam Lee",
+     "email": "sam@contoso.com",
+     "date": "2026-09-08T09:30:00Z"
+    },
+    "comment": "Create the api service",
+    "changeCounts": {
+     "Add": 5,
+     "Edit": 0,
+     "Delete": 0
+    },
+    "url": "https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/commits/0c2e4a6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c",
+    "remoteUrl": "https://dev.azure.com/contoso/Fabrikam/_git/api/commit/0c2e4a6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c"
+   }
+  ]
+ }
+}
+,
+{
+ "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/pullrequestquery?api-version=7.1",
+ "body": {
+  "queries": [
+   {
+    "type": "lastMergeCommit",
+    "items": [
+     "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "9d31e0a7c2b4f6e8a0c2e4f6a8b0c2d4e6f8a0b2",
+     "2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b",
+     "7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c",
+     "0c2e4a6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c"
+    ]
+   }
+  ]
+ },
+ "note": "the whole history's pull requests: only 4be1c0d2 is a merge (PR 431)",
+ "answer": {
+  "results": [
+   {
+    "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9": [
+     {
+      "pullRequestId": 431,
+      "codeReviewId": 431,
+      "status": "completed",
+      "repository": {
+       "id": "00000000-0000-4000-8000-0000000a0001",
+       "name": "api",
+       "project": {
+        "id": "00000000-0000-4000-8000-00000000f001",
+        "name": "Fabrikam"
+       }
+      },
+      "title": "Retry on 429 from the orders service",
+      "description": "Retries orders-service calls that answer **429**, honouring `Retry-After`, up to 5 times.\n\nFixes AB#1207 and AB#1210.",
+      "createdBy": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "creationDate": "2026-09-27T15:02:11.8830000Z",
+      "closedDate": "2026-09-28T20:14:00.1210000Z",
+      "sourceRefName": "refs/heads/1207-retry-on-429",
+      "targetRefName": "refs/heads/main",
+      "mergeStatus": "succeeded",
+      "isDraft": false,
+      "lastMergeSourceCommit": {
+       "commitId": "9d31e0a7c2b4f6e8a0c2e4f6a8b0c2d4e6f8a0b2"
+      },
+      "lastMergeCommit": {
+       "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+      },
+      "reviewers": [
+       {
+        "displayName": "Sam Lee",
+        "uniqueName": "sam@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e2",
+        "vote": 10,
+        "isRequired": true
+       },
+       {
+        "displayName": "Priya Patel",
+        "uniqueName": "priya@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e3",
+        "vote": 10
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8814/logs?api-version=7.1",
+ "answer": {
+  "count": 3,
+  "value": [
+   {
+    "id": 2,
+    "lineCount": 31
+   },
+   {
+    "id": 4,
+    "lineCount": 24
+   },
+   {
+    "id": 5,
+    "lineCount": 18
+   }
+  ]
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8814/logs/5?startLine=0&api-version=7.1",
+ "note": "the Build task: net8.0 builds, netstandard2.0 fails on the jitter line (timeline issue at log line 16)",
+ "answer": {
+  "count": 18,
+  "value": [
+   "2026-09-29T09:10:49.6120331Z ##[section]Starting: Build",
+   "2026-09-29T09:10:49.6131184Z ==============================================================================",
+   "2026-09-29T09:10:49.6131871Z Task         : Bash",
+   "2026-09-29T09:10:49.6132015Z Description  : Run a Bash script on macOS, Linux, or Windows",
+   "2026-09-29T09:10:49.6132240Z Version      : 3.250.1",
+   "2026-09-29T09:10:49.6132512Z ==============================================================================",
+   "2026-09-29T09:10:49.9410037Z Generating script.",
+   "2026-09-29T09:10:49.9431102Z Script contents:",
+   "2026-09-29T09:10:49.9431873Z dotnet build src/Api.csproj --configuration Release -consoleLoggerParameters:NoSummary",
+   "2026-09-29T09:10:49.9432215Z ========================== Starting Command Output ===========================",
+   "2026-09-29T09:10:49.9520311Z [command]/usr/bin/bash /home/vsts/work/_temp/4c1e9a2b-7d3f-4e8a-9b6c-2f0d1a3e5c7b.sh",
+   "2026-09-29T09:10:51.2204118Z MSBuild version 17.11.9+a69bbaaf5 for .NET",
+   "2026-09-29T09:10:53.0071952Z   Determining projects to restore...",
+   "2026-09-29T09:11:01.4412870Z   Restored /home/vsts/work/1/s/src/Api.csproj (in 6.42 sec).",
+   "2026-09-29T09:12:41.8803317Z   Api -> /home/vsts/work/1/s/src/bin/Release/net8.0/Api.dll",
+   "2026-09-29T09:12:57.3302871Z /home/vsts/work/1/s/src/Orders/OrderClient.cs(42,29): error CS0117: 'Random' does not contain a definition for 'Shared' [/home/vsts/work/1/s/src/Api.csproj::TargetFramework=netstandard2.0]",
+   "2026-09-29T09:12:58.0122309Z ##[error]Bash exited with code '1'.",
+   "2026-09-29T09:12:58.0131184Z ##[section]Finishing: Build"
+  ]
  }
 }
 ]

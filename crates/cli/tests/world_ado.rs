@@ -475,3 +475,79 @@ fn several_files_are_read_in_one_call_in_the_order_given() {
         ])
     );
 }
+
+#[test]
+fn airflow_dags_root_holds_the_dags_and_the_requirements_that_lack_the_crm_client() {
+    let root = ok(&["ado", "file", "list", "airflow-dags", "--fields", "path"]);
+    assert_eq!(
+        root,
+        json!([{"path": "README.md"}, {"path": "dags"}, {"path": "requirements.txt"}])
+    );
+    let tree = ok(&["ado", "file", "list", "airflow-dags", "--recursive"]);
+    let dags = tree
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|entry| string(entry, "path").starts_with("dags/"))
+        .count();
+    assert_eq!(dags, 4, "{tree}");
+    let requirements = ok(&["ado", "file", "get", "airflow-dags:requirements.txt"]);
+    let text = string(&requirements, "text");
+    assert!(text.contains("contoso-orders"), "{text}");
+    assert!(!text.contains("contoso-crm"), "{text}");
+}
+
+#[test]
+fn the_dag_that_fails_to_import_came_in_one_commit_with_no_pull_request() {
+    let commits = ok(&[
+        "ado",
+        "commit",
+        "list",
+        "airflow-dags:dags/customer_sync.py",
+    ]);
+    assert_eq!(
+        commits,
+        json!([{
+            "commit": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+            "author": "Sam Lee",
+            "date": "2026-09-29T11:53:10Z",
+            "message": "Add hourly customer sync from the CRM",
+            "diff": "airflow-dags@8f2a4c6e0b1d3f5a7c9e2b4d6f8a0c1e3b5d7f9a..b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9"
+        }])
+    );
+}
+
+#[test]
+fn a_repositorys_history_names_pr_431_on_its_merge_alone() {
+    let commits = ok(&["ado", "commit", "list", "api", "--fields", "commit,pr"]);
+    let commits = commits.as_array().unwrap();
+    assert_eq!(commits.len(), 5, "{commits:?}");
+    assert_eq!(
+        commits[0],
+        json!({"commit": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+            "pr": {"id": 431, "title": "Retry on 429 from the orders service"}})
+    );
+    assert!(commits[1..].iter().all(|commit| commit.get("pr").is_none()));
+    let by_path = ok(&[
+        "ado",
+        "commit",
+        "list",
+        "api",
+        "--path",
+        "src/Orders/OrderClient.cs",
+        "--fields",
+        "commit",
+    ]);
+    assert_eq!(by_path.as_array().map(Vec::len), Some(2), "{by_path}");
+}
+
+#[test]
+fn a_pull_requests_failed_build_log_ends_in_the_compiler_error() {
+    let logs = ok(&["ado", "run", "logs", "8814"]);
+    assert_eq!(logs["logs"], json!(["Build"]));
+    let text = string(&logs, "text");
+    assert!(
+        text.contains("/home/vsts/work/1/s/src/Orders/OrderClient.cs(42,29): error CS0117: 'Random' does not contain a definition for 'Shared'"),
+        "{text}"
+    );
+}
