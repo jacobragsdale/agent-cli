@@ -37,8 +37,9 @@ and tests (`log_count/list.rs` is `dd log-count list`). Copy a sibling.
 
 ## Fixtures
 `fixtures/world/http/dd.json` (`api.datadoghq.eu`); facts
-`fixtures/world/facts/dd.md`; world checks `crates/cli/tests/world_dd.rs`
-and the alert trace in `world_cross.rs`; queries `crates/dd/search.toml`.
+`fixtures/world/facts/dd.md`; world checks `crates/cli/tests/world_dd.rs`,
+and the alert trace in `crates/cli/tests/world_cross.rs`; queries
+`crates/dd/search.toml`.
 
 ## Quirks
 - Key headers (`DD-API-KEY`, `DD-APPLICATION-KEY`) attach at send time in

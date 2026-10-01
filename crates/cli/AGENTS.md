@@ -17,6 +17,10 @@ editing it (a new domain) is the only routine change here.
   per domain plus `README.md`; strays fail.
 - `every_command_line_in_the_docs_parses`: each `agent-cli …` in `sh` blocks
   and prose of README, AGENTS.md, `docs/` and `fixtures/world/`.
+- `the_core_card_names_every_public_export` and
+  `the_crate_cards_name_only_what_exists`: the cards match the code.
+- `no_source_file_is_too_long`: 600 lines of code, tests aside, but for
+  `scripts/large-files.txt`.
 
 ## The reference
 `UPDATE_DOCS=1 cargo test -p agent-cli reference` rewrites

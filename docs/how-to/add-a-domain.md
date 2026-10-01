@@ -57,7 +57,8 @@ src/<resource>/<verb>.rs one command: args, rows, handler, command!, tests
 
 Add a card, `crates/<name>/AGENTS.md` (at most 3 KB: what it is, config, ids,
 where things are, fixtures, quirks, what an agent can skip), and a
-`CLAUDE.md` beside it holding `@AGENTS.md`.
+`CLAUDE.md` beside it holding `@AGENTS.md`. A test holds every file and name
+the card mentions to the code.
 The workspace takes every `crates/*` as a member. Then register it in three
 places:
 

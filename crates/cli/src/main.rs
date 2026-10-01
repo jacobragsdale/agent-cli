@@ -24,6 +24,7 @@ fn main() -> ExitCode {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
     use std::path::{Path, PathBuf};
 
     use agent_cli_core::testing::{
@@ -244,6 +245,109 @@ mod tests {
             missing.is_empty(),
             "crates/core/AGENTS.md does not name {missing:?}"
         );
+    }
+
+    /// Each crate's card names only what is there, so it cannot drift from the
+    /// code unnoticed: a file it names exists, and every identifier in its code
+    /// spans appears in the crate's code, core's or the scripts'. A card is at
+    /// most 60 lines and 3 KB, and the `CLAUDE.md` beside it imports it.
+    #[test]
+    fn the_crate_cards_name_only_what_exists() {
+        fn walk(dir: &Path, found: &mut Vec<PathBuf>) {
+            for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    walk(&path, found);
+                } else {
+                    found.push(path);
+                }
+            }
+        }
+        fn words(text: &str) -> impl Iterator<Item = &str> {
+            text.split(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+                .filter(|word| word.len() >= 3 && !word.starts_with(|c: char| c.is_ascii_digit()))
+        }
+        /// `world_{kv,acr}.rs` is `world_kv.rs` and `world_acr.rs`.
+        fn expand(path: &str) -> Vec<String> {
+            match (path.find('{'), path.find('}')) {
+                (Some(open), Some(close)) if open < close => path[open + 1..close]
+                    .split(',')
+                    .flat_map(|alt| {
+                        expand(&format!("{}{alt}{}", &path[..open], &path[close + 1..]))
+                    })
+                    .collect(),
+                _ => vec![path.to_owned()],
+            }
+        }
+        let repo = Path::new(REPO);
+        let mut shared = vec![repo.join("Cargo.toml")];
+        walk(&repo.join("crates/core/src"), &mut shared);
+        walk(&repo.join("scripts"), &mut shared);
+        let mut problems = Vec::new();
+        for entry in std::fs::read_dir(repo.join("crates")).unwrap().flatten() {
+            let dir = entry.path();
+            let name = format!("crates/{}/AGENTS.md", entry.file_name().to_string_lossy());
+            let Ok(card) = std::fs::read_to_string(dir.join("AGENTS.md")) else {
+                problems.push(format!("{name} is missing"));
+                continue;
+            };
+            if card.len() > 3072 || card.lines().count() > 60 {
+                problems.push(format!("{name} is past 60 lines or 3 KB"));
+            }
+            if std::fs::read_to_string(dir.join("CLAUDE.md")).unwrap_or_default() != "@AGENTS.md\n"
+            {
+                problems.push(format!(
+                    "{name} has no CLAUDE.md holding @AGENTS.md beside it"
+                ));
+            }
+            let mut code = shared.clone();
+            walk(&dir, &mut code);
+            let text: String = code
+                .iter()
+                .filter(|path| {
+                    path.extension().is_none_or(|ext| ext == "rs") || path.ends_with("Cargo.toml")
+                })
+                .map(|path| std::fs::read_to_string(path).unwrap_or_default() + "\n")
+                .collect();
+            let known: HashSet<&str> = words(&text).collect();
+            // Odd pieces are code spans. A command line, a glob, a URL or a
+            // placeholder names nothing to look up.
+            for span in card.split('`').skip(1).step_by(2) {
+                if ["\n", "://", "<", "*", " -"]
+                    .iter()
+                    .any(|skip| span.contains(skip))
+                {
+                    continue;
+                }
+                let file = [".rs", ".md", ".json", ".toml", ".sh", ".txt"]
+                    .iter()
+                    .any(|ext| span.ends_with(ext))
+                    && !span.starts_with('.')
+                    && !span.contains(' ');
+                if file {
+                    for path in expand(span) {
+                        let bases = [
+                            repo.to_path_buf(),
+                            dir.clone(),
+                            dir.join("src"),
+                            dir.join("tests"),
+                        ];
+                        if !bases.iter().any(|base| base.join(&path).exists()) {
+                            problems.push(format!("{name}: no file {path}"));
+                        }
+                    }
+                } else {
+                    problems.extend(
+                        words(span)
+                            .filter(|word| !known.contains(word))
+                            .map(|word| {
+                                format!("{name}: `{span}` names {word}, which its code does not")
+                            }),
+                    );
+                }
+            }
+        }
+        assert!(problems.is_empty(), "{problems:#?}");
     }
 
     /// No source file passes 600 lines of code, so an agent can read a
