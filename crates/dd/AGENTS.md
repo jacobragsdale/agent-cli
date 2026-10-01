@@ -23,7 +23,7 @@ one back (`kube_tags`).
 A command is `<resource>/<verb>.rs`: its args, rows, handler, `command!`
 and tests (`log_count/list.rs` is `dd log-count list`). Copy a sibling.
 - `lib.rs`: `DOMAIN`, whose `commands` registers every command (its order
-  is the listing's). `doctor.rs`: status, doctor and the credential tests.
+  is the listing's). `doctor.rs`: status and doctor.
 - `client.rs`: `Dd::load(ctx)`, then `get(ctx, path, query)` a read,
   `search(ctx, path, body)` a POST that only reads, `change(...)` a write,
   `url`, `app` (web links). `Window` (`--since`/`--until` as ms or seconds),

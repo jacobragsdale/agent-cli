@@ -790,6 +790,8 @@ pub(crate) fn rate_limit_pause(response: &Response) -> Option<Duration> {
 
 #[cfg(test)]
 mod tests {
+    use crate::{DOMAIN, testing};
+    use agent_cli_core::testing::run;
     use agent_cli_core::testing::{Answer, FakeTransport, ctx};
     use agent_cli_core::{Config, Setup};
     use serde_json::json;
@@ -1119,5 +1121,23 @@ mod tests {
         assert!(transport.sent()[1].url.starts_with("https://vssps.dev.azure.com/contoso/_apis/identities?searchFilter=General&filterValue=sam%40contoso.com"));
         let stored = std::fs::read_to_string(dir.path().join("cache.json")).unwrap();
         assert!(!stored.contains("fixture-pat") && !stored.contains("Basic"));
+    }
+
+    #[test]
+    fn a_personal_access_token_in_the_environment_goes_as_basic() {
+        let transport = FakeTransport::answering([Answer::json(&json!({"id": 1, "rev": 1}))]);
+        let setup = Setup::fake(transport.clone())
+            .with_config(testing::CONFIG)
+            .with_env("AZURE_DEVOPS_EXT_PAT", "fixture-pat");
+        let outcome = run(
+            &[DOMAIN],
+            &["ado", "workitem", "get", "AB#1", "--comments", "0"],
+            setup,
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            transport.sent()[0].authorization.as_deref(),
+            Some("Basic OmZpeHR1cmUtcGF0")
+        );
     }
 }

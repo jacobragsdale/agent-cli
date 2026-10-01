@@ -754,6 +754,10 @@ pub(crate) fn limited<T>(ctx: &Ctx, mut rows: Vec<T>, limit: usize) -> Vec<T> {
 
 #[cfg(test)]
 mod tests {
+    use crate::DOMAIN;
+    use crate::testing::{CONFIG, TOKEN, dd, dd_with};
+    use agent_cli_core::testing::{Answer, FakeTransport, run};
+    use agent_cli_core::{Setup, Transport};
     use serde_json::json;
 
     use super::*;
@@ -856,5 +860,219 @@ mod tests {
             epoch(1_790_000_000).as_deref(),
             Some("2026-09-21T14:13:20Z")
         );
+    }
+
+    #[test]
+    fn a_token_goes_as_bearer_to_the_site_api_host_and_never_prints() {
+        let (outcome, transport) = dd(
+            &["dd", "monitor", "get", "4711"],
+            vec![Answer::status(
+                403,
+                format!(r#"{{"errors":["Forbidden: token {TOKEN} lacks monitors_read"]}}"#),
+            )],
+        );
+        assert_eq!(outcome.code, 1, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("lacks monitors_read"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(
+            outcome
+                .stderr
+                .contains("hint: the credential lacks a scope"),
+            "{}",
+            outcome.stderr
+        );
+        let sent = &transport.sent()[0];
+        assert!(
+            sent.url
+                .starts_with("https://api.datadoghq.eu/api/v1/monitor/4711?")
+        );
+        assert_eq!(
+            sent.authorization.as_deref(),
+            Some(format!("Bearer {TOKEN}").as_str())
+        );
+    }
+
+    #[test]
+    fn a_spent_token_is_fetched_again_from_its_command_once() {
+        let config = "[datadog]\ntoken_cmd = \"printf 'pup-oauth-token-1a2b3c\\\\n'\"\n";
+        let (outcome, transport) = dd_with(
+            config,
+            &["dd", "incident", "list", "--fields", "id"],
+            vec![
+                Answer::status(401, r#"{"errors":["Unauthorized"]}"#),
+                Answer::json(&json!({"data": {"attributes": {"incidents": []}}})),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let sent = transport.sent();
+        assert_eq!(sent.len(), 2);
+        assert!(
+            sent[0].url.starts_with("https://api.datadoghq.com/"),
+            "default site"
+        );
+        assert_eq!(
+            sent[1].authorization.as_deref(),
+            Some("Bearer pup-oauth-token-1a2b3c")
+        );
+        assert!(!outcome.stdout.contains("pup-oauth") && !outcome.stderr.contains("pup-oauth"));
+    }
+
+    /// Records the headers the fake transport does not.
+    #[derive(Clone, Default)]
+    struct Headers(std::sync::Arc<std::sync::Mutex<Vec<Seen>>>);
+
+    /// A URL and the headers sent with it.
+    type Seen = (String, Vec<(String, String)>);
+
+    impl Transport for Headers {
+        fn send(
+            &self,
+            request: &agent_cli_core::Request<'_>,
+            _: Option<&agent_cli_core::Secret>,
+            _: std::time::Duration,
+        ) -> anyhow::Result<agent_cli_core::Response> {
+            self.0
+                .lock()
+                .unwrap()
+                .push((request.url.clone(), request.headers.clone()));
+            Ok(agent_cli_core::Response {
+                status: 200,
+                body: r#"{"valid": true, "monitors": []}"#.to_owned(),
+                ..Default::default()
+            })
+        }
+    }
+
+    #[test]
+    fn the_key_pair_goes_in_its_headers_only_to_the_api_host_and_is_masked_everywhere() {
+        let config =
+            "[datadog]\nsite = \"us5.datadoghq.com\"\napi_key_env = \"K1\"\napp_key_env = \"K2\"\n";
+        let headers = Headers::default();
+        let setup = Setup::fake(headers.clone())
+            .with_config(config)
+            .with_env("K1", "api-key-value-0f0f0f")
+            .with_env("K2", "app-key-value-e1e1e1");
+        let outcome = run(
+            &[DOMAIN],
+            &["dd", "monitor", "list", "--fields", "id"],
+            setup,
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let seen = headers.0.lock().unwrap().clone();
+        assert!(
+            seen[0]
+                .0
+                .starts_with("https://api.us5.datadoghq.com/api/v1/monitor/search?")
+        );
+        let header = |name: &str| {
+            seen[0]
+                .1
+                .iter()
+                .find(|(key, _)| key == name)
+                .map(|(_, value)| value.clone())
+        };
+        assert_eq!(
+            header("DD-API-KEY").as_deref(),
+            Some("api-key-value-0f0f0f")
+        );
+        assert_eq!(
+            header("DD-APPLICATION-KEY").as_deref(),
+            Some("app-key-value-e1e1e1")
+        );
+
+        let plan = agent_cli_core::testing::assert_dry_run(
+            &[DOMAIN],
+            &[
+                "dd",
+                "downtime",
+                "cancel",
+                "00000000-0000-4000-8000-00000000d001",
+            ],
+            vec![],
+        );
+        assert_eq!(plan[0]["method"], "DELETE");
+        let setup = Setup::fake(FakeTransport::default())
+            .with_config(config)
+            .with_env("K1", "api-key-value-0f0f0f")
+            .with_env("K2", "app-key-value-e1e1e1");
+        let outcome = run(
+            &[DOMAIN],
+            &[
+                "dd",
+                "downtime",
+                "create",
+                "--monitor",
+                "4711",
+                "--for",
+                "30m",
+                "--dry-run",
+            ],
+            setup,
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let would = &outcome.json()["would"][0];
+        assert_eq!(would["headers"]["DD-API-KEY"], "***");
+        assert_eq!(would["headers"]["DD-APPLICATION-KEY"], "***");
+        assert!(!outcome.stdout.contains("key-value"), "{}", outcome.stdout);
+    }
+
+    #[test]
+    fn the_credential_is_never_sent_to_a_host_other_than_the_site_api() {
+        let transport = FakeTransport::default();
+        let setup = Setup::fake(transport.clone())
+            .with_config(CONFIG)
+            .with_env("DD_TEST_TOKEN", TOKEN);
+        let ctx = agent_cli_core::testing::ctx(setup);
+        let dd = Dd::load(&ctx).unwrap();
+        for url in [
+            "https://api.datadoghq.com/api/v1/validate",
+            "https://evil.example/api.datadoghq.eu/",
+            "https://api.datadoghq.eu.evil.example/api/v1/validate",
+            "http://api.datadoghq.eu/api/v1/validate",
+        ] {
+            let error = dd
+                .send(&ctx, None, Method::Get, url.to_owned(), None)
+                .unwrap_err();
+            assert!(
+                error
+                    .to_string()
+                    .contains("refusing to send the Datadog credential"),
+                "{url}: {error}"
+            );
+        }
+        assert!(transport.sent().is_empty());
+    }
+
+    #[test]
+    fn a_literal_key_in_the_file_an_unknown_site_and_no_credential_are_setup_errors() {
+        for (config, want) in [
+            (
+                "[datadog]\napi_key = \"abc\"\napp_key_env = \"K\"\n",
+                "holds the key itself",
+            ),
+            (
+                "[datadog]\nsite = \"datadog.contoso.example\"\n",
+                "is not a Datadog site",
+            ),
+            ("[datadog]\napi_key_env = \"K\"\n", "the pair needs both"),
+            (
+                "[datadog]\nsite = \"datadoghq.eu\"\n",
+                "no Datadog credential",
+            ),
+        ] {
+            let transport = FakeTransport::default();
+            let setup = Setup::fake(transport.clone()).with_config(config);
+            let outcome = run(&[DOMAIN], &["dd", "monitor", "get", "4711"], setup);
+            assert_eq!(outcome.code, 3, "{config}: {outcome:?}");
+            assert!(
+                outcome.stderr.contains(want),
+                "{config}: {}",
+                outcome.stderr
+            );
+            assert!(transport.sent().is_empty(), "{config}");
+        }
     }
 }

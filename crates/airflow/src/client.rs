@@ -878,6 +878,11 @@ pub(crate) fn note_more(ctx: &Ctx, shown: usize, total: Option<usize>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::DOMAIN;
+    use crate::testing::{CONFIG, airflow_with};
+    use agent_cli_core::Setup;
+    use agent_cli_core::testing::{Answer, FakeTransport, run};
+    use serde_json::json;
 
     #[test]
     fn a_token_goes_only_under_the_configured_base_url() {
@@ -1044,5 +1049,139 @@ mod tests {
             "scheduled__2026-09-28T00:00:00+00:00"
         );
         assert_eq!(decode("100%"), "100%");
+    }
+
+    #[test]
+    fn a_broken_instance_is_exit_3_naming_it() {
+        for (body, want) in [
+            (
+                "base_url = \"http://airflow.contoso.example\"\ntoken_env = \"T\"",
+                "plain http only to localhost",
+            ),
+            (
+                "base_url = \"https://airflow.contoso.example/api/v2\"\ntoken_env = \"T\"",
+                "ends in /api/v2",
+            ),
+            (
+                "base_url = \"https://airflow.contoso.example\"\nusername = \"a\"",
+                "username needs",
+            ),
+            (
+                "base_url = \"https://airflow.contoso.example\"",
+                "no credential",
+            ),
+            (
+                "base_url = \"https://airflow.contoso.example\"\ntoken_env = \"T\"\ntoken_cmd = \"x\"",
+                "give one of token",
+            ),
+            (
+                "base_url = \"https://airflow.contoso.example\"\ntoken_env = \"T\"\nbogus = 1",
+                "unknown field",
+            ),
+        ] {
+            let config = format!("[[airflow.instance]]\nname = \"prod\"\n{body}\n");
+            let (outcome, _) = airflow_with(&config, &["airflow", "dag", "list"], vec![]);
+            assert_eq!(outcome.code, 3, "{body}: {outcome:?}");
+            assert!(outcome.stderr.contains(want), "{body}: {}", outcome.stderr);
+        }
+    }
+
+    #[test]
+    fn a_password_signs_in_once_and_again_after_a_401_and_the_jwt_never_prints() {
+        let config = "[[airflow.instance]]\nname = \"dev\"\nbase_url = \"http://localhost:8080\"\n\
+                      username = \"agent\"\npassword_env = \"AIRFLOW_PASSWORD\"\n";
+        let page = json!({"dags": [], "total_entries": 0});
+        let transport = FakeTransport::answering([
+            Answer::status(201, r#"{"access_token":"eyJhbGciOi.first-jwt.sig1"}"#),
+            Answer::status(401, r#"{"detail":"Token expired"}"#),
+            Answer::status(201, r#"{"access_token":"eyJhbGciOi.second-jwt.sig2"}"#),
+            Answer::json(&page),
+        ]);
+        let setup = Setup::fake(transport.clone())
+            .with_config(config)
+            .with_env("AIRFLOW_PASSWORD", "dev-password-1");
+        let outcome = run(&[DOMAIN], &["airflow", "dag", "list"], setup);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let sent = transport.sent();
+        let calls: Vec<(&str, &str, Option<&str>)> = sent
+            .iter()
+            .map(|s| (s.method.wire(), s.url.as_str(), s.authorization.as_deref()))
+            .collect();
+        let dags = "http://localhost:8080/api/v2/dags?order_by=dag_id&limit=50&offset=0";
+        assert_eq!(
+            calls,
+            [
+                ("POST", "http://localhost:8080/auth/token", None),
+                ("GET", dags, Some("Bearer eyJhbGciOi.first-jwt.sig1")),
+                ("POST", "http://localhost:8080/auth/token", None),
+                ("GET", dags, Some("Bearer eyJhbGciOi.second-jwt.sig2")),
+            ]
+        );
+        assert!(sent[0].method.is_read(), "the sign-in is a read");
+        assert_eq!(
+            sent[0].body,
+            Some(json!({"username": "agent", "password": "dev-password-1"}))
+        );
+        for secret in ["first-jwt", "second-jwt", "dev-password-1"] {
+            assert!(!outcome.stdout.contains(secret) && !outcome.stderr.contains(secret));
+        }
+
+        let refused =
+            FakeTransport::answering([Answer::status(401, r#"{"detail":"Invalid credentials"}"#)]);
+        let setup = Setup::fake(refused)
+            .with_config(config)
+            .with_env("AIRFLOW_PASSWORD", "wrong-password-1");
+        let outcome = run(&[DOMAIN], &["airflow", "dag", "list"], setup);
+        assert_eq!(outcome.code, 3, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("Invalid credentials")
+                && outcome
+                    .stderr
+                    .contains("`agent-cli doctor airflow` checks it"),
+            "{}",
+            outcome.stderr
+        );
+    }
+
+    #[test]
+    fn refusals_read_as_the_next_step() {
+        for (answer, code, hint) in [
+            (
+                Answer::status(401, r#"{"detail":"Invalid token"}"#),
+                3,
+                "`agent-cli doctor airflow` checks it",
+            ),
+            (
+                Answer::status(403, r#"{"detail":"Forbidden"}"#),
+                1,
+                "lacks this permission",
+            ),
+            (
+                Answer::status(307, "").with_header("Location", "https://login.contoso.example/"),
+                3,
+                "base_url is wrong",
+            ),
+        ] {
+            // A 401 is retried once with a fresh token, so it is answered twice.
+            let answers = if answer.status == 401 {
+                vec![answer.clone(), answer]
+            } else {
+                vec![answer]
+            };
+            let (outcome, _) = airflow_with(CONFIG, &["airflow", "dag", "list"], answers);
+            assert_eq!(outcome.code, code, "{outcome:?}");
+            assert!(outcome.stderr.contains(hint), "{}", outcome.stderr);
+        }
+    }
+
+    #[test]
+    fn two_instances_and_no_flag_is_exit_2_naming_both_before_any_request() {
+        let config = format!(
+            "{CONFIG}\n[[airflow.instance]]\nname = \"qa\"\nbase_url = \"https://qa.contoso.example\"\ntoken_env = \"T\"\n"
+        );
+        let (outcome, transport) = airflow_with(&config, &["airflow", "dag", "list"], vec![]);
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(outcome.stderr.contains("prod, qa"), "{}", outcome.stderr);
+        assert!(transport.sent().is_empty());
     }
 }

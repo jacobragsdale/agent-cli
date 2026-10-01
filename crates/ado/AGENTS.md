@@ -19,7 +19,7 @@ approval by its GUID; a pipeline by id or name (`Ado::pipeline_id`).
 A command is `<resource>/<verb>.rs`: its args, rows, handler, `command!`
 and tests (`approval/list.rs` is `ado approval list`). Copy a sibling.
 - `lib.rs`: `DOMAIN`, whose `commands` registers every command (its order
-  is the listing's). `doctor.rs`: status, doctor, the PAT test.
+  is the listing's). `doctor.rs`: status and doctor.
 - `client.rs`: `Ado::load(ctx)`, then:
   - `get(ctx, url)` a read; `query(ctx, url, body)` a POST that only reads
     (WIQL, batches); `change(ctx, effect, method, url, body)` a write;

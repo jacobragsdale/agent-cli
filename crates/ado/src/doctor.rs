@@ -101,24 +101,6 @@ mod tests {
     use crate::{DOMAIN, testing};
 
     #[test]
-    fn a_personal_access_token_in_the_environment_goes_as_basic() {
-        let transport = FakeTransport::answering([Answer::json(&json!({"id": 1, "rev": 1}))]);
-        let setup = Setup::fake(transport.clone())
-            .with_config(testing::CONFIG)
-            .with_env("AZURE_DEVOPS_EXT_PAT", "fixture-pat");
-        let outcome = run(
-            &[DOMAIN],
-            &["ado", "workitem", "get", "AB#1", "--comments", "0"],
-            setup,
-        );
-        assert_eq!(outcome.code, 0, "{outcome:?}");
-        assert_eq!(
-            transport.sent()[0].authorization.as_deref(),
-            Some("Basic OmZpeHR1cmUtcGF0")
-        );
-    }
-
-    #[test]
     fn the_overview_names_the_org_and_project() {
         let config = |toml: &str| Config::parse("c.toml", Some(toml), Vec::new());
         assert_eq!(status(&config(testing::CONFIG)), "ado contoso/Fabrikam");

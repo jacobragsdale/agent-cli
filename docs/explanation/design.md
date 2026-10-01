@@ -134,8 +134,9 @@ costs an agent a few small files, whatever the registry's size.
   tests. What a resource's verbs share is in its `mod.rs`, what several
   resources share in a crate-level module, and no command file imports
   another. `check_layout` holds every command to its path, and no source file
-  passes 600 lines except the shared modules in `scripts/large-files.txt`,
-  a list that only shrinks.
+  passes 600 lines of code (its tests aside, so they stay beside what they
+  test) except the shared modules in `scripts/large-files.txt`, a list that
+  only shrinks.
 - **Each domain owns its files.** Its search queries (`search.toml`), its
   reference page, its world tests and its world facts live apart from the
   other domains', so a routine new command touches its crate, its fixtures

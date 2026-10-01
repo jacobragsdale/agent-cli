@@ -246,12 +246,31 @@ mod tests {
         );
     }
 
-    /// No source file passes 600 lines, so an agent can read a command's file
-    /// whole. `scripts/large-files.txt` lists the exceptions, each with the
-    /// count it may not grow past; one back under 600 leaves the list.
+    /// No source file passes 600 lines of code, so an agent can read a
+    /// command's file whole. Its `#[cfg(test)] mod … { }` does not count: a
+    /// test belongs beside what it tests however long that makes the file.
+    /// `scripts/large-files.txt` lists the exceptions, each with the count it
+    /// may not grow past; one back under 600 leaves the list.
     #[test]
     fn no_source_file_is_too_long() {
         const MAX: usize = 600;
+        fn code_lines(text: &str) -> usize {
+            let mut lines = text.lines().peekable();
+            let mut count = 0;
+            while let Some(line) = lines.next() {
+                let opens_tests = line == "#[cfg(test)]"
+                    && lines.peek().is_some_and(|next| {
+                        next.trim_start_matches("pub(crate) ").starts_with("mod ")
+                            && next.ends_with('{')
+                    });
+                if opens_tests {
+                    lines.by_ref().find(|line| *line == "}");
+                } else {
+                    count += 1;
+                }
+            }
+            count
+        }
         fn walk(dir: &Path, found: &mut Vec<PathBuf>) {
             for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
                 let path = entry.path();
@@ -280,16 +299,16 @@ mod tests {
         let mut problems = Vec::new();
         for path in &sources {
             let name = path.strip_prefix(repo).unwrap().display().to_string();
-            let lines = std::fs::read_to_string(path).unwrap().lines().count();
+            let lines = code_lines(&std::fs::read_to_string(path).unwrap());
             match listed.iter().find(|(listed, _)| *listed == name) {
                 Some((_, cap)) if lines > *cap => problems.push(format!(
-                    "{name}: {lines} lines, past the {cap} scripts/large-files.txt allows; split it"
+                    "{name}: {lines} lines of code, past the {cap} scripts/large-files.txt allows; split it"
                 )),
                 Some(_) if lines <= MAX => problems.push(format!(
-                    "{name}: {lines} lines; drop it from scripts/large-files.txt"
+                    "{name}: {lines} lines of code; drop it from scripts/large-files.txt"
                 )),
                 None if lines > MAX => {
-                    problems.push(format!("{name}: {lines} lines (at most {MAX}); split it"));
+                    problems.push(format!("{name}: {lines} lines of code (at most {MAX}); split it"));
                 }
                 _ => {}
             }

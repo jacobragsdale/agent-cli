@@ -562,4 +562,51 @@ mod tests {
             "https://contosoacr.azurecr.io/acr/v1/team/api/_tags?n=100&orderby=timedesc"
         );
     }
+
+    #[test]
+    fn a_repository_in_two_registries_is_ambiguous_and_in_none_is_not_found() {
+        let two = || {
+            testing::inventory(vec![
+                testing::registry("contosoacr"),
+                testing::registry("fabrikamacr"),
+            ])
+        };
+        let catalog = |names: &[&str]| Answer::json(&json!({"repositories": names}));
+        let (outcome, _) = azure(
+            &[ACR],
+            &["acr", "tag", "list", "team/api"],
+            vec![
+                two(),
+                exchanged(),
+                issued("a"),
+                catalog(&["team/api"]),
+                exchanged(),
+                issued("b"),
+                catalog(&["team/api"]),
+            ],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("team/api is in more than one registry (contosoacr, fabrikamacr)"),
+            "{}",
+            outcome.stderr
+        );
+
+        let (outcome, _) = azure(
+            &[ACR],
+            &["acr", "tag", "list", "team/api"],
+            vec![
+                two(),
+                exchanged(),
+                issued("a"),
+                catalog(&["x"]),
+                exchanged(),
+                issued("b"),
+                catalog(&[]),
+            ],
+        );
+        assert_eq!(outcome.code, 4, "{outcome:?}");
+    }
 }
