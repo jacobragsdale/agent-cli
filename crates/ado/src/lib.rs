@@ -5,6 +5,7 @@
 
 mod approval;
 mod client;
+mod diff;
 mod doctor;
 mod file;
 mod ids;
@@ -35,6 +36,7 @@ pub const DOMAIN: Domain = Domain {
         team::list::TEAM_LIST,
         repo::list::REPO_LIST,
         repo::get::REPO_GET,
+        diff::get::DIFF_GET,
         file::get::FILE_GET,
         file::list::FILE_LIST,
         pr::list::PR_LIST,
@@ -79,6 +81,9 @@ pub const DOMAIN: Domain = Domain {
         ("review comment", &["thread"]),
         ("review comments", &["thread"]),
         ("comment thread", &["thread"]),
+        ("changes", &["diff"]),
+        ("changed files", &["diff"]),
+        ("compare", &["diff"]),
         ("prs", &["pr"]),
         ("pull request", &["pr"]),
         ("pull requests", &["pr"]),
@@ -108,7 +113,7 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 34);
+        assert_eq!(DOMAIN.commands.len(), 35);
     }
 
     #[test]

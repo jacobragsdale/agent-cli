@@ -67,7 +67,7 @@ fn thread_context(ado: &Ado, pr: &Value, at: &str) -> Result<Value> {
             "--at {at} is not a file in {repo}, the pull request's repository"
         ))
         .hint(format!(
-            "agent-cli ado pr get {} --fields repo",
+            "agent-cli ado diff get {} --names-only",
             pr["pullRequestId"]
         ))
         .into());

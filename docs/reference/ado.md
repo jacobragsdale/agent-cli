@@ -1,4 +1,4 @@
-# ado — Azure DevOps (34 commands)
+# ado — Azure DevOps (35 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -11,6 +11,7 @@
 | [`ado team list`](#ado-team-list) | read | List the project's teams (for [ado] team, which @current needs) |
 | [`ado repo list`](#ado-repo-list) | read | List the project's Git repositories |
 | [`ado repo get`](#ado-repo-get) | read | Show a repository: its URLs, default branch and branches |
+| [`ado diff get`](#ado-diff-get) | read | Show what changed in a pull request or between two refs, as hunks per file |
 | [`ado file get`](#ado-file-get) | read | Show a file in a repository at a branch, tag or commit, around a line |
 | [`ado file list`](#ado-file-list) | read | List the files and folders in a repository folder at a branch, tag or commit |
 | [`ado pr list`](#ado-pr-list) | read | List pull requests by repo, author, reviewer and their vote, branch or status |
@@ -169,6 +170,20 @@ agent-cli ado repo get — Show a repository: its URLs, default branch and branc
 Returns: {name,id,project,default_branch,size,is_disabled,remote_url,ssh_url,web_url,branches[]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado repo get web --fields remote_url,default_branch
+```
+
+### ado diff get
+
+```text
+agent-cli ado diff get — Show what changed in a pull request or between two refs, as hunks per file
+ *<compare> str  A pull request (436, #436 or its URL), or two refs of a repository: REPO@BASE..HEAD
+  --file str[]   Only files matching this glob or path (repeatable): *.cs, src/Orders/OrderClient.cs
+  --names-only   Only which files changed and how, in one call
+  --unified int  Unchanged lines shown around each change (default 3)
+  --limit int    Most files to return (default 50)
+Returns: [{at,path,change,from,added,removed,hunks[{at,diff}]}]
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado diff get 436 --file '*.cs' --fields at,path,hunks
 ```
 
 ### ado file get

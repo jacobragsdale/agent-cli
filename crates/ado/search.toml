@@ -414,3 +414,19 @@ expect = "ado thread update"
 [[query]]
 text = "reopen a comment thread on a pull request"
 expect = "ado thread update"
+
+[[query]]
+text = "what changed between v1.4.1 and v1.4.2"
+expect = "ado diff get"
+
+[[query]]
+text = "show the diff of pull request 436"
+expect = "ado diff get"
+
+[[query]]
+text = "which files did this PR change"
+expect = "ado diff get"
+
+[[query]]
+text = "compare two branches of the api repo"
+expect = "ado diff get"

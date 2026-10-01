@@ -181,6 +181,44 @@ pub(crate) fn line_range(raw: &str) -> Option<(usize, usize)> {
     (first >= 1 && last >= first).then_some((first, last))
 }
 
+/// Two refs of one repository: `[PROJECT/]REPO@BASE..HEAD`.
+#[derive(Debug, PartialEq)]
+pub(crate) struct Range {
+    pub(crate) project: Option<String>,
+    pub(crate) repo: String,
+    pub(crate) base: String,
+    pub(crate) head: String,
+}
+
+impl Range {
+    pub(crate) fn parse(ado: &Ado, raw: &str) -> Result<Self> {
+        let parsed = raw.trim().split_once('@').and_then(|(left, refs)| {
+            let (base, head) = refs.split_once("..")?;
+            let (project, repo) = match left.split_once('/') {
+                Some((project, repo)) => (Some(project.to_owned()), repo),
+                None => (None, left),
+            };
+            [repo, base, head]
+                .iter()
+                .all(|part| !part.is_empty() && !part.contains(':'))
+                .then(|| Self {
+                    project: project
+                        .filter(|project| !project.eq_ignore_ascii_case(&ado.code_project)),
+                    repo: repo.to_owned(),
+                    base: base.to_owned(),
+                    head: head.to_owned(),
+                })
+        });
+        parsed.ok_or_else(|| {
+            Failure::usage(format!(
+                "{raw:?} is neither a pull request nor REPO@BASE..HEAD"
+            ))
+            .hint("agent-cli ado diff get api@v1.4.1..v1.4.2")
+            .into()
+        })
+    }
+}
+
 /// A review thread: `436/7`, its web URL (`…/pullrequest/436?discussionId=7`),
 /// or the thread's number with `pr` (`--pr`) naming the pull request.
 pub(crate) fn thread_id(ado: &Ado, raw: &str, pr: Option<&str>) -> Result<(i64, i64)> {
@@ -465,7 +503,26 @@ mod tests {
     }
 
     #[test]
-    fn a_thread_id_parses_with_its_url() {
+    fn a_range_and_a_thread_id_parse_with_their_urls() {
+        let range = Range::parse(&ado(), "api@v1.4.1..v1.4.2").unwrap();
+        assert_eq!(
+            (
+                range.repo.as_str(),
+                range.base.as_str(),
+                range.head.as_str()
+            ),
+            ("api", "v1.4.1", "v1.4.2")
+        );
+        assert_eq!(
+            Range::parse(&ado(), "Data/etl@main..dev")
+                .unwrap()
+                .project
+                .as_deref(),
+            Some("Data")
+        );
+        for bad in ["api", "api@v1", "api@..v2", "@a..b"] {
+            assert!(Range::parse(&ado(), bad).is_err(), "{bad}");
+        }
         assert_eq!(thread_id(&ado(), "436/7", None).unwrap(), (436, 7));
         assert_eq!(thread_id(&ado(), "#436/7", Some("436")).unwrap(), (436, 7));
         assert_eq!(thread_id(&ado(), "7", Some("436")).unwrap(), (436, 7));

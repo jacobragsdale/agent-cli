@@ -67,7 +67,7 @@ fn thread_comment(ctx: &Ctx, args: ThreadCommentArgs) -> Result<ThreadReplied> {
 command! {
     pub THREAD_COMMENT = ["ado", "thread", "comment"], Write,
     "Reply to a pull request review thread, and resolve it with --resolve",
-    keywords: ["answer", "respond", "resolve", "fixed", "feedback"],
+    keywords: ["answer", "respond", "resolve", "fixed"],
     example: "ado thread comment 436/7 'Capped at 30 s in 9f1c2e4' --resolve",
     run: thread_comment,
 }
