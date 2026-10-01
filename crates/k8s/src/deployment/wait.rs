@@ -92,14 +92,15 @@ fn deployment_wait(ctx: &Ctx, args: DeploymentWaitArgs) -> Result<Waited> {
                 .find(|pod| containers(pod).iter().any(|held| !held.ready))
                 .map(|pod| format!("agent-cli k8s pod get {}", target.id(pod)))
         });
-    if let Some(next) = next {
-        ctx.note(format!("[next: {next}]"));
-    }
-    Err(Failure::new(
+    let failure = Failure::new(
         Exit::Failed,
         format!("{id} exceeded its progress deadline: Kubernetes gave up on the rollout"),
     )
-    .with_data(waited)
+    .with_data(waited);
+    Err(match next {
+        Some(next) => failure.hint(next),
+        None => failure,
+    }
     .into())
 }
 
@@ -143,7 +144,7 @@ mod tests {
         assert!(outcome.json().get("rolled_out").is_none());
         assert!(
             outcome.stderr.contains(
-                "[next: agent-cli k8s pod logs qa/dev/orders-worker-5c4d3e-q8zt --previous --tail 50]"
+                "hint: agent-cli k8s pod logs qa/dev/orders-worker-5c4d3e-q8zt --previous --tail 50"
             ),
             "{}",
             outcome.stderr

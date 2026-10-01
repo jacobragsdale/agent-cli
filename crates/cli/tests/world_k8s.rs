@@ -109,7 +109,7 @@ fn a_finished_rollout_names_the_service_to_check_since_it_and_a_failed_one_exits
     assert_eq!(worker.json()["ready"], "0/1", "the row is printed as data");
     assert!(
         worker.stderr.contains(
-            "[next: agent-cli k8s pod logs prod/web/worker-5c4d3e9f1-q8zt1 --previous --tail 50]"
+            "hint: agent-cli k8s pod logs prod/web/worker-5c4d3e9f1-q8zt1 --previous --tail 50"
         ),
         "{}",
         worker.stderr
