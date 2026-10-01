@@ -1,4 +1,4 @@
-# ado — Azure DevOps (35 commands)
+# ado — Azure DevOps (36 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -14,6 +14,7 @@
 | [`ado diff get`](#ado-diff-get) | read | Show what changed in a pull request or between two refs, as hunks per file |
 | [`ado file get`](#ado-file-get) | read | Show a file in a repository at a branch, tag or commit, around a line |
 | [`ado file list`](#ado-file-list) | read | List the files and folders in a repository folder at a branch, tag or commit |
+| [`ado code list`](#ado-code-list) | read | Search code in every repository: where a symbol is defined and who calls it |
 | [`ado pr list`](#ado-pr-list) | read | List pull requests by repo, author, reviewer and their vote, branch or status |
 | [`ado pr get`](#ado-pr-get) | read | Show a pull request: reviewers and votes, work items, policies, threads |
 | [`ado pr create`](#ado-pr-create) | write | Open a pull request linked to work items, or reuse the one already open |
@@ -209,6 +210,21 @@ agent-cli ado file list — List the files and folders in a repository folder at
 Returns: [{id,path,kind}]
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado file list worker:src/Jobs --fields id,kind
+```
+
+### ado code list
+
+```text
+agent-cli ado code list — Search code in every repository: where a symbol is defined and who calls it
+ *<text> str     What to find; Code Search syntax passes through (ext:cs, class:Name, "a phrase")
+  --repo str[]   Only this repository (repeatable)
+  --project str  Only this project (default: every project, or the code project with --repo)
+  --path str     Only under this folder (src/Orders)
+  --branch str   Only this branch (default: each repository's default branch)
+  --limit int    Most rows to return (default 50)
+Returns: [{id,repo,path,line,text,matches}]
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado code list IOrderClient --fields id,text
 ```
 
 ### ado pr list

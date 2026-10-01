@@ -430,3 +430,19 @@ expect = "ado diff get"
 [[query]]
 text = "compare two branches of the api repo"
 expect = "ado diff get"
+
+[[query]]
+text = "who calls IOrderClient"
+expect = "ado code list"
+
+[[query]]
+text = "where is OrderClient defined"
+expect = "ado code list"
+
+[[query]]
+text = "grep all repositories for a string"
+expect = "ado code list"
+
+[[query]]
+text = "find usages of a class across repos"
+expect = "ado code list"

@@ -3182,5 +3182,138 @@
    "path": "/tests/Api.Tests/OrdersClientTests.cs",
    "content": "using System;\nusing System.Linq;\nusing System.Net;\nusing System.Net.Http;\nusing System.Threading;\nusing System.Threading.Tasks;\nusing Contoso.Api.Orders;\nusing Microsoft.Extensions.Logging.Testing;\nusing Xunit;\n\nnamespace Api.Tests;\n\n/// <summary>\n/// The orders client against a stub of the orders service that answers each\n/// call with the next status it was given. The retry tests run against the\n/// stub's real clock, so a Retry-After it sends is waited out for real.\n/// </summary>\npublic class OrdersClientTests\n{\n    [Fact]\n    public async Task ReturnsNullFor404()\n    {\n        var stub = new OrdersStub(HttpStatusCode.NotFound);\n        var client = new OrderClient(stub.Client);\n        Assert.Null(await client.GetAsync(7, CancellationToken.None));\n    }\n\n    [Fact]\n    public async Task GivesUpAfterMaxRetries()\n    {\n        var stub = new OrdersStub(Enumerable.Repeat(HttpStatusCode.TooManyRequests, 6).ToArray());\n        var client = new OrderClient(stub.Client);\n        await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync(7, CancellationToken.None));\n        Assert.Equal(5, stub.Calls);\n    }\n\n    [Fact]\n    public async Task LogsRetryCount()\n    {\n        var log = new FakeLogger<OrderClient>();\n        var stub = new OrdersStub(HttpStatusCode.TooManyRequests, HttpStatusCode.OK);\n        await new OrderClient(stub.Client).GetAsync(7, CancellationToken.None);\n        Assert.Contains(log.Collector.GetSnapshot(), entry => entry.Message == \"retry 1 of 5\");\n    }\n\n    [Fact(Timeout = 30_000)]\n    public async Task RetriesOn429()\n    {\n        var stub = new OrdersStub(HttpStatusCode.TooManyRequests, HttpStatusCode.OK)\n        {\n            RetryAfter = TimeSpan.FromSeconds(29),\n        };\n        // The stub asks for 29 s and the test allows 30, so the retry must\n        // honour Retry-After rather than its own backoff, and nothing after\n        // it may wait at all: under load the stub answers 429 again, and a\n        // third attempt runs past the timeout.\n        var client = new OrderClient(stub.Client);\n        Assert.NotNull(await client.GetAsync(7, CancellationToken.None));\n        Assert.Equal(2, stub.Calls);\n    }\n\n    [Fact]\n    public void JitterAddsAtMostTheDelayAgain()\n    {\n        for (var attempt = 1; attempt < 5; attempt++)\n        {\n            var delay = OrderClient.Backoff(new HttpResponseMessage(), attempt);\n            Assert.InRange(delay.TotalSeconds, 1 << attempt, 2 << attempt);\n        }\n    }\n}"
   }
+ },
+ {
+  "request": "POST https://almsearch.dev.azure.com/contoso/_apis/search/codesearchresults?api-version=7.1",
+  "note": "who uses IOrderClient: defined in api, implemented there, called from worker",
+  "body": {
+   "searchText": "IOrderClient",
+   "$skip": 0,
+   "$top": 51,
+   "includeSnippet": true
+  },
+  "answer": {
+   "count": 3,
+   "results": [
+    {
+     "fileName": "IOrderClient.cs",
+     "path": "/src/Orders/IOrderClient.cs",
+     "matches": {
+      "content": [
+       {
+        "charOffset": 103,
+        "length": 12,
+        "line": 6,
+        "column": 18,
+        "codeSnippet": "public interface IOrderClient",
+        "type": "content"
+       }
+      ],
+      "fileName": []
+     },
+     "collection": {
+      "name": "contoso"
+     },
+     "project": {
+      "id": "00000000-0000-4000-8000-00000000f001",
+      "name": "Fabrikam"
+     },
+     "repository": {
+      "name": "api",
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "git"
+     },
+     "versions": [
+      {
+       "branchName": "main",
+       "changeId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+      }
+     ],
+     "contentId": "67aa4ca072f03afe7174c4b222f5086b342e0ada"
+    },
+    {
+     "fileName": "OrderClient.cs",
+     "path": "/src/Orders/OrderClient.cs",
+     "matches": {
+      "content": [
+       {
+        "charOffset": 302,
+        "length": 12,
+        "line": 11,
+        "column": 52,
+        "codeSnippet": "public sealed class OrderClient(HttpClient http) : IOrderClient",
+        "type": "content"
+       }
+      ],
+      "fileName": []
+     },
+     "collection": {
+      "name": "contoso"
+     },
+     "project": {
+      "id": "00000000-0000-4000-8000-00000000f001",
+      "name": "Fabrikam"
+     },
+     "repository": {
+      "name": "api",
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "git"
+     },
+     "versions": [
+      {
+       "branchName": "main",
+       "changeId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+      }
+     ],
+     "contentId": "b328134bb10512528052ce9e6b3d5fdfc341f65a"
+    },
+    {
+     "fileName": "Retry.cs",
+     "path": "/src/Jobs/Retry.cs",
+     "matches": {
+      "content": [
+       {
+        "charOffset": 490,
+        "length": 12,
+        "line": 18,
+        "column": 22,
+        "codeSnippet": "private readonly IOrderClient _orders;",
+        "type": "content"
+       },
+       {
+        "charOffset": 572,
+        "length": 12,
+        "line": 21,
+        "column": 18,
+        "codeSnippet": "public Retry(IOrderClient orders, ILogger<Retry> log)",
+        "type": "content"
+       }
+      ],
+      "fileName": []
+     },
+     "collection": {
+      "name": "contoso"
+     },
+     "project": {
+      "id": "00000000-0000-4000-8000-00000000f001",
+      "name": "Fabrikam"
+     },
+     "repository": {
+      "name": "worker",
+      "id": "00000000-0000-4000-8000-0000000a0002",
+      "type": "git"
+     },
+     "versions": [
+      {
+       "branchName": "main",
+       "changeId": "6c1f8e2a4b7d9c0e3f5a1b8d2c6e9f0a4b7c1d3e"
+      }
+     ],
+     "contentId": "2fa6840d1e5ef178c7072d01c45b3b992c6d5b57"
+    }
+   ],
+   "infoCode": 0,
+   "facets": {}
+  }
  }
 ]
