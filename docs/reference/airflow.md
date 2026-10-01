@@ -1,4 +1,4 @@
-# airflow — Apache Airflow (16 commands)
+# airflow — Apache Airflow (18 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -16,6 +16,8 @@
 | [`airflow task get`](#airflow-task-get) | read | Show a task instance: its tries, its pod, and what blocks it if it is stuck |
 | [`airflow task logs`](#airflow-task-logs) | read | Read the tail of a task instance's log, with the exception that failed it |
 | [`airflow task retry`](#airflow-task-retry) | destructive | Clear task instances in any state, and their downstream, so they run again |
+| [`airflow xcom list`](#airflow-xcom-list) | read | List the XComs a task instance pushed: their keys, not their values |
+| [`airflow xcom get`](#airflow-xcom-get) | read | Show an XCom's value: what a task returned or pushed for its downstream tasks |
 | [`airflow import-error list`](#airflow-import-error-list) | read | List DAG files that fail to import, newest first: why a DAG is missing |
 | [`airflow import-error get`](#airflow-import-error-get) | read | Show an import error's full stack trace |
 
@@ -201,6 +203,34 @@ agent-cli airflow task retry — Clear task instances in any state, and their do
 Returns: {run,cleared[]}
 Destructive: needs --yes; --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow task retry etl_nightly/latest/load_orders --yes
+```
+
+### airflow xcom list
+
+```text
+agent-cli airflow xcom list — List the XComs a task instance pushed: their keys, not their values
+ *<task> str      The task instance: DAG/RUN/TASK[:MAP], or its Airflow UI URL
+  --dag str       The DAG, when the id leaves it out
+  --run str       The run id, when the id leaves it out
+  --instance str  The [[airflow.instance]] name; defaults to the only one
+  --limit int     Most rows to return (default 50)
+Returns: [{id,key,map,time}]
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow xcom list etl_nightly/latest/extract_orders --fields id,key
+```
+
+### airflow xcom get
+
+```text
+agent-cli airflow xcom get — Show an XCom's value: what a task returned or pushed for its downstream tasks
+ *<xcom> str      The XCom: DAG/RUN/TASK[:MAP]@KEY (from xcom list), or a task instance's id or URL with --key
+  --key str       The key, when the id leaves it out (default return_value)
+  --dag str       The DAG, when the id leaves it out
+  --run str       The run id, when the id leaves it out
+  --instance str  The [[airflow.instance]] name; defaults to the only one
+Returns: {id,key,time,value}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow xcom get etl_nightly/latest/extract_orders@return_value --fields value
 ```
 
 ### airflow import-error list

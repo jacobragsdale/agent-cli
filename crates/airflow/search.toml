@@ -155,6 +155,26 @@ expect = "airflow source get"
 text = "dag code of etl_nightly"
 expect = "airflow source get"
 
+[[query]]
+text = "what xcoms did extract_orders push"
+expect = "airflow xcom list"
+
+[[query]]
+text = "list the xcom keys of a task instance"
+expect = "airflow xcom list"
+
+[[query]]
+text = "show the return value of the extract_orders task"
+expect = "airflow xcom get"
+
+[[query]]
+text = "what data did extract_orders pass to load_orders"
+expect = "airflow xcom get"
+
+[[query]]
+text = "read an xcom value"
+expect = "airflow xcom get"
+
 # ---------- flows (docs/plans/chains.md): each expects its first hop ----------
 # F6: why a DAG task failed, in its code and its input.
 

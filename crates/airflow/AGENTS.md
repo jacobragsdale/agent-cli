@@ -1,7 +1,7 @@
 # airflow: Apache Airflow 3
 
-DAGs and their source, runs, task instances, logs and import errors over
-Airflow 3's REST API (`/api/v2`):
+DAGs and their source, runs, task instances, logs, XComs and import errors
+over Airflow 3's REST API (`/api/v2`):
 https://airflow.apache.org/docs/apache-airflow/stable/stable-rest-api-ref.html
 
 ## Config
@@ -19,7 +19,8 @@ MWAA). The token goes only to URLs under `base_url/` (`same_origin`), not
 `dag`, `dag/run`, `dag/run/task[:map][/try]`; `dag/latest` is the newest run
 by `run_after`. `--dag` and `--run` stand in for leading pieces; a custom run
 id holding `/` still parses. Parsed by `Ref::parse`, resolved by
-`Client::resolve`. A DAG file line: `dag:line[-line]` (`task logs`' `at`).
+`Client::resolve`. A DAG file line: `dag:line[-line]` (`task logs`' `at`);
+an XCom: `dag/run/task[:map]@key`.
 
 ## Where things are (`src/`)
 A command is `<resource>/<verb>.rs`: its args, rows, handler, `command!`
