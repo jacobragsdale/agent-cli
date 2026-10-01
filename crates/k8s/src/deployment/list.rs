@@ -1,12 +1,11 @@
 use agent_cli_core::{Ctx, When, command};
 use anyhow::Result;
-use schemars::JsonSchema;
-use serde::Serialize;
 use serde_json::Value;
 use time::OffsetDateTime;
-use time::format_description::well_known::Rfc3339;
 
-use crate::kubectl::{At, digest, items, limited, non_empty, owner_of};
+use crate::kubectl::{At, items, limited};
+
+use super::{DeploymentRow, rolled_out, row};
 
 #[derive(clap::Args)]
 pub struct DeploymentListArgs {
@@ -17,33 +16,12 @@ pub struct DeploymentListArgs {
     /// Only deployments that rolled out after this
     #[arg(long)]
     since: Option<When>,
+    /// Only deployments running this image: repo:tag (api:v1.4.2), a tag alone,
+    /// a full reference, or a digest (sha256:…)
+    #[arg(long)]
+    image: Option<String>,
     #[arg(long, default_value_t = 50)]
     limit: usize,
-}
-
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct DeploymentRow {
-    /// `cluster/namespace/name`: what `deployment restart` and `scale` take.
-    id: String,
-    name: String,
-    /// Only when the listing spans namespaces.
-    namespace: Option<String>,
-    /// Pods ready of pods wanted: 2/3.
-    ready: String,
-    replicas: i64,
-    images: Vec<Image>,
-    /// When it last rolled out.
-    updated: Option<String>,
-}
-
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct Image {
-    container: String,
-    /// What the pod template asks for, tag included: what `acr manifest get`
-    /// takes; the tag is the git tag that built it (`ado run list --branch`).
-    image: String,
-    /// The digest its pods run, when they report one.
-    digest: Option<String>,
 }
 
 fn deployment_list(ctx: &Ctx, args: DeploymentListArgs) -> Result<Vec<DeploymentRow>> {
@@ -54,58 +32,15 @@ fn deployment_list(ctx: &Ctx, args: DeploymentListArgs) -> Result<Vec<Deployment
         items(&listed).partition(|item| item["kind"].as_str() == Some("Deployment"));
     let mut rows: Vec<(Option<OffsetDateTime>, DeploymentRow)> = deployments
         .into_iter()
-        .filter_map(|item| {
-            let name = item["metadata"]["name"].as_str()?;
-            if !args.name.as_deref().is_none_or(|part| name.contains(part)) {
-                return None;
-            }
-            let updated = rolled_out(item);
-            let wanted = item["spec"]["replicas"].as_i64().unwrap_or(1);
-            let namespace = item["metadata"]["namespace"].as_str();
-            let own: Vec<&&Value> = pods
-                .iter()
-                .filter(|pod| {
-                    pod["metadata"]["namespace"].as_str() == namespace
-                        && owner_of(pod).as_deref() == Some(&format!("Deployment/{name}"))
-                })
-                .collect();
-            let images = item["spec"]["template"]["spec"]["containers"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .filter_map(|container| {
-                    let name = non_empty(&container["name"])?;
-                    let image = non_empty(&container["image"]).unwrap_or_default();
-                    let digest = own
-                        .iter()
-                        .flat_map(|pod| {
-                            pod["status"]["containerStatuses"]
-                                .as_array()
-                                .into_iter()
-                                .flatten()
-                        })
-                        .filter(|status| status["name"].as_str() == Some(name))
-                        .find_map(|status| digest(&status["imageID"]));
-                    Some(Image {
-                        container: name.to_owned(),
-                        image: image.to_owned(),
-                        digest,
-                    })
-                })
-                .collect();
-            let row = DeploymentRow {
-                id: target.id(item),
-                name: name.to_owned(),
-                namespace: target.row_namespace(item),
-                ready: format!(
-                    "{}/{wanted}",
-                    item["status"]["readyReplicas"].as_i64().unwrap_or(0)
-                ),
-                replicas: wanted,
-                images,
-                updated: updated.map(agent_cli_core::utc_time),
-            };
-            Some((updated, row))
+        .filter(|item| {
+            let name = item["metadata"]["name"].as_str().unwrap_or_default();
+            args.name.as_deref().is_none_or(|part| name.contains(part))
+        })
+        .filter_map(|item| Some((rolled_out(item), row(&target, item, &pods)?)))
+        .filter(|(_, row)| {
+            args.image
+                .as_deref()
+                .is_none_or(|wanted| row.images.iter().any(|image| image.runs(wanted)))
         })
         .collect();
     if let Some(since) = args.since {
@@ -116,19 +51,6 @@ fn deployment_list(ctx: &Ctx, args: DeploymentListArgs) -> Result<Vec<Deployment
         rows.into_iter().map(|(_, row)| row).collect(),
         args.limit,
     ))
-}
-
-/// When a deployment last rolled out: its Progressing condition's last
-/// update, which moves with each new ReplicaSet, else when it was made.
-fn rolled_out(item: &Value) -> Option<OffsetDateTime> {
-    let stamp = |value: &Value| OffsetDateTime::parse(value.as_str()?, &Rfc3339).ok();
-    item["status"]["conditions"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .find(|condition| condition["type"].as_str() == Some("Progressing"))
-        .and_then(|condition| stamp(&condition["lastUpdateTime"]))
-        .or_else(|| stamp(&item["metadata"]["creationTimestamp"]))
 }
 
 command! {
@@ -177,6 +99,31 @@ mod tests {
             names(&["k8s", "deployment", "list", "--since", "2026-09-09"]).len(),
             3
         );
+
+        for (image, want) in [
+            ("orders-api:1.2.3", &["orders-api"][..]),
+            ("1.2.3", &["orders-api", "orders-worker"]),
+            (
+                "contosoacr.azurecr.io/team/billing-api:0.9.0",
+                &["billing-api"],
+            ),
+            ("oss/envoy:1.28", &["billing-api"]),
+            (
+                "sha256:7f361af0fba5b2240abf4d78b24b30ae1ee06d320e9f0cdbabbcde359ae1a61b",
+                &["orders-api"],
+            ),
+            (
+                "contosoacr.azurecr.io/team/orders-api@sha256:7f361af0fba5b2240abf4d78b24b30ae1ee06d320e9f0cdbabbcde359ae1a61b",
+                &["orders-api"],
+            ),
+            ("api:1.2.3", &[]),
+        ] {
+            assert_eq!(
+                names(&["k8s", "deployment", "list", "--image", image]),
+                want,
+                "{image}"
+            );
+        }
 
         let everywhere = k8s(&[
             "k8s",

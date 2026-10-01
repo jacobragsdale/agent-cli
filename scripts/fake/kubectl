@@ -160,8 +160,15 @@ BUILT_IN_PODS["qa"][0]["spec"]["containers"][0]["env"] = [
 ]
 BUILT_IN_PODS["qa"][0]["spec"]["containers"][0]["envFrom"] = [{"secretRef": {"name": "orders-env"}}]
 
+BUILT_IN_DEPLOYMENTS = deployments_of(BUILT_IN_PODS["qa"])
+# Kubernetes gave up on the crash-looping worker's rollout; uat's billing-api
+# still pulls, so a rollout status on it waits.
+for d in BUILT_IN_DEPLOYMENTS:
+    if (d["metadata"]["namespace"], d["metadata"]["name"]) == ("dev", "orders-worker"):
+        d["status"]["conditions"][0].update(status="False", reason="ProgressDeadlineExceeded")
+
 BUILT_IN = {
-    "qa": BUILT_IN_PODS["qa"] + deployments_of(BUILT_IN_PODS["qa"]) + [
+    "qa": BUILT_IN_PODS["qa"] + BUILT_IN_DEPLOYMENTS + [
         event("orders-worker.1", "dev", "Pod", "orders-worker-5c4d3e-q8zt", "BackOff",
               "Back-off restarting failed container api in pod orders-worker-5c4d3e-q8zt", "Warning", 17,
               "2026-09-12T12:30:00Z"),
@@ -374,6 +381,30 @@ if args[:2] == ["delete", "pod"]:
 if args[:2] == ["rollout", "restart"]:
     print(f"{args[2]} restarted")
     sys.exit(0)
+
+if args[:2] == ["rollout", "status"]:
+    # kubectl's deployment status viewer: given up, still going, or done.
+    name = args[2].split("/", 1)[-1]
+    found = [o for o in here("Deployment") if o["metadata"]["name"] == name]
+    if not found:
+        sys.stderr.write(f'Error from server (NotFound): deployments.apps "{name}" not found\n')
+        sys.exit(1)
+    status = found[0]["status"]
+    progressing = next((c for c in status.get("conditions", []) if c["type"] == "Progressing"), {})
+    if progressing.get("reason") == "ProgressDeadlineExceeded":
+        sys.stderr.write(f'error: deployment "{name}" exceeded its progress deadline\n')
+        sys.exit(1)
+    updated = status.get("updatedReplicas", status.get("replicas", 0))
+    available = status.get("availableReplicas", status.get("readyReplicas", 0))
+    if updated >= found[0]["spec"].get("replicas", 1) and available >= updated:
+        print(f'deployment "{name}" successfully rolled out')
+        sys.exit(0)
+    print(f'Waiting for deployment "{name}" rollout to finish: {available} of {updated} updated replicas are available...',
+          flush=True)
+    timeout = next((a.split("=", 1)[1] for a in args if a.startswith("--timeout=")), "0s")
+    time.sleep(int(timeout.rstrip("s")))
+    sys.stderr.write("error: timed out waiting for the condition\n")
+    sys.exit(1)
 
 if args[:1] == ["scale"]:
     print(f"{args[1]} scaled")

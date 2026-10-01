@@ -204,7 +204,7 @@ impl At {
 impl Target {
     /// `kubectl --context C --request-timeout=10s <args> -n NS` (or
     /// `--all-namespaces`).
-    fn kubectl(&self, args: &[&str]) -> Command {
+    pub(crate) fn kubectl(&self, args: &[&str]) -> Command {
         let mut command = program("kubectl");
         command
             .args(["--context", &self.context, REQUEST_TIMEOUT])

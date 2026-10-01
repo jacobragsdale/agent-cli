@@ -61,7 +61,7 @@ pub struct ContainerRow {
     image: String,
     /// The digest it is running, when the kubelet reports one.
     digest: Option<String>,
-    ready: bool,
+    pub(crate) ready: bool,
     restarts: u64,
     /// Running, or why it waits or stopped: CrashLoopBackOff, Completed, ExitCode:137.
     state: String,
@@ -69,7 +69,7 @@ pub struct ContainerRow {
     last_termination: Option<String>,
 }
 
-fn containers(item: &Value) -> Vec<ContainerRow> {
+pub(crate) fn containers(item: &Value) -> Vec<ContainerRow> {
     let statuses = item["status"]["containerStatuses"]
         .as_array()
         .cloned()
@@ -124,6 +124,69 @@ fn containers(item: &Value) -> Vec<ContainerRow> {
                 last_termination: last,
             })
         })
+        .collect()
+}
+
+/// The command that says why a container restarted: its previous run's log,
+/// for the first container that stopped and came back. `--container` only
+/// when there is more than one, as kubectl needs it then.
+pub(crate) fn previous_logs(id: &str, containers: &[ContainerRow]) -> Option<String> {
+    let crashed = containers
+        .iter()
+        .find(|held| held.restarts > 0 && held.last_termination.is_some())?;
+    let which = if containers.len() > 1 {
+        format!(" --container {}", crashed.name)
+    } else {
+        String::new()
+    };
+    Some(format!(
+        "agent-cli k8s pod logs {id} --previous --tail 50{which}"
+    ))
+}
+
+/// The SecretProviderClasses a pod's Secrets Store CSI volumes mount.
+pub(crate) fn csi_classes(item: &Value) -> Vec<&str> {
+    item["spec"]["volumes"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|volume| &volume["csi"])
+        .filter(|csi| csi["driver"].as_str() == Some("secrets-store.csi.k8s.io"))
+        .filter_map(|csi| non_empty(&csi["volumeAttributes"]["secretProviderClass"]))
+        .collect()
+}
+
+/// The Key Vault secrets an Azure SecretProviderClass mounts, as `vault/name`:
+/// `parameters.keyvaultName` and each `objectName` in the `objects` YAML
+/// string whose `objectType` is a secret or a certificate (a certificate's
+/// value is its backing secret); keys are not secrets.
+pub(crate) fn key_vault_ids(class: &Value) -> Vec<String> {
+    let parameters = &class["spec"]["parameters"];
+    let Some(vault) = non_empty(&parameters["keyvaultName"]) else {
+        return Vec::new();
+    };
+    let objects = parameters["objects"].as_str().unwrap_or_default();
+    let field = |line: &str, key: &str| {
+        line.trim()
+            .trim_start_matches("- ")
+            .trim()
+            .strip_prefix(key)
+            .map(|value| value.trim().trim_matches(['"', '\'']).to_owned())
+    };
+    let mut found: Vec<(String, String)> = Vec::new();
+    for line in objects.lines() {
+        if let Some(name) = field(line, "objectName:") {
+            found.push((name, "secret".to_owned()));
+        } else if let Some(kind) = field(line, "objectType:")
+            && let Some(last) = found.last_mut()
+        {
+            last.1 = kind.to_ascii_lowercase();
+        }
+    }
+    found
+        .into_iter()
+        .filter(|(name, kind)| !name.is_empty() && matches!(kind.as_str(), "secret" | "cert"))
+        .map(|(name, _)| format!("{vault}/{name}"))
         .collect()
 }
 
@@ -254,6 +317,31 @@ mod tests {
         assert_eq!(status_word(&init), "Init:1/2");
         let failed = json!({"status": {"phase": "Pending", "initContainerStatuses": [{"state": {"terminated": {"exitCode": 3}}}]}});
         assert_eq!(status_word(&failed), "Init:ExitCode:3");
+    }
+
+    #[test]
+    fn the_previous_log_names_the_restarted_container_only_when_there_are_several() {
+        let pod = |names: &[&str]| {
+            json!({
+                "spec": {"containers": names.iter().map(|name| json!({"name": name})).collect::<Vec<_>>()},
+                "status": {"containerStatuses": [
+                    {"name": "proxy", "restartCount": 0},
+                    {"name": "api", "restartCount": 3, "lastState": {"terminated": {"reason": "OOMKilled", "exitCode": 137}}},
+                ]},
+            })
+        };
+        assert_eq!(
+            previous_logs("qa/dev/p", &containers(&pod(&["proxy", "api"]))).as_deref(),
+            Some("agent-cli k8s pod logs qa/dev/p --previous --tail 50 --container api")
+        );
+        assert_eq!(
+            previous_logs("qa/dev/p", &containers(&pod(&["api"]))).as_deref(),
+            Some("agent-cli k8s pod logs qa/dev/p --previous --tail 50")
+        );
+        assert_eq!(
+            previous_logs("qa/dev/p", &containers(&pod(&["proxy"]))),
+            None
+        );
     }
 
     #[test]

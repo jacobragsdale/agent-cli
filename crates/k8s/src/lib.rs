@@ -34,6 +34,7 @@ pub const K8S: Domain = Domain {
         deployment::list::DEPLOYMENT_LIST,
         deployment::restart::DEPLOYMENT_RESTART,
         deployment::scale::DEPLOYMENT_SCALE,
+        deployment::wait::DEPLOYMENT_WAIT,
         configmap::list::CONFIGMAP_LIST,
         configmap::get::CONFIGMAP_GET,
         secret::list::SECRET_LIST,

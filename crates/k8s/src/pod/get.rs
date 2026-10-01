@@ -8,7 +8,9 @@ use serde_json::Value;
 
 use crate::kubectl::{At, Target, non_empty};
 
-use super::{ContainerRow, PodRow, containers, row, status_word};
+use super::{
+    ContainerRow, PodRow, containers, csi_classes, key_vault_ids, previous_logs, row, status_word,
+};
 
 #[derive(clap::Args)]
 pub struct PodGetArgs {
@@ -94,6 +96,10 @@ fn pod_get(ctx: &Ctx, args: PodGetArgs) -> Result<PodDetail> {
         node: None,
         owner: None,
     });
+    let containers = containers(&item);
+    if let Some(next) = previous_logs(&id, &containers) {
+        ctx.note(format!("[next: {next}]"));
+    }
     Ok(PodDetail {
         secret_refs: secret_refs(ctx, &target, &item),
         id,
@@ -106,7 +112,7 @@ fn pod_get(ctx: &Ctx, args: PodGetArgs) -> Result<PodDetail> {
         node: summary.node,
         ip: non_empty(&item["status"]["podIP"]).map(str::to_owned),
         owner: summary.owner,
-        containers: containers(&item),
+        containers,
         conditions: item["status"]["conditions"]
             .as_array()
             .into_iter()
@@ -172,7 +178,6 @@ fn secret_refs(ctx: &Ctx, target: &Target, item: &Value) -> Vec<SecretRef> {
             }
         }
     }
-    let mut classes = Vec::new();
     for volume in spec["volumes"].as_array().into_iter().flatten() {
         if let Some(secret) = non_empty(&volume["secret"]["secretName"]) {
             let items = volume["secret"]["items"].as_array();
@@ -180,12 +185,6 @@ fn secret_refs(ctx: &Ctx, target: &Target, item: &Value) -> Vec<SecretRef> {
             for item in items.into_iter().flatten() {
                 every("volume", secret, non_empty(&item["key"]));
             }
-        }
-        let csi = &volume["csi"];
-        if csi["driver"].as_str() == Some("secrets-store.csi.k8s.io")
-            && let Some(class) = non_empty(&csi["volumeAttributes"]["secretProviderClass"])
-        {
-            classes.push(class.to_owned());
         }
     }
     for pull in spec["imagePullSecrets"].as_array().into_iter().flatten() {
@@ -203,8 +202,8 @@ fn secret_refs(ctx: &Ctx, target: &Target, item: &Value) -> Vec<SecretRef> {
             kv: Vec::new(),
         })
         .collect();
-    for class in classes {
-        let kv = match target.json(ctx, &["get", "secretproviderclass", &class, "-o", "json"]) {
+    for class in csi_classes(item) {
+        let kv = match target.json(ctx, &["get", "secretproviderclass", class, "-o", "json"]) {
             Ok(found) => key_vault_ids(&found),
             Err(error) => {
                 ctx.note(format!("[SecretProviderClass {class} not read: {error:#}]"));
@@ -215,45 +214,11 @@ fn secret_refs(ctx: &Ctx, target: &Target, item: &Value) -> Vec<SecretRef> {
             via: "csi",
             secret: None,
             keys: Vec::new(),
-            class: Some(class),
+            class: Some(class.to_owned()),
             kv,
         });
     }
     refs
-}
-
-/// The Key Vault secrets an Azure SecretProviderClass mounts, as `vault/name`:
-/// `parameters.keyvaultName` and each `objectName` in the `objects` YAML
-/// string whose `objectType` is a secret or a certificate (a certificate's
-/// value is its backing secret); keys are not secrets.
-fn key_vault_ids(class: &Value) -> Vec<String> {
-    let parameters = &class["spec"]["parameters"];
-    let Some(vault) = non_empty(&parameters["keyvaultName"]) else {
-        return Vec::new();
-    };
-    let objects = parameters["objects"].as_str().unwrap_or_default();
-    let field = |line: &str, key: &str| {
-        line.trim()
-            .trim_start_matches("- ")
-            .trim()
-            .strip_prefix(key)
-            .map(|value| value.trim().trim_matches(['"', '\'']).to_owned())
-    };
-    let mut found: Vec<(String, String)> = Vec::new();
-    for line in objects.lines() {
-        if let Some(name) = field(line, "objectName:") {
-            found.push((name, "secret".to_owned()));
-        } else if let Some(kind) = field(line, "objectType:")
-            && let Some(last) = found.last_mut()
-        {
-            last.1 = kind.to_ascii_lowercase();
-        }
-    }
-    found
-        .into_iter()
-        .filter(|(name, kind)| !name.is_empty() && matches!(kind.as_str(), "secret" | "cert"))
-        .map(|(name, _)| format!("{vault}/{name}"))
-        .collect()
 }
 
 #[cfg(test)]
@@ -284,6 +249,15 @@ mod tests {
             json!({"type": "Ready", "status": "False"})
         );
         assert_eq!(pod["labels"]["app"], "orders-worker");
+        assert!(
+            outcome.stderr.contains(
+                "[next: agent-cli k8s pod logs qa/dev/orders-worker-5c4d3e-q8zt --previous --tail 50]"
+            ),
+            "{}",
+            outcome.stderr
+        );
+        let healthy = run(&["k8s", "pod", "get", "redis-0"]);
+        assert!(!healthy.stderr.contains("[next:"), "{}", healthy.stderr);
 
         let outcome = run(&["k8s", "pod", "get", "redis-0", "--yaml"]);
         assert_eq!(outcome.code, 0, "{outcome:?}");

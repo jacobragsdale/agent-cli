@@ -178,3 +178,27 @@ expect = "k8s pod logs"
 [[query]]
 text = "restart deployment"
 expect = "k8s deployment restart"
+
+[[query]]
+text = "wait for the api rollout to finish"
+expect = "k8s deployment wait"
+
+[[query]]
+text = "verify the deployment finished rolling out"
+expect = "k8s deployment wait"
+
+[[query]]
+text = "which pods mount the worker-db-password secret"
+expect = "k8s pod list"
+
+[[query]]
+text = "pods mounting an expired vault secret"
+expect = "k8s pod list"
+
+[[query]]
+text = "which deployments run image api:v1.4.2"
+expect = "k8s deployment list"
+
+[[query]]
+text = "is this image tag deployed in the cluster"
+expect = "k8s deployment list"

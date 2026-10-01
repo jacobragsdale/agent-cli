@@ -1,8 +1,8 @@
-# k8s — Kubernetes (13 commands)
+# k8s — Kubernetes (14 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
-| [`k8s pod list`](#k8s-pod-list) | read | List pods with status, ready, restarts, age, node and owning deployment |
+| [`k8s pod list`](#k8s-pod-list) | read | List pods: status, ready, restarts, owner; or those mounting a Key Vault secret |
 | [`k8s pod get`](#k8s-pod-get) | read | Describe a pod: containers, images, states, last termination reason, owner |
 | [`k8s pod logs`](#k8s-pod-logs) | read | Read the tail of a pod's log, or of the container's previous run |
 | [`k8s pod delete`](#k8s-pod-delete) | destructive | Delete a pod so its controller replaces it (a bare pod is gone for good) |
@@ -10,6 +10,7 @@
 | [`k8s deployment list`](#k8s-deployment-list) | read | List deployments: ready pods, images with tag and digest, when they rolled out |
 | [`k8s deployment restart`](#k8s-deployment-restart) | destructive | Rollout-restart a deployment, replacing its pods one at a time |
 | [`k8s deployment scale`](#k8s-deployment-scale) | destructive | Scale a deployment to a number of replicas |
+| [`k8s deployment wait`](#k8s-deployment-wait) | read | Wait for a rollout: exit 0 once rolled out, 1 if it failed, 124 if still going |
 | [`k8s configmap list`](#k8s-configmap-list) | read | List configmaps and their keys |
 | [`k8s configmap get`](#k8s-configmap-get) | read | Show a configmap's keys and values (binary keys show their size only) |
 | [`k8s secret list`](#k8s-secret-list) | read | List Kubernetes secrets: type, key names and sizes (never values) |
@@ -19,11 +20,12 @@
 ### k8s pod list
 
 ```text
-agent-cli k8s pod list — List pods with status, ready, restarts, age, node and owning deployment
+agent-cli k8s pod list — List pods: status, ready, restarts, owner; or those mounting a Key Vault secret
   <name> str       Part of the pod name
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --label str[]    Only pods with this label: app=api, or a key alone (repeatable, all must hold)
+  --kv str         Only pods mounting this Key Vault secret: VAULT/NAME, as `kv secret list` prints it
   --limit int      (default 50)
 Returns: [{id,name,namespace,status,ready,restarts,age,node,owner}]
 Read. Globals: --fields --raw --timeout --output
@@ -95,6 +97,7 @@ agent-cli k8s deployment list — List deployments: ready pods, images with tag 
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --since time     Only deployments that rolled out after this
+  --image str      Only deployments running this image: repo:tag (api:v1.4.2), a tag alone, a full reference, or a digest (sha256:…)
   --limit int      (default 50)
 A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
 Returns: [{id,name,namespace,ready,replicas,images[{container,image,digest}],updated}]
@@ -125,6 +128,18 @@ agent-cli k8s deployment scale — Scale a deployment to a number of replicas
 Returns: {cluster,namespace,object,said,replicas,previous}
 Destructive: needs --yes; --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s deployment scale orders-api --replicas 3 --cluster qa --namespace dev
+```
+
+### k8s deployment wait
+
+```text
+agent-cli k8s deployment wait — Wait for a rollout: exit 0 once rolled out, 1 if it failed, 124 if still going
+ *<name> str       The deployment: its id (cluster/namespace/name) as `deployment list` prints it, or its name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+Returns: {id,name,namespace,ready,replicas,images[{container,image,digest}],updated,rolled_out}
+Read. * required. Globals: --fields --raw --timeout (default 100s) --output
+e.g. agent-cli k8s deployment wait prod/web/api
 ```
 
 ### k8s configmap list

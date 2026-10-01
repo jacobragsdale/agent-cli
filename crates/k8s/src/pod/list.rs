@@ -1,9 +1,10 @@
-use agent_cli_core::{Ctx, command};
+use agent_cli_core::{Ctx, Failure, command};
 use anyhow::Result;
+use serde_json::Value;
 
 use crate::kubectl::{At, items, limited};
 
-use super::{PodRow, row};
+use super::{PodRow, csi_classes, key_vault_ids, row};
 
 #[derive(clap::Args)]
 pub struct PodListArgs {
@@ -14,19 +15,46 @@ pub struct PodListArgs {
     /// Only pods with this label: app=api, or a key alone (repeatable, all must hold)
     #[arg(long)]
     label: Vec<String>,
+    /// Only pods mounting this Key Vault secret: VAULT/NAME, as `kv secret list` prints it
+    #[arg(long, conflicts_with = "label")]
+    kv: Option<String>,
     #[arg(long, default_value_t = 50)]
     limit: usize,
 }
 
 fn pod_list(ctx: &Ctx, args: PodListArgs) -> Result<Vec<PodRow>> {
     let target = args.at.listing(ctx)?;
+    if let Some(kv) = &args.kv
+        && !kv.split_once('/').is_some_and(|(vault, name)| {
+            !vault.is_empty() && !name.is_empty() && !name.contains('/')
+        })
+    {
+        return Err(Failure::usage(format!("--kv {kv:?} is not VAULT/NAME"))
+            .hint("agent-cli kv secret list NAME")
+            .into());
+    }
     let selector = args.label.join(",");
-    let mut argv = vec!["get", "pods", "-o", "json"];
+    // With --kv, one call reads the classes too (a selector would filter
+    // them out as well, hence --kv and --label are not taken together).
+    let kinds = if args.kv.is_some() {
+        "pods,secretproviderclasses"
+    } else {
+        "pods"
+    };
+    let mut argv = vec!["get", kinds, "-o", "json"];
     if !selector.is_empty() {
         argv.extend(["-l", selector.as_str()]);
     }
     let listed = target.json(ctx, &argv)?;
-    let rows = items(&listed)
+    let (pods, classes): (Vec<&Value>, Vec<&Value>) =
+        items(&listed).partition(|item| item["kind"].as_str() != Some("SecretProviderClass"));
+    let rows = pods
+        .into_iter()
+        .filter(|pod| {
+            args.kv
+                .as_deref()
+                .is_none_or(|wanted| mounts(pod, &classes, wanted))
+        })
         .filter(|item| {
             args.name.as_deref().is_none_or(|part| {
                 item["metadata"]["name"]
@@ -39,10 +67,26 @@ fn pod_list(ctx: &Ctx, args: PodListArgs) -> Result<Vec<PodRow>> {
     Ok(limited(ctx, rows, args.limit))
 }
 
+/// Whether `pod` mounts the Key Vault secret `wanted` (vault/name, any case
+/// as Key Vault names are) through a class in its own namespace.
+fn mounts(pod: &Value, classes: &[&Value], wanted: &str) -> bool {
+    let namespace = &pod["metadata"]["namespace"];
+    csi_classes(pod).into_iter().any(|class| {
+        classes
+            .iter()
+            .filter(|held| {
+                held["metadata"]["name"].as_str() == Some(class)
+                    && &held["metadata"]["namespace"] == namespace
+            })
+            .flat_map(|held| key_vault_ids(held))
+            .any(|id| id.eq_ignore_ascii_case(wanted))
+    })
+}
+
 command! {
     pub POD_LIST = ["k8s", "pod", "list"], Read,
-    "List pods with status, ready, restarts, age, node and owning deployment",
-    keywords: ["containers", "restarting", "crashloop", "crashing", "running", "pending", "unhealthy"],
+    "List pods: status, ready, restarts, owner; or those mounting a Key Vault secret",
+    keywords: ["containers", "restarting", "crashloop", "crash loop", "crashing", "running", "pending", "unhealthy"],
     example: "k8s pod list --cluster qa --namespace dev --fields id,status,restarts,owner",
     run: pod_list,
 }
@@ -101,6 +145,39 @@ mod tests {
             outcome.json(),
             json!([{"name": "orders-worker-5c4d3e-q8zt"}])
         );
+    }
+
+    #[test]
+    fn pod_list_finds_the_pods_that_mount_a_key_vault_secret() {
+        let names = |kv: &str| {
+            let outcome = run(&["k8s", "pod", "list", "--kv", kv, "--fields", "name,owner"]);
+            assert_eq!(outcome.code, 0, "{outcome:?}");
+            outcome.json()
+        };
+        assert_eq!(
+            names("kv-contoso-dev/db-password"),
+            json!([{"name": "orders-api-7d9f5b-abc12", "owner": "Deployment/orders-api"}])
+        );
+        assert_eq!(
+            names("KV-contoso-dev/api-cert"),
+            json!([{"name": "orders-api-7d9f5b-abc12", "owner": "Deployment/orders-api"}])
+        );
+        assert_eq!(
+            names("kv-contoso-dev/orders-signing"),
+            json!([]),
+            "a key is not a secret"
+        );
+        assert_eq!(names("kv-contoso-prod/db-password"), json!([]));
+
+        let outcome = run(&["k8s", "pod", "list", "--kv", "db-password"]);
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("is not VAULT/NAME"),
+            "{}",
+            outcome.stderr
+        );
+        let outcome = run(&["k8s", "pod", "list", "--kv", "kv/x", "--label", "app=x"]);
+        assert_eq!(outcome.code, 2, "{outcome:?}");
     }
 
     #[test]

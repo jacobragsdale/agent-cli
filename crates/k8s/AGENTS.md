@@ -25,10 +25,14 @@ and tests (`deployment/list.rs` is `k8s deployment list`). Copy a sibling.
     args): `listing(ctx)` for a list, `one(ctx)` for one object,
     `named(ctx, raw)` for an id. Scopes default through core's `pick`.
   - `Target`: `read(ctx, args)`, `json(ctx, args)`, `write(ctx, args)`
-    (always `Destructive`), `id(item)`, `row_namespace(item)`.
+    (always `Destructive`), `id(item)`, `row_namespace(item)`; `kubectl(args)`
+    and `finished` for a caller that reads kubectl's failure itself
+    (`deployment wait`).
   - `items`, `age`, `limited` (the `--limit` note), `digest`, `owner_of`,
     `kubectl_error`.
-- `<resource>/mod.rs`: what its verbs share (`pod/mod.rs`: `PodRow`, `row`).
+- `<resource>/mod.rs`: what its verbs share (`pod/mod.rs`: `PodRow`, `row`,
+  `containers`, the SecretProviderClass reading, `previous_logs`, the note
+  a crash loop prints; `deployment/mod.rs`: `DeploymentRow`, `row`).
 - `testing.rs`: `k8s(argv)`, `k8s_with(argv, config)`, `SCOPES` for tests.
 
 ## Fixtures
