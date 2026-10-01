@@ -49,7 +49,8 @@ What the discussion assumed, and what is true:
 A one-object verb whose answer exits 0 but needs attention prints one note,
 `[next: agent-cli …]`, naming the command that answers the next question,
 built from the row it just printed. One note, the most useful one; lists
-print none (their notes stay about paging). "Printed command lines parse"
+print none (their notes stay about paging), but for `ado test list`, whose
+rows are failures to act on. "Printed command lines parse"
 already checks every note resolves.
 
 ### Path to repository path
@@ -253,16 +254,14 @@ chain (below).
 - `kubectl rollout status` exit code and message for
   `ProgressDeadlineExceeded`.
 
-## Open questions
+## Decided
 
-1. `ado run get`'s `errors[]` becomes objects, which breaks the shape for
-   anyone reading strings. Nothing outside this repository reads it; the
-   alternative, one `at` per failed task, loses which error is where.
-2. Is the `PATH:LINE` form of a dd `at` enough without the source code
-   integration, or is the service map worth a config key?
-3. Should `deployment list --image` read every scope when `--cluster` is
-   left out? It answers "is this build deployed anywhere?" in one call, but
-   breaks the scope-default rule `pick` enforces.
+1. `ado run get`'s `errors[]` becomes objects: one `at` per failed task
+   would lose which error is where, and nothing outside this repository
+   reads the strings.
+2. Without the source code integration, a dd `at` is `PATH:LINE`; no
+   service-to-repository config.
+3. `deployment list --image` keeps the scope rule: one scope per call.
 
 ## Done when
 
