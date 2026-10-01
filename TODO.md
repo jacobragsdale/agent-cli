@@ -21,7 +21,7 @@ Open work only. What is built is in the code, the crate cards and
 
 - [ ] Config env overrides guess types for keys missing from the file ("123" becomes an int)
 - [ ] sql `object list` `modified` is the server's local time with no offset; UTC needs the server's zone
-- [ ] Time arithmetic in `--since`/`--until` (`T-2h`)
+- [ ] Time arithmetic in `--since`/`--until` (`T-2h`): Haiku tried `--until 2d-23h` and `--since 2d-2h` in the chains-2 trial (each an exit 2 it recovered from)
 - [ ] Fold `k8s context list` and the `aks` domain into one `k8s cluster list|connect` (a row per scope with its context, AKS name and namespaces)
 - [ ] The k8s tests use `scripts/fake/kubectl`'s built-in cluster, so a k8s flag edits the fake: move those objects into a file under `crates/k8s/` that the fake reads
 - [ ] The skill's `paths` hide it until a matching file is touched, so agents found it through `AGENTS.md` and read it with `cat`; drop `paths` if it should be offered from the first turn
@@ -31,14 +31,7 @@ Open work only. What is built is in the code, the crate cards and
 - [ ] `ado pr list --build succeeded|failed|running|none`: the PR search carries no build status, so it costs one policy-evaluations read per PR (what `pr get` does); cap it
 - [ ] `airflow run cancel`: one destructive `PATCH` of the run's state to failed
 - [ ] Live tests, off by default: `AGENT_CLI_TEST_AIRFLOW=1` with a `scripts/airflow-up.sh` running Airflow's pinned docker-compose (a smoke DAG that passes, fails and maps; one broken DAG file), and `AGENT_CLI_TEST_DATADOG=1` running every dd read with `--limit 1` against the sandbox in `docs/first-live-run.md`
+- [ ] Commands that run a whole chain (an `airflow task triage`: the error, its source lines, the upstream XCom and `repo_file` in one row), for a flow a trial shows still costs Haiku 15 or more calls with the notes in place
+- [ ] An output mode of one bare value per line, for `for id in $(…)` without `jq`, if scripts become a goal: a global flag (not `--lines`, a `--tail` synonym) when `--fields` names one scalar
+- [ ] A `[datadog]` service-to-repository map, if the live org lacks the source code integration and a dd `at` without git tags (`PATH:LINE`) proves too little
 - [ ] A raw-tools trial (kubectl, az, curl and pup against agent-cli on the cross-domain tasks): a domain earns its place if agent-cli wins at least half its tasks, by 20% of tokens or on correctness
-
-## Chains, round 2 (docs/plans/chains-2.md)
-
-- [ ] 1. `[next: …]` notes on `ado run get|create`, `ado pr get`, `airflow run get`, `dd monitor get`, `k8s pod get`; world traces walked by notes alone
-- [ ] 2. Failures to a line: `airflow import-error get` `repo_file`, `ado run get` `errors[{message,at}]`, `ado test list`, `file get` resolving a frame path by suffix
-- [ ] 3. `at` on `dd log list`/`span list` from `error.stack`; `ado commit list REPO[:PATH]` with `pr` and `diff`
-- [ ] 4. `k8s pod list --kv`, `k8s deployment list --image`
-- [ ] 5. `k8s deployment wait`
-- [ ] 6. Several ids: `ado file get`, `ado thread update`
-- [ ] The trial after phase 2, then after phase 5 (flows F8 to F13)

@@ -6,8 +6,10 @@ every call they make. Run one when a phase lands, when a domain is added, or
 when a change to search, help or errors needs evidence. Every miss becomes a
 fix, a test or a labeled search query. The method is design.md's (the api-cli
 skill's `references/design.md`), which measured the interface this tool
-ports; the last round's results are the baseline in
-[docs/trials/2026-09-30.md](../trials/2026-09-30.md).
+ports; the last rounds' results are the baselines:
+[docs/trials/2026-09-30.md](../trials/2026-09-30.md) for every domain, and
+[docs/trials/chains-2-2026-09-30.md](../trials/chains-2-2026-09-30.md) for
+the flows that hop from a failure to its line and change.
 
 Prerequisites:
 
@@ -112,6 +114,20 @@ configured. Task: TASK. Use only that tool; don't read its files.
 Replace `PATH` with the run's wrapper (the path `wrapper.sh` printed) and
 `TASK` with the task's text. From each subagent's report, record its answer,
 total tokens, tool calls and wall time in the round's results page (step 5).
+
+For several runs per cell, headless sessions are easier to repeat. From
+`$T`, one per task, model and run (`claude-sonnet-5-5` or
+`claude-haiku-4-5-20251001`), several at a time with `xargs -P`:
+
+```sh
+claude -p "$PROMPT" --model MODEL --setting-sources project --strict-mcp-config \
+  --output-format stream-json --verbose --dangerously-skip-permissions \
+  < /dev/null > "$T/runs/$ID.jsonl"
+```
+
+`--setting-sources project` keeps your own hooks and plugins out of the
+session, and `--strict-mcp-config` your MCP servers. The `result` event at
+the end of each log holds the answer, its `usage` and `duration_ms`.
 
 ## 4. Measure
 
