@@ -1,7 +1,7 @@
 # airflow: Apache Airflow 3
 
-DAGs and their source, runs, task instances, logs, XComs and import errors
-over Airflow 3's REST API (`/api/v2`):
+DAGs, their source, runs, tasks, logs, XComs, import errors, pools,
+variables, connections over Airflow 3's REST API (`/api/v2`):
 https://airflow.apache.org/docs/apache-airflow/stable/stable-rest-api-ref.html
 
 ## Config
@@ -14,6 +14,7 @@ a row's `pod` is a k8s id), `dags_repo` (`REPO[:FOLDER]` in Azure DevOps:
 or `token`, `token_env` or `token_cmd` (a bearer as it is: Astro, Composer,
 MWAA). The token goes only to URLs under `base_url/` (`same_origin`), not
 `host_under`: a compose Airflow is `http://localhost:8080`.
+`connection list` matches `[[sql.connection]]` hosts for `sql_conn`.
 
 ## Ids
 `dag`, `dag/run`, `dag/run/task[:map][/try]`; `dag/latest` is the newest run

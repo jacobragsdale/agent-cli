@@ -175,8 +175,33 @@ expect = "airflow xcom get"
 text = "read an xcom value"
 expect = "airflow xcom get"
 
+[[query]]
+text = "how many slots are free in the airflow pools"
+expect = "airflow pool list"
+
+[[query]]
+text = "is default_pool full"
+expect = "airflow pool list"
+
+[[query]]
+text = "which airflow variables are defined"
+expect = "airflow variable list"
+
+[[query]]
+text = "list airflow variables whose key starts with orders"
+expect = "airflow variable list"
+
+[[query]]
+text = "list airflow connections"
+expect = "airflow connection list"
+
+[[query]]
+text = "which database host does the orders_dw airflow connection use"
+expect = "airflow connection list"
+
 # ---------- flows (docs/plans/chains.md): each expects its first hop ----------
-# F6: why a DAG task failed, in its code and its input.
+# F6: why a DAG task failed, in its code and its input. F7: why tasks sit
+# queued, and where a DAG's data goes.
 
 [[query]]
 text = "show the code at the line load_orders failed"
@@ -185,6 +210,14 @@ expect = "airflow task logs"
 [[query]]
 text = "which line of the dag raised the exception in load_orders"
 expect = "airflow task logs"
+
+[[query]]
+text = "why is the load_orders task stuck in queued"
+expect = "airflow task get"
+
+[[query]]
+text = "which database host and sql connection does an airflow connection point at"
+expect = "airflow connection list"
 
 # ---------- agent trials, 2026-09-30 (docs/trials/2026-09-30.md) ----------
 # Each trial task as the agent was given it, and the searches agents typed for

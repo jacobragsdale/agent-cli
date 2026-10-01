@@ -1,8 +1,11 @@
-# airflow — Apache Airflow (18 commands)
+# airflow — Apache Airflow (21 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
 | [`airflow instance list`](#airflow-instance-list) | read | List the configured Airflow instances (from config, no network) |
+| [`airflow pool list`](#airflow-pool-list) | read | List pools with their slots: open, queued, scheduled and deferred |
+| [`airflow variable list`](#airflow-variable-list) | read | List Airflow Variables by key and description, never their values |
+| [`airflow connection list`](#airflow-connection-list) | read | List Airflow Connections: type, host and database, never passwords |
 | [`airflow dag list`](#airflow-dag-list) | read | List DAGs with their schedule, next run and whether they are paused |
 | [`airflow dag get`](#airflow-dag-get) | read | Show a DAG's status: paused, next run, params, schedule and its last five runs |
 | [`airflow dag update`](#airflow-dag-update) | write | Pause or unpause a DAG |
@@ -28,6 +31,41 @@ agent-cli airflow instance list — List the configured Airflow instances (from 
 Returns: [{name,base_url,auth,read_only,k8s_scope,k8s_namespace}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow instance list --fields name,base_url,read_only
+```
+
+### airflow pool list
+
+```text
+agent-cli airflow pool list — List pools with their slots: open, queued, scheduled and deferred
+  --instance str  The [[airflow.instance]] name; defaults to the only one
+  --limit int     Most rows to return (default 50)
+Returns: [{id,slots,open,running,queued,scheduled,deferred,description}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow pool list --fields id,slots,open,queued
+```
+
+### airflow variable list
+
+```text
+agent-cli airflow variable list — List Airflow Variables by key and description, never their values
+  <pattern> str   Only keys containing this (% and _ are wildcards)
+  --instance str  The [[airflow.instance]] name; defaults to the only one
+  --limit int     Most rows to return (default 50)
+Returns: [{id,description,encrypted}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow variable list orders --fields id,description
+```
+
+### airflow connection list
+
+```text
+agent-cli airflow connection list — List Airflow Connections: type, host and database, never passwords
+  <pattern> str   Only connection ids containing this (% and _ are wildcards)
+  --instance str  The [[airflow.instance]] name; defaults to the only one
+  --limit int     Most rows to return (default 50)
+Returns: [{id,type,host,port,schema,description,sql_conn}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow connection list --fields id,type,host,sql_conn
 ```
 
 ### airflow dag list

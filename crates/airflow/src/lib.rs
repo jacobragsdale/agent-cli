@@ -1,7 +1,7 @@
 //! The airflow domain: DAGs and their source, runs, task instances with
-//! their logs and XComs, and import errors, live from Apache Airflow 3's REST
-//! API (`/api/v2`). Airflow 2's `/api/v1` is out of scope: doctor names a v2
-//! server and stops.
+//! their logs and XComs, import errors, pools, variables and connections,
+//! live from Apache Airflow 3's REST API (`/api/v2`). Airflow 2's `/api/v1`
+//! is out of scope: doctor names a v2 server and stops.
 //!
 //! Every id is the ref: a DAG is `etl_nightly`, a line of its file
 //! `etl_nightly:42`, a run `DAG/RUN`, a task instance
@@ -10,16 +10,19 @@
 //! `k8s pod logs` takes.
 
 mod client;
+mod connection;
 mod dag;
 mod dag_run;
 mod doctor;
 mod import_error;
 mod instance;
+mod pool;
 mod run;
 mod source;
 mod task;
 #[cfg(test)]
 mod testing;
+mod variable;
 mod xcom;
 
 use agent_cli_core::Domain;
@@ -29,6 +32,9 @@ pub const DOMAIN: Domain = Domain {
     summary: "Apache Airflow",
     commands: &[
         instance::list::INSTANCE_LIST,
+        pool::list::POOL_LIST,
+        variable::list::VARIABLE_LIST,
+        connection::list::CONNECTION_LIST,
         dag::list::DAG_LIST,
         dag::get::DAG_GET,
         dag::update::DAG_UPDATE,
@@ -61,6 +67,7 @@ pub const DOMAIN: Domain = Domain {
         ("dag file", &["source"]),
         ("return value", &["xcom"]),
         ("task output", &["xcom"]),
+        ("slots", &["pool"]),
     ],
     status: doctor::status,
     doctor: doctor::doctor,
@@ -76,7 +83,7 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 18);
+        assert_eq!(DOMAIN.commands.len(), 21);
     }
 
     #[test]
