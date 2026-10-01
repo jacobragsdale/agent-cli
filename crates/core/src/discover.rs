@@ -166,12 +166,11 @@ pub(crate) fn domain_listing(domain: &Domain) -> String {
         .into_iter()
         .map(|(name, verbs)| (name.to_owned(), verbs.join(" ")))
         .collect();
+    let count = commands(domain.commands.len());
     listing(
         format!(
-            "agent-cli {}: {} \u{2014} {} commands",
-            domain.name,
-            domain.summary,
-            domain.commands.len()
+            "agent-cli {}: {} \u{2014} {count}",
+            domain.name, domain.summary
         ),
         "resources",
         entries,
@@ -195,13 +194,9 @@ pub(crate) fn resource_listing(domain: &Domain, resource: &str) -> String {
             )
         })
         .collect();
+    let count = commands(entries.len());
     listing(
-        format!(
-            "agent-cli {} {}: {} commands",
-            domain.name,
-            resource,
-            entries.len()
-        ),
+        format!("agent-cli {} {resource}: {count}", domain.name),
         "commands",
         entries,
         format!(
@@ -209,6 +204,10 @@ pub(crate) fn resource_listing(domain: &Domain, resource: &str) -> String {
             domain.name
         ),
     )
+}
+
+fn commands(count: usize) -> String {
+    format!("{count} command{}", if count == 1 { "" } else { "s" })
 }
 
 /// A titled listing: name and detail per line, or names only above
@@ -727,6 +726,37 @@ mod tests {
         assert!(!text.contains("detail"));
         assert!(text.contains("(41 commands, names only."));
         assert!(text.lines().all(|line| line.len() <= WRAP + 2), "{text}");
+    }
+
+    #[derive(clap::Args)]
+    struct NoArgs {}
+
+    fn nothing(_: &crate::Ctx, _: NoArgs) -> anyhow::Result<Vec<String>> {
+        Ok(Vec::new())
+    }
+
+    crate::command! {
+        ONE = ["demo", "thing", "list"], Read,
+        "List things",
+        keywords: [],
+        example: "demo thing list",
+        run: nothing,
+    }
+
+    #[test]
+    fn a_listing_of_one_command_says_command() {
+        let domain = Domain {
+            name: "demo",
+            summary: "Demo",
+            commands: &[ONE],
+            synonyms: &[],
+            status: |_| String::new(),
+            doctor: |_| Vec::new(),
+        };
+        assert!(domain_listing(&domain).starts_with("agent-cli demo: Demo \u{2014} 1 command\n"));
+        assert!(
+            resource_listing(&domain, "thing").starts_with("agent-cli demo thing: 1 command\n")
+        );
     }
 
     #[test]
