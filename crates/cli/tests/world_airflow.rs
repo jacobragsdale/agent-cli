@@ -39,7 +39,7 @@ fn a_failed_task_leads_to_its_line_in_the_dag_and_the_input_it_failed_on() {
     );
     assert!(
         source["text"].as_str().unwrap().contains(
-            "\n42              raise ValueError(f\"order {row['order_id']} has no customer_id\")\n"
+            "\n42              raise ValueError(f\"order {order_id} has no customer_id\")\n"
         ),
         "{source}"
     );

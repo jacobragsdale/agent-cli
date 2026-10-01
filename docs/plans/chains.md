@@ -1,4 +1,4 @@
-> Current plan (2026-09-30): code, review threads and DAG internals, built so the common flows chain. Not history yet.
+> Built 2026-09-30. Where the build departed from this plan: core refuses `--lines` and `--context` as synonyms of `--tail` and `--cluster`, so line ranges are `--line A[-B]`, `thread list` takes `--around N` and `diff get` `--unified N`; `pipeline preview` takes the YAML as a positional (`-` for stdin) beside `--yaml-file`; `diff get` rows hold `hunks[]`, each with its own `at`; `file list` has no `size`; `xcom get` cuts at 10,000 bytes, under core's output guard. For the current commands, ask the binary.
 
 # Commands that chain: code, reviews and DAG internals
 

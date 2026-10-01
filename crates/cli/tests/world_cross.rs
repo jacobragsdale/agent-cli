@@ -269,3 +269,47 @@ fn a_request_the_world_did_not_record_says_which_one_it_wanted() {
         ran.stderr
     );
 }
+
+#[test]
+fn a_failed_task_leads_to_its_line_in_the_dag_and_the_same_line_in_the_repo() {
+    let log = ok(&[
+        "airflow",
+        "task",
+        "logs",
+        "etl_nightly/latest/load_orders/2",
+        "--fields",
+        "at",
+    ]);
+    let at = log["at"].as_str().unwrap().to_owned();
+    assert_eq!(at, "etl_nightly:42");
+    let source = ok(&[
+        "airflow",
+        "source",
+        "get",
+        &at,
+        "--fields",
+        "repo_file,text",
+    ]);
+    let repo_file = source["repo_file"].as_str().unwrap().to_owned();
+    assert_eq!(repo_file, "airflow-dags:dags/etl_nightly.py:42");
+    let file = ok(&["ado", "file", "get", &repo_file, "--fields", "text"]);
+    // Both number their lines; the code after the number is what matters.
+    let line_42 = |text: &Value| {
+        text.as_str()
+            .unwrap()
+            .lines()
+            .find_map(|line| line.trim_start().strip_prefix("42 "))
+            .map(|code| code.trim().to_owned())
+            .unwrap()
+    };
+    assert_eq!(
+        line_42(&source["text"]),
+        line_42(&file["text"]),
+        "the repo holds the code Airflow ran"
+    );
+    assert_eq!(
+        line_42(&file["text"]),
+        r#"raise ValueError(f"order {order_id} has no customer_id")"#,
+        "the line the pod's traceback prints"
+    );
+}

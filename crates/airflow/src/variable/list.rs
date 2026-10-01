@@ -51,7 +51,7 @@ fn variable_list(ctx: &Ctx, args: VariableListArgs) -> Result<Vec<VariableRow>> 
 command! {
     pub VARIABLE_LIST = ["airflow", "variable", "list"], Read,
     "List Airflow Variables by key and description, never their values",
-    keywords: ["variables", "settings", "keys", "config", "names", "defined", "get"],
+    keywords: ["variables", "settings", "keys", "config", "names", "defined"],
     example: "airflow variable list orders --fields id,description",
     run: variable_list,
 }

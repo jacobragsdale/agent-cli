@@ -80,3 +80,11 @@
 - [ ] The skill's `paths` hide it until a matching file is touched, so agents found it through `AGENTS.md` and read it with `cat`; drop `paths` if it should be offered as a skill from the first turn
 - [ ] dd's downtime rows take monitor's `MESSAGE_MAX` from `monitor/mod.rs`, the one place a resource reads another's module; move it crate-level if downtimes stop being monitor mutes
 
+## Commands that chain (docs/plans/chains.md)
+
+- [x] ado: `thread list|comment|update`, `pr comment --at`, `diff get`, `code list`, `file get|list`, `pipeline get|preview`; `pr get` threads carry `PR/THREAD` ids and `at`
+- [x] airflow: `source get`, `xcom list|get`, `pool list`, `variable list`, `connection list` (with `sql_conn`); `task logs` prints `at`; `dags_repo` gives `source get` its `repo_file`
+- [x] The flows F1 to F7 walk end to end in the contoso world (`world_ado.rs`, `world_airflow.rs`, and the failed task to its repo line in `world_cross.rs`)
+- [ ] ADO shapes to confirm live: threads `?$iteration=N` placing `threadContext` at that iteration; `pr comment --at` landing on the latest iteration with offset 1 and no `pullRequestThreadContext`; items `commitId` on the default branch, binary content with `includeContent`, short SHAs in `versionDescriptor`, an unknown branch as a 404 (TF401175) before the tag fallback; `diffs/commits` `$top=1000`, paging, `allChangesIncluded`, rename fields; Code Search `includeSnippet` filling `matches.content[].line` and `codeSnippet`, a repository filter needing a project, the `*.visualstudio.com` host, an org without the extension; pipeline preview's api-version (`7.1-preview.1`), its 400s and `PATH (Line: N, Col: M)` (a template from another repository, `x.yml@alias`, gets no hint)
+- [ ] Airflow 3 shapes to confirm live: `dagSources/{dag_id}` as JSON (`version_number` is not used, so `source get` shows the latest version, not the one a failed run used); `Filling up the DagBag from <path>` in task logs and frame paths ending in `relative_fileloc` under versioned bundles; xcom `deserialize=true` (Airflow 2 needed `enable_xcom_deserialize_support`) and `stringify=false`; pools' `slots: -1` as unlimited; `variable_key_pattern` and `connection_id_pattern` as `%`/`_` patterns; connections masking `password`, and `schema` holding an mssql database, which `sql_conn` relies on
+
