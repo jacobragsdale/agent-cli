@@ -3315,5 +3315,95 @@
    "infoCode": 0,
    "facets": {}
   }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/definitions/12?api-version=7.1",
+  "answer": {
+   "id": 12,
+   "name": "api-ci",
+   "path": "\\",
+   "type": "build",
+   "queueStatus": "enabled",
+   "revision": 7,
+   "process": {
+    "type": 2,
+    "yamlFilename": "azure-pipelines.yml"
+   },
+   "repository": {
+    "id": "00000000-0000-4000-8000-0000000a0001",
+    "type": "TfsGit",
+    "name": "api",
+    "url": "https://dev.azure.com/contoso/Fabrikam/_git/api",
+    "defaultBranch": "refs/heads/main",
+    "clean": null,
+    "checkoutSubmodules": false
+   },
+   "project": {
+    "id": "00000000-0000-4000-8000-00000000f001",
+    "name": "Fabrikam"
+   },
+   "_links": {
+    "web": {
+     "href": "https://dev.azure.com/contoso/Fabrikam/_build/definition?definitionId=12"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/items?path=%2Fazure-pipelines.yml&includeContent=true&$format=json&api-version=7.1",
+  "note": "api-ci's YAML; its tests run from templates/dotnet-test.yml",
+  "answer": {
+   "objectId": "d456f8a1d9a112028e4b0619221a48e2b46a87db",
+   "gitObjectType": "blob",
+   "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+   "path": "/azure-pipelines.yml",
+   "content": "trigger:\n  branches:\n    include: [main]\n  tags:\n    include: ['v*']\n\npool:\n  vmImage: ubuntu-latest\n\nstages:\n  - stage: Build\n    jobs:\n      - job: Linux\n        steps:\n          - bash: dotnet build --configuration Release\n            displayName: Build\n          - template: templates/dotnet-test.yml\n            parameters:\n              project: tests/Api.Tests\n          - task: Docker@2\n            displayName: Push image\n            condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))\n            inputs:\n              command: buildAndPush\n              containerRegistry: contosoacr\n              repository: api\n              tags: $(Build.SourceBranchName)"
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/items?path=%2Ftemplates%2Fdotnet-test.yml&includeContent=true&$format=json&api-version=7.1",
+  "answer": {
+   "objectId": "55e347572e801dc89d1fc28c6ecc7d1789f09999",
+   "gitObjectType": "blob",
+   "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+   "path": "/templates/dotnet-test.yml",
+   "content": "parameters:\n  - name: project\n    type: string\n  - name: configuration\n    type: string\n    default: Release\n\nsteps:\n  - bash: dotnet test ${{ parameters.project }} --configuration ${{ parameters.configuration }} --logger trx\n    displayName: Run tests\n    timeoutInMinutes: 10"
+  }
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/pipelines/12/preview?api-version=7.1-preview.1",
+  "note": "api-ci as main has it, expanded",
+  "body": {
+   "previewRun": true
+  },
+  "answer": {
+   "finalYaml": "trigger:\n  branches:\n    include:\n    - main\n  tags:\n    include:\n    - v*\npool:\n  vmImage: ubuntu-latest\nstages:\n- stage: Build\n  jobs:\n  - job: Linux\n    steps:\n    - task: CmdLine@2\n      displayName: Build\n      inputs:\n        script: dotnet build --configuration Release\n    - task: CmdLine@2\n      displayName: Run tests\n      timeoutInMinutes: 10\n      inputs:\n        script: dotnet test tests/Api.Tests --configuration Release --logger trx\n    - task: Docker@2\n      displayName: Push image\n      condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))\n      inputs:\n        command: buildAndPush\n        containerRegistry: contosoacr\n        repository: api\n        tags: $(Build.SourceBranchName)\n",
+   "id": -1,
+   "name": "1",
+   "state": "unknown",
+   "pipeline": {
+    "id": 12,
+    "name": "api-ci",
+    "folder": "\\"
+   }
+  }
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/pipelines/12/preview?api-version=7.1-preview.1",
+  "note": "an edit passing the template a parameter it does not declare",
+  "body": {
+   "previewRun": true,
+   "yamlOverride": "trigger:\n  branches:\n    include: [main]\n  tags:\n    include: ['v*']\n\npool:\n  vmImage: ubuntu-latest\n\nstages:\n  - stage: Build\n    jobs:\n      - job: Linux\n        steps:\n          - bash: dotnet build --configuration Release\n            displayName: Build\n          - template: templates/dotnet-test.yml\n            parameters:\n              project: tests/Api.Tests\n              testTimeout: 20\n          - task: Docker@2\n            displayName: Push image\n            condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))\n            inputs:\n              command: buildAndPush\n              containerRegistry: contosoacr\n              repository: api\n              tags: $(Build.SourceBranchName)"
+  },
+  "status": 400,
+  "answer": {
+   "$id": "1",
+   "innerException": null,
+   "message": "/templates/dotnet-test.yml (Line: 1, Col: 1): Unexpected parameter 'testTimeout'",
+   "typeName": "Microsoft.Azure.Pipelines.WebApi.PipelineValidationException, Microsoft.Azure.Pipelines.WebApi",
+   "typeKey": "PipelineValidationException",
+   "errorCode": 0,
+   "eventId": 3000
+  }
  }
 ]

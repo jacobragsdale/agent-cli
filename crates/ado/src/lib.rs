@@ -54,6 +54,8 @@ pub const DOMAIN: Domain = Domain {
         thread::comment::THREAD_COMMENT,
         thread::update::THREAD_UPDATE,
         pipeline::list::PIPELINE_LIST,
+        pipeline::get::PIPELINE_GET,
+        pipeline::preview::PIPELINE_PREVIEW,
         run::list::RUN_LIST,
         run::get::RUN_GET,
         run::logs::RUN_LOGS,
@@ -88,6 +90,8 @@ pub const DOMAIN: Domain = Domain {
         ("compare", &["diff"]),
         ("source code", &["code"]),
         ("code search", &["code"]),
+        ("yaml", &["pipeline"]),
+        ("template", &["pipeline"]),
         ("prs", &["pr"]),
         ("pull request", &["pr"]),
         ("pull requests", &["pr"]),
@@ -117,7 +121,7 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 36);
+        assert_eq!(DOMAIN.commands.len(), 38);
     }
 
     #[test]

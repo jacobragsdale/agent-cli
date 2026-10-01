@@ -446,3 +446,23 @@ expect = "ado code list"
 [[query]]
 text = "find usages of a class across repos"
 expect = "ado code list"
+
+[[query]]
+text = "which yaml file does the api-ci pipeline use"
+expect = "ado pipeline get"
+
+[[query]]
+text = "show the pipeline definition and its repository"
+expect = "ado pipeline get"
+
+[[query]]
+text = "validate my azure-pipelines.yml edit before pushing"
+expect = "ado pipeline preview"
+
+[[query]]
+text = "expand the pipeline templates to see the final yaml"
+expect = "ado pipeline preview"
+
+[[query]]
+text = "check a pipeline template for errors without running it"
+expect = "ado pipeline preview"

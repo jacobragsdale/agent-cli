@@ -1,4 +1,4 @@
-# ado — Azure DevOps (36 commands)
+# ado — Azure DevOps (38 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -28,6 +28,8 @@
 | [`ado thread comment`](#ado-thread-comment) | write | Reply to a pull request review thread, and resolve it with --resolve |
 | [`ado thread update`](#ado-thread-update) | write | Resolve, reopen or close a pull request review thread |
 | [`ado pipeline list`](#ado-pipeline-list) | read | List build pipelines with their last run |
+| [`ado pipeline get`](#ado-pipeline-get) | read | Show a pipeline's definition: the YAML file it runs and its default branch |
+| [`ado pipeline preview`](#ado-pipeline-preview) | read | Expand a pipeline's YAML, or an edit of it, without running it |
 | [`ado run list`](#ado-run-list) | read | List pipeline runs (builds), newest first |
 | [`ado run get`](#ado-run-get) | read | Show a run: status, commit, timing, what failed, its pull request and work items |
 | [`ado run logs`](#ado-run-logs) | read | Print the tail of a run's logs: failed tasks by default, or a job or task |
@@ -400,6 +402,29 @@ agent-cli ado pipeline list — List build pipelines with their last run
 Returns: [{id,name,folder,queue_status,last_run{id,status,result,branch,finished},url}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado pipeline list --repo web --fields id,name,last_run.result
+```
+
+### ado pipeline get
+
+```text
+agent-cli ado pipeline get — Show a pipeline's definition: the YAML file it runs and its default branch
+ *<pipeline> str  The pipeline's id or name
+Returns: {id,name,folder,repo,default_branch,yaml,queue_status,url}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado pipeline get api-ci --fields repo,yaml
+```
+
+### ado pipeline preview
+
+```text
+agent-cli ado pipeline preview — Expand a pipeline's YAML, or an edit of it, without running it
+ *<pipeline> str    The pipeline's id or name
+  <yaml> str        YAML to expand instead of the pipeline's own file, or - to read stdin
+  --yaml-file path  The YAML to expand, from a file
+  --branch str      The branch its file and templates come from (default: the pipeline's default branch)
+Returns: {pipeline,branch,yaml}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado pipeline preview api-ci --yaml-file azure-pipelines.yml
 ```
 
 ### ado run list
