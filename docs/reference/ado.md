@@ -1,4 +1,4 @@
-# ado — Azure DevOps (29 commands)
+# ado — Azure DevOps (34 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -11,6 +11,8 @@
 | [`ado team list`](#ado-team-list) | read | List the project's teams (for [ado] team, which @current needs) |
 | [`ado repo list`](#ado-repo-list) | read | List the project's Git repositories |
 | [`ado repo get`](#ado-repo-get) | read | Show a repository: its URLs, default branch and branches |
+| [`ado file get`](#ado-file-get) | read | Show a file in a repository at a branch, tag or commit, around a line |
+| [`ado file list`](#ado-file-list) | read | List the files and folders in a repository folder at a branch, tag or commit |
 | [`ado pr list`](#ado-pr-list) | read | List pull requests by repo, author, reviewer and their vote, branch or status |
 | [`ado pr get`](#ado-pr-get) | read | Show a pull request: reviewers and votes, work items, policies, threads |
 | [`ado pr create`](#ado-pr-create) | write | Open a pull request linked to work items, or reuse the one already open |
@@ -20,6 +22,9 @@
 | [`ado pr comment`](#ado-pr-comment) | write | Start a comment thread on a pull request (Markdown, - for stdin, or --text-file) |
 | [`ado pr complete`](#ado-pr-complete) | destructive | Complete (merge) a pull request: squash, merge or rebase |
 | [`ado pr abandon`](#ado-pr-abandon) | destructive | Abandon (close) a pull request, discarding its changes |
+| [`ado thread list`](#ado-thread-list) | read | List a pull request's review threads with the code each comment is on |
+| [`ado thread comment`](#ado-thread-comment) | write | Reply to a pull request review thread, and resolve it with --resolve |
+| [`ado thread update`](#ado-thread-update) | write | Resolve, reopen or close a pull request review thread |
 | [`ado pipeline list`](#ado-pipeline-list) | read | List build pipelines with their last run |
 | [`ado run list`](#ado-run-list) | read | List pipeline runs (builds), newest first |
 | [`ado run get`](#ado-run-get) | read | Show a run: status, commit, timing, what failed, its pull request and work items |
@@ -166,6 +171,31 @@ Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado repo get web --fields remote_url,default_branch
 ```
 
+### ado file get
+
+```text
+agent-cli ado file get — Show a file in a repository at a branch, tag or commit, around a line
+ *<file> str  The file: REPO[@REF]:PATH[:LINE[-LINE]] as code list, thread list and diff get print it, or its web URL
+  --ref str   The branch, tag or commit (default: the repository's default branch)
+  --line str  The line, or lines A-B, to show (one line shows 20 either side)
+Returns: {id,repo,path,ref,commit,lines,total,text}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado file get api@main:src/Program.cs:42
+```
+
+### ado file list
+
+```text
+agent-cli ado file list — List the files and folders in a repository folder at a branch, tag or commit
+ *<folder> str  The folder: REPO[@REF][:PATH] (the root without a path), as file list prints it, or its web URL
+  --ref str     The branch, tag or commit (default: the repository's default branch)
+  --recursive   Everything under the folder, not only what is in it
+  --limit int   Most rows to return (default 50)
+Returns: [{id,path,kind}]
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado file list worker:src/Jobs --fields id,kind
+```
+
 ### ado pr list
 
 ```text
@@ -193,7 +223,7 @@ e.g. agent-cli ado pr list --vote none --fields id,title,author,repo
 agent-cli ado pr get — Show a pull request: reviewers and votes, work items, policies, threads
  *<id> str        The pull request's id: 431, #431 or its web URL
   --comments int  How many of the latest open threads to include (default 5)
-Returns: {id,repo,title,author,status,is_draft,source,target,merge_status,auto_complete,created,reviewers[{name,vote,required}],url,description,work_items[],policies[{name,status,run_id}],open_threads,threads[{id,status,author,file,line,date,text,replies}],last_merge_source_commit}
+Returns: {id,repo,title,author,status,is_draft,source,target,merge_status,auto_complete,created,reviewers[{name,vote,required}],url,description,work_items[],policies[{name,status,run_id}],open_threads,threads[{id,status,author,at,file,line,date,text,replies}],last_merge_source_commit}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado pr get 42 --fields title,status,reviewers,policies
 ```
@@ -259,6 +289,7 @@ agent-cli ado pr comment — Start a comment thread on a pull request (Markdown,
  *<id> str          The pull request's id: 431, #431 or its web URL
   <text> str        Markdown, or - to read stdin (posted as a code block, 64 KiB max)
   --text-file path  The comment from a Markdown file (64 KiB max)
+  --at str          Open it on a file's lines: REPO[@REF]:PATH[:LINE[-LINE]], as diff get prints a hunk's at
 Returns: {pr,thread_id}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado pr comment 42 'Tests pass locally; ready for review'
@@ -285,6 +316,47 @@ agent-cli ado pr abandon — Abandon (close) a pull request, discarding its chan
 Returns: {id,repo,title,author,status,is_draft,source,target,merge_status,auto_complete,created,reviewers[{name,vote,required}],url}
 Destructive: needs --yes; --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado pr abandon 42 --yes
+```
+
+### ado thread list
+
+```text
+agent-cli ado thread list — List a pull request's review threads with the code each comment is on
+ *<pr> str                      The pull request's id: 436, #436 or its web URL
+  --status all|active|fixed|wontFix|closed|byDesign|pending  Only threads in this state, or all (default: active and pending)
+  --author str                  Only threads this person started: a name, a sign-in address or @me
+  --file str                    Only threads on files matching this glob (*.cs, src/Orders/*)
+  --around int                  Lines of code shown either side of each comment (default 3)
+  --limit int                   Most rows to return (default 50)
+Returns: [{id,status,at,file,line,author,date,text,replies[{author,date,text}],code}]
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado thread list 436 --fields id,at,author,text,code
+```
+
+### ado thread comment
+
+```text
+agent-cli ado thread comment — Reply to a pull request review thread, and resolve it with --resolve
+ *<id> str          The thread: PR/THREAD (436/7) as thread list and pr get print it, or its web URL
+  <text> str        Markdown, or - to read stdin (posted as a code block, 64 KiB max)
+  --text-file path  The reply from a Markdown file (64 KiB max)
+  --pr str          The pull request, when the id is the thread's number alone
+  --resolve         Also resolve the thread (status fixed)
+Returns: {id,comment_id,status}
+Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado thread comment 436/7 'Capped at 30 s in 9f1c2e4' --resolve
+```
+
+### ado thread update
+
+```text
+agent-cli ado thread update — Resolve, reopen or close a pull request review thread
+ *<id> str                      The thread: PR/THREAD (436/7) as thread list and pr get print it, or its web URL
+ *--status active|fixed|wontFix|closed|byDesign|pending  fixed resolves it, active reopens it
+  --pr str                      The pull request, when the id is the thread's number alone
+Returns: {id,status}
+Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado thread update 436/7 --status fixed
 ```
 
 ### ado pipeline list

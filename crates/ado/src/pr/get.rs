@@ -5,6 +5,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::client::{Ado, Kind, PREVIEW_API, list, query_value, stamp, text};
+use crate::thread::{fetch_threads, is_discussion};
 
 use super::{PrRow, fetch_pr, pr_home, pr_row, pr_work_items};
 
@@ -47,12 +48,15 @@ pub struct Policy {
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct Thread {
-    id: i64,
+    /// PR/THREAD: what thread comment and thread update take.
+    id: String,
     status: Option<String>,
     author: Option<String>,
+    /// The file get id of the lines a code comment is on, at the head.
+    at: Option<String>,
     /// The file and line a code comment is on.
     file: Option<String>,
-    line: Option<i64>,
+    line: Option<usize>,
     date: Option<String>,
     /// The first comment, Markdown.
     text: Option<String>,
@@ -93,21 +97,12 @@ fn pr_get(ctx: &Ctx, args: PrGetArgs) -> Result<PullRequest> {
             }
         })
         .collect();
-    let threads = ado.get(
-        ctx,
-        &ado.code(
-            &format!("git/repositories/{repo_id}/pullRequests/{}/threads", id),
-            "",
-        ),
-    )?;
-    let mut open: Vec<&Value> = list(&threads["value"])
+    let threads = fetch_threads(ctx, &ado, &pr, id)?;
+    let mut open: Vec<&Value> = threads
+        .all
         .iter()
         .filter(|thread| {
-            matches!(thread["status"].as_str(), Some("active" | "pending"))
-                && !thread["isDeleted"].as_bool().unwrap_or_default()
-                // A thread Azure DevOps wrote about itself (a vote, a push)
-                // is not discussion.
-                && thread["comments"][0]["commentType"].as_str() != Some("system")
+            matches!(thread["status"].as_str(), Some("active" | "pending")) && is_discussion(thread)
         })
         .collect();
     open.sort_by(|a, b| {
@@ -121,13 +116,14 @@ fn pr_get(ctx: &Ctx, args: PrGetArgs) -> Result<PullRequest> {
         .take(args.comments)
         .map(|thread| {
             let first = &thread["comments"][0];
-            let context = &thread["threadContext"];
+            let place = threads.place(thread);
             Thread {
-                id: thread["id"].as_i64().unwrap_or_default(),
+                id: format!("{id}/{}", thread["id"].as_i64().unwrap_or_default()),
                 status: text(&thread["status"]),
                 author: text(&first["author"]["displayName"]),
-                file: text(&context["filePath"]),
-                line: context["rightFileStart"]["line"].as_i64(),
+                at: place.as_ref().and_then(|place| place.at.clone()),
+                line: place.as_ref().and_then(|place| place.line),
+                file: place.map(|place| place.file),
                 date: stamp(&thread["lastUpdatedDate"]),
                 text: text(&first["content"]),
                 replies: list(&thread["comments"]).len().saturating_sub(1),
@@ -174,6 +170,9 @@ mod tests {
                     json!({"status": "notApplicable", "configuration": {"type": {"displayName": "Comment requirements"}}}),
                 ]),
                 page(vec![
+                    json!({"id": 1, "sourceRefCommit": {"commitId": "abc123"}}),
+                ]),
+                page(vec![
                     json!({"id": 1, "status": "active", "lastUpdatedDate": "2026-09-27T00:00:00Z",
                         "comments": [{"author": {"displayName": "Sam Lee"}, "content": "Older", "commentType": "text"}]}),
                     json!({"id": 2, "status": "active", "lastUpdatedDate": "2026-09-28T00:00:00Z",
@@ -197,7 +196,8 @@ mod tests {
         assert_eq!(got["open_threads"], 2);
         assert_eq!(
             got["threads"],
-            json!([{"id": 2, "status": "active", "author": "Sam Lee", "file": "/src/login.ts", "line": 12,
+            json!([{"id": "17/2", "status": "active", "author": "Sam Lee", "at": "web@abc123:src/login.ts:12",
+                "file": "src/login.ts", "line": 12,
                 "date": "2026-09-28T00:00:00Z", "text": "Null check?", "replies": 1}])
         );
         assert_eq!(got["last_merge_source_commit"], "abc123");
@@ -211,6 +211,13 @@ mod tests {
             format!(
                 "{CODE}/policy/evaluations?artifactId=vstfs%3A%2F%2F%2FCodeReview%2FCodeReviewId%2Fp-1%2F17&api-version=7.1-preview.1"
             )
+        );
+        assert_eq!(
+            sent[4],
+            format!(
+                "{CODE}/git/repositories/r-1/pullRequests/17/threads?$iteration=1&api-version=7.1"
+            ),
+            "thread lines are placed on the latest iteration"
         );
 
         let (outcome, _) = ado(

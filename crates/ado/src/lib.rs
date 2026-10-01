@@ -6,6 +6,8 @@
 mod approval;
 mod client;
 mod doctor;
+mod file;
+mod ids;
 mod markdown;
 mod pipeline;
 mod pr;
@@ -14,6 +16,7 @@ mod run;
 mod team;
 #[cfg(test)]
 mod testing;
+mod thread;
 mod work_items;
 mod workitem;
 
@@ -32,6 +35,8 @@ pub const DOMAIN: Domain = Domain {
         team::list::TEAM_LIST,
         repo::list::REPO_LIST,
         repo::get::REPO_GET,
+        file::get::FILE_GET,
+        file::list::FILE_LIST,
         pr::list::PR_LIST,
         pr::get::PR_GET,
         pr::create::PR_CREATE,
@@ -41,6 +46,9 @@ pub const DOMAIN: Domain = Domain {
         pr::comment::PR_COMMENT,
         pr::complete::PR_COMPLETE,
         pr::abandon::PR_ABANDON,
+        thread::list::THREAD_LIST,
+        thread::comment::THREAD_COMMENT,
+        thread::update::THREAD_UPDATE,
         pipeline::list::PIPELINE_LIST,
         run::list::RUN_LIST,
         run::get::RUN_GET,
@@ -68,6 +76,9 @@ pub const DOMAIN: Domain = Domain {
         ("backlog", &["workitem"]),
         ("work item", &["workitem"]),
         ("work items", &["workitem"]),
+        ("review comment", &["thread"]),
+        ("review comments", &["thread"]),
+        ("comment thread", &["thread"]),
         ("prs", &["pr"]),
         ("pull request", &["pr"]),
         ("pull requests", &["pr"]),
@@ -97,7 +108,7 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 29);
+        assert_eq!(DOMAIN.commands.len(), 34);
     }
 
     #[test]

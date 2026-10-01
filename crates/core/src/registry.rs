@@ -25,7 +25,7 @@ use crate::error::Failure;
 pub const VERBS: &[&str] = &[
     "list", "get", "create", "update", "delete", "run", "wait", "cancel", "retry", "logs", "vote",
     "complete", "abandon", "link", "comment", "approve", "reject", "connect", "restart", "scale",
-    "bench",
+    "bench", "preview",
 ];
 
 /// Words core owns; no domain may take one.

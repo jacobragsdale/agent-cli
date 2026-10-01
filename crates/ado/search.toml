@@ -366,3 +366,51 @@ expect = "ado approval list"
 [[query]]
 text = "pipeline approval pending"
 expect = "ado approval list"
+
+[[query]]
+text = "show line 42 of src/Orders/OrderClient.cs in the api repo"
+expect = "ado file get"
+
+[[query]]
+text = "read a file from the repository at a tag"
+expect = "ado file get"
+
+[[query]]
+text = "cat the source of a file on the main branch"
+expect = "ado file get"
+
+[[query]]
+text = "what files are in the src/Jobs folder of the worker repo"
+expect = "ado file list"
+
+[[query]]
+text = "browse the repository tree"
+expect = "ado file list"
+
+[[query]]
+text = "address the review comments on PR 436"
+expect = "ado thread list"
+
+[[query]]
+text = "unresolved review threads on a pull request"
+expect = "ado thread list"
+
+[[query]]
+text = "what did the reviewer say about my code"
+expect = "ado thread list"
+
+[[query]]
+text = "reply to a review comment and resolve it"
+expect = "ado thread comment"
+
+[[query]]
+text = "answer the reviewer's comment thread"
+expect = "ado thread comment"
+
+[[query]]
+text = "mark a review thread as resolved"
+expect = "ado thread update"
+
+[[query]]
+text = "reopen a comment thread on a pull request"
+expect = "ado thread update"

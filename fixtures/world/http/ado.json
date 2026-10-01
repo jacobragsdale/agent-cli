@@ -25,20 +25,46 @@
  {
   "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories?api-version=7.1",
   "answer": {
-   "count": 1,
+   "count": 3,
    "value": [
     {
      "id": "00000000-0000-4000-8000-0000000a0001",
      "name": "api",
      "defaultBranch": "refs/heads/main",
-     "size": 18423117,
      "project": {
       "id": "00000000-0000-4000-8000-00000000f001",
       "name": "Fabrikam"
      },
      "remoteUrl": "https://dev.azure.com/contoso/Fabrikam/_git/api",
      "sshUrl": "git@ssh.dev.azure.com:v3/contoso/Fabrikam/api",
-     "webUrl": "https://dev.azure.com/contoso/Fabrikam/_git/api"
+     "webUrl": "https://dev.azure.com/contoso/Fabrikam/_git/api",
+     "size": 18423117
+    },
+    {
+     "id": "00000000-0000-4000-8000-0000000a0002",
+     "name": "worker",
+     "defaultBranch": "refs/heads/main",
+     "project": {
+      "id": "00000000-0000-4000-8000-00000000f001",
+      "name": "Fabrikam"
+     },
+     "remoteUrl": "https://dev.azure.com/contoso/Fabrikam/_git/worker",
+     "sshUrl": "git@ssh.dev.azure.com:v3/contoso/Fabrikam/worker",
+     "webUrl": "https://dev.azure.com/contoso/Fabrikam/_git/worker",
+     "size": 6210388
+    },
+    {
+     "id": "00000000-0000-4000-8000-0000000a0003",
+     "name": "airflow-dags",
+     "defaultBranch": "refs/heads/main",
+     "project": {
+      "id": "00000000-0000-4000-8000-00000000f001",
+      "name": "Fabrikam"
+     },
+     "remoteUrl": "https://dev.azure.com/contoso/Fabrikam/_git/airflow-dags",
+     "sshUrl": "git@ssh.dev.azure.com:v3/contoso/Fabrikam/airflow-dags",
+     "webUrl": "https://dev.azure.com/contoso/Fabrikam/_git/airflow-dags",
+     "size": 412907
     }
    ]
   }
@@ -2285,7 +2311,7 @@
   }
  },
  {
-  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/pullRequests/431/threads?api-version=7.1",
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/pullRequests/431/threads?$iteration=2&api-version=7.1",
   "answer": {
    "count": 1,
    "value": [
@@ -2548,6 +2574,446 @@
      }
     }
    ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/worker/items?scopePath=%2Fsrc%2FJobs&recursionLevel=OneLevel&api-version=7.1",
+  "note": "the folder IOrderClient's caller is in",
+  "answer": {
+   "count": 4,
+   "value": [
+    {
+     "objectId": "6966922100bf006356af2b9098e6ba3b1c190226",
+     "gitObjectType": "tree",
+     "commitId": "6c1f8e2a4b7d9c0e3f5a1b8d2c6e9f0a4b7c1d3e",
+     "path": "/src/Jobs",
+     "isFolder": true
+    },
+    {
+     "objectId": "2fa6840d1e5ef178c7072d01c45b3b992c6d5b57",
+     "gitObjectType": "blob",
+     "commitId": "6c1f8e2a4b7d9c0e3f5a1b8d2c6e9f0a4b7c1d3e",
+     "path": "/src/Jobs/Retry.cs"
+    },
+    {
+     "objectId": "0a8adac9d6d5f4d14ee887d196cd8618f0f3391a",
+     "gitObjectType": "blob",
+     "commitId": "6c1f8e2a4b7d9c0e3f5a1b8d2c6e9f0a4b7c1d3e",
+     "path": "/src/Jobs/Schedule.cs"
+    },
+    {
+     "objectId": "dfdd7fcf67ed7262c759d9e7830ef28bc5d08b79",
+     "gitObjectType": "blob",
+     "commitId": "6c1f8e2a4b7d9c0e3f5a1b8d2c6e9f0a4b7c1d3e",
+     "path": "/src/Jobs/Sweep.cs"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/worker/items?path=%2Fsrc%2FJobs%2FRetry.cs&includeContent=true&$format=json&api-version=7.1",
+  "note": "calls IOrderClient on line 18",
+  "answer": {
+   "objectId": "2fa6840d1e5ef178c7072d01c45b3b992c6d5b57",
+   "gitObjectType": "blob",
+   "commitId": "6c1f8e2a4b7d9c0e3f5a1b8d2c6e9f0a4b7c1d3e",
+   "path": "/src/Jobs/Retry.cs",
+   "content": "using System;\nusing System.Threading;\nusing System.Threading.Tasks;\nusing Contoso.Api.Orders;\nusing Microsoft.Extensions.Logging;\n\nnamespace Contoso.Worker.Jobs;\n\n/// <summary>\n/// Re-sends the orders whose first delivery failed, oldest first, a batch at\n/// a time. The scheduler runs it every five minutes.\n/// </summary>\npublic sealed class Retry\n{\n    private const int BatchSize = 100;\n\n    /// <summary>The orders service, through the api's own client.</summary>\n    private readonly IOrderClient _orders;\n    private readonly ILogger<Retry> _log;\n\n    public Retry(IOrderClient orders, ILogger<Retry> log)\n    {\n        _orders = orders;\n        _log = log;\n    }\n\n    public async Task RunAsync(OutboxStore outbox, CancellationToken cancel)\n    {\n        foreach (var id in await outbox.FailedAsync(BatchSize, cancel))\n        {\n            var order = await _orders.GetAsync(id, cancel);\n            if (order is null)\n            {\n                _log.LogWarning(\"Order {Id} is gone; dropping it from the outbox\", id);\n                await outbox.DropAsync(id, cancel);\n                continue;\n            }\n            await outbox.ResendAsync(order, cancel);\n        }\n    }\n}"
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/airflow-dags/items?path=%2Fdags%2Fetl_nightly.py&includeContent=true&$format=json&api-version=7.1",
+  "note": "the DAG the prod Airflow instance runs; line 42 raises the ValueError load_orders failed with",
+  "answer": {
+   "objectId": "006c34c4ba91d66cee18c7f65d5b7f764b8286e9",
+   "gitObjectType": "blob",
+   "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+   "path": "/dags/etl_nightly.py",
+   "content": "\"\"\"Nightly ETL: extract the day's orders, transform them, load them into\nthe reporting database, then publish the daily report. Deployed to the prod\ninstance from the main branch of airflow-dags.\"\"\"\n\nfrom __future__ import annotations\n\nimport pendulum\nfrom airflow.sdk import dag, task\n\nfrom contoso.orders import fetch_orders\nfrom contoso.reporting import publish, write_orders\n\n\n@dag(\n    schedule=\"0 0 * * *\",\n    start_date=pendulum.datetime(2026, 1, 1, tz=\"UTC\"),\n    catchup=False,\n    tags=[\"orders\", \"reporting\"],\n)\ndef etl_nightly():\n    @task\n    def extract_orders(ds=None) -> list[dict]:\n        return fetch_orders(day=ds)\n\n    @task\n    def transform_orders(orders: list[dict]) -> list[dict]:\n        return [\n            {**order, \"total\": round(order[\"quantity\"] * order[\"unit_price\"], 2)}\n            for order in orders\n        ]\n\n    @task(retries=1)\n    def load_orders(orders: list[dict]) -> int:\n        rows = []\n        for order in orders:\n            order_id = order[\"order_id\"]\n            customer_id = order.get(\"customer_id\")\n            # Every row in reporting.orders needs a customer; an order\n            # without one is a bug upstream, so fail loudly rather than\n            # load a row the report would drop.\n            if customer_id is None:\n                raise ValueError(f\"order {order_id} has no customer_id\")\n            rows.append((order_id, customer_id, order[\"total\"]))\n        return write_orders(rows)\n\n    @task\n    def publish_report(loaded: int) -> None:\n        publish(day=\"{{ ds }}\", rows=loaded)\n\n    publish_report(load_orders(transform_orders(extract_orders())))\n\n\netl_nightly()"
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/items?path=%2Fsrc%2FOrders%2FOrderClient.cs&includeContent=true&$format=json&api-version=7.1",
+  "note": "main is v1.4.2",
+  "answer": {
+   "objectId": "b328134bb10512528052ce9e6b3d5fdfc341f65a",
+   "gitObjectType": "blob",
+   "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+   "path": "/src/Orders/OrderClient.cs",
+   "content": "using System;\nusing System.Net;\nusing System.Net.Http;\nusing System.Net.Http.Json;\nusing System.Threading;\nusing System.Threading.Tasks;\n\nnamespace Contoso.Api.Orders;\n\n/// <summary>Calls the orders service, retrying a 429 up to five times.</summary>\npublic sealed class OrderClient(HttpClient http) : IOrderClient\n{\n    private const int MaxAttempts = 5;\n\n    public async Task<Order?> GetAsync(int id, CancellationToken cancel)\n    {\n        for (var attempt = 1; ; attempt++)\n        {\n            using var response = await http.GetAsync($\"orders/{id}\", cancel);\n            if (response.StatusCode == HttpStatusCode.TooManyRequests && attempt < MaxAttempts)\n            {\n                await Task.Delay(Backoff(response, attempt), cancel);\n                continue;\n            }\n            if (response.StatusCode == HttpStatusCode.NotFound)\n            {\n                return null;\n            }\n            response.EnsureSuccessStatusCode();\n            return await response.Content.ReadFromJsonAsync<Order>(cancel);\n        }\n    }\n\n    /// <summary>Retry-After when the service sends one, else 2^attempt seconds.</summary>\n    internal static TimeSpan Backoff(HttpResponseMessage response, int attempt) =>\n        response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(Math.Pow(2, attempt));\n}"
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/pullrequests/436?api-version=7.1",
+  "answer": {
+   "pullRequestId": 436,
+   "codeReviewId": 436,
+   "status": "active",
+   "repository": {
+    "id": "00000000-0000-4000-8000-0000000a0001",
+    "name": "api",
+    "project": {
+     "id": "00000000-0000-4000-8000-00000000f001",
+     "name": "Fabrikam"
+    }
+   },
+   "title": "Add jitter to the retry backoff",
+   "description": "Spreads retries of clients that failed together, so they stop hitting the orders service in step.\n\nFor AB#1215.",
+   "createdBy": {
+    "displayName": "Jane Doe",
+    "uniqueName": "jane@contoso.com",
+    "id": "00000000-0000-4000-8000-0000000000e1"
+   },
+   "creationDate": "2026-09-29T09:10:05.4100000Z",
+   "sourceRefName": "refs/heads/1215-retry-jitter",
+   "targetRefName": "refs/heads/main",
+   "mergeStatus": "succeeded",
+   "isDraft": false,
+   "lastMergeSourceCommit": {
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0"
+   },
+   "lastMergeTargetCommit": {
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+   },
+   "reviewers": [
+    {
+     "displayName": "Sam Lee",
+     "uniqueName": "sam@contoso.com",
+     "id": "00000000-0000-4000-8000-0000000000e2",
+     "vote": 0,
+     "isRequired": true
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/pullRequests/436/iterations?api-version=7.1",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "id": 1,
+     "description": "Add jitter to the retry backoff",
+     "author": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "createdDate": "2026-09-29T09:10:05.4100000Z",
+     "sourceRefCommit": {
+      "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0"
+     },
+     "targetRefCommit": {
+      "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+     },
+     "commonRefCommit": {
+      "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/pullRequests/436/threads?$iteration=1&api-version=7.1",
+  "note": "PR 436 on its latest iteration: thread 7, on OrderClient.cs:42, is unresolved",
+  "answer": {
+   "count": 3,
+   "value": [
+    {
+     "id": 5,
+     "publishedDate": "2026-09-29T09:10:06.0200000Z",
+     "lastUpdatedDate": "2026-09-29T09:10:06.0200000Z",
+     "comments": [
+      {
+       "id": 1,
+       "parentCommentId": 0,
+       "author": {
+        "displayName": "Jane Doe",
+        "uniqueName": "jane@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e1"
+       },
+       "content": "Jane Doe added Sam Lee as a required reviewer",
+       "publishedDate": "2026-09-29T09:10:06.0200000Z",
+       "lastUpdatedDate": "2026-09-29T09:10:06.0200000Z",
+       "commentType": "system"
+      }
+     ],
+     "isDeleted": false
+    },
+    {
+     "id": 6,
+     "status": "fixed",
+     "publishedDate": "2026-09-29T10:02:44.1300000Z",
+     "lastUpdatedDate": "2026-09-29T10:31:09.5500000Z",
+     "threadContext": {
+      "filePath": "/src/Orders/OrderClient.cs",
+      "rightFileStart": {
+       "line": 39,
+       "offset": 1
+      },
+      "rightFileEnd": {
+       "line": 39,
+       "offset": 81
+      }
+     },
+     "pullRequestThreadContext": {
+      "iterationContext": {
+       "firstComparingIteration": 1,
+       "secondComparingIteration": 1
+      },
+      "changeTrackingId": 1
+     },
+     "comments": [
+      {
+       "id": 1,
+       "parentCommentId": 0,
+       "author": {
+        "displayName": "Sam Lee",
+        "uniqueName": "sam@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e2"
+       },
+       "content": "`internal` so the tests can reach it? Fine by me.",
+       "publishedDate": "2026-09-29T10:02:44.1300000Z",
+       "lastUpdatedDate": "2026-09-29T10:02:44.1300000Z",
+       "commentType": "text"
+      },
+      {
+       "id": 2,
+       "parentCommentId": 1,
+       "author": {
+        "displayName": "Jane Doe",
+        "uniqueName": "jane@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e1"
+       },
+       "content": "Yes, that is why.",
+       "publishedDate": "2026-09-29T10:31:09.5500000Z",
+       "lastUpdatedDate": "2026-09-29T10:31:09.5500000Z",
+       "commentType": "text"
+      }
+     ],
+     "isDeleted": false
+    },
+    {
+     "id": 7,
+     "status": "active",
+     "publishedDate": "2026-09-29T10:05:12.7700000Z",
+     "lastUpdatedDate": "2026-09-29T10:40:58.0100000Z",
+     "threadContext": {
+      "filePath": "/src/Orders/OrderClient.cs",
+      "rightFileStart": {
+       "line": 42,
+       "offset": 1
+      },
+      "rightFileEnd": {
+       "line": 42,
+       "offset": 59
+      }
+     },
+     "pullRequestThreadContext": {
+      "iterationContext": {
+       "firstComparingIteration": 1,
+       "secondComparingIteration": 1
+      },
+      "changeTrackingId": 2
+     },
+     "comments": [
+      {
+       "id": 1,
+       "parentCommentId": 0,
+       "author": {
+        "displayName": "Sam Lee",
+        "uniqueName": "sam@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e2"
+       },
+       "content": "Jitter grows with every attempt: by the fifth it adds up to 16 s on top of 16 s. Cap the delay at 30 s?",
+       "publishedDate": "2026-09-29T10:05:12.7700000Z",
+       "lastUpdatedDate": "2026-09-29T10:05:12.7700000Z",
+       "commentType": "text"
+      },
+      {
+       "id": 2,
+       "parentCommentId": 1,
+       "author": {
+        "displayName": "Priya Patel",
+        "uniqueName": "priya@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e3"
+       },
+       "content": "+1. 30 s is the orders service's own timeout.",
+       "publishedDate": "2026-09-29T10:40:58.0100000Z",
+       "lastUpdatedDate": "2026-09-29T10:40:58.0100000Z",
+       "commentType": "text"
+      }
+     ],
+     "isDeleted": false
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/items?path=%2Fsrc%2FOrders%2FOrderClient.cs&versionDescriptor.version=a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0&versionDescriptor.versionType=commit&includeContent=true&$format=json&api-version=7.1",
+  "note": "PR 436's head",
+  "answer": {
+   "objectId": "c51dded9046472726b203210311e874e9ce52504",
+   "gitObjectType": "blob",
+   "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+   "path": "/src/Orders/OrderClient.cs",
+   "content": "using System;\nusing System.Net;\nusing System.Net.Http;\nusing System.Net.Http.Json;\nusing System.Threading;\nusing System.Threading.Tasks;\n\nnamespace Contoso.Api.Orders;\n\n/// <summary>Calls the orders service, retrying a 429 up to five times.</summary>\npublic sealed class OrderClient(HttpClient http) : IOrderClient\n{\n    private const int MaxAttempts = 5;\n\n    public async Task<Order?> GetAsync(int id, CancellationToken cancel)\n    {\n        for (var attempt = 1; ; attempt++)\n        {\n            using var response = await http.GetAsync($\"orders/{id}\", cancel);\n            if (response.StatusCode == HttpStatusCode.TooManyRequests && attempt < MaxAttempts)\n            {\n                await Task.Delay(Backoff(response, attempt), cancel);\n                continue;\n            }\n            if (response.StatusCode == HttpStatusCode.NotFound)\n            {\n                return null;\n            }\n            response.EnsureSuccessStatusCode();\n            return await response.Content.ReadFromJsonAsync<Order>(cancel);\n        }\n    }\n\n    /// <summary>\n    /// Retry-After when the service sends one, else 2^attempt seconds plus\n    /// up to as much again at random, so clients that failed together do not\n    /// retry together.\n    /// </summary>\n    internal static TimeSpan Backoff(HttpResponseMessage response, int attempt)\n    {\n        var seconds = Math.Pow(2, attempt);\n        var jitter = Random.Shared.NextDouble() * seconds;\n        return response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(seconds + jitter);\n    }\n}"
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/pullRequests/436/workitems?api-version=7.1",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "id": "1215",
+     "url": "x"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/policy/evaluations?artifactId=vstfs%3A%2F%2F%2FCodeReview%2FCodeReviewId%2F00000000-0000-4000-8000-00000000f001%2F436&api-version=7.1-preview.1",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "status": "queued",
+     "configuration": {
+      "type": {
+       "displayName": "Minimum number of reviewers"
+      },
+      "settings": {}
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/pullRequests/436/threads/7/comments?api-version=7.1",
+  "body": {
+   "parentCommentId": 1,
+   "content": "Capped at 30 s in 9f1c2e4",
+   "commentType": "text"
+  },
+  "answer": {
+   "id": 3,
+   "parentCommentId": 1,
+   "author": {
+    "displayName": "Jane Doe",
+    "uniqueName": "jane@contoso.com",
+    "id": "00000000-0000-4000-8000-0000000000e1"
+   },
+   "content": "Capped at 30 s in 9f1c2e4",
+   "publishedDate": "2026-09-29T11:20:00.0000000Z",
+   "lastUpdatedDate": "2026-09-29T11:20:00.0000000Z",
+   "commentType": "text"
+  }
+ },
+ {
+  "request": "PATCH https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/pullRequests/436/threads/7?api-version=7.1",
+  "body": {
+   "status": "fixed"
+  },
+  "answer": {
+   "id": 7,
+   "status": "fixed",
+   "lastUpdatedDate": "2026-09-29T11:20:01.0000000Z"
+  }
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/pullRequests/436/threads?api-version=7.1",
+  "body": {
+   "comments": [
+    {
+     "parentCommentId": 0,
+     "content": "Jitter is unbounded here",
+     "commentType": "text"
+    }
+   ],
+   "status": "active",
+   "threadContext": {
+    "filePath": "/src/Orders/OrderClient.cs",
+    "rightFileStart": {
+     "line": 42,
+     "offset": 1
+    },
+    "rightFileEnd": {
+     "line": 42,
+     "offset": 1
+    }
+   }
+  },
+  "answer": {
+   "id": 8,
+   "status": "active",
+   "threadContext": {
+    "filePath": "/src/Orders/OrderClient.cs",
+    "rightFileStart": {
+     "line": 42,
+     "offset": 1
+    },
+    "rightFileEnd": {
+     "line": 42,
+     "offset": 1
+    }
+   },
+   "comments": [
+    {
+     "id": 1,
+     "parentCommentId": 0,
+     "author": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "content": "Jitter is unbounded here",
+     "publishedDate": "2026-09-29T11:25:00.0000000Z",
+     "lastUpdatedDate": "2026-09-29T11:25:00.0000000Z",
+     "commentType": "text"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/pullRequests/431/iterations?api-version=7.1",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "id": 1,
+     "createdDate": "2026-09-27T15:02:11.8830000Z",
+     "sourceRefCommit": {
+      "commitId": "1f0e2d4c6b8a0e2d4c6b8a0f2e4d6c8b0a2e4d6c"
+     },
+     "commonRefCommit": {
+      "commitId": "2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b"
+     }
+    },
+    {
+     "id": 2,
+     "createdDate": "2026-09-28T08:41:30.2200000Z",
+     "sourceRefCommit": {
+      "commitId": "9d31e0a7c2b4f6e8a0c2e4f6a8b0c2d4e6f8a0b2"
+     },
+     "commonRefCommit": {
+      "commitId": "2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "PUT https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/pullrequests/436/reviewers/00000000-0000-4000-8000-0000000000e1?api-version=7.1",
+  "note": "ado pr vote 436 suggest",
+  "body": {
+   "vote": 5
+  },
+  "answer": {
+   "displayName": "Jane Doe",
+   "uniqueName": "jane@contoso.com",
+   "id": "00000000-0000-4000-8000-0000000000e1",
+   "vote": 5
   }
  }
 ]

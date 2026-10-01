@@ -1,12 +1,13 @@
 use std::path::PathBuf;
 
-use agent_cli_core::{Ctx, Effect, Method, command};
+use agent_cli_core::{Ctx, Effect, Failure, Method, command};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
-use serde_json::json;
+use serde_json::{Value, json};
 
-use crate::client::{Ado, Kind};
+use crate::client::{Ado, Kind, text};
+use crate::ids::FileId;
 use crate::markdown::CommentBody;
 
 use super::{fetch_pr, pr_home};
@@ -21,6 +22,9 @@ pub struct PrCommentArgs {
     /// The comment from a Markdown file (64 KiB max)
     #[arg(long)]
     text_file: Option<PathBuf>,
+    /// Open it on a file's lines: REPO[@REF]:PATH[:LINE[-LINE]], as diff get prints a hunk's at
+    #[arg(long)]
+    at: Option<String>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -39,20 +43,41 @@ fn pr_comment(ctx: &Ctx, args: PrCommentArgs) -> Result<PrCommented> {
         &format!("git/repositories/{repo_id}/pullRequests/{}/threads", id),
         "",
     );
-    let thread = ado.change(
-        ctx,
-        Effect::Write,
-        Method::Post,
-        &url,
-        json!({
-            "comments": [{"parentCommentId": 0, "content": body.markdown(), "commentType": "text"}],
-            "status": "active",
-        }),
-    )?;
+    let mut thread = json!({
+        "comments": [{"parentCommentId": 0, "content": body.markdown(), "commentType": "text"}],
+        "status": "active",
+    });
+    if let Some(at) = &args.at {
+        thread["threadContext"] = thread_context(&ado, &pr, at)?;
+    }
+    let thread = ado.change(ctx, Effect::Write, Method::Post, &url, thread)?;
     Ok(PrCommented {
         pr: id,
         thread_id: thread["id"].as_i64(),
     })
+}
+
+/// Where on the pull request's files `at` puts the thread: its right side
+/// (the change), on the lines the id names, else on the whole file.
+fn thread_context(ado: &Ado, pr: &Value, at: &str) -> Result<Value> {
+    let file = FileId::parse(ado, at, None, None)?;
+    let repo = text(&pr["repository"]["name"]).unwrap_or_default();
+    if !file.repo.eq_ignore_ascii_case(&repo) || file.path.is_empty() {
+        return Err(Failure::usage(format!(
+            "--at {at} is not a file in {repo}, the pull request's repository"
+        ))
+        .hint(format!(
+            "agent-cli ado pr get {} --fields repo",
+            pr["pullRequestId"]
+        ))
+        .into());
+    }
+    let mut context = json!({"filePath": format!("/{}", file.path)});
+    if let Some((first, last)) = file.lines {
+        context["rightFileStart"] = json!({"line": first, "offset": 1});
+        context["rightFileEnd"] = json!({"line": last, "offset": 1});
+    }
+    Ok(context)
 }
 
 command! {
@@ -93,5 +118,48 @@ mod tests {
             ],
         );
         assert_eq!(outcome.json(), json!({"pr": 17, "thread_id": 88}));
+    }
+
+    #[test]
+    fn at_opens_the_thread_on_the_lines_a_file_id_names() {
+        let plans = dry_run(
+            &[
+                "ado",
+                "pr",
+                "comment",
+                "17",
+                "Unbounded",
+                "--at",
+                "web@abc123:src/x.cs:42-44",
+            ],
+            vec![Answer::json(&pr(17, false))],
+        );
+        assert_eq!(
+            plans[0]["body"]["threadContext"],
+            json!({"filePath": "/src/x.cs", "rightFileStart": {"line": 42, "offset": 1},
+                "rightFileEnd": {"line": 44, "offset": 1}})
+        );
+        let plans = dry_run(
+            &[
+                "ado",
+                "pr",
+                "comment",
+                "17",
+                "Why?",
+                "--at",
+                "web:README.md",
+            ],
+            vec![Answer::json(&pr(17, false))],
+        );
+        assert_eq!(
+            plans[0]["body"]["threadContext"],
+            json!({"filePath": "/README.md"})
+        );
+        let (outcome, transport) = ado(
+            &["ado", "pr", "comment", "17", "x", "--at", "api:src/x.cs:1"],
+            vec![Answer::json(&pr(17, false))],
+        );
+        assert_eq!(outcome.code, 2, "another repository's file: {outcome:?}");
+        assert_eq!(transport.sent().len(), 1, "nothing was posted");
     }
 }

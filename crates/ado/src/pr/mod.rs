@@ -98,17 +98,33 @@ fn pr_row(ado: &Ado, pr: &Value) -> PrRow {
 
 /// The pull request as stored, found by id alone: the project-wide endpoint
 /// needs no repository.
-fn fetch_pr(ctx: &Ctx, ado: &Ado, id: i64) -> Result<Value> {
+pub(crate) fn fetch_pr(ctx: &Ctx, ado: &Ado, id: i64) -> Result<Value> {
     ado.get(ctx, &ado.code(&format!("git/pullrequests/{id}"), ""))
 }
 
 /// The repository id and project id a pull request lives under.
-fn pr_home(pr: &Value) -> Result<(String, String)> {
+pub(crate) fn pr_home(pr: &Value) -> Result<(String, String)> {
     let repo = text(&pr["repository"]["id"])
         .context("the pull request came back without its repository")?;
     let project = text(&pr["repository"]["project"]["id"])
         .context("the pull request came back without its project")?;
     Ok((repo, project))
+}
+
+/// A pull request's latest iteration (its latest push): `sourceRefCommit`
+/// is its head and `commonRefCommit` its merge base with the target. `null`
+/// for one with none.
+pub(crate) fn latest_iteration(ctx: &Ctx, ado: &Ado, repo_id: &str, id: i64) -> Result<Value> {
+    let url = ado.code(
+        &format!("git/repositories/{repo_id}/pullRequests/{id}/iterations"),
+        "",
+    );
+    let answer = ado.get(ctx, &url)?;
+    Ok(list(&answer["value"])
+        .iter()
+        .max_by_key(|iteration| iteration["id"].as_i64())
+        .cloned()
+        .unwrap_or_default())
 }
 
 /// The work items a pull request says it closes.

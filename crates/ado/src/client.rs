@@ -322,7 +322,7 @@ impl Ado {
                 ))
                 .into()
         };
-        let Some(rest) = raw.strip_prefix("https://") else {
+        let Some((segments, query)) = crate::ids::web(self, raw).map_err(&wrong)? else {
             let number = raw
                 .strip_prefix("AB#")
                 .or_else(|| raw.strip_prefix('#'))
@@ -333,24 +333,6 @@ impl Ado {
                 .filter(|id| *id > 0)
                 .ok_or_else(|| wrong(format!("{raw:?} is not a {} id", kind.noun())));
         };
-        let (host, path) = rest.split_once('/').unwrap_or((rest, ""));
-        let host = host.to_ascii_lowercase();
-        let (org, path) = match host.strip_suffix(".visualstudio.com") {
-            Some(org) => (org.to_owned(), path),
-            None if host == "dev.azure.com" => {
-                let (org, path) = path.split_once('/').unwrap_or((path, ""));
-                (org.to_ascii_lowercase(), path)
-            }
-            None => return Err(wrong(format!("{raw} is not an Azure DevOps URL"))),
-        };
-        if org != self.org.to_ascii_lowercase() {
-            return Err(wrong(format!(
-                "{raw} is in organization {org}, and [ado] org is {}",
-                self.org
-            )));
-        }
-        let (path, query) = path.split_once('?').unwrap_or((path, ""));
-        let segments: Vec<&str> = path.split('/').collect();
         let after = |marker: &str| {
             segments
                 .iter()
@@ -359,12 +341,9 @@ impl Ado {
                 .and_then(|id| id.parse::<i64>().ok())
         };
         let found = match kind {
-            Kind::WorkItem => after("edit").filter(|_| path.contains("/_workitems/")),
+            Kind::WorkItem => after("edit").filter(|_| segments.iter().any(|s| s == "_workitems")),
             Kind::PullRequest => after("pullrequest"),
-            Kind::Run => query
-                .split('&')
-                .find_map(|pair| pair.strip_prefix("buildId="))
-                .and_then(|id| id.parse().ok()),
+            Kind::Run => crate::ids::query_param(&query, "buildId").and_then(|id| id.parse().ok()),
         };
         found.ok_or_else(|| wrong(format!("{raw} is not a {} URL", kind.noun())))
     }
