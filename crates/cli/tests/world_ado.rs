@@ -551,3 +551,18 @@ fn a_pull_requests_failed_build_log_ends_in_the_compiler_error() {
         "{text}"
     );
 }
+
+#[test]
+fn the_run_a_create_queued_reads_back_succeeded() {
+    let run = ok(&[
+        "ado",
+        "run",
+        "get",
+        "8815",
+        "--fields",
+        "result,failed,pr,workitems",
+    ]);
+    assert_eq!(run["result"], "succeeded");
+    assert_eq!(run.get("failed"), None, "{run}");
+    assert_eq!(run["pr"]["id"], 431);
+}

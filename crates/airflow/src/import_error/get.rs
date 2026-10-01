@@ -1,4 +1,4 @@
-use agent_cli_core::{Ctx, command};
+use agent_cli_core::{Ctx, Failure, command};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -10,8 +10,9 @@ use super::import_error_row;
 
 #[derive(clap::Args)]
 pub struct ImportErrorGetArgs {
-    /// The import error's id, from import-error list
-    id: i64,
+    /// The import error: its id from import-error list, or its DAG file
+    /// (customer_sync.py, customer_sync, or its path in the bundle)
+    id: String,
     #[command(flatten)]
     at: At,
 }
@@ -36,7 +37,29 @@ pub struct ImportErrorDetail {
 fn import_error_get(ctx: &Ctx, args: ImportErrorGetArgs) -> Result<ImportErrorDetail> {
     let airflow = Airflow::load(ctx.config())?;
     let client = airflow.open(ctx, args.at.instance.as_deref())?;
-    let error = client.get(&format!("importErrors/{}", args.id))?;
+    let id = match args.id.parse::<i64>() {
+        Ok(id) => id,
+        // Airflow keys import errors by file, and agents reach for the file.
+        // ponytail: looks among the newest 50; page on if a deployment has more.
+        Err(_) => {
+            let (errors, _) =
+                client.list("importErrors", "order_by=-timestamp", "import_errors", 50)?;
+            errors
+                .iter()
+                .map(import_error_row)
+                .find(|row| {
+                    row.file
+                        .as_deref()
+                        .is_some_and(|file| names(file, &args.id))
+                })
+                .map(|row| row.id)
+                .ok_or_else(|| {
+                    Failure::not_found(format!("no import error for {:?}", args.id))
+                        .hint("agent-cli airflow import-error list")
+                })?
+        }
+    };
+    let error = client.get(&format!("importErrors/{id}"))?;
     let row = import_error_row(&error);
     let stack_trace = text(&error["stack_trace"]);
     let line = row
@@ -65,6 +88,13 @@ fn import_error_get(ctx: &Ctx, args: ImportErrorGetArgs) -> Result<ImportErrorDe
         repo_file,
         stack_trace,
     })
+}
+
+/// Whether `file`, a DAG file's path in its bundle, is the one `wanted` names:
+/// the path, its file name, or that name without `.py`.
+fn names(file: &str, wanted: &str) -> bool {
+    let name = file.rsplit('/').next().unwrap_or(file);
+    file == wanted || name == wanted || name.strip_suffix(".py") == Some(wanted)
 }
 
 command! {
@@ -112,5 +142,31 @@ mod tests {
         assert_eq!(outcome.json()["line"], 5);
         assert_eq!(outcome.json().get("repo_file"), None, "no dags_repo");
         assert!(!outcome.stderr.contains("[next:"), "{}", outcome.stderr);
+    }
+
+    #[test]
+    fn an_import_error_is_found_by_its_dag_file() {
+        let error = json!({"import_error_id": 12, "filename": "dags/customer_sync.py",
+            "stack_trace": "ModuleNotFoundError: No module named 'contoso_crm'"});
+        let page = json!({"import_errors": [error], "total_entries": 1});
+        for name in ["customer_sync.py", "customer_sync", "dags/customer_sync.py"] {
+            let (outcome, _) = airflow(
+                &["airflow", "import-error", "get", name],
+                vec![Answer::json(&page), Answer::json(&error)],
+            );
+            assert_eq!(outcome.json()["id"], 12, "{name}: {outcome:?}");
+        }
+        let (outcome, _) = airflow(
+            &["airflow", "import-error", "get", "orders_export"],
+            vec![Answer::json(&page)],
+        );
+        assert_eq!(outcome.code, 4, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("hint: agent-cli airflow import-error list"),
+            "{}",
+            outcome.stderr
+        );
     }
 }

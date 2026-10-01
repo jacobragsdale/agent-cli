@@ -2843,5 +2843,13 @@
     "status": "done"
    }
   }
+ },
+ {
+  "request": "GET https://api.datadoghq.eu/api/v1/slo?limit=50",
+  "note": "the org defines no SLOs",
+  "answer": {
+   "data": [],
+   "errors": null
+  }
  }
 ]

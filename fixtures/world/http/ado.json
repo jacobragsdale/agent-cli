@@ -4657,6 +4657,95 @@
 }
 ,
 {
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8815/timeline?api-version=7.1",
+ "note": "run 8815 (the run create): every step succeeded",
+ "answer": {
+  "records": [
+   {
+    "id": "s1",
+    "parentId": null,
+    "type": "Stage",
+    "name": "Build",
+    "state": "completed",
+    "result": "succeeded",
+    "order": 1,
+    "log": null,
+    "startTime": "2026-09-29T11:52:20.1170000Z",
+    "finishTime": "2026-09-29T11:58:39.5530000Z",
+    "issues": []
+   },
+   {
+    "id": "j1",
+    "parentId": "s1",
+    "type": "Job",
+    "name": "Build and test",
+    "state": "completed",
+    "result": "succeeded",
+    "order": 1,
+    "log": null,
+    "startTime": "2026-09-29T11:52:21.0060000Z",
+    "finishTime": "2026-09-29T11:58:38.9010000Z",
+    "issues": []
+   },
+   {
+    "id": "t1",
+    "parentId": "j1",
+    "type": "Task",
+    "name": "Checkout api@main",
+    "state": "completed",
+    "result": "succeeded",
+    "order": 1,
+    "log": {
+     "id": 3
+    },
+    "startTime": "2026-09-29T11:52:22.4420000Z",
+    "finishTime": "2026-09-29T11:52:31.0370000Z",
+    "issues": []
+   },
+   {
+    "id": "t2",
+    "parentId": "j1",
+    "type": "Task",
+    "name": "Build",
+    "state": "completed",
+    "result": "succeeded",
+    "order": 2,
+    "log": {
+     "id": 4
+    },
+    "startTime": "2026-09-29T11:52:31.2210000Z",
+    "finishTime": "2026-09-29T11:54:02.6830000Z",
+    "issues": []
+   },
+   {
+    "id": "t3",
+    "parentId": "j1",
+    "type": "Task",
+    "name": "Run tests",
+    "state": "completed",
+    "result": "succeeded",
+    "order": 3,
+    "log": {
+     "id": 5
+    },
+    "startTime": "2026-09-29T11:54:02.8120000Z",
+    "finishTime": "2026-09-29T11:58:30.4400000Z",
+    "issues": []
+   }
+  ]
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8815/workitems?api-version=7.1",
+ "note": "a manual run on main links no work items",
+ "answer": {
+  "count": 0,
+  "value": []
+ }
+}
+,
+{
  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/commits?searchCriteria.$top=51&searchCriteria.itemPath=%2Fsrc%2FOrders%2FOrderClient.cs&api-version=7.1",
  "exact": [
   "searchCriteria.itemPath"

@@ -70,6 +70,11 @@ fn service_get(ctx: &Ctx, args: ServiceGetArgs) -> Result<ServiceHealth> {
         );
     }
     let dd = Dd::load(ctx)?;
+    if args.since.is_none() {
+        ctx.note(
+            "[the last hour; what a deploy changed: --since its time, as k8s deployment list prints it]",
+        );
+    }
     let window = Window::new(ctx, args.since, args.until, "1h")?;
     let env = args.env.or_else(|| dd.env.clone());
     let mut terms = vec![format!("service:{service}")];

@@ -186,3 +186,17 @@ fn a_crash_loop_alert_leads_by_notes_alone_to_the_refused_password() {
         "{logs}"
     );
 }
+
+#[test]
+fn the_org_has_no_slos_and_a_default_window_says_how_to_start_at_a_deploy() {
+    assert_eq!(ok(&["dd", "slo", "list"]), json!([]));
+    let service = world::agent_cli(&["dd", "service", "get", "api"]);
+    assert_eq!(service.code, 0, "{}", service.stderr);
+    assert!(
+        service
+            .stderr
+            .contains("[the last hour; what a deploy changed: --since its time"),
+        "{}",
+        service.stderr
+    );
+}

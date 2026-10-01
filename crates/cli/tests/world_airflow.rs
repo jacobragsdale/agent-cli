@@ -134,3 +134,17 @@ fn a_tasks_pool_and_a_dags_connections_lead_to_the_sql_connection() {
         variables.stdout
     );
 }
+
+#[test]
+fn an_import_error_is_found_by_its_dag_file() {
+    let error = ok(&[
+        "airflow",
+        "import-error",
+        "get",
+        "customer_sync.py",
+        "--fields",
+        "id,line",
+    ]);
+    assert_eq!(error["id"], 12);
+    assert_eq!(error["line"], 5);
+}

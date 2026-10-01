@@ -286,7 +286,7 @@ e.g. agent-cli airflow import-error list --fields id,file,error
 
 ```text
 agent-cli airflow import-error get — Show an import error's full stack trace, its line and that file in the repo
- *<id> int        The import error's id, from import-error list
+ *<id> str        The import error: its id from import-error list, or its DAG file (customer_sync.py, customer_sync, or its path in the bundle)
   --instance str  The [[airflow.instance]] name; defaults to the only one
 Returns: {id,file,bundle,timestamp,error,line,repo_file,stack_trace}
 Read. * required. Globals: --fields --raw --timeout --output
