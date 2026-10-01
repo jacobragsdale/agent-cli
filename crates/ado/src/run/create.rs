@@ -35,9 +35,11 @@ fn run_create(ctx: &Ctx, args: RunCreateArgs) -> Result<RunRow> {
     }
     let url = ado.code(&format!("pipelines/{pipeline}/runs"), "");
     let run = ado.change(ctx, Effect::Write, Method::Post, &url, body)?;
+    let id = run["id"].as_i64().unwrap_or_default();
+    ctx.note(format!("[next: agent-cli ado run wait {id}]"));
     // The pipelines endpoint answers in its own shape.
     Ok(RunRow {
-        id: run["id"].as_i64().unwrap_or_default(),
+        id,
         pipeline: text(&run["pipeline"]["name"]),
         pipeline_id: run["pipeline"]["id"].as_i64().or(Some(pipeline)),
         build_number: text(&run["name"]),
@@ -113,6 +115,13 @@ mod tests {
             outcome.json(),
             json!({"id": 995, "pipeline": "web-ci", "pipeline_id": 12, "build_number": "20260929.4",
                 "status": "inProgress", "branch": "main", "queued": "2026-09-29T11:00:00Z"})
+        );
+        assert!(
+            outcome
+                .stderr
+                .contains("[next: agent-cli ado run wait 995]"),
+            "{}",
+            outcome.stderr
         );
         let (outcome, _) = ado(
             &[

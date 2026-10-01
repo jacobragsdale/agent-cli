@@ -16,6 +16,7 @@ mod pr;
 mod repo;
 mod run;
 mod team;
+mod test;
 #[cfg(test)]
 mod testing;
 mod thread;
@@ -63,6 +64,7 @@ pub const DOMAIN: Domain = Domain {
         run::wait::RUN_WAIT,
         run::cancel::RUN_CANCEL,
         run::retry::RUN_RETRY,
+        test::list::TEST_LIST,
         approval::list::APPROVAL_LIST,
         approval::approve::APPROVAL_APPROVE,
         approval::reject::APPROVAL_REJECT,
@@ -121,7 +123,7 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 38);
+        assert_eq!(DOMAIN.commands.len(), 39);
     }
 
     #[test]

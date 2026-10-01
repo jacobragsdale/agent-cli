@@ -1,4 +1,4 @@
-use agent_cli_core::{Ctx, Failure, command};
+use agent_cli_core::{Ctx, Failure, command, status_of};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -6,7 +6,7 @@ use serde::Serialize;
 use crate::client::{Ado, text};
 use crate::ids::{Each, FileId, each, resolving, with_repo};
 
-use super::{fetch, numbered, text_of};
+use super::{fetch, numbered, resolve, text_of, tree};
 
 #[derive(clap::Args)]
 pub struct FileGetArgs {
@@ -55,7 +55,7 @@ fn file_get(ctx: &Ctx, args: FileGetArgs) -> Result<Each<FileText>> {
 }
 
 fn file_one(ctx: &Ctx, ado: &Ado, args: &FileGetArgs, file: &str) -> Result<FileText> {
-    let id = FileId::parse(
+    let mut id = FileId::parse(
         ado,
         &with_repo(file, args.repo.as_deref()),
         args.reference.as_deref(),
@@ -67,17 +67,34 @@ fn file_one(ctx: &Ctx, ado: &Ado, args: &FileGetArgs, file: &str) -> Result<File
             .hint(format!("agent-cli ado file list {}", id.at(None)))
             .into());
     }
-    let refs: Vec<&str> = id.reference.as_deref().into_iter().collect();
-    let item = resolving(&refs, |reading| {
-        fetch(
-            ctx,
-            ado,
-            id.project(ado),
-            &id.repo,
-            &id.path,
-            reading.first(),
-        )
-    })?;
+    let reference = id.reference.clone();
+    let refs: Vec<&str> = reference.as_deref().into_iter().collect();
+    let project = id.project(ado).to_owned();
+    let read = |path: &str| {
+        resolving(&refs, |reading| {
+            fetch(ctx, ado, &project, &id.repo, path, reading.first())
+        })
+    };
+    // Another domain hands over a path as its service printed it (a stack
+    // frame's `/app/src/x.cs`); the one file it can only mean is read instead.
+    let item = match read(&id.path) {
+        Err(error) if status_of(&error) == Some(404) => {
+            let found = resolving(&refs, |reading| {
+                tree(ctx, ado, &project, &id.repo, reading.first())
+            })
+            .ok()
+            .and_then(|files| resolve(&files, &id.path))
+            .filter(|found| *found != id.path);
+            let Some(found) = found else {
+                return Err(error);
+            };
+            let item = read(&found)?;
+            ctx.note(format!("[{} is {found}]", id.path));
+            id.path = found;
+            item
+        }
+        read => read?,
+    };
     let content = text_of(&item, &id.at(None))?;
     let lines: Vec<&str> = content.lines().collect();
     let total = lines.len();
@@ -128,7 +145,7 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{CODE, ado, urls};
+    use crate::testing::{CODE, ado, page, urls};
 
     fn file(lines: usize) -> Answer {
         let content: Vec<String> = (1..=lines).map(|n| format!("line {n}")).collect();
@@ -241,6 +258,46 @@ mod tests {
             "{}",
             outcome.stderr
         );
+    }
+
+    #[test]
+    fn a_path_not_in_the_repository_is_read_as_the_one_file_it_ends_with() {
+        let missing = || {
+            Answer::status(
+                404,
+                r#"{"message":"TF401174: The item '/app/src/x.cs' could not be found."}"#,
+            )
+        };
+        let tree = || {
+            page(vec![
+                json!({"path": "/src", "isFolder": true}),
+                json!({"path": "/src/x.cs"}),
+                json!({"path": "/tools/x.cs"}),
+            ])
+        };
+        let (outcome, transport) = ado(
+            &["ado", "file", "get", "Fabrikam/web@c0ffee1:/app/src/x.cs:2"],
+            vec![missing(), tree(), file(3)],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()["id"], "web@c0ffee1:src/x.cs");
+        assert!(
+            outcome.stderr.contains("[app/src/x.cs is src/x.cs]"),
+            "{}",
+            outcome.stderr
+        );
+        assert_eq!(
+            urls(&transport)[1],
+            format!(
+                "{CODE}/git/repositories/web/items?scopePath=%2F&versionDescriptor.version=c0ffee1&versionDescriptor.versionType=commit&recursionLevel=Full&api-version=7.1"
+            )
+        );
+
+        let (outcome, _) = ado(
+            &["ado", "file", "get", "web@c0ffee1:/app/x.cs"],
+            vec![missing(), tree()],
+        );
+        assert_eq!(outcome.code, 4, "two files end in x.cs: {outcome:?}");
     }
 
     #[test]

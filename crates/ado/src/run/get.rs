@@ -5,9 +5,13 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use crate::client::{Ado, Kind, list, text};
+use crate::ids::arg;
+use crate::test::{has_failures, test_runs};
 use crate::work_items::{self, WorkItemRef};
 
-use super::{RunIdArgs, RunRow, build_url, is, log_id, run_row, timeline};
+use super::{
+    RunIdArgs, RunRow, build_url, built, built_tree, is, line_at, log_id, run_row, timeline,
+};
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct RunDetail {
@@ -38,7 +42,71 @@ pub struct FailedStep {
     name: Option<String>,
     /// For `run logs`.
     log_id: Option<i64>,
-    errors: Vec<String>,
+    errors: Vec<BuildError>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct BuildError {
+    message: String,
+    /// The line it names (a compiler's, a problem matcher's), as file get
+    /// takes it.
+    at: Option<String>,
+}
+
+/// Where a timeline issue says it is: `data.sourcepath` as the agent saw
+/// it and `data.linenumber`, which compilers and problem matchers fill.
+fn issue_place(issue: &Value) -> Option<(String, usize)> {
+    let data = &issue["data"];
+    let line = data["linenumber"]
+        .as_str()
+        .and_then(|line| line.trim().parse().ok())
+        .or_else(|| {
+            data["linenumber"]
+                .as_u64()
+                .and_then(|line| line.try_into().ok())
+        })
+        .filter(|line| *line > 0)?;
+    Some((text(&data["sourcepath"])?, line))
+}
+
+fn errors(record: &Value) -> impl Iterator<Item = &Value> {
+    list(&record["issues"])
+        .iter()
+        .filter(|issue| issue["type"].as_str() == Some("error"))
+}
+
+/// The command that answers what a run's reader asks next: what it waits
+/// on, or why it failed (a failing test, the line an error names, else the
+/// first failed task's log).
+fn next_step(ctx: &Ctx, ado: &Ado, id: i64, detail: &RunDetail) -> Option<String> {
+    match (detail.run.status.as_deref(), detail.run.result.as_deref()) {
+        (Some("notStarted" | "inProgress"), _) => return Some(format!("ado run wait {id}")),
+        (_, Some("failed")) => {}
+        _ => return None,
+    }
+    let runs = test_runs(ctx, ado, id).unwrap_or_else(|error| {
+        ctx.note(format!("[test results not read: {error:#}]"));
+        Vec::new()
+    });
+    if runs.iter().any(has_failures) {
+        return Some(format!("ado test list {id}"));
+    }
+    let failed = &detail.failed;
+    if let Some(at) = failed
+        .iter()
+        .flat_map(|step| &step.errors)
+        .find_map(|error| error.at.as_deref())
+    {
+        return Some(format!("ado file get {}", arg(at)));
+    }
+    let task = failed
+        .iter()
+        .find(|step| step.kind.as_deref() == Some("Task"))
+        .and_then(|step| step.name.as_deref());
+    Some(match task {
+        Some(task) => format!("ado run logs {id} --task {}", arg(task)),
+        None => format!("ado run logs {id}"),
+    })
 }
 
 /// The pull request behind a run: the one whose merge commit it built (a CI
@@ -113,19 +181,32 @@ fn run_get(ctx: &Ctx, args: RunIdArgs) -> Result<RunDetail> {
         ctx.note(format!("[pull request not read: {error:#}]"));
         None
     });
-    let failed_of = |kind: Option<&str>| -> Vec<FailedStep> {
+    let failed_records = || {
         records
             .iter()
             .filter(|record| record["result"].as_str() == Some("failed"))
+    };
+    let built = built(&build);
+    let placed = failed_records()
+        .flat_map(errors)
+        .any(|issue| issue_place(issue).is_some());
+    let files = built_tree(ctx, &ado, built.as_ref(), placed)?;
+    let failed_of = |kind: Option<&str>| -> Vec<FailedStep> {
+        failed_records()
             .filter(|record| kind.is_none_or(|kind| is(record, kind)))
             .map(|record| FailedStep {
                 kind: text(&record["type"]),
                 name: text(&record["name"]),
                 log_id: log_id(record),
-                errors: list(&record["issues"])
-                    .iter()
-                    .filter(|issue| issue["type"].as_str() == Some("error"))
-                    .filter_map(|issue| text(&issue["message"]))
+                errors: errors(record)
+                    .filter_map(|issue| {
+                        Some(BuildError {
+                            message: text(&issue["message"])?,
+                            at: built.as_ref().zip(issue_place(issue)).and_then(
+                                |(built, (path, line))| line_at(built, &files, &path, line),
+                            ),
+                        })
+                    })
                     .collect(),
             })
             .collect()
@@ -134,7 +215,7 @@ fn run_get(ctx: &Ctx, args: RunIdArgs) -> Result<RunDetail> {
     if failed.is_empty() {
         failed = failed_of(None);
     }
-    Ok(RunDetail {
+    let detail = RunDetail {
         run: run_row(&build),
         pr,
         workitems,
@@ -144,7 +225,11 @@ fn run_get(ctx: &Ctx, args: RunIdArgs) -> Result<RunDetail> {
             .filter_map(|record| text(&record["name"]))
             .collect(),
         failed,
-    })
+    };
+    if let Some(next) = next_step(ctx, &ado, id, &detail) {
+        ctx.note(format!("[next: agent-cli {next}]"));
+    }
+    Ok(detail)
 }
 
 command! {
@@ -160,7 +245,7 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{CODE, ado, build, page, timeline, urls};
+    use crate::testing::{CODE, ado, build, page, record, timeline, urls};
 
     #[test]
     fn run_get_says_which_pull_request_and_work_items_produced_it() {
@@ -233,10 +318,18 @@ mod tests {
                 Answer::json(&triggered),
                 Answer::json(&json!({"records": []})),
                 Answer::status(500, r#"{"message":"work items unavailable"}"#),
+                page(vec![]),
             ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(outcome.json()["pr"], json!({"id": 432}));
+        assert!(
+            outcome
+                .stderr
+                .contains("[next: agent-cli ado run logs 8813]"),
+            "no failed task to name: {}",
+            outcome.stderr
+        );
         assert!(
             outcome.stderr.contains("[work items not read:"),
             "{}",
@@ -264,6 +357,7 @@ mod tests {
                 Answer::json(&build(991, "completed", Some("failed"))),
                 timeline(),
                 page(vec![]),
+                page(vec![]),
             ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
@@ -272,11 +366,90 @@ mod tests {
         assert_eq!(got["commit"], "abc123");
         assert_eq!(
             got["failed"],
-            json!([{"type": "Task", "name": "Run tests", "log_id": 5, "errors": ["3 tests failed"]}])
+            json!([{"type": "Task", "name": "Run tests", "log_id": 5,
+                "errors": [{"message": "3 tests failed"}]}])
+        );
+        assert!(
+            outcome
+                .stderr
+                .contains("[next: agent-cli ado run logs 991 --task 'Run tests']"),
+            "{}",
+            outcome.stderr
+        );
+        let sent = urls(&transport);
+        assert_eq!(
+            sent[1],
+            format!("{CODE}/build/builds/991/timeline?api-version=7.1")
         );
         assert_eq!(
-            urls(&transport)[1],
-            format!("{CODE}/build/builds/991/timeline?api-version=7.1")
+            sent[3],
+            format!(
+                "{CODE}/test/runs?buildUri=vstfs%3A%2F%2F%2FBuild%2FBuild%2F991&api-version=7.1"
+            )
+        );
+
+        let (outcome, _) = ado(
+            &["ado", "run", "get", "991"],
+            vec![
+                Answer::json(&build(991, "completed", Some("failed"))),
+                timeline(),
+                page(vec![]),
+                page(vec![json!({"id": 501, "totalTests": 9, "passedTests": 6})]),
+            ],
+        );
+        assert!(
+            outcome
+                .stderr
+                .contains("[next: agent-cli ado test list 991]"),
+            "failed tests come first: {}",
+            outcome.stderr
+        );
+    }
+
+    #[test]
+    fn a_compiler_error_names_its_repository_line_and_that_is_the_next_step() {
+        let mut built = build(8814, "completed", Some("failed"));
+        built["reason"] = json!("pullRequest");
+        built["sourceVersion"] = json!("merge01");
+        built["triggerInfo"] = json!({"pr.number": "436", "pr.sourceSha": "head01"});
+        built["repository"] = json!({"id": "r-1", "type": "TfsGit", "name": "api"});
+        let mut task = record("t2", "Task", "Build", None, Some("failed"), 5);
+        task["issues"] = json!([
+            {"type": "error", "message": "'Random' does not contain a definition for 'Shared'",
+             "data": {"type": "error", "sourcepath": "/home/vsts/work/1/s/src/Orders/OrderClient.cs",
+                      "linenumber": "42", "columnnumber": "29", "code": "CS0117"}},
+            {"type": "error", "message": "Bash exited with code '1'."}
+        ]);
+        let (outcome, transport) = ado(
+            &["ado", "run", "get", "8814"],
+            vec![
+                Answer::json(&built),
+                Answer::json(&json!({"records": [task]})),
+                page(vec![]),
+                Answer::json(&json!({"results": [{}]})),
+                page(vec![json!({"path": "/src/Orders/OrderClient.cs"})]),
+                page(vec![]),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json()["failed"][0]["errors"],
+            json!([
+                {"message": "'Random' does not contain a definition for 'Shared'",
+                 "at": "api@head01:src/Orders/OrderClient.cs:42"},
+                {"message": "Bash exited with code '1'."}
+            ])
+        );
+        assert!(
+            outcome
+                .stderr
+                .contains("[next: agent-cli ado file get api@head01:src/Orders/OrderClient.cs:42]"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(
+            urls(&transport)[4].contains("versionDescriptor.version=head01"),
+            "the pull request's head, not its merge"
         );
     }
 
@@ -292,6 +465,13 @@ mod tests {
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(outcome.json()["status"], "notStarted");
+        assert!(
+            outcome
+                .stderr
+                .contains("[next: agent-cli ado run wait 992]"),
+            "{}",
+            outcome.stderr
+        );
 
         let (outcome, _) = ado(
             &["ado", "run", "get", "993"],

@@ -451,6 +451,20 @@ fn decode(raw: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
+/// An id or a name in a printed command line, quoted when a shell would
+/// split it or a note's `]` would end it: `--task 'Run tests'`.
+pub(crate) fn arg(word: &str) -> String {
+    let plain = !word.is_empty()
+        && word
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || b"-_./:=,@%+#".contains(&byte));
+    match (plain, word.contains('\'')) {
+        (true, _) => word.to_owned(),
+        (false, false) => format!("'{word}'"),
+        (false, true) => format!("\"{word}\""),
+    }
+}
+
 /// What a verb taking `ID…` prints: the object for one id, an array in the
 /// order given for several.
 #[derive(Debug, Serialize, JsonSchema)]

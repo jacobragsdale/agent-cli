@@ -1,4 +1,4 @@
-# ado — Azure DevOps (38 commands)
+# ado — Azure DevOps (39 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -37,6 +37,7 @@
 | [`ado run wait`](#ado-run-wait) | read | Wait for a run to finish: exit 0 if it succeeded, 1 if not, 124 if still going |
 | [`ado run cancel`](#ado-run-cancel) | destructive | Cancel a run that is queued or in progress |
 | [`ado run retry`](#ado-run-retry) | write | Retry the failed jobs of a finished run |
+| [`ado test list`](#ado-test-list) | read | List a run's failing tests: message, stack and the repository line |
 | [`ado approval list`](#ado-approval-list) | read | List pending pipeline approvals (deployment gates) |
 | [`ado approval approve`](#ado-approval-approve) | destructive | Approve a pending pipeline approval, letting the stage (a deploy) run |
 | [`ado approval reject`](#ado-approval-reject) | destructive | Reject a pending pipeline approval, stopping the stage |
@@ -453,7 +454,7 @@ e.g. agent-cli ado run list --branch refs/tags/v1.4.2 --fields id,pipeline,statu
 ```text
 agent-cli ado run get — Show a run: status, commit, timing, what failed, its pull request and work items
  *<id> str  The run's id: 8812, #8812 or its web URL
-Returns: {id,pipeline,pipeline_id,build_number,status,result,branch,commit,requested_by,reason,queued,started,finished,url,pr{id,title,status},workitems[{id,type,title,state}],running[],failed[{type,name,log_id,errors[]}]}
+Returns: {id,pipeline,pipeline_id,build_number,status,result,branch,commit,requested_by,reason,queued,started,finished,url,pr{id,title,status},workitems[{id,type,title,state}],running[],failed[{type,name,log_id,errors[{message,at}]}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado run get 1234 --fields status,result,commit,pr,workitems,failed
 ```
@@ -511,6 +512,18 @@ agent-cli ado run retry — Retry the failed jobs of a finished run
 Returns: {id,pipeline,pipeline_id,build_number,status,result,branch,commit,requested_by,reason,queued,started,finished,url}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado run retry 1234
+```
+
+### ado test list
+
+```text
+agent-cli ado test list — List a run's failing tests: message, stack and the repository line
+ *<run> str                    The run (build) whose tests to show: 8809, #8809 or its web URL
+  --outcome failed|passed|all  Which results (default failed)
+  --limit int                  Most rows to return (default 50)
+Returns: [{name,outcome,duration_ms,error,at,failing_since,stack}]
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado test list 8809 --fields name,error,at,failing_since
 ```
 
 ### ado approval list

@@ -36,14 +36,14 @@ and tests (`approval/list.rs` is `ado approval list`). Copy a sibling.
 - `work_items.rs`: work item rows read in batches, and the artifact links
   workitem, pr and run share. `markdown.rs`: rich text to Markdown and back.
 - `<resource>/mod.rs`: what its verbs share (`pr/mod.rs`: the PR row,
-  `latest_iteration`; `run/mod.rs`: `RunRow`; `file/mod.rs`: `fetch` a file
-  at a ref; `thread/mod.rs`: `fetch_threads`; `diff/mod.rs`: the line diff).
-- `testing.rs`: `ado`, `ado_with`, `ado_piped`, `urls`, `dry_run`, `CONFIG`,
-  `CODE`, and sample answers (`page`, `item`, `wiql`, `pr`, `build`, …).
+  `latest_iteration`; `run/mod.rs`: `RunRow`, `line_at`; `file/mod.rs`:
+  `fetch`, and `resolve` a printed path in a `tree`; `thread/mod.rs`:
+  `fetch_threads`; `diff/mod.rs`: the line diff).
+- `testing.rs`: `ado`, `urls`, `dry_run`, `CODE`, answers (`page`, `pr`, …).
 
 ## Fixtures
-`fixtures/world/http/ado.json`; facts `fixtures/world/facts/ado.md`; world
-checks `crates/cli/tests/world_ado.rs`; queries `crates/ado/search.toml`.
+`fixtures/world/http/ado.json`, `fixtures/world/facts/ado.md`,
+`crates/cli/tests/world_ado.rs`.
 
 ## Quirks
 - Bad credentials can come back as a **203 sign-in page**, not a 401: `send`

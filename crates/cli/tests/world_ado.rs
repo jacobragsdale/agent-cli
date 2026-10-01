@@ -5,6 +5,7 @@
 #[path = "common/world.rs"]
 mod world;
 
+use agent_cli_core::testing::next_command;
 use serde_json::{Value, json};
 use world::ok;
 
@@ -33,7 +34,10 @@ fn the_world_answers_what_a_trial_asks_of_ado() {
         "--fields",
         "id",
     ]);
-    assert_eq!(yours, json!([{"id": 8812}, {"id": 8809}, {"id": 8801}]));
+    assert_eq!(
+        yours,
+        json!([{"id": 8814}, {"id": 8812}, {"id": 8809}, {"id": 8801}])
+    );
     for args in [
         &["ado", "run", "get", "8809", "--fields", "failed"][..],
         &["ado", "run", "logs", "8809"],
@@ -309,6 +313,117 @@ fn f5_a_pipeline_edit_is_previewed_and_its_template_error_read() {
         string(&expanded, "yaml").contains("displayName: Run tests"),
         "{expanded}"
     );
+}
+
+/// The file get a walk ended on: its id, and whether `line` is in its text.
+fn landed(walked: &[world::Ran], line: &str) -> String {
+    let last = walked.last().unwrap();
+    assert_eq!(last.code, 0, "{}{}", last.stdout, last.stderr);
+    let file = last.json();
+    assert!(string(&file, "text").contains(line), "{file}");
+    string(&file, "id").to_owned()
+}
+
+#[test]
+fn f8_a_pull_requests_broken_build_leads_by_notes_to_the_line_that_broke() {
+    let walked = world::follow(&["ado", "pr", "get", "436"]);
+    let steps: Vec<String> = walked
+        .iter()
+        .filter_map(|ran| next_command(&ran.stderr).map(|argv| argv.join(" ")))
+        .collect();
+    assert_eq!(
+        steps,
+        [
+            "ado run get 8814",
+            "ado file get api@a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0:src/Orders/OrderClient.cs:42"
+        ]
+    );
+    assert!(
+        walked[1]
+            .stdout
+            .contains("does not contain a definition for 'Shared'"),
+        "{}",
+        walked[1].stdout
+    );
+    assert_eq!(
+        landed(
+            &walked,
+            "42          var jitter = Random.Shared.NextDouble() * seconds;"
+        ),
+        "api@a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0:src/Orders/OrderClient.cs:22-45"
+    );
+}
+
+#[test]
+fn f9_a_failing_test_leads_by_notes_to_the_line_it_waited_on() {
+    let walked = world::follow(&["ado", "run", "get", "8809"]);
+    let steps: Vec<String> = walked
+        .iter()
+        .filter_map(|ran| next_command(&ran.stderr).map(|argv| argv.join(" ")))
+        .collect();
+    assert_eq!(
+        steps,
+        [
+            "ado test list 8809",
+            "ado file get api@4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9:src/Orders/OrderClient.cs:22"
+        ]
+    );
+    let tests = walked[1].json();
+    assert_eq!(tests.as_array().map(Vec::len), Some(3), "{tests}");
+    assert_eq!(tests[0]["name"], "Api.Tests.OrdersClientTests.RetriesOn429");
+    assert_eq!(tests[0]["failing_since"], 8809);
+    landed(
+        &walked,
+        "22                  await Task.Delay(Backoff(response, attempt), cancel);",
+    );
+}
+
+#[test]
+fn a_new_run_names_the_wait_for_it() {
+    let walked = world::follow(&["ado", "run", "create", "--pipeline", "api-ci"]);
+    assert_eq!(walked.len(), 2);
+    assert_eq!(walked[0].json()["id"], 8815);
+    assert_eq!(walked[1].code, 0, "{}", walked[1].stderr);
+    assert_eq!(walked[1].json()["result"], "succeeded");
+}
+
+#[test]
+fn a_container_stack_frame_is_read_as_the_repository_file_it_names() {
+    for args in [
+        &[
+            "ado",
+            "file",
+            "get",
+            "Fabrikam/api@4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9:/app/src/Orders/OrderClient.cs:19",
+        ][..],
+        &[
+            "ado",
+            "file",
+            "get",
+            "/app/src/Orders/OrderClient.cs:19",
+            "--repo",
+            "api",
+            "--ref",
+            "v1.4.2",
+        ],
+    ] {
+        let ran = world::agent_cli(args);
+        assert_eq!(ran.code, 0, "{args:?}: {}", ran.stderr);
+        assert!(
+            ran.stderr
+                .contains("[app/src/Orders/OrderClient.cs is src/Orders/OrderClient.cs]"),
+            "{}",
+            ran.stderr
+        );
+        let file = ran.json();
+        assert_eq!(file["path"], "src/Orders/OrderClient.cs");
+        assert_eq!(file["commit"], "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9");
+        assert!(
+            string(&file, "text")
+                .contains("19              using var response = await http.GetAsync($\"orders/{id}\", cancel);"),
+            "{file}"
+        );
+    }
 }
 
 #[test]

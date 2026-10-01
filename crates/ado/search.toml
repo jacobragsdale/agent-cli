@@ -466,3 +466,15 @@ expect = "ado pipeline preview"
 [[query]]
 text = "check a pipeline template for errors without running it"
 expect = "ado pipeline preview"
+
+[[query]]
+text = "which tests failed in build 8809"
+expect = "ado test list"
+
+[[query]]
+text = "show the stack trace of the failing unit test"
+expect = "ado test list"
+
+[[query]]
+text = "since when has this test been failing"
+expect = "ado test list"

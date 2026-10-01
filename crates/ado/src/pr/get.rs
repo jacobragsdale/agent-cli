@@ -84,7 +84,7 @@ fn pr_get(ctx: &Ctx, args: PrGetArgs) -> Result<PullRequest> {
             PREVIEW_API,
         ),
     )?;
-    let policies = list(&evaluations["value"])
+    let policies: Vec<Policy> = list(&evaluations["value"])
         .iter()
         .filter(|evaluation| evaluation["status"].as_str() != Some("notApplicable"))
         .map(|evaluation| {
@@ -97,6 +97,15 @@ fn pr_get(ctx: &Ctx, args: PrGetArgs) -> Result<PullRequest> {
             }
         })
         .collect();
+    // A rejected build policy is why the pull request cannot complete, and
+    // its run says what broke.
+    if let Some(run) = policies
+        .iter()
+        .filter(|policy| policy.status.as_deref() == Some("rejected"))
+        .find_map(|policy| policy.run_id)
+    {
+        ctx.note(format!("[next: agent-cli ado run get {run}]"));
+    }
     let threads = fetch_threads(ctx, &ado, &pr, id)?;
     let mut open: Vec<&Value> = threads
         .all
@@ -192,6 +201,11 @@ mod tests {
             got["policies"],
             json!([{"name": "Minimum number of reviewers", "status": "approved"},
                    {"name": "web-ci", "status": "rejected", "run_id": 991}])
+        );
+        assert!(
+            outcome.stderr.contains("[next: agent-cli ado run get 991]"),
+            "{}",
+            outcome.stderr
         );
         assert_eq!(got["open_threads"], 2);
         assert_eq!(

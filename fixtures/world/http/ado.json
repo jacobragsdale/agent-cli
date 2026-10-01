@@ -145,8 +145,39 @@
   "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds?queryOrder=queueTimeDescending&$top=51&api-version=7.1",
   "note": "ado run list",
   "answer": {
-   "count": 4,
+   "count": 5,
    "value": [
+    {
+     "id": 8814,
+     "buildNumber": "20260929.1",
+     "status": "completed",
+     "result": "failed",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/pull/436/merge",
+     "sourceVersion": "e5c7a9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "pullRequest",
+     "queueTime": "2026-09-29T09:10:31.2040000Z",
+     "startTime": "2026-09-29T09:10:39.5510000Z",
+     "finishTime": "2026-09-29T09:13:02.7730000Z",
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8814"
+      }
+     }
+    },
     {
      "id": 8811,
      "buildNumber": "20260928.1",
@@ -431,8 +462,39 @@
   "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds?queryOrder=queueTimeDescending&$top=51&minTime=2026-09-28T12%3A00%3A00Z&api-version=7.1",
   "note": "--since 1d at AGENT_CLI_NOW",
   "answer": {
-   "count": 4,
+   "count": 5,
    "value": [
+    {
+     "id": 8814,
+     "buildNumber": "20260929.1",
+     "status": "completed",
+     "result": "failed",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/pull/436/merge",
+     "sourceVersion": "e5c7a9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "pullRequest",
+     "queueTime": "2026-09-29T09:10:31.2040000Z",
+     "startTime": "2026-09-29T09:10:39.5510000Z",
+     "finishTime": "2026-09-29T09:13:02.7730000Z",
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8814"
+      }
+     }
+    },
     {
      "id": 8811,
      "buildNumber": "20260928.1",
@@ -1162,7 +1224,7 @@
    "value": [
     {
      "id": 7,
-     "lineCount": 20
+     "lineCount": 21
     },
     {
      "id": 5,
@@ -1174,7 +1236,7 @@
  {
   "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8809/logs/7?startLine=0&api-version=7.1",
   "answer": {
-   "count": 20,
+   "count": 21,
    "value": [
     "2026-09-28T20:39:12.1034512Z ##[section]Starting: Run tests",
     "2026-09-28T20:39:12.1120331Z dotnet test tests/Api.Tests --configuration Release --logger trx",
@@ -1186,6 +1248,7 @@
     "2026-09-28T20:43:33.7702951Z   Error Message:",
     "2026-09-28T20:43:33.7703410Z    System.TimeoutException: The orders stub did not answer the third retry within 30s (Retry-After: 29)",
     "2026-09-28T20:43:33.7704118Z   Stack Trace:",
+    "2026-09-28T20:43:33.7704519Z      at Contoso.Api.Orders.OrderClient.GetAsync(Int32 id, CancellationToken cancel) in /home/vsts/work/1/s/src/Orders/OrderClient.cs:line 22",
     "2026-09-28T20:43:33.7704822Z      at Api.Tests.OrdersClientTests.RetriesOn429() in /home/vsts/work/1/s/tests/Api.Tests/OrdersClientTests.cs:line 58",
     "2026-09-28T20:43:41.1200543Z   Failed OrdersClientTests.GivesUpAfterMaxRetries [8 s]",
     "2026-09-28T20:43:41.1201734Z   Error Message:",
@@ -1200,7 +1263,7 @@
   }
  },
  {
-  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8809/logs/7?startLine=10&api-version=7.1",
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8809/logs/7?startLine=11&api-version=7.1",
   "note": "--tail 10",
   "answer": {
    "count": 10,
@@ -1219,7 +1282,7 @@
   }
  },
  {
-  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8809/logs/7?startLine=15&api-version=7.1",
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8809/logs/7?startLine=16&api-version=7.1",
   "note": "--tail 5",
   "answer": {
    "count": 5,
@@ -1261,8 +1324,39 @@
  {
   "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds?queryOrder=queueTimeDescending&$top=51&definitions=12&api-version=7.1",
   "answer": {
-   "count": 3,
+   "count": 4,
    "value": [
+    {
+     "id": 8814,
+     "buildNumber": "20260929.1",
+     "status": "completed",
+     "result": "failed",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/pull/436/merge",
+     "sourceVersion": "e5c7a9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "pullRequest",
+     "queueTime": "2026-09-29T09:10:31.2040000Z",
+     "startTime": "2026-09-29T09:10:39.5510000Z",
+     "finishTime": "2026-09-29T09:13:02.7730000Z",
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8814"
+      }
+     }
+    },
     {
      "id": 8812,
      "buildNumber": "20260928.3",
@@ -1475,8 +1569,39 @@
  {
   "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds?queryOrder=queueTimeDescending&$top=51&resultFilter=failed&api-version=7.1",
   "answer": {
-   "count": 1,
+   "count": 2,
    "value": [
+    {
+     "id": 8814,
+     "buildNumber": "20260929.1",
+     "status": "completed",
+     "result": "failed",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/pull/436/merge",
+     "sourceVersion": "e5c7a9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "pullRequest",
+     "queueTime": "2026-09-29T09:10:31.2040000Z",
+     "startTime": "2026-09-29T09:10:39.5510000Z",
+     "finishTime": "2026-09-29T09:13:02.7730000Z",
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8814"
+      }
+     }
+    },
     {
      "id": 8809,
      "buildNumber": "20260928.2",
@@ -2414,8 +2539,39 @@
  {
   "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds?queryOrder=queueTimeDescending&$top=51&requestedFor=Jane+Doe&api-version=7.1",
   "answer": {
-   "count": 3,
+   "count": 4,
    "value": [
+    {
+     "id": 8814,
+     "buildNumber": "20260929.1",
+     "status": "completed",
+     "result": "failed",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/pull/436/merge",
+     "sourceVersion": "e5c7a9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "reason": "pullRequest",
+     "queueTime": "2026-09-29T09:10:31.2040000Z",
+     "startTime": "2026-09-29T09:10:39.5510000Z",
+     "finishTime": "2026-09-29T09:13:02.7730000Z",
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8814"
+      }
+     }
+    },
     {
      "id": 8812,
      "buildNumber": "20260928.3",
@@ -2687,7 +2843,10 @@
      "vote": 0,
      "isRequired": true
     }
-   ]
+   ],
+   "lastMergeCommit": {
+    "commitId": "e5c7a9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3"
+   }
   }
  },
  {
@@ -2879,7 +3038,7 @@
  {
   "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/policy/evaluations?artifactId=vstfs%3A%2F%2F%2FCodeReview%2FCodeReviewId%2F00000000-0000-4000-8000-00000000f001%2F436&api-version=7.1-preview.1",
   "answer": {
-   "count": 1,
+   "count": 2,
    "value": [
     {
      "status": "queued",
@@ -2889,9 +3048,28 @@
       },
       "settings": {}
      }
+    },
+    {
+     "status": "rejected",
+     "configuration": {
+      "type": {
+       "displayName": "Build"
+      },
+      "settings": {
+       "displayName": "api-ci",
+       "buildDefinitionId": 12
+      }
+     },
+     "context": {
+      "buildId": 8814,
+      "buildDefinitionId": 12,
+      "buildDefinitionName": "api-ci",
+      "isExpired": false
+     }
     }
    ]
-  }
+  },
+  "note": "the reviewer count waits on Sam Lee; api-ci run 8814 failed to compile"
  },
  {
   "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/pullRequests/436/threads/7/comments?api-version=7.1",
@@ -3515,6 +3693,954 @@
  "answer": {
   "count": 0,
   "results": []
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8814?api-version=7.1",
+ "note": "PR 436's build policy run: it compiles the merge, which the head's lines match",
+ "answer": {
+  "id": 8814,
+  "buildNumber": "20260929.1",
+  "status": "completed",
+  "result": "failed",
+  "definition": {
+   "id": 12,
+   "name": "api-ci"
+  },
+  "sourceBranch": "refs/pull/436/merge",
+  "sourceVersion": "e5c7a9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3",
+  "repository": {
+   "id": "00000000-0000-4000-8000-0000000a0001",
+   "type": "TfsGit",
+   "name": "api"
+  },
+  "requestedFor": {
+   "displayName": "Jane Doe",
+   "uniqueName": "jane@contoso.com",
+   "id": "00000000-0000-4000-8000-0000000000e1"
+  },
+  "reason": "pullRequest",
+  "queueTime": "2026-09-29T09:10:31.2040000Z",
+  "startTime": "2026-09-29T09:10:39.5510000Z",
+  "finishTime": "2026-09-29T09:13:02.7730000Z",
+  "triggerInfo": {
+   "pr.number": "436",
+   "pr.isFork": "False",
+   "pr.sourceBranch": "refs/heads/1215-retry-jitter",
+   "pr.sourceSha": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+   "pr.triggerRepository": "00000000-0000-4000-8000-0000000a0001",
+   "pr.triggerRepository.Type": "TfsGit"
+  },
+  "_links": {
+   "web": {
+    "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8814"
+   }
+  }
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8814/timeline?api-version=7.1",
+ "note": "dotnet build fails on the jitter line PR 436 added: no Random.Shared on netstandard2.0",
+ "answer": {
+  "records": [
+   {
+    "id": "s1",
+    "parentId": null,
+    "type": "Stage",
+    "name": "Build",
+    "state": "completed",
+    "result": "failed",
+    "log": null,
+    "startTime": "2026-09-29T09:10:40Z",
+    "finishTime": "2026-09-29T09:13:01Z",
+    "issues": []
+   },
+   {
+    "id": "p1",
+    "parentId": "s1",
+    "type": "Phase",
+    "name": "Linux",
+    "state": "completed",
+    "result": "failed",
+    "log": {
+     "id": 2
+    },
+    "startTime": "2026-09-29T09:10:40Z",
+    "finishTime": "2026-09-29T09:13:01Z",
+    "issues": []
+   },
+   {
+    "id": "j1",
+    "parentId": "p1",
+    "type": "Job",
+    "name": "Linux",
+    "state": "completed",
+    "result": "failed",
+    "log": null,
+    "startTime": "2026-09-29T09:10:41Z",
+    "finishTime": "2026-09-29T09:13:00Z",
+    "issues": []
+   },
+   {
+    "id": "t1",
+    "parentId": "j1",
+    "type": "Task",
+    "name": "Checkout api@refs/pull/436/merge",
+    "state": "completed",
+    "result": "succeeded",
+    "log": {
+     "id": 4
+    },
+    "startTime": "2026-09-29T09:10:42Z",
+    "finishTime": "2026-09-29T09:10:49Z",
+    "issues": []
+   },
+   {
+    "id": "t2",
+    "parentId": "j1",
+    "type": "Task",
+    "name": "Build",
+    "state": "completed",
+    "result": "failed",
+    "log": {
+     "id": 5
+    },
+    "startTime": "2026-09-29T09:10:49Z",
+    "finishTime": "2026-09-29T09:12:58Z",
+    "issues": [
+     {
+      "type": "error",
+      "category": "General",
+      "message": "'Random' does not contain a definition for 'Shared' [/home/vsts/work/1/s/src/Api.csproj::TargetFramework=netstandard2.0]",
+      "data": {
+       "type": "error",
+       "sourcepath": "/home/vsts/work/1/s/src/Orders/OrderClient.cs",
+       "linenumber": "42",
+       "columnnumber": "29",
+       "code": "CS0117",
+       "logFileLineNumber": "57"
+      }
+     },
+     {
+      "type": "error",
+      "category": "General",
+      "message": "Bash exited with code '1'."
+     }
+    ]
+   },
+   {
+    "id": "t3",
+    "parentId": "j1",
+    "type": "Task",
+    "name": "Run tests",
+    "state": "completed",
+    "result": "skipped",
+    "log": null,
+    "startTime": "2026-09-29T09:12:58Z",
+    "finishTime": "2026-09-29T09:12:58Z",
+    "issues": []
+   },
+   {
+    "id": "t4",
+    "parentId": "j1",
+    "type": "Task",
+    "name": "Push image",
+    "state": "completed",
+    "result": "skipped",
+    "log": null,
+    "startTime": "2026-09-29T09:12:58Z",
+    "finishTime": "2026-09-29T09:12:58Z",
+    "issues": []
+   }
+  ]
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8814/workitems?api-version=7.1",
+ "answer": {
+  "count": 1,
+  "value": [
+   {
+    "id": "1215",
+    "url": "x"
+   }
+  ]
+ }
+}
+,
+{
+ "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/pullrequestquery?api-version=7.1",
+ "body": {
+  "queries": [
+   {
+    "type": "lastMergeCommit",
+    "items": [
+     "e5c7a9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3"
+    ]
+   }
+  ]
+ },
+ "note": "the pull request whose merge run 8814 built",
+ "answer": {
+  "results": [
+   {
+    "e5c7a9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3": [
+     {
+      "pullRequestId": 436,
+      "codeReviewId": 436,
+      "status": "active",
+      "repository": {
+       "id": "00000000-0000-4000-8000-0000000a0001",
+       "name": "api",
+       "project": {
+        "id": "00000000-0000-4000-8000-00000000f001",
+        "name": "Fabrikam"
+       }
+      },
+      "title": "Add jitter to the retry backoff",
+      "description": "Spreads retries of clients that failed together, so they stop hitting the orders service in step.\n\nFor AB#1215.",
+      "createdBy": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "creationDate": "2026-09-29T09:10:05.4100000Z",
+      "sourceRefName": "refs/heads/1215-retry-jitter",
+      "targetRefName": "refs/heads/main",
+      "mergeStatus": "succeeded",
+      "isDraft": false,
+      "lastMergeSourceCommit": {
+       "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0"
+      },
+      "lastMergeTargetCommit": {
+       "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+      },
+      "reviewers": [
+       {
+        "displayName": "Sam Lee",
+        "uniqueName": "sam@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e2",
+        "vote": 0,
+        "isRequired": true
+       }
+      ],
+      "lastMergeCommit": {
+       "commitId": "e5c7a9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3"
+      }
+     }
+    ]
+   }
+  ]
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/test/runs?buildUri=vstfs%3A%2F%2F%2FBuild%2FBuild%2F8814&api-version=7.1",
+ "note": "8814 never reached its tests",
+ "answer": {
+  "count": 0,
+  "value": []
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/test/runs?buildUri=vstfs%3A%2F%2F%2FBuild%2FBuild%2F8809&api-version=7.1",
+ "note": "Run tests' results: 3 of 214 failed",
+ "answer": {
+  "count": 1,
+  "value": [
+   {
+    "id": 1209,
+    "name": "VSTest_TestResults_8809",
+    "state": "Completed",
+    "isAutomated": true,
+    "build": {
+     "id": "8809"
+    },
+    "startedDate": "2026-09-28T20:40:02.9920000Z",
+    "completedDate": "2026-09-28T20:43:57.9910000Z",
+    "totalTests": 214,
+    "passedTests": 211,
+    "incompleteTests": 0,
+    "notApplicableTests": 0,
+    "unanalyzedTests": 3,
+    "webAccessUrl": "https://dev.azure.com/contoso/Fabrikam/_TestManagement/Runs?runId=1209&_a=runCharts"
+   }
+  ]
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/test/runs/1209/results?outcomes=Failed&$top=51&api-version=7.1",
+ "note": "RetriesOn429 timed out waiting out its backoff in OrderClient.cs:22",
+ "answer": {
+  "count": 3,
+  "value": [
+   {
+    "id": 100000,
+    "testRun": {
+     "id": "1209"
+    },
+    "testCaseTitle": "RetriesOn429",
+    "automatedTestName": "Api.Tests.OrdersClientTests.RetriesOn429",
+    "automatedTestStorage": "Api.Tests.dll",
+    "outcome": "Failed",
+    "durationInMs": 30004.2,
+    "errorMessage": "System.TimeoutException : The orders stub did not answer the third retry within 30s (Retry-After: 29)",
+    "stackTrace": "   at Contoso.Api.Orders.OrderClient.GetAsync(Int32 id, CancellationToken cancel) in /home/vsts/work/1/s/src/Orders/OrderClient.cs:line 22\n   at Api.Tests.OrdersClientTests.RetriesOn429() in /home/vsts/work/1/s/tests/Api.Tests/OrdersClientTests.cs:line 58\n--- End of stack trace from previous location ---",
+    "failingSince": {
+     "date": "2026-09-28T20:43:33.7700000Z",
+     "build": {
+      "id": 8809,
+      "number": "20260928.2",
+      "definitionId": 12,
+      "branchName": "refs/tags/v1.4.2"
+     }
+    },
+    "build": {
+     "id": "8809"
+    }
+   },
+   {
+    "id": 100001,
+    "testRun": {
+     "id": "1209"
+    },
+    "testCaseTitle": "GivesUpAfterMaxRetries",
+    "automatedTestName": "Api.Tests.OrdersClientTests.GivesUpAfterMaxRetries",
+    "automatedTestStorage": "Api.Tests.dll",
+    "outcome": "Failed",
+    "durationInMs": 8012.5,
+    "errorMessage": "Assert.Equal() Failure: Expected: 5, Actual: 4",
+    "stackTrace": "   at Api.Tests.OrdersClientTests.GivesUpAfterMaxRetries() in /home/vsts/work/1/s/tests/Api.Tests/OrdersClientTests.cs:line 34\n--- End of stack trace from previous location ---",
+    "failingSince": {
+     "date": "2026-09-28T20:43:33.7700000Z",
+     "build": {
+      "id": 8809,
+      "number": "20260928.2",
+      "definitionId": 12,
+      "branchName": "refs/tags/v1.4.2"
+     }
+    },
+    "build": {
+     "id": "8809"
+    }
+   },
+   {
+    "id": 100002,
+    "testRun": {
+     "id": "1209"
+    },
+    "testCaseTitle": "LogsRetryCount",
+    "automatedTestName": "Api.Tests.OrdersClientTests.LogsRetryCount",
+    "automatedTestStorage": "Api.Tests.dll",
+    "outcome": "Failed",
+    "durationInMs": 1130.0,
+    "errorMessage": "Expected log line 'retry 3 of 5' was not written",
+    "stackTrace": "   at Api.Tests.OrdersClientTests.LogsRetryCount() in /home/vsts/work/1/s/tests/Api.Tests/OrdersClientTests.cs:line 43\n--- End of stack trace from previous location ---",
+    "failingSince": {
+     "date": "2026-09-28T20:43:33.7700000Z",
+     "build": {
+      "id": 8809,
+      "number": "20260928.2",
+      "definitionId": 12,
+      "branchName": "refs/tags/v1.4.2"
+     }
+    },
+    "build": {
+     "id": "8809"
+    }
+   }
+  ]
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/items?scopePath=%2F&recursionLevel=Full&versionDescriptor.version=4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9&versionDescriptor.versionType=commit&api-version=7.1",
+ "exact": [
+  "scopePath",
+  "recursionLevel"
+ ],
+ "note": "api's tree at v1.4.2, for paths a build agent or a container printed",
+ "answer": {
+  "count": 19,
+  "value": [
+   {
+    "objectId": "1a44b6fd4aa47b077134151de574745a85be6f32",
+    "gitObjectType": "tree",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/",
+    "isFolder": true
+   },
+   {
+    "objectId": "f5639e6a152c32db53d662c8e802139dcfd04cde",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/.gitignore"
+   },
+   {
+    "objectId": "05a00736da215fae59733b439373ea683ddf6611",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/Api.sln"
+   },
+   {
+    "objectId": "3c126a135ef6d6dfc70eaf7c13480acd3fd3edce",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/Dockerfile"
+   },
+   {
+    "objectId": "21cddc61561f3a009bf1118dfc5ef3a9ec6df1ad",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/README.md"
+   },
+   {
+    "objectId": "1054f9bdf007dd583b621ecf24ec7ed781681138",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/azure-pipelines.yml"
+   },
+   {
+    "objectId": "f762590b0b3af532f0e56a15fae61f70995dd1c4",
+    "gitObjectType": "tree",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/src",
+    "isFolder": true
+   },
+   {
+    "objectId": "aa2455c0b5353c48ab6839ff7a76e5e063e1c209",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/src/Api.csproj"
+   },
+   {
+    "objectId": "1e3b5d7f9a0c2e4f6a8b0d2f4a6c8e0b2d4f6a8c",
+    "gitObjectType": "tree",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/src/Orders",
+    "isFolder": true
+   },
+   {
+    "objectId": "5c0f9e2d7a1b3c4e6f8a0b2d4e6f8a1c3e5b7d9f",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/src/Orders/IOrderClient.cs"
+   },
+   {
+    "objectId": "b328134bb10512528052ce9e6b3d5fdfc341f65a",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/src/Orders/OrderClient.cs"
+   },
+   {
+    "objectId": "1f06c2c8e9316302138826b7475b2aab74db19fb",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/src/Program.cs"
+   },
+   {
+    "objectId": "476e4ba0de0f9be3cdee53529b290e7a6d692886",
+    "gitObjectType": "tree",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/templates",
+    "isFolder": true
+   },
+   {
+    "objectId": "2333f999f119f64fdeb204aa3d5fdf4bb4fcdfbc",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/templates/dotnet-test.yml"
+   },
+   {
+    "objectId": "1b7d2965ab13e835f6007f17efd9e8211e5ea284",
+    "gitObjectType": "tree",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/tests",
+    "isFolder": true
+   },
+   {
+    "objectId": "cff2321b253f072041b5574254a0ad5a06899994",
+    "gitObjectType": "tree",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/tests/Api.Tests",
+    "isFolder": true
+   },
+   {
+    "objectId": "4081cf5cf8e9f3cc9bcb620d477fa90a897a1eed",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/tests/Api.Tests/Api.Tests.csproj"
+   },
+   {
+    "objectId": "d5706aabdcd0a3923b8d9b8fc85c2af0eb023c62",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/tests/Api.Tests/OrdersClientTests.cs"
+   },
+   {
+    "objectId": "25b50d3c001b9a8553f63670d976812335cda8fd",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/tests/Api.Tests/OrdersStub.cs"
+   }
+  ]
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/items?scopePath=%2F&recursionLevel=Full&versionDescriptor.version=a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0&versionDescriptor.versionType=commit&api-version=7.1",
+ "exact": [
+  "scopePath",
+  "recursionLevel"
+ ],
+ "note": "api's tree at PR 436's head",
+ "answer": {
+  "count": 19,
+  "value": [
+   {
+    "objectId": "404bbde109e848db29b4f49b7dea21dc3711d4fc",
+    "gitObjectType": "tree",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/",
+    "isFolder": true
+   },
+   {
+    "objectId": "535e0f5494be35a9e04213d6039089fe3636c94a",
+    "gitObjectType": "blob",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/.gitignore"
+   },
+   {
+    "objectId": "74f516c7c5734d7399b374393962bacbeeeb4a62",
+    "gitObjectType": "blob",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/Api.sln"
+   },
+   {
+    "objectId": "75c9d88d0c152af66c062b80f93b5bf4354e3af1",
+    "gitObjectType": "blob",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/Dockerfile"
+   },
+   {
+    "objectId": "c13c58ddc73f540784016f603db15a7136f430fa",
+    "gitObjectType": "blob",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/README.md"
+   },
+   {
+    "objectId": "7c253ce5978ad11ff15372b95efa2ca0ca6f8d17",
+    "gitObjectType": "blob",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/azure-pipelines.yml"
+   },
+   {
+    "objectId": "5e4c9e9eccc37b1729e59b3db67eb125020ea2ef",
+    "gitObjectType": "tree",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/src",
+    "isFolder": true
+   },
+   {
+    "objectId": "796a4a6525cb153cff22e0ea8f9b2b2860885678",
+    "gitObjectType": "blob",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/src/Api.csproj"
+   },
+   {
+    "objectId": "771518b75941051a00e1ed4563f815025cbaaf90",
+    "gitObjectType": "tree",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/src/Orders",
+    "isFolder": true
+   },
+   {
+    "objectId": "915a3e741145e3f2c823554b3181c8c46066e09d",
+    "gitObjectType": "blob",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/src/Orders/IOrderClient.cs"
+   },
+   {
+    "objectId": "c51dded9046472726b203210311e874e9ce52504",
+    "gitObjectType": "blob",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/src/Orders/OrderClient.cs"
+   },
+   {
+    "objectId": "0054d0c2a741a3695c83f7cf938c7e836842d43f",
+    "gitObjectType": "blob",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/src/Program.cs"
+   },
+   {
+    "objectId": "61a77aebcd701da4e1cfc4c9740ebd9709a81f22",
+    "gitObjectType": "tree",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/templates",
+    "isFolder": true
+   },
+   {
+    "objectId": "fc60cf0a36de4e76bb88de6c0b2a9b9c3162081e",
+    "gitObjectType": "blob",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/templates/dotnet-test.yml"
+   },
+   {
+    "objectId": "903dba925233961a498c53bd7a280f9383b7e779",
+    "gitObjectType": "tree",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/tests",
+    "isFolder": true
+   },
+   {
+    "objectId": "77e2d223aa4ccb0f46c7456987e1a2e20ddc0e54",
+    "gitObjectType": "tree",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/tests/Api.Tests",
+    "isFolder": true
+   },
+   {
+    "objectId": "8f5f1859ee5b47f4019732f9bc48fb786557f980",
+    "gitObjectType": "blob",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/tests/Api.Tests/Api.Tests.csproj"
+   },
+   {
+    "objectId": "a46b5c7dd7e15e3151c69de3df29245993b1e3b2",
+    "gitObjectType": "blob",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/tests/Api.Tests/OrdersClientTests.cs"
+   },
+   {
+    "objectId": "0e08860694134d8fc316bcf97053ddd5001fb367",
+    "gitObjectType": "blob",
+    "commitId": "a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0",
+    "path": "/tests/Api.Tests/OrdersStub.cs"
+   }
+  ]
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/items?path=%2Fapp%2Fsrc%2FOrders%2FOrderClient.cs&versionDescriptor.version=4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9&versionDescriptor.versionType=commit&includeContent=true&$format=json&api-version=7.1",
+ "exact": [
+  "path"
+ ],
+ "note": "a container's stack frame is no repository path; file get resolves it through the tree",
+ "status": 404,
+ "answer": {
+  "$id": "1",
+  "innerException": null,
+  "message": "TF401174: The item '/app/src/Orders/OrderClient.cs' could not be found in the repository 'api' at the version specified by '<Commit: 4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9 >' (resolved to commit '4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9').",
+  "typeName": "Microsoft.TeamFoundation.Git.Server.GitItemNotFoundException, Microsoft.TeamFoundation.Git.Server",
+  "typeKey": "GitItemNotFoundException",
+  "errorCode": 0,
+  "eventId": 3000
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/items?path=%2Fapp%2Fsrc%2FOrders%2FOrderClient.cs&versionDescriptor.version=v1.4.2&versionDescriptor.versionType=branch&includeContent=true&$format=json&api-version=7.1",
+ "exact": [
+  "path",
+  "versionDescriptor.version",
+  "versionDescriptor.versionType"
+ ],
+ "note": "a bare v1.4.2 is tried as a branch first",
+ "status": 404,
+ "answer": {
+  "$id": "1",
+  "innerException": null,
+  "message": "TF401175: The version descriptor <Branch: v1.4.2 > could not be resolved to a version in the repository api",
+  "typeName": "Microsoft.TeamFoundation.Git.Server.GitUnresolvableToCommitException, Microsoft.TeamFoundation.Git.Server",
+  "typeKey": "GitUnresolvableToCommitException",
+  "errorCode": 0,
+  "eventId": 3000
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/items?path=%2Fapp%2Fsrc%2FOrders%2FOrderClient.cs&versionDescriptor.version=v1.4.2&versionDescriptor.versionType=tag&includeContent=true&$format=json&api-version=7.1",
+ "exact": [
+  "path",
+  "versionDescriptor.version",
+  "versionDescriptor.versionType"
+ ],
+ "status": 404,
+ "answer": {
+  "$id": "1",
+  "innerException": null,
+  "message": "TF401174: The item '/app/src/Orders/OrderClient.cs' could not be found in the repository 'api' at the version specified by '<Tag: v1.4.2 >' (resolved to commit '4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9').",
+  "typeName": "Microsoft.TeamFoundation.Git.Server.GitItemNotFoundException, Microsoft.TeamFoundation.Git.Server",
+  "typeKey": "GitItemNotFoundException",
+  "errorCode": 0,
+  "eventId": 3000
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/items?scopePath=%2F&recursionLevel=Full&versionDescriptor.version=v1.4.2&versionDescriptor.versionType=branch&api-version=7.1",
+ "exact": [
+  "scopePath",
+  "recursionLevel",
+  "versionDescriptor.version",
+  "versionDescriptor.versionType"
+ ],
+ "note": "a bare v1.4.2 is tried as a branch first",
+ "status": 404,
+ "answer": {
+  "$id": "1",
+  "innerException": null,
+  "message": "TF401175: The version descriptor <Branch: v1.4.2 > could not be resolved to a version in the repository api",
+  "typeName": "Microsoft.TeamFoundation.Git.Server.GitUnresolvableToCommitException, Microsoft.TeamFoundation.Git.Server",
+  "typeKey": "GitUnresolvableToCommitException",
+  "errorCode": 0,
+  "eventId": 3000
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/items?scopePath=%2F&recursionLevel=Full&versionDescriptor.version=v1.4.2&versionDescriptor.versionType=tag&api-version=7.1",
+ "exact": [
+  "scopePath",
+  "recursionLevel"
+ ],
+ "note": "api's tree at the v1.4.2 tag",
+ "answer": {
+  "count": 19,
+  "value": [
+   {
+    "objectId": "1a44b6fd4aa47b077134151de574745a85be6f32",
+    "gitObjectType": "tree",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/",
+    "isFolder": true
+   },
+   {
+    "objectId": "f5639e6a152c32db53d662c8e802139dcfd04cde",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/.gitignore"
+   },
+   {
+    "objectId": "05a00736da215fae59733b439373ea683ddf6611",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/Api.sln"
+   },
+   {
+    "objectId": "3c126a135ef6d6dfc70eaf7c13480acd3fd3edce",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/Dockerfile"
+   },
+   {
+    "objectId": "21cddc61561f3a009bf1118dfc5ef3a9ec6df1ad",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/README.md"
+   },
+   {
+    "objectId": "1054f9bdf007dd583b621ecf24ec7ed781681138",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/azure-pipelines.yml"
+   },
+   {
+    "objectId": "f762590b0b3af532f0e56a15fae61f70995dd1c4",
+    "gitObjectType": "tree",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/src",
+    "isFolder": true
+   },
+   {
+    "objectId": "aa2455c0b5353c48ab6839ff7a76e5e063e1c209",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/src/Api.csproj"
+   },
+   {
+    "objectId": "1e3b5d7f9a0c2e4f6a8b0d2f4a6c8e0b2d4f6a8c",
+    "gitObjectType": "tree",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/src/Orders",
+    "isFolder": true
+   },
+   {
+    "objectId": "5c0f9e2d7a1b3c4e6f8a0b2d4e6f8a1c3e5b7d9f",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/src/Orders/IOrderClient.cs"
+   },
+   {
+    "objectId": "b328134bb10512528052ce9e6b3d5fdfc341f65a",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/src/Orders/OrderClient.cs"
+   },
+   {
+    "objectId": "1f06c2c8e9316302138826b7475b2aab74db19fb",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/src/Program.cs"
+   },
+   {
+    "objectId": "476e4ba0de0f9be3cdee53529b290e7a6d692886",
+    "gitObjectType": "tree",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/templates",
+    "isFolder": true
+   },
+   {
+    "objectId": "2333f999f119f64fdeb204aa3d5fdf4bb4fcdfbc",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/templates/dotnet-test.yml"
+   },
+   {
+    "objectId": "1b7d2965ab13e835f6007f17efd9e8211e5ea284",
+    "gitObjectType": "tree",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/tests",
+    "isFolder": true
+   },
+   {
+    "objectId": "cff2321b253f072041b5574254a0ad5a06899994",
+    "gitObjectType": "tree",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/tests/Api.Tests",
+    "isFolder": true
+   },
+   {
+    "objectId": "4081cf5cf8e9f3cc9bcb620d477fa90a897a1eed",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/tests/Api.Tests/Api.Tests.csproj"
+   },
+   {
+    "objectId": "d5706aabdcd0a3923b8d9b8fc85c2af0eb023c62",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/tests/Api.Tests/OrdersClientTests.cs"
+   },
+   {
+    "objectId": "25b50d3c001b9a8553f63670d976812335cda8fd",
+    "gitObjectType": "blob",
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "path": "/tests/Api.Tests/OrdersStub.cs"
+   }
+  ]
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/items?path=%2Fsrc%2FOrders%2FOrderClient.cs&versionDescriptor.version=v1.4.2&versionDescriptor.versionType=branch&includeContent=true&$format=json&api-version=7.1",
+ "exact": [
+  "path",
+  "versionDescriptor.version",
+  "versionDescriptor.versionType"
+ ],
+ "note": "a bare v1.4.2 is tried as a branch first",
+ "status": 404,
+ "answer": {
+  "$id": "1",
+  "innerException": null,
+  "message": "TF401175: The version descriptor <Branch: v1.4.2 > could not be resolved to a version in the repository api",
+  "typeName": "Microsoft.TeamFoundation.Git.Server.GitUnresolvableToCommitException, Microsoft.TeamFoundation.Git.Server",
+  "typeKey": "GitUnresolvableToCommitException",
+  "errorCode": 0,
+  "eventId": 3000
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/items?path=%2Fsrc%2FOrders%2FOrderClient.cs&versionDescriptor.version=v1.4.2&versionDescriptor.versionType=tag&includeContent=true&$format=json&api-version=7.1",
+ "exact": [
+  "path",
+  "versionDescriptor.version",
+  "versionDescriptor.versionType"
+ ],
+ "note": "the file as the v1.4.2 image runs it",
+ "answer": {
+  "objectId": "b328134bb10512528052ce9e6b3d5fdfc341f65a",
+  "gitObjectType": "blob",
+  "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+  "path": "/src/Orders/OrderClient.cs",
+  "content": "using System;\nusing System.Net;\nusing System.Net.Http;\nusing System.Net.Http.Json;\nusing System.Threading;\nusing System.Threading.Tasks;\n\nnamespace Contoso.Api.Orders;\n\n/// <summary>Calls the orders service, retrying a 429 up to five times.</summary>\npublic sealed class OrderClient(HttpClient http) : IOrderClient\n{\n    private const int MaxAttempts = 5;\n\n    public async Task<Order?> GetAsync(int id, CancellationToken cancel)\n    {\n        for (var attempt = 1; ; attempt++)\n        {\n            using var response = await http.GetAsync($\"orders/{id}\", cancel);\n            if (response.StatusCode == HttpStatusCode.TooManyRequests && attempt < MaxAttempts)\n            {\n                await Task.Delay(Backoff(response, attempt), cancel);\n                continue;\n            }\n            if (response.StatusCode == HttpStatusCode.NotFound)\n            {\n                return null;\n            }\n            response.EnsureSuccessStatusCode();\n            return await response.Content.ReadFromJsonAsync<Order>(cancel);\n        }\n    }\n\n    /// <summary>Retry-After when the service sends one, else 2^attempt seconds.</summary>\n    internal static TimeSpan Backoff(HttpResponseMessage response, int attempt) =>\n        response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(Math.Pow(2, attempt));\n}"
+ }
+}
+,
+{
+ "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/pipelines/12/runs?api-version=7.1",
+ "body": {
+  "templateParameters": {}
+ },
+ "note": "ado run create --pipeline api-ci: run 8815 of main",
+ "answer": {
+  "id": 8815,
+  "name": "20260929.2",
+  "state": "inProgress",
+  "createdDate": "2026-09-29T11:52:10.4410000Z",
+  "pipeline": {
+   "id": 12,
+   "name": "api-ci",
+   "folder": "\\"
+  },
+  "resources": {
+   "repositories": {
+    "self": {
+     "refName": "refs/heads/main",
+     "version": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+    }
+   }
+  },
+  "_links": {
+   "web": {
+    "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8815"
+   }
+  }
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8815?api-version=7.1",
+ "note": "ado run wait 8815: main built and its tests passed",
+ "answer": {
+  "id": 8815,
+  "buildNumber": "20260929.2",
+  "status": "completed",
+  "result": "succeeded",
+  "definition": {
+   "id": 12,
+   "name": "api-ci"
+  },
+  "sourceBranch": "refs/heads/main",
+  "sourceVersion": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+  "repository": {
+   "id": "00000000-0000-4000-8000-0000000a0001",
+   "type": "TfsGit",
+   "name": "api"
+  },
+  "requestedFor": {
+   "displayName": "Jane Doe",
+   "uniqueName": "jane@contoso.com",
+   "id": "00000000-0000-4000-8000-0000000000e1"
+  },
+  "reason": "manual",
+  "queueTime": "2026-09-29T11:52:10.4410000Z",
+  "startTime": "2026-09-29T11:52:16.0120000Z",
+  "finishTime": "2026-09-29T11:58:41.3360000Z",
+  "triggerInfo": {},
+  "_links": {
+   "web": {
+    "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8815"
+   }
+  }
  }
 }
 ]

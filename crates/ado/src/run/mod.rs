@@ -19,6 +19,8 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::client::{Ado, Body, list, short_branch, stamp, text};
+use crate::file::{resolve, tree};
+use crate::ids::file_id;
 
 // ---------- runs ----------
 
@@ -62,8 +64,59 @@ fn run_row(build: &Value) -> RunRow {
     }
 }
 
-fn build_url(ado: &Ado, id: i64) -> String {
+pub(crate) fn build_url(ado: &Ado, id: i64) -> String {
     ado.code(&format!("build/builds/{id}"), "")
+}
+
+/// The repository a run built and the commit its errors' lines are in. A
+/// pull request build compiles the merge, whose lines are the head's while
+/// the target has not changed the file; the head is what the agent fixes,
+/// and what `pr get` and `thread list` name. `None` outside Azure Repos.
+pub(crate) fn built(build: &Value) -> Option<(String, String)> {
+    let repo = &build["repository"];
+    if repo["type"].as_str() != Some("TfsGit") {
+        return None;
+    }
+    let commit =
+        text(&build["triggerInfo"]["pr.sourceSha"]).or_else(|| text(&build["sourceVersion"]))?;
+    Some((text(&repo["name"])?, commit))
+}
+
+/// `REPO@COMMIT:PATH:LINE` for a path as the build agent or a stack printed
+/// it, when one file in `files` (the commit's tree) is that path.
+pub(crate) fn line_at(
+    built: &(String, String),
+    files: &[String],
+    path: &str,
+    line: usize,
+) -> Option<String> {
+    let path = resolve(files, path)?;
+    Some(file_id(
+        None,
+        &built.0,
+        Some(&built.1),
+        &path,
+        Some((line, line)),
+    ))
+}
+
+/// The tree of what a run built, read only when `wanted`.
+pub(crate) fn built_tree(
+    ctx: &Ctx,
+    ado: &Ado,
+    built: Option<&(String, String)>,
+    wanted: bool,
+) -> Result<Vec<String>> {
+    match built {
+        Some((repo, commit)) if wanted => tree(
+            ctx,
+            ado,
+            &ado.code_project,
+            repo,
+            Some(&("commit", commit.clone())),
+        ),
+        _ => Ok(Vec::new()),
+    }
 }
 
 #[derive(clap::Args)]
