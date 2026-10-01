@@ -193,9 +193,9 @@ fn the_org_has_no_slos_and_a_default_window_says_how_to_start_at_a_deploy() {
     let service = world::agent_cli(&["dd", "service", "get", "api"]);
     assert_eq!(service.code, 0, "{}", service.stderr);
     assert!(
-        service
-            .stderr
-            .contains("[the last hour; what a deploy changed: --since its time"),
+        service.stderr.contains(
+            "[the last hour only; since a deploy: agent-cli dd service get api --since <updated>,"
+        ),
         "{}",
         service.stderr
     );
