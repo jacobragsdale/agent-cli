@@ -7,7 +7,7 @@
 mod world;
 
 use serde_json::{Value, json};
-use world::{agent_cli, ok};
+use world::{agent_cli, follow, ok};
 
 #[test]
 fn the_deploy_trace_runs_from_the_cluster_to_the_work_items() {
@@ -312,4 +312,149 @@ fn a_failed_task_leads_to_its_line_in_the_dag_and_the_same_line_in_the_repo() {
         r#"raise ValueError(f"order {order_id} has no customer_id")"#,
         "the line the pod's traceback prints"
     );
+}
+
+/// F10: an api exception in Datadog, to its line at the deployed commit, the
+/// change that last touched that file, and the work behind the change.
+#[test]
+fn a_production_exception_leads_to_its_line_its_pull_request_and_work_items() {
+    let spans = ok(&[
+        "dd",
+        "span",
+        "list",
+        "--service",
+        "api",
+        "--status",
+        "error",
+        "--since",
+        "2026-09-28T21:30:00Z",
+        "--until",
+        "2026-09-28T22:30:00Z",
+        "--fields",
+        "at",
+    ]);
+    let at = spans[0]["at"].as_str().unwrap();
+    let file = ok(&["ado", "file", "get", at, "--fields", "id,text"]);
+    assert_eq!(
+        file["id"],
+        "api@4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9:src/Orders/OrderClient.cs"
+    );
+    assert!(
+        file["text"]
+            .as_str()
+            .unwrap()
+            .lines()
+            .any(|line| line.starts_with("19 ") && line.contains("await http.GetAsync")),
+        "{}",
+        file["text"]
+    );
+
+    let commits = ok(&[
+        "ado",
+        "commit",
+        "list",
+        "api:src/Orders/OrderClient.cs",
+        "--fields",
+        "commit,pr",
+    ]);
+    assert_eq!(commits[0]["pr"]["id"], 431);
+    let pr = ok(&["ado", "pr", "get", "431", "--fields", "work_items"]);
+    assert_eq!(pr["work_items"], json!([1207, 1210]));
+}
+
+/// F11: the crash-loop alert, by its note, to the refused password; Key Vault
+/// names the expired secret, and the reverse lookup the deployment to restart
+/// once it is rotated, whose rollout has given up until then.
+#[test]
+fn an_expired_secret_leads_from_the_alert_to_the_deployment_that_reads_it() {
+    let walked = follow(&["dd", "monitor", "get", "4712"]);
+    assert_eq!(walked.len(), 2, "monitor get, then its log search");
+    assert!(
+        walked[1]
+            .stdout
+            .contains("password authentication failed for user"),
+        "{}",
+        walked[1].stdout
+    );
+
+    let secrets = ok(&[
+        "kv",
+        "secret",
+        "list",
+        "--expires-within",
+        "30d",
+        "--fields",
+        "id,expires",
+    ]);
+    assert!(
+        secrets.as_array().unwrap().contains(&json!({
+            "id": "kv-contoso-prod/worker-db-password",
+            "expires": "2026-09-20T09:00:00Z"
+        })),
+        "{secrets}"
+    );
+    let pods = ok(&[
+        "k8s",
+        "pod",
+        "list",
+        "--kv",
+        "kv-contoso-prod/worker-db-password",
+        "--fields",
+        "id,owner",
+    ]);
+    assert_eq!(
+        pods,
+        json!([{"id": "prod/web/worker-5c4d3e9f1-q8zt1", "owner": "Deployment/worker"}])
+    );
+    let restart = agent_cli(&[
+        "k8s",
+        "deployment",
+        "restart",
+        "prod/web/worker",
+        "--dry-run",
+    ]);
+    assert_eq!(restart.code, 0, "{}", restart.stderr);
+    let wait = agent_cli(&["k8s", "deployment", "wait", "prod/web/worker"]);
+    assert_eq!(wait.code, 1, "{}", wait.stderr);
+    assert!(
+        wait.stderr
+            .contains("hint: agent-cli k8s pod logs prod/web/worker-5c4d3e9f1-q8zt1 --previous"),
+        "{}",
+        wait.stderr
+    );
+}
+
+/// F12: a DAG missing from the list, by notes alone, to the import in the
+/// repository that breaks it.
+#[test]
+fn an_import_error_leads_by_notes_alone_to_its_line_in_the_repository() {
+    let walked = follow(&["airflow", "import-error", "get", "12"]);
+    assert_eq!(walked.len(), 2, "import-error get, then ado file get");
+    let file = walked[1].json();
+    assert_eq!(file["id"], "airflow-dags:dags/customer_sync.py");
+    assert!(
+        file["text"]
+            .as_str()
+            .unwrap()
+            .contains("5  from contoso_crm import Client"),
+        "{}",
+        file["text"]
+    );
+}
+
+/// F13: ship and verify, by notes: the run to its wait, the rollout to the
+/// service's health since it rolled out.
+#[test]
+fn a_new_build_is_waited_for_and_its_rollout_verified_by_notes() {
+    let walked = follow(&["ado", "run", "create", "--pipeline", "api-ci"]);
+    assert_eq!(walked.len(), 2, "run create, then run wait");
+    assert_eq!(walked[1].code, 0, "{}", walked[1].stderr);
+    assert_eq!(walked[1].json()["result"], "succeeded");
+
+    let walked = follow(&["k8s", "deployment", "wait", "prod/web/api"]);
+    assert_eq!(walked.len(), 2, "deployment wait, then service get");
+    assert_eq!(walked[0].json()["rolled_out"], "2026-09-28T21:34:40Z");
+    let service = walked[1].json();
+    assert_eq!(service["since"], "2026-09-28T21:34:40Z");
+    assert_eq!(service["errors"], 212);
 }

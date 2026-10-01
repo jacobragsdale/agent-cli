@@ -29,9 +29,10 @@ Never edit those pages by hand.
 
 ## World tests (`--features fixtures`)
 `tests/common/world.rs` runs the fixtures build against `fixtures/world` as
-a trial does (`agent_cli`, `ok`). `tests/world_<domain>.rs` holds what each
-domain must answer; `tests/world_cross.rs` the traces that hop domains (the
-deploy trace, the failed DAG, the Datadog alert) and what a miss says. Run
+a trial does (`agent_cli`, `ok`; `follow` walks `[next: …]` notes).
+`tests/world_<domain>.rs` holds what each domain must answer; `tests/world_cross.rs` the traces that hop domains (the
+deploy trace, the failed DAG, the Datadog alert, an exception to its PR, an
+expired secret, an import error, ship and verify) and what a miss says. Run
 one: `cargo test -p agent-cli --features fixtures --test world_dd`.
 `tests/ado.rs`, `sql.rs`, `e2e.rs`: end-to-end runs of the real binary.
 

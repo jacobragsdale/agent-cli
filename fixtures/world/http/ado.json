@@ -2792,6 +2792,18 @@
   }
  },
  {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/airflow-dags/items?path=%2Fdags%2Fcustomer_sync.py&includeContent=true&$format=json&api-version=7.1",
+  "exact": ["path"],
+  "note": "the DAG file Airflow cannot import (import error 12): line 5 imports contoso_crm, which the workers do not have",
+  "answer": {
+   "objectId": "3f1a9c7e5b2d8f4a6c0e2b4d6f8a0c2e4b6d8f0a",
+   "gitObjectType": "blob",
+   "commitId": "b5d2e8f1c4a7b0d3e6f9a2c5b8d1e4f7a0c3b6d9",
+   "path": "/dags/customer_sync.py",
+   "content": "\"\"\"Syncs changed customers from the CRM into the orders database.\"\"\"\n\nfrom __future__ import annotations\n\nfrom contoso_crm import Client\nimport pendulum\nfrom airflow.providers.standard.operators.python import PythonOperator\nfrom airflow.sdk import DAG\n\n\ndef sync_customers(**context) -> int:\n    since = context[\"data_interval_start\"]\n    changed = Client.from_connection(\"crm_default\").customers(changed_since=since)\n    return len(changed)\n\n\nwith DAG(\n    dag_id=\"customer_sync\",\n    schedule=\"@hourly\",\n    start_date=pendulum.datetime(2026, 9, 1, tz=\"UTC\"),\n    catchup=False,\n    tags=[\"crm\"],\n):\n    PythonOperator(task_id=\"sync_customers\", python_callable=sync_customers)\n"
+  }
+ },
+ {
   "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/items?path=%2Fsrc%2FOrders%2FOrderClient.cs&includeContent=true&$format=json&api-version=7.1",
   "exact": ["path"],
   "note": "main is v1.4.2",
