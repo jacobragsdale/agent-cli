@@ -87,6 +87,14 @@ fn source_get(ctx: &Ctx, args: SourceGetArgs) -> Result<Source> {
         .into());
     }
     let asked = held.or(flag);
+    // An agent holding a traceback's file often passes its name.
+    if !url && dag.ends_with(".py") {
+        return Err(Failure::usage(format!(
+            "{dag} is a file name; source get takes the DAG's id"
+        ))
+        .hint("agent-cli airflow dag list --fields id,file")
+        .into());
+    }
     let airflow = Airflow::load(ctx.config())?;
     let (client, id) =
         airflow.locate(ctx, args.at.instance.as_deref(), dag, Want::Dag, None, None)?;
@@ -266,5 +274,18 @@ mod tests {
             "{}",
             outcome.stderr
         );
+    }
+
+    #[test]
+    fn a_file_name_is_refused_naming_the_listing_that_maps_files_to_dags() {
+        let (outcome, transport) =
+            airflow(&["airflow", "source", "get", "etl_nightly.py:42"], vec![]);
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("dag list --fields id,file"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(transport.sent().is_empty());
     }
 }

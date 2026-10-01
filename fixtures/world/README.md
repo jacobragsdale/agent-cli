@@ -81,6 +81,12 @@ Each `http/*.json` is a list of exchanges; the replayer reads every file in
   preferred over one without.
 - `status` (default 200) and `headers` (an object) shape the answer; `answer`
   is JSON, `text` a body taken as it is.
+- `exact` (optional): the query parameters or body fields that name *what*
+  is asked for (`["path"]` on a file read, `["searchText"]` on a code
+  search). Trials match loosely, answering a miss with the closest recording
+  on the same path; `exact` keeps that from answering one file with its
+  neighbour's text. An unrecorded file is then a 404, and a code search
+  falls back to the recording without a body, which finds nothing.
 
 `kubectl.json` is `{"contexts": {"<context>": [objects]}, "logs": {...}}`.
 Objects are what `kubectl get -o json` prints (`kind`, `metadata.namespace`

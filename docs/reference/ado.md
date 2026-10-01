@@ -193,7 +193,8 @@ e.g. agent-cli ado diff get 436 --file '*.cs' --fields at,path,hunks
 
 ```text
 agent-cli ado file get — Show a file in a repository at a branch, tag or commit, around a line
- *<file> str  The file: REPO[@REF]:PATH[:LINE[-LINE]] as code list, thread list and diff get print it, or its web URL
+ *<file> str  The file: REPO[@REF]:PATH[:LINE[-LINE]] as code list, thread list and diff get print it, its web URL, or a path with --repo
+  --repo str  The repository, when FILE is a bare path
   --ref str   The branch, tag or commit (default: the repository's default branch)
   --line str  The line, or lines A-B, to show (one line shows 20 either side)
 Returns: {id,repo,path,ref,commit,lines,total,text}
@@ -205,7 +206,8 @@ e.g. agent-cli ado file get api@main:src/Program.cs:42
 
 ```text
 agent-cli ado file list — List the files and folders in a repository folder at a branch, tag or commit
- *<folder> str  The folder: REPO[@REF][:PATH] (the root without a path), as file list prints it, or its web URL
+ *<folder> str  The folder: REPO[@REF][:PATH] (the root without a path), as file list prints it, its web URL, or a path with --repo
+  --repo str    The repository, when FOLDER is a bare path
   --ref str     The branch, tag or commit (default: the repository's default branch)
   --recursive   Everything under the folder, not only what is in it
   --limit int   Most rows to return (default 50)

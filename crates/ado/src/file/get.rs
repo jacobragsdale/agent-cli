@@ -4,14 +4,17 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::client::{Ado, text};
-use crate::ids::{FileId, resolving};
+use crate::ids::{FileId, resolving, with_repo};
 
 use super::{fetch, numbered, text_of};
 
 #[derive(clap::Args)]
 pub struct FileGetArgs {
-    /// The file: REPO[@REF]:PATH[:LINE[-LINE]] as code list, thread list and diff get print it, or its web URL
+    /// The file: REPO[@REF]:PATH[:LINE[-LINE]] as code list, thread list and diff get print it, its web URL, or a path with --repo
     file: String,
+    /// The repository, when FILE is a bare path
+    #[arg(long)]
+    repo: Option<String>,
     /// The branch, tag or commit (default: the repository's default branch)
     #[arg(long = "ref")]
     reference: Option<String>,
@@ -49,10 +52,11 @@ fn file_get(ctx: &Ctx, args: FileGetArgs) -> Result<FileText> {
     let ado = Ado::load(ctx)?;
     let id = FileId::parse(
         &ado,
-        &args.file,
+        &with_repo(&args.file, args.repo.as_deref()),
         args.reference.as_deref(),
         args.line.as_deref(),
     )?;
+    id.agree_repo(args.repo.as_deref())?;
     if id.path.is_empty() {
         return Err(Failure::usage(format!("{} names no file", args.file))
             .hint(format!("agent-cli ado file list {}", id.at(None)))

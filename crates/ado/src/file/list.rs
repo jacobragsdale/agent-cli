@@ -4,12 +4,15 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::client::{API, Ado, list, query_value, text};
-use crate::ids::{FileId, file_id, items_path, resolving, version_query};
+use crate::ids::{FileId, file_id, items_path, resolving, version_query, with_repo};
 
 #[derive(clap::Args)]
 pub struct FileListArgs {
-    /// The folder: REPO[@REF][:PATH] (the root without a path), as file list prints it, or its web URL
+    /// The folder: REPO[@REF][:PATH] (the root without a path), as file list prints it, its web URL, or a path with --repo
     folder: String,
+    /// The repository, when FOLDER is a bare path
+    #[arg(long)]
+    repo: Option<String>,
     /// The branch, tag or commit (default: the repository's default branch)
     #[arg(long = "ref")]
     reference: Option<String>,
@@ -33,7 +36,13 @@ pub struct FileRow {
 
 fn file_list(ctx: &Ctx, args: FileListArgs) -> Result<Vec<FileRow>> {
     let ado = Ado::load(ctx)?;
-    let folder = FileId::parse(&ado, &args.folder, args.reference.as_deref(), None)?;
+    let folder = FileId::parse(
+        &ado,
+        &with_repo(&args.folder, args.repo.as_deref()),
+        args.reference.as_deref(),
+        None,
+    )?;
+    folder.agree_repo(args.repo.as_deref())?;
     let refs: Vec<&str> = folder.reference.as_deref().into_iter().collect();
     let scope = format!("/{}", folder.path);
     let answer = resolving(&refs, |reading| {

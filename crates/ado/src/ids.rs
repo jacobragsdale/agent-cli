@@ -57,6 +57,21 @@ impl FileId {
         Ok(id)
     }
 
+    /// `--repo` beside an id that names its own repository must name the same.
+    pub(crate) fn agree_repo(&self, flag: Option<&str>) -> Result<()> {
+        let Some(flag) = flag else { return Ok(()) };
+        let repo = flag.rsplit('/').next().unwrap_or(flag);
+        if repo.eq_ignore_ascii_case(&self.repo) {
+            return Ok(());
+        }
+        Err(Failure::usage(format!(
+            "--repo {flag:?} disagrees with the id's {:?}",
+            self.repo
+        ))
+        .hint("drop --repo, or the repository in the id")
+        .into())
+    }
+
     /// The project its requests go to.
     pub(crate) fn project<'a>(&'a self, ado: &'a Ado) -> &'a str {
         self.project.as_deref().unwrap_or(&ado.code_project)
@@ -71,6 +86,26 @@ impl FileId {
             &self.path,
             lines,
         )
+    }
+}
+
+/// A bare path beside `--repo`: `src/x.cs:42` with `--repo api` is
+/// `api:src/x.cs:42`. A URL, or an id whose part before the first `:` reads
+/// as a repository (no `/` or `.`, or `PROJECT/` and `--repo`'s name), is
+/// left as it is, for [`FileId::agree_repo`] to check.
+pub(crate) fn with_repo(raw: &str, repo: Option<&str>) -> String {
+    let Some(repo) = repo else {
+        return raw.to_owned();
+    };
+    let head = raw.split(':').next().unwrap_or_default();
+    let name = head.split('@').next().unwrap_or_default();
+    let named = |repo: &str| name.rsplit('/').next() == repo.rsplit('/').next();
+    let id = raw.starts_with("https://")
+        || (raw.contains(':') && (!(name.contains('/') || name.contains('.')) || named(repo)));
+    if id {
+        raw.to_owned()
+    } else {
+        format!("{repo}:{}", raw.trim_start_matches('/'))
     }
 }
 
@@ -566,5 +601,30 @@ mod tests {
         ));
         assert!(!glob("*.cs", "src/a.csproj"));
         assert!(!glob("tests/*", "src/tests/a.cs"));
+    }
+
+    #[test]
+    fn a_bare_path_takes_its_repository_from_repo_and_an_id_must_agree() {
+        let id =
+            |raw: &str, repo| FileId::parse(&ado(), &with_repo(raw, repo), None, None).unwrap();
+        assert_eq!(id("/src/x.cs:4", Some("api")), id("api:src/x.cs:4", None));
+        assert_eq!(
+            id("Program.cs:10", Some("api")),
+            id("api:Program.cs:10", None)
+        );
+        assert_eq!(
+            id("src/Jobs", Some("Ops/worker")).project.as_deref(),
+            Some("Ops")
+        );
+        assert!(
+            id("api:src/x.cs", Some("api"))
+                .agree_repo(Some("api"))
+                .is_ok()
+        );
+        assert!(
+            id("worker:src/x.cs", Some("api"))
+                .agree_repo(Some("api"))
+                .is_err()
+        );
     }
 }

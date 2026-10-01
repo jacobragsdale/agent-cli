@@ -30,6 +30,12 @@
 //! body, and a path with no recording at all by a plain 404, as a service
 //! would for a thing that does not exist. Nothing says so: an agent in a
 //! trial should see a service, not the harness. Tests stay strict.
+//!
+//! A query parameter or body field that names *what* is asked for, rather
+//! than a window or a limit, is listed in the exchange's `exact` (`["path"]`
+//! for a file read, `["searchText"]` for a search): loose matching never
+//! answers with a recording whose value differs, so an unrecorded file is a
+//! 404 rather than its neighbour's text.
 
 use std::path::Path;
 use std::time::Duration;
@@ -67,6 +73,9 @@ struct Recorded {
     answer: Option<Value>,
     #[serde(default)]
     text: Option<String>,
+    /// Query parameters or body fields loose matching must not substitute.
+    #[serde(default)]
+    exact: Vec<String>,
     /// For the person reading the file.
     #[serde(default)]
     #[allow(dead_code)]
@@ -80,6 +89,7 @@ struct Exchange {
     status: u16,
     headers: Vec<(String, String)>,
     answer: String,
+    exact: Vec<String>,
 }
 
 pub(crate) struct Replay {
@@ -104,8 +114,14 @@ impl Replay {
     }
 
     /// The recording of `wanted`'s method and path whose query and body are
-    /// closest to the ones sent.
-    fn closest_on_path(&self, wanted: &str, body: Option<&Value>) -> Option<&Exchange> {
+    /// closest to the ones sent; with `named`, only one whose `exact` fields
+    /// name what was asked for.
+    fn closest_on_path(
+        &self,
+        wanted: &str,
+        body: Option<&Value>,
+        named: bool,
+    ) -> Option<&Exchange> {
         let path = |key: &str| key.split('?').next().unwrap_or_default().to_owned();
         let sent = format!(
             "{wanted} {}",
@@ -114,6 +130,12 @@ impl Replay {
         self.exchanges
             .iter()
             .filter(|exchange| path(&exchange.key) == path(wanted))
+            .filter(|exchange| !named || !exchange.exact.is_empty())
+            .filter(|exchange| {
+                exchange.exact.iter().all(|name| {
+                    field(&exchange.key, exchange.body.as_ref(), name) == field(wanted, body, name)
+                })
+            })
             .map(|exchange| {
                 let recorded = format!(
                     "{} {}",
@@ -129,6 +151,16 @@ impl Replay {
             .max_by(|a, b| a.0.total_cmp(&b.0))
             .map(|(_, exchange)| exchange)
     }
+}
+
+/// A query parameter's value in `key`, else a top-level field of `body`.
+fn field(key: &str, body: Option<&Value>, name: &str) -> Option<String> {
+    let query = key.split_once('?').map_or("", |(_, query)| query);
+    query
+        .split('&')
+        .find_map(|pair| pair.strip_prefix(name)?.strip_prefix('='))
+        .map(str::to_owned)
+        .or_else(|| body.and_then(|body| body.get(name)).map(Value::to_string))
 }
 
 fn read(dir: &Path) -> Result<Vec<Exchange>> {
@@ -172,6 +204,7 @@ fn read(dir: &Path) -> Result<Vec<Exchange>> {
                     (None, Some(answer)) => answer.to_string(),
                     (None, None) => String::new(),
                 },
+                exact: entry.exact,
             });
         }
     }
@@ -232,16 +265,25 @@ impl Transport for Replay {
             .iter()
             .filter(|exchange| exchange.key == wanted)
             .collect();
+        let loose = |named| {
+            self.loose
+                .then(|| self.closest_on_path(&wanted, body.as_ref(), named))
+                .flatten()
+        };
+        // Loosely, a recording that names what was asked for beats one that
+        // answers any body.
         let found = same_url
             .iter()
             .find(|exchange| exchange.body.is_some() && exchange.body == body)
-            .or_else(|| same_url.iter().find(|exchange| exchange.body.is_none()))
             .copied()
+            .or_else(|| loose(true))
             .or_else(|| {
-                self.loose
-                    .then(|| self.closest_on_path(&wanted, body.as_ref()))
-                    .flatten()
-            });
+                same_url
+                    .iter()
+                    .find(|exchange| exchange.body.is_none())
+                    .copied()
+            })
+            .or_else(|| loose(false));
         let Some(exchange) = found else {
             if self.loose {
                 return Ok(Response {
@@ -363,6 +405,39 @@ mod tests {
             error,
             r#"fixtures: POST https://h.example/q is recorded, but not with this body; body sent: {"query":"two"}"#
         );
+    }
+
+    #[test]
+    fn loose_never_substitutes_what_an_exact_field_names() {
+        let replay = load(
+            &[(
+                "a.json",
+                r#"[{"request": "GET https://h.example/items?path=/src/a.cs&v=1", "exact": ["path"], "answer": "a"},
+                    {"request": "POST https://h.example/search", "body": {"searchText": "Foo", "top": 5},
+                     "exact": ["searchText"], "answer": ["foo"]},
+                    {"request": "POST https://h.example/search", "answer": []}]"#,
+            )],
+            true,
+        );
+        let get = |url: &str| send(&replay, Request::get(url)).unwrap();
+        assert_eq!(
+            get("https://h.example/items?path=/src/a.cs&v=2").body,
+            r#""a""#
+        );
+        assert_eq!(
+            get("https://h.example/items?path=/src/ab.cs&v=1").status,
+            404,
+            "a neighbouring file is not this one"
+        );
+        let search = |text: &str| {
+            let request = Request::query(
+                "https://h.example/search",
+                serde_json::json!({"searchText": text, "top": 50}),
+            );
+            send(&replay, request).unwrap().body
+        };
+        assert_eq!(search("Foo"), r#"["foo"]"#);
+        assert_eq!(search("Bar"), "[]", "an unrecorded search finds nothing");
     }
 
     #[test]
