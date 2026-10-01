@@ -22,7 +22,7 @@
 | [`airflow xcom list`](#airflow-xcom-list) | read | List the XComs a task instance pushed: their keys, not their values |
 | [`airflow xcom get`](#airflow-xcom-get) | read | Show an XCom's value: what a task returned or pushed for its downstream tasks |
 | [`airflow import-error list`](#airflow-import-error-list) | read | List DAG files that fail to import, newest first: why a DAG is missing |
-| [`airflow import-error get`](#airflow-import-error-get) | read | Show an import error's full stack trace |
+| [`airflow import-error get`](#airflow-import-error-get) | read | Show an import error's full stack trace, its line and that file in the repo |
 
 ### airflow instance list
 
@@ -285,10 +285,10 @@ e.g. agent-cli airflow import-error list --fields id,file,error
 ### airflow import-error get
 
 ```text
-agent-cli airflow import-error get — Show an import error's full stack trace
+agent-cli airflow import-error get — Show an import error's full stack trace, its line and that file in the repo
  *<id> int        The import error's id, from import-error list
   --instance str  The [[airflow.instance]] name; defaults to the only one
-Returns: {id,file,bundle,timestamp,error,stack_trace}
+Returns: {id,file,bundle,timestamp,error,line,repo_file,stack_trace}
 Read. * required. Globals: --fields --raw --timeout --output
-e.g. agent-cli airflow import-error get 12
+e.g. agent-cli airflow import-error get 12 --fields error,line,repo_file
 ```

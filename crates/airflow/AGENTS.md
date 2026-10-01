@@ -26,8 +26,8 @@ an XCom: `dag/run/task[:map]@key`.
 ## Where things are (`src/`)
 A command is `<resource>/<verb>.rs`: its args, rows, handler, `command!`
 and tests (`run/retry.rs` is `airflow run retry`). Copy a sibling.
-- `lib.rs`: `DOMAIN`, whose `commands` registers every command (its order
-  is the listing's). `doctor.rs`: status and doctor.
+- `lib.rs`: `DOMAIN`, its `commands` in listing order. `doctor.rs`:
+  status and doctor.
 - `client.rs`: `Airflow::load(config)`, `open(ctx, instance)` or `locate`
   for a `Client`, which has `get(path)`, `public(path)` (no credential),
   `preview(path, body)` (a POST that only reads), `change(...)` (a write),
@@ -37,18 +37,19 @@ and tests (`run/retry.rs` is `airflow run retry`). Copy a sibling.
 - `dag_run.rs`: `RUN_STATES`, `cleared_ids`.
 - `<resource>/mod.rs`: what its verbs share (`run/mod.rs`: the run row,
   `RunIdArgs`; `task/mod.rs`: the task row and id args).
-  `instance/mod.rs`: `check_base_url`.
+  `instance/mod.rs`: `check_base_url`; `source/mod.rs`: `failing_line`,
+  `repo_file`.
 - `testing.rs`: `airflow`, `airflow_with`, `paths`, `dry_run`, `API`,
   `CONFIG`, `TOKEN`, and sample `dag`, `run`, `ti` rows.
 
 ## Fixtures
 `fixtures/world/http/airflow.json` (`/api/v2` and `/auth/token`); facts
-`fixtures/world/facts/airflow.md`; the failed-DAG trace and the chains
-flows in `crates/cli/tests/world_{cross,airflow}.rs`; queries `search.toml`.
+`fixtures/world/facts/airflow.md`; the failed-DAG trace and chains flows
+in `crates/cli/tests/world_{cross,airflow}.rs`; queries `search.toml`.
 
 ## Quirks
-- A clear's `dry_run` **defaults to true** on the server: a real retry must
-  send `"dry_run": false`, and previews send `true` through `preview`.
+- A clear's `dry_run` **defaults to true** on the server: a retry sends
+  `"dry_run": false`, a preview `true` through `preview`.
 - Airflow caps a page at `maximum_page_limit` (100 unless raised); logs
   page with a token passed as a query value, never a URL to follow.
 - `task logs`' `at`: the file the log's `Filling up the DagBag from` line

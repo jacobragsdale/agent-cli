@@ -7,6 +7,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::client::{Airflow, query_value, text, ti_id};
+use crate::source::failing_line;
 
 use super::{TaskIdArgs, finished};
 
@@ -103,7 +104,7 @@ fn task_logs(ctx: &Ctx, args: TaskLogsArgs) -> Result<TaskLogs> {
                 text(&dag["relative_fileloc"])
             })
         })
-        .and_then(|file| failing_line(&rendered.lines, &file))
+        .and_then(|file| failing_line(rendered.lines.iter().map(String::as_str), &file))
         .map(|line| format!("{}:{line}", id.dag));
     if let Some(at) = &at {
         ctx.note(format!(
@@ -308,22 +309,6 @@ fn dag_file(lines: &[String]) -> Option<String> {
     lines.iter().find_map(|line| {
         let (_, rest) = line.split_once("Filling up the DagBag from ")?;
         rest.split_whitespace().next().map(str::to_owned)
-    })
-}
-
-/// The line of the last traceback frame in `file`: the path the DagBag
-/// filled from, or the DAG's path in its bundle, which a frame's ends with.
-/// Python prints the innermost frame last, and a chain's raised exception
-/// after its causes.
-fn failing_line(lines: &[String], file: &str) -> Option<u64> {
-    let tail = format!("/{file}");
-    lines.iter().rev().find_map(|line| {
-        let (path, rest) = line
-            .trim_start()
-            .strip_prefix("File \"")?
-            .split_once("\", line ")?;
-        let number = rest.split(',').next()?.trim().parse().ok()?;
-        (path == file || path.ends_with(&tail)).then_some(number)
     })
 }
 

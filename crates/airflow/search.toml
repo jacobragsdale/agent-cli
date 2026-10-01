@@ -144,6 +144,14 @@ text = "show import error 12"
 expect = "airflow import-error get"
 
 [[query]]
+text = "which line of the dag file fails to import"
+expect = "airflow import-error get"
+
+[[query]]
+text = "repo file for an airflow import error"
+expect = "airflow import-error get"
+
+[[query]]
 text = "show the python source of the etl_nightly dag"
 expect = "airflow source get"
 

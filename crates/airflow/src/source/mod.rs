@@ -1,3 +1,36 @@
-//! `airflow source`: a DAG's file as Airflow parsed it, by line.
+//! `airflow source`: a DAG's file as Airflow parsed it, by line; and where a
+//! DAG file's line is, which task logs and import-error get share.
 
 pub(crate) mod get;
+
+use crate::client::Instance;
+
+/// The line of the last traceback frame in `file`: the path the DagBag
+/// filled from, or the DAG's path in its bundle, which a frame's ends with.
+/// Python prints the innermost frame last, and a chain's raised exception
+/// after its causes.
+pub(crate) fn failing_line<'a>(
+    lines: impl DoubleEndedIterator<Item = &'a str>,
+    file: &str,
+) -> Option<u64> {
+    let tail = format!("/{file}");
+    lines.rev().find_map(|line| {
+        let (path, rest) = line
+            .trim_start()
+            .strip_prefix("File \"")?
+            .split_once("\", line ")?;
+        let number = rest.split(',').next()?.trim().parse().ok()?;
+        (path == file || path.ends_with(&tail)).then_some(number)
+    })
+}
+
+/// A DAG file (its path in the bundle) as `REPO:PATH`, the id `ado file get`
+/// takes, when the instance names its `dags_repo`.
+pub(crate) fn repo_file(instance: &Instance, file: &str) -> Option<String> {
+    let repo = instance.dags_repo.as_deref()?;
+    let (repo, folder) = repo.split_once(':').unwrap_or((repo, ""));
+    Some(match folder.trim_matches('/') {
+        "" => format!("{}:{file}", repo.trim()),
+        folder => format!("{}:{folder}/{file}", repo.trim()),
+    })
+}

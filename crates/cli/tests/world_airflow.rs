@@ -80,6 +80,25 @@ fn a_failed_run_names_its_failed_tasks_log_as_the_next_step() {
 }
 
 #[test]
+fn an_import_error_names_its_line_in_the_dags_repo() {
+    let listed = ok(&["airflow", "import-error", "list", "--fields", "id,file"]);
+    assert_eq!(listed[0], json!({"id": 12, "file": "customer_sync.py"}));
+    let got = world::agent_cli(&["airflow", "import-error", "get", "12"]);
+    assert_eq!(got.code, 0, "{}", got.stderr);
+    assert_eq!(got.json()["line"], 5);
+    assert_eq!(
+        got.json()["repo_file"],
+        "airflow-dags:dags/customer_sync.py:5"
+    );
+    assert!(
+        got.stderr
+            .contains("[next: agent-cli ado file get airflow-dags:dags/customer_sync.py:5]"),
+        "{}",
+        got.stderr
+    );
+}
+
+#[test]
 fn a_tasks_pool_and_a_dags_connections_lead_to_the_sql_connection() {
     let task = ok(&[
         "airflow",

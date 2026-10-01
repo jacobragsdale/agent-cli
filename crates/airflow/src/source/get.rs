@@ -139,18 +139,10 @@ fn source_get(ctx: &Ctx, args: SourceGetArgs) -> Result<Source> {
         .zip(first..)
         .map(|(line, number)| format!("{number:>width$}  {line}").trim_end().to_owned())
         .collect();
-    let repo_file = client
-        .instance
-        .dags_repo
+    let repo_file = file
         .as_deref()
-        .zip(file.as_deref())
-        .map(|(repo, file)| {
-            let (repo, folder) = repo.split_once(':').unwrap_or((repo, ""));
-            match folder.trim_matches('/') {
-                "" => format!("{}:{file}{range}", repo.trim()),
-                folder => format!("{}:{folder}/{file}{range}", repo.trim()),
-            }
-        });
+        .and_then(|file| super::repo_file(client.instance, file))
+        .map(|repo_file| format!("{repo_file}{range}"));
     Ok(Source {
         id: format!("{}{range}", id.dag),
         dag: id.dag,
