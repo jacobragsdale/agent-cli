@@ -51,5 +51,5 @@ without the variable they skip. Queries `crates/sql/search.toml`.
 - The only async code (a current-thread runtime for tiberius) is here.
 
 ## Never needed
-Other crates' sources, `PLAN.md`, `docs/plans/`, `docs/reference/`,
+Other crates' sources, `docs/plans/`, `docs/reference/`,
 `fixtures/world/`.

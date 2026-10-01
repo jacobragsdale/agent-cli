@@ -141,6 +141,10 @@ pub fn redact_value(value: Value) -> Value {
 /// True for a header or field name whose value is a credential: anything
 /// named like a password, secret, token, authorization or cookie, and every
 /// `*-key` or `*_key` (`DD-API-KEY`, `DD-APPLICATION-KEY`, `api_key`).
+// ponytail: key headers are masked by name, not sent through a
+// `Request::secret_header` taking a `Secret`: dd, the one domain that sends
+// them, uses `Request::header` after its host check. Build that helper when a
+// second domain sends a key header.
 #[must_use]
 pub fn sensitive_key(name: &str) -> bool {
     let name = name.to_ascii_lowercase();

@@ -336,8 +336,8 @@ impl Raw {
     }
 }
 
-/// True when `url` is on `base`'s server under its path: it starts with
-/// `base` and a `/`. The one check before a token is attached.
+// ponytail: `url` under `base` and a `/`, the token check `host_under` (https, no ports) can't
+// make for a compose Airflow; move it to core when a second domain has a configurable base URL.
 pub(crate) fn same_origin(base: &str, url: &str) -> bool {
     url.strip_prefix(base)
         .is_some_and(|rest| rest.starts_with('/'))

@@ -10,11 +10,11 @@ only one through `pick`), `base_url`, `read_only` (refuses every change),
 `k8s_scope` and `k8s_namespace` (where KubernetesExecutor task pods run, so
 a row's `pod` is a k8s id), `dags_repo` (`REPO[:FOLDER]` in Azure DevOps:
 `source get` prints `repo_file`). Credential: `username` with `password`,
-`password_env` or `password_cmd` (signs in at `POST {base_url}/auth/token`),
-or `token`, `token_env` or `token_cmd` (a bearer as it is: Astro, Composer,
-MWAA). The token goes only to URLs under `base_url/` (`same_origin`), not
-`host_under`: a compose Airflow is `http://localhost:8080`.
-`connection list` matches `[[sql.connection]]` hosts for `sql_conn`.
+`password_env` or `password_cmd` (signs in at `POST /auth/token`),
+or `token`, `token_env` or `token_cmd` (a bearer: Astro, Composer, MWAA).
+It goes only under `base_url/` (`same_origin`; `host_under` refuses
+`http://localhost:8080`). `connection list` matches `[[sql.connection]]`
+hosts for `sql_conn`.
 
 ## Ids
 `dag`, `dag/run`, `dag/run/task[:map][/try]`; `dag/latest` is the newest run
@@ -31,14 +31,13 @@ and tests (`run/retry.rs` is `airflow run retry`). Copy a sibling.
 - `client.rs`: `Airflow::load(config)`, `open(ctx, instance)` or `locate`
   for a `Client`, which has `get(path)`, `public(path)` (no credential),
   `preview(path, body)` (a POST that only reads), `change(...)` (a write),
-  `list(...)` (offset paging, 100 a page), `writable()`, `resolve(&mut Ref)`.
+  `list(...)` (offset paging), `writable()`, `resolve(&mut Ref)`.
   Row helpers: `text`, `stamp`, `seconds`, `ti_id`, `note_more`,
   `Instance::pod`.
-- `dag_run.rs`: `RUN_STATES`, `cleared_ids`.
+- `dag_run.rs`: `RUN_STATES`, `cleared_ids`; `instance/mod.rs`: `check_base_url`.
 - `<resource>/mod.rs`: what its verbs share (`run/mod.rs`: the run row,
-  `RunIdArgs`; `task/mod.rs`: the task row and id args).
-  `instance/mod.rs`: `check_base_url`; `source/mod.rs`: `failing_line`,
-  `repo_file`.
+  `RunIdArgs`; `task/mod.rs`: the task row and id args; `source/mod.rs`:
+  `failing_line`, `repo_file`).
 - `testing.rs`: `airflow`, `airflow_with`, `paths`, `dry_run`, `API`,
   `CONFIG`, `TOKEN`, and sample `dag`, `run`, `ti` rows.
 
@@ -48,12 +47,14 @@ and tests (`run/retry.rs` is `airflow run retry`). Copy a sibling.
 in `crates/cli/tests/world_{cross,airflow}.rs`; queries `search.toml`.
 
 ## Quirks
-- A clear's `dry_run` **defaults to true** on the server: a retry sends
-  `"dry_run": false`, a preview `true` through `preview`.
-- Airflow caps a page at `maximum_page_limit` (100 unless raised); logs
-  page with a token passed as a query value, never a URL to follow.
+- FastAPI ignores unknown query params, so a filter newer than 3.0 matches
+  everything there: send only 3.0's, and one `order_by` key.
+- A clear's `dry_run` **defaults to true**: a real retry sends `false`, a
+  preview `true` through `preview`.
+- Pages cap at `maximum_page_limit` (100 unless raised); the log token is
+  a query value, not a URL.
 - `task logs`' `at`: the file the log's `Filling up the DagBag from` line
   names, else one read for `relative_fileloc`.
 
 ## Never needed
-Other crates' sources, `PLAN.md`, `docs/plans/`, `docs/reference/`.
+Other crates' sources, `docs/plans/`, `docs/reference/`.

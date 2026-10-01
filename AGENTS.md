@@ -28,8 +28,8 @@ when you work there): config, ids, where things are, fixtures, quirks.
   `cargo build -p agent-cli`, then `target/debug/agent-cli`,
   `agent-cli search "<words>"`, `agent-cli <domain>` and
   `agent-cli <domain> <resource> <verb> --help`. Not from source.
-- Don't read `PLAN.md`, `docs/plans/`, `docs/trials/` or `docs/reference/`:
-  history, results and generated help.
+- Don't read `docs/plans/`, `docs/trials/` or `docs/reference/`: plans for
+  work in progress, results and generated help.
 - Grep fixtures by URL (`grep -n 'build/definitions' fixtures/world/http/ado.json`);
   never read a whole `http/*.json`, nor `Cargo.lock`.
 - Add queries to your crate's `search.toml` without reading the others.

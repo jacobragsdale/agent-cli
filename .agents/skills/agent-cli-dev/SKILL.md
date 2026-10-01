@@ -18,8 +18,9 @@ check, so no task needs a tour of the repository.
 - Learn existing commands from the binary, not the source:
   `cargo build -q -p agent-cli`, then `target/debug/agent-cli <domain>` and
   `target/debug/agent-cli <domain> <resource> <verb> --help`.
-- Never read `PLAN.md`, `docs/plans/`, `docs/trials/`, `docs/reference/`,
-  `Cargo.lock`, or a whole `fixtures/world/http/*.json`: grep it by URL.
+- Never read `docs/plans/` (plans for work in progress), `docs/trials/`,
+  `docs/reference/`, `Cargo.lock`, or a whole `fixtures/world/http/*.json`:
+  grep it by URL.
 - With the rust-analyzer plugin, jump to definitions instead of reading
   whole files.
 - Run `scripts/check.sh <crate>` while working and `scripts/check.sh --all`

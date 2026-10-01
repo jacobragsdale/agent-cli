@@ -3,8 +3,8 @@
 This guide adds a new service to agent-cli as a domain: a crate that exports
 one `Domain`, its config section and credential, a client that is the only way
 its requests leave the process, its commands, and its part of the contoso
-world. The airflow and dd domains were built this way; their plans are in
-[docs/plans/](../plans/), and their code is the reference to copy from.
+world. The airflow and dd domains were built this way, and their code is the
+reference to copy from.
 
 ## Decide whether it earns a domain
 
@@ -23,7 +23,7 @@ earns a domain when all four hold:
 4. It has five or more commands.
 
 With fewer commands, it is a resource of an existing domain. The reasoning is
-in [docs/plans/cross-domain.md](../plans/cross-domain.md), section 6.
+in [The design of agent-cli](../explanation/design.md#across-domains).
 
 Prerequisites:
 
@@ -34,11 +34,13 @@ Prerequisites:
 
 ## 1. Write the plan
 
-Write `docs/plans/<name>.md` before code, as `airflow.md` and `datadog.md` do:
-the commands (path, effect, the API call behind each), the ids rows print and
-which verbs take them, the config section and credential, how it joins other
-domains (a pod id, an image reference), and the open questions. Reviewing a
-plan is cheaper than reviewing a crate.
+Write `docs/plans/<name>.md` before code: the commands (path, effect, the
+API call behind each), the ids rows print and which verbs take them, the
+config section and credential, how it joins other domains (a pod id, an
+image reference), and the open questions. Reviewing a plan is cheaper than
+reviewing a crate. Once the domain is built, move what stays true into the
+crate's card and [the design](../explanation/design.md), its open items into
+`TODO.md`, and delete the plan.
 
 ## 2. Create the crate
 

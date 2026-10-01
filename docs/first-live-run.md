@@ -1,14 +1,16 @@
-# First live run: kv, acr, aks, k8s
+# First live run
 
-The four domains were built and tested without Azure or a cluster: fixtures
-stand in for Resource Graph, Key Vault and the registries, and
-`scripts/fake/kubectl` for kubectl. az-tui, where the code came from, never
-had a live run either. This list is that run. Work through it in order on a
-machine that reaches the subscription and the clusters.
+Every domain was built and tested without its service: fixtures stand in for
+Azure DevOps, Resource Graph, Key Vault, the registries, Airflow and
+Datadog, and `scripts/fake/kubectl` for kubectl. The TUI the Azure code came
+from never had a live run either. This list is that run, one section per
+domain. Work through a section in order on a machine that reaches the
+service. The sql domain is left out: its tests already run against real
+databases (`scripts/db-up.sh`).
 
-**Before you paste anything into an issue or a commit, scrub it.** Vault,
-registry, cluster, subscription and tenant names never go into this public
-repository. Replace them with `contoso`-style placeholders.
+**Before you paste anything into an issue or a commit, scrub it.**
+Organization, project, vault, registry, cluster, subscription, tenant and
+server names never go into this public repository. Replace them with `contoso`-style placeholders.
 
 ## What to capture when a step fails
 
@@ -29,7 +31,8 @@ repository. Replace them with `contoso`-style placeholders.
    `agent-cli doctor aks`.
    - Expect `az login` plus the vault and registry token rows to be ok, each
      under a second or so. If the `az` token call is over about 300 ms, note
-     the number: it decides the disk token cache in TODO.md.
+     the number: it decides the disk token cache (the `ponytail:` note in
+     `crates/core/src/az.rs`).
    - Expect the inventory counts to match the portal.
    - Expect each allowlisted vault or registry to answer. A name that is not
      found is reported as such.
@@ -75,6 +78,21 @@ repository. Replace them with `contoso`-style placeholders.
 9. **Throttling.** If a 429 ever shows, the command either waits once
    inside `--timeout` or exits 124 at once. It must never sleep past the
    deadline.
+
+### Open questions (Azure)
+
+- **Key Vault `api-version=7.4`.** No retirement has been announced. If a
+  vault refuses it, change `API_VERSION` in `crates/azure/src/kv.rs`.
+- **The registry exchange without `tenant`.** `az acr` sends the tenant;
+  this code does not. If an exchange is refused, add it (see the `ponytail:`
+  note in `crates/azure/src/acr.rs`).
+- **`_manifests/{tag}`.** Is a tag accepted as the reference, or only a
+  digest?
+- **ABAC registries.** On these, `AcrPull` may not list the catalog. If
+  `repo list` is empty but `tag list` works, the login needs Container
+  Registry Repository Catalog Lister.
+- **The Resource Graph projection.** Do `properties.currentKubernetesVersion`
+  and `properties.powerState.code` come back as the code expects?
 
 ## AKS and k8s
 
@@ -128,17 +146,118 @@ repository. Replace them with `contoso`-style placeholders.
    - `AGENT_CLI_READ_ONLY=1` should refuse every change and both
      `secret get` commands.
 
-## Open questions only a live run can settle
+### Open questions (k8s)
 
-- **Key Vault `api-version=7.4`.** No retirement has been announced. If a
-  vault refuses it, change `API_VERSION` in `crates/azure/src/kv.rs`.
-- **The registry exchange without `tenant`.** `az acr` sends the tenant;
-  this code does not. If an exchange is refused, add it (see the `ponytail:`
-  note in `crates/azure/src/acr.rs`).
-- **`_manifests/{tag}`.** Is a tag accepted as the reference, or only a
-  digest?
-- **ABAC registries.** On these, `AcrPull` may not list the catalog. If
-  `repo list` is empty but `tag list` works, the login needs Container
-  Registry Repository Catalog Lister.
-- **The Resource Graph projection.** Do `properties.currentKubernetesVersion`
-  and `properties.powerState.code` come back as the code expects?
+- **One call for two kinds.** Does `kubectl get deployments,pods -o json`
+  return both in one list, as `deployment list` expects?
+- **"Rolled out".** Is the Progressing condition's `lastUpdateTime` the
+  time the rollout finished?
+- **Digests.** Does `imageID` carry the `sha256:` digest on this runtime?
+- **SecretProviderClass.** Does `pod get` read `objects` YAML with quoted
+  names and aliases into the right kv ids?
+- **A rollout that gives up.** What exit code and message does `kubectl
+  rollout status` give for `ProgressDeadlineExceeded`? `deployment wait`
+  maps them.
+
+## Azure DevOps
+
+Use a personal organization, never an employer's, and read only: set
+`AGENT_CLI_READ_ONLY=1` for the whole section.
+
+1. **Config.** Put `[ado]` with `org` and `project` in config.toml, then run
+   `agent-cli doctor ado`. A 203 sign-in page should be exit 3, not a parse
+   error.
+2. **Every read once.** Run each read command that `agent-cli ado` lists
+   with `--limit 5` where it takes one, then its `get` on an id it printed.
+   Compare with the web UI by eye. Any write should be refused before it is
+   sent.
+3. **Shapes to confirm.** Each was built from the docs and recorded by hand:
+   - **Work items:** WIQL `$top`; `timePrecision=true` with RFC 3339
+     literals, including `[System.CreatedDate]`; `[Microsoft.VSTS.Common.Priority]
+     IN (1, 2)`; comments with `order=desc`; identity search for `@me` and
+     names; what a failed `rev` test returns.
+   - **Builds:** `minTime`/`maxTime` with `queueTimeDescending`;
+     `requestedFor` by display name (as `az pipelines runs list
+     --requested-for` sends it) and `reasonFilter`; `triggerInfo["pr.number"]`;
+     the log's `startLine` base; the pipelines run shape; approvals' `state`
+     and `top`.
+   - **Timeline issues:** `data.sourcepath`, `data.linenumber`,
+     `data.columnnumber`, `data.code` and `data.logFileLineNumber`, and which
+     tasks fill them (`DotNetCoreCLI`, `VSBuild`, `npm` with a problem
+     matcher).
+   - **Test results** (`ado test list`): `test/runs?buildUri=` without date
+     bounds; results carrying `errorMessage`, `stackTrace` and
+     `failingSince.build.id` without `detailsToInclude`; the
+     `vstmr.dev.azure.com` host, if `dev.azure.com` redirects there.
+   - **Pipeline preview:** api-version `7.1-preview.1`, its 400s and
+     `PATH (Line: N, Col: M)`. A template from another repository
+     (`x.yml@alias`) gets no hint.
+   - **Pull requests:** search with `searchCriteria.minTime`/`maxTime`;
+     `reviewerId` rows carrying the reviewer's own vote (a group member who
+     has not voted is absent, which reads as none); auto-complete off as the
+     empty GUID; `pullrequestquery` with `lastMergeCommit` for tag builds and
+     `type: commit` for a commit inside a PR.
+   - **Threads:** `?$iteration=N` placing `threadContext` at that iteration;
+     `pr comment --at` landing on the latest iteration with offset 1 and no
+     `pullRequestThreadContext`.
+   - **Files and commits:** items `commitId` on the default branch, binary
+     content with `includeContent`, short SHAs in `versionDescriptor`, an
+     unknown branch as a 404 (TF401175) before the tag fallback;
+     `recursionLevel=Full` size and paging on the largest repository;
+     commits `searchCriteria.itemPath` with `itemVersion` at a commit (`ado
+     commit list`).
+   - **Diffs:** `diffs/commits` with `$top=1000`, paging,
+     `allChangesIncluded` and the rename fields.
+   - **Code Search:** `includeSnippet` filling `matches.content[].line` and
+     `codeSnippet`; a repository filter needing a project; the
+     `*.visualstudio.com` host; an organization without the extension.
+
+## Airflow
+
+Use an instance with `read_only = true` until the reads pass.
+
+1. **Doctor.** Run `agent-cli doctor airflow`. Expect the metadatabase,
+   scheduler, triggerer and dag-processor rows.
+2. **Remote logging.** Run `agent-cli airflow task logs ID` on a task that
+   failed yesterday. Either Airflow serves the log (remote logging is on) or
+   the note says it has none and names the pod, which is gone by now. Record
+   which: it decides what the pod hints are worth.
+3. **Sign-in cost.** Time a call with password sign-in (one more POST per
+   call) and with `token_cmd` (gcloud and aws are Python, 0.5 to 1 s). Above
+   about 300 ms, add an expiry-aware 0600 token cache; a JWT's `exp` is
+   readable.
+4. **Shapes to confirm:**
+   - `dagSources/{dag_id}` as JSON. `version_number` is not sent, so
+     `source get` shows the latest version, not the one a failed run used.
+   - `Filling up the DagBag from <path>` in task logs, and frame paths ending
+     in `relative_fileloc` under versioned bundles.
+   - XComs with `deserialize=true` (Airflow 2 needed
+     `enable_xcom_deserialize_support`) and `stringify=false`.
+   - Pools' `slots: -1` as unlimited.
+   - `variable_key_pattern` and `connection_id_pattern` as `%`/`_` patterns.
+   - Connections masking `password`, and `schema` holding an mssql
+     database, which `sql_conn` relies on.
+
+## Datadog
+
+No org is reachable from the build machine, so this needs a sandbox: a
+14-day trial org and a kind cluster running the Datadog Helm chart, a demo
+app with the `tags.datadoghq.com` labels, and one monitor to mute and
+unmute. Everything in it is synthetic, so answers captured there can be
+committed once scrubbed.
+
+1. **Doctor.** Run `agent-cli doctor dd`. A 403 should name the missing
+   scope.
+2. **Cluster names.** Does `kube_cluster_name` equal the k8s scope names?
+   If not, k8s needs a Datadog alias for each scope, or `[[k8s.scope]] name`
+   should default to the AKS cluster name.
+3. **`service get`.** It reads sampled indexed spans: one fast, approximate
+   call. Compare it with the exact trace metrics (`trace.<op>.hits` and
+   `.errors`, two or three calls, since they need the operation name).
+4. **Deploy events.** Does Datadog already ingest Kubernetes events and ADO
+   deploy events? If so, "did anything deploy before this alert" needs no
+   k8s or ado hop.
+5. **Code links.** Do logs carry `git.commit.sha` and `git.repository_url`,
+   or only spans? (The Agent may tag a container's telemetry from its
+   image's `org.opencontainers.image.revision` and `.source` labels.) What
+   is the attribute path of `error.stack` in a span search result?

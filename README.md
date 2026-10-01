@@ -101,7 +101,7 @@ can only read.
 - How-to guides: [add a command](docs/how-to/add-a-command.md),
   [add a domain](docs/how-to/add-a-domain.md),
   [run agent trials](docs/how-to/run-agent-trials.md),
-  [the first live run against Azure](docs/first-live-run.md).
+  [the first live run against each service](docs/first-live-run.md).
 - Reference: [every command](docs/reference/README.md), one page per domain,
   generated from the registry; [config.example.toml](config.example.toml).
 - Explanation: [why the interface is shaped this way](docs/explanation/design.md).

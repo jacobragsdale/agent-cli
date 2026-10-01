@@ -4,6 +4,11 @@ Logs, metrics, monitors, downtimes, events, APM services and spans,
 incidents, hosts, containers, SLOs and dashboards over Datadog's REST API:
 https://docs.datadoghq.com/api/latest/
 
+Datadog's CLI, pup, covers the long tail (`doctor dd` names it) but is not
+wrapped: its agent mode auto-approves destructive commands, `--read-only`
+checks only a command's last word, it has no dry-run, a 429 exits as 173,
+and its help is 1 MB.
+
 ## Config
 `[datadog]` (or `[dd]`): `site` (`datadoghq.eu`, …; else `DD_SITE`, else
 `datadoghq.com`), `env` (the default `env:` tag). Credential, first found:
@@ -51,4 +56,4 @@ and the alert trace in `crates/cli/tests/world_cross.rs`; queries
 - Throttles wait out `X-RateLimit-Reset` (core).
 
 ## Never needed
-Other crates' sources, `PLAN.md`, `docs/plans/`, `docs/reference/`.
+Other crates' sources, `docs/plans/`, `docs/reference/`.

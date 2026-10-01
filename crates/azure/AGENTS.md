@@ -54,4 +54,4 @@ world checks `crates/cli/tests/world_{kv,acr,aks}.rs`; queries
   registries refuse ARM-scoped ones.
 
 ## Never needed
-Other crates' sources, `PLAN.md`, `docs/plans/`, `docs/reference/`.
+Other crates' sources, `docs/plans/`, `docs/reference/`.

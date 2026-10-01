@@ -14,6 +14,8 @@
 # kubectl, kubelogin) and the fixtures build first; AGENT_CLI_NOW freezes the
 # clock the world was recorded at, so relative times such as --since 1d
 # resolve to recorded URLs.
+# ponytail: the clock is also NOW in crates/cli/tests/common/world.rs; move it
+# into the world directory if a second world appears.
 set -eu
 repo=$(cd "$(dirname "$0")/.." && pwd)
 world=$(cd "${1:-$repo/fixtures/world}" && pwd)

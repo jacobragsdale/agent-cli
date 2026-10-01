@@ -207,7 +207,7 @@ expect = "airflow connection list"
 text = "which database host does the orders_dw airflow connection use"
 expect = "airflow connection list"
 
-# ---------- flows (docs/plans/chains.md): each expects its first hop ----------
+# ---------- flows (walked in world_airflow.rs): each expects its first hop ----------
 # F6: why a DAG task failed, in its code and its input. F7: why tasks sit
 # queued, and where a DAG's data goes.
 

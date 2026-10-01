@@ -481,6 +481,7 @@ same rules as the contract.
 | Printed times | RFC 3339 UTC ending in `Z`: pass a service's stamp through `agent_cli_core::utc`, an `OffsetDateTime` through `utc_time` | T |
 | Bounds | A `list` takes `--limit` (int, default 50) and says when it cut with `ctx.note`. `logs` takes `--tail`, never `--follow` | R |
 | Flag names | `--since --until --limit --tail --cluster --namespace --conn`; `SYNONYM_FLAGS` refuses `--from`, `--count`, `--ns`, `--context` and the like. Never declare a global (`--fields --raw --dry-run --yes --reveal --timeout --output --no-cache`) or `-h` | R |
+| Flag types | A flag name takes one type across all commands. A shared name whose values differ by domain (`--state`, `--type`) is a `String` with `value_parser = PossibleValuesParser::new([…])`, not a `ValueEnum`: help still lists the values, and an enum would clash with ado's free-text `--state` | R |
 | Long text | A description, comment, SQL or JSON argument reads stdin when it is `-` and has a `--NAME-file` flag of type `PathBuf`; read both with `ctx.long_text(name, value, file, limit)`, one `-` per command. A cap (comments: 64 KiB) goes in the help | R |
 | Scopes | A scope flag defaults to the only configured one, else exit 2 naming them: `agent_cli_core::pick` | review |
 | People | A flag naming a person (`--assignee`, `--author` …) says in its help that `@me` works | R |

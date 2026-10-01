@@ -10,6 +10,9 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::client::{cut, strings, text};
+// ponytail: the one place a resource reads another's module, since a
+// downtime is a monitor mute; move `MESSAGE_MAX` crate-level if downtimes
+// stop being monitor mutes.
 use crate::monitor::MESSAGE_MAX;
 
 #[derive(Debug, Serialize, JsonSchema)]

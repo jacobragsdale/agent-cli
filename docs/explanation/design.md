@@ -102,13 +102,51 @@ domains: `airflow task get` prints the pod as `prod/web/<pod>`, which `k8s
 pod logs` takes as it is, and `k8s deployment list` prints the image
 reference `acr manifest get` takes. design.md found that agents copy what
 they are shown and try positional values first, so an id that is the
-reference costs nothing to use. The alternatives cost more:
-[cross-domain.md](../plans/cross-domain.md) weighed typed reference objects
-(40 to 80 bytes each, and the agent still maps kinds to commands) and `next`
-links in the output (dropped by `--fields`, which agents use first). Times
-follow the same logic: every printed time is RFC 3339 in UTC, so it pastes
-straight into `--since`, and the overview's `Now:` line spares the date
-arithmetic most likely to go silently wrong.
+reference costs nothing to use. The alternatives cost more: typed reference
+objects (40 to 80 bytes each, and the agent still maps kinds to commands) and
+`next` links in the output (dropped by `--fields`, which agents use first).
+Times follow the same logic: every printed time is RFC 3339 in UTC, so it
+pastes straight into `--since`, and the overview's `Now:` line spares the
+date arithmetic most likely to go silently wrong.
+
+## Across domains
+
+A domain earns its place by what it adds to the tools agents already know
+(kubectl, az, curl, a vendor CLI): bounded output, safety, and joins between
+sources, such as a pod's secrets resolved to Key Vault ids. A wrapper of
+another CLI buys sign-in and transport, not that modelling: its output still
+needs remapping to ids, UTC and bounds, and it adds a process start per call
+and a version to track. [How to add a domain](../how-to/add-a-domain.md)
+gives the four tests a new service must pass.
+
+Retention decides which way a question chains. Kubernetes keeps events for
+an hour, and a KubernetesExecutor task pod is deleted when it finishes, so
+"why did last night's run fail" goes from airflow to dd, whose logs last; the
+k8s hop helps only with failures that are still live.
+
+A composite command (one call that walks a chain, such as a `trace` from a
+deployment to its build and work items) is built only when all four hold: a
+trial shows the same chain of three or more calls in at least two of three
+transcripts for a kind of task; the chain needs no judgment between steps; an
+A/B trial cuts median tokens by a quarter at no cost in correctness on either
+model; and it only reads. Fields that shorten the chain come first, and no
+composite has met the rule yet. One that does lives in the crate of the
+object it starts from and reaches other domains only by command path,
+through a core `Ctx::call` (not built) that refuses any effect but Read, so
+no domain crate ever depends on another.
+
+Some words mean different things in different domains:
+
+| Word | Meanings | How search settles it |
+|---|---|---|
+| task | an ADO Task work item; an Airflow task instance | `SHARED_WORDS`, with labeled queries for each reading |
+| run, pipeline | an ado run; an Airflow DAG run; `sql query run` | the domain word decides |
+| job | an ADO job, a k8s Job, an Airflow task | no synonym anywhere until a trial misses one |
+| deploy, deployment | a k8s deployment; an ADO deploy stage or approval | k8s owns the resource; "deploy" stays an ado keyword |
+| container | a pod; an image | phrases: "container image" is acr, "container logs" is `k8s pod logs` |
+
+A question that spans domains ("which build made prod's image") has no single
+right first command, so it belongs in a trial, not in `search.toml`.
 
 ## A recorded world for trials
 
@@ -150,6 +188,12 @@ costs an agent a few small files, whatever the registry's size.
   reading the generated reference. `scripts/new-command.sh` writes a command
   that compiles and fails until filled in, and `scripts/check.sh` runs the
   checks for one crate or all of them.
+- **Little stays shared, on purpose.** `DOMAINS` in `crates/cli/src/main.rs`
+  (one line per domain), `VERBS` and `SHARED_WORDS` in core's registry
+  (deliberate one-line edits) and `config.example.toml` (one file for
+  people; sections are appends). There is no xtask crate, code generator or
+  proc-macro: two shell scripts and a template are the ceiling until they
+  measurably hurt.
 
 Fresh agents did three development tasks before and after this layout
 ([baseline](../trials/dev-baseline-2026-09-30.md),
@@ -160,6 +204,41 @@ and touched fewer files outside the crate (median 2 to 1). Tokens fell 29%
 on one run per task but 18% on two: each model call carries about 27,000
 tokens of fixed context, so what an agent no longer reads matters less than
 how many calls it makes.
+
+## Where the code came from
+
+agent-cli began as the command lines of three terminal UIs, for Azure
+DevOps, Azure and SQL. Their domain code was ported into these crates, not
+extracted into shared ones first: extracting would have held this project
+behind a refactor of three TUIs whose core code leaked their UI library. The
+TUIs keep their copies until they can depend on these crates (phase 5 in
+`TODO.md`).
+
+ado reads are live, through WIQL and REST, with only ids cached (who `@me`
+is, repository and pipeline ids). The TUI answered from a local SQLite copy,
+which needed a sync first, went stale, and was wiped whenever its schema
+changed; an agent would rather have a correct answer than one 300 ms sooner.
+
+The crates are never published to crates.io, where the name is taken;
+`cargo install --git` installs the binary. The repository is not split
+either: the registry-wide checks (`check_registry`, the search gate,
+read-only refusal, the overview budget) are what hold every command to the
+same rules, and they need every domain in one workspace.
+
+## Past hand-written commands
+
+Hand-written commands stop somewhere in the low hundreds; the rest of the
+1,000 would come from API specs (Azure DevOps, ARM and Datadog publish
+OpenAPI). Generated commands would be data, a catalogue entry each, run by
+one generic HTTP runner beside the hand-written handlers, so they get search,
+help, `--fields`, the guard, dry-run and read-only from core, and compile
+time stays flat. The runner is not built before the first spec domain needs
+it, and nothing in the registry has to change for it to fit. The generator
+renames a spec's time, limit and identity params (Datadog's `from`/`to`,
+ADO's `minTime`/`maxTime`) to the canonical flags, or `check_registry`
+refuses them, as it should. A spec does not always say which operations only
+read: Datadog searches logs, spans and events with POSTs, so its list of
+POSTs that only read is kept by hand.
 
 ## What was left out
 

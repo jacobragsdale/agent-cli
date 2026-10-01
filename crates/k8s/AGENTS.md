@@ -52,4 +52,4 @@ world checks `crates/cli/tests/world_k8s.rs`; queries `crates/k8s/search.toml`.
   SecretProviderClass maps.
 
 ## Never needed
-Other crates' sources, `PLAN.md`, `docs/plans/`, `docs/reference/`.
+Other crates' sources, `docs/plans/`, `docs/reference/`.

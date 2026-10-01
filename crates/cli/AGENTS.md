@@ -37,4 +37,4 @@ one: `cargo test -p agent-cli --features fixtures --test world_dd`.
 
 ## Never needed
 The domain crates' sources (their cards say where things are),
-`docs/reference/`, `PLAN.md`, `docs/plans/`.
+`docs/reference/`, `docs/plans/`.

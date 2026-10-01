@@ -55,5 +55,5 @@ checks `crates/cli/tests/world_ado.rs`; queries `crates/ado/search.toml`.
 - `@me` resolves through connection data, cached for a day.
 
 ## Never needed
-Other crates' sources, `PLAN.md`, `docs/plans/`, `docs/reference/`, and the
+Other crates' sources, `docs/plans/`, `docs/reference/`, and the
 other domains' fixtures.

@@ -4,7 +4,7 @@
 //! It covers the calls agents make most while debugging and operating, with
 //! rows that bound their size and point back at Kubernetes (`pod` is the k8s
 //! pod id). Datadog's own CLI, pup, covers the long tail; `doctor dd` says
-//! so. pup is not wrapped: see docs/plans/datadog.md.
+//! so. Why pup is not wrapped: crates/dd/AGENTS.md.
 
 mod client;
 mod container;
