@@ -2545,5 +2545,133 @@
     }
    ]
   }
+ },
+ {
+  "request": "POST https://api.datadoghq.eu/api/v2/logs/events/search",
+  "note": "dd log list --pod prod/web/worker-5c4d3e9f1-q8zt1 --status error --since 2026-09-28T21:26:00Z: what dd monitor get 4712 names next, 15 minutes before the alert",
+  "body": {
+   "filter": {
+    "query": "env:prod kube_cluster_name:prod kube_namespace:web pod_name:worker-5c4d3e9f1-q8zt1 status:error",
+    "from": "1790630760000",
+    "to": "1790683200000"
+   },
+   "sort": "-timestamp",
+   "page": {
+    "limit": 50
+   }
+  },
+  "answer": {
+   "data": [
+    {
+     "id": "AQAAAZIxdwor0090AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-29T11:47:13.905Z",
+      "status": "error",
+      "service": "worker",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "connect failed: FATAL: password authentication failed for user \"worker\"",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "kube_deployment:worker",
+       "version:v1.4.2"
+      ],
+      "attributes": {
+       "error": {
+        "kind": "PSQLException",
+        "message": "FATAL: password authentication failed for user \"worker\""
+       }
+      }
+     }
+    },
+    {
+     "id": "AQAAAZIxdwor0003AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-28T21:37:44.120Z",
+      "status": "error",
+      "service": "worker",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "connect failed: FATAL: password authentication failed for user \"worker\"",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "kube_deployment:worker",
+       "version:v1.4.2"
+      ],
+      "attributes": {
+       "error": {
+        "kind": "PSQLException",
+        "message": "FATAL: password authentication failed for user \"worker\""
+       }
+      }
+     }
+    },
+    {
+     "id": "AQAAAZIxdwor0002AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-28T21:36:31.508Z",
+      "status": "error",
+      "service": "worker",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "connect failed: FATAL: password authentication failed for user \"worker\"",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "kube_deployment:worker",
+       "version:v1.4.2"
+      ],
+      "attributes": {
+       "error": {
+        "kind": "PSQLException",
+        "message": "FATAL: password authentication failed for user \"worker\""
+       }
+      }
+     }
+    },
+    {
+     "id": "AQAAAZIxdwor0001AAAAAEFaSXhkV",
+     "type": "log",
+     "attributes": {
+      "timestamp": "2026-09-28T21:36:05.874Z",
+      "status": "error",
+      "service": "worker",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "message": "connect failed: FATAL: password authentication failed for user \"worker\"",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:worker-5c4d3e9f1-q8zt1",
+       "service:worker",
+       "kube_deployment:worker",
+       "version:v1.4.2"
+      ],
+      "attributes": {
+       "error": {
+        "kind": "PSQLException",
+        "message": "FATAL: password authentication failed for user \"worker\""
+       }
+      }
+     }
+    }
+   ],
+   "meta": {
+    "elapsed": 41,
+    "status": "done",
+    "request_id": "pddv1ChZ3b3JsZC1yZXF1ZXN0"
+   }
+  }
  }
 ]

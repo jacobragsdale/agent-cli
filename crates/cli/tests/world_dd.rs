@@ -104,3 +104,25 @@ fn the_world_answers_what_a_trial_asks_of_dd() {
         ok(args);
     }
 }
+
+#[test]
+fn a_crash_loop_alert_leads_by_notes_alone_to_the_refused_password() {
+    let walked = world::follow(&["dd", "monitor", "get", "4712"]);
+    assert_eq!(walked.len(), 2, "monitor get, then the log list it names");
+    assert!(
+        walked[0].stderr.contains(
+            "[next: agent-cli dd log list --pod prod/web/worker-5c4d3e9f1-q8zt1 --status error --since 2026-09-28T21:26:00Z]"
+        ),
+        "{}",
+        walked[0].stderr
+    );
+    let logs = walked[1].json();
+    assert_eq!(logs[0]["pod"], "prod/web/worker-5c4d3e9f1-q8zt1");
+    assert!(
+        logs.as_array().unwrap().iter().all(|log| log["message"]
+            .as_str()
+            .unwrap()
+            .contains("password authentication failed for user \"worker\"")),
+        "{logs}"
+    );
+}

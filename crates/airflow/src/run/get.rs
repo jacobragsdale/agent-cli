@@ -60,6 +60,11 @@ fn run_get(ctx: &Ctx, args: RunIdArgs) -> Result<RunDetail> {
         *counts.entry(state).or_default() += 1;
     }
     let row = run_row(&run);
+    let failed = failed_ids(&tasks);
+    // A failed run's next question is why: the first root cause's log.
+    if let (Some("failed"), Some(first)) = (row.state.as_deref(), failed.first()) {
+        ctx.note(format!("[next: agent-cli airflow task logs {first}]"));
+    }
     Ok(RunDetail {
         id: row.id,
         state: row.state,
@@ -79,7 +84,7 @@ fn run_get(ctx: &Ctx, args: RunIdArgs) -> Result<RunDetail> {
             .and_then(|versions| versions.last())
             .and_then(|version| version["version_number"].as_i64()),
         tasks: counts,
-        failed: failed_ids(&tasks),
+        failed,
     })
 }
 
@@ -137,5 +142,25 @@ mod tests {
                 format!("{RUN_PATH}/taskInstances?limit=100&offset=0"),
             ]
         );
+        assert!(
+            outcome.stderr.contains(&format!(
+                "[next: agent-cli airflow task logs etl_nightly/{RUN}/load_orders/2]"
+            )),
+            "{}",
+            outcome.stderr
+        );
+    }
+
+    #[test]
+    fn a_successful_run_names_no_next_step() {
+        let (outcome, _) = airflow(
+            &["airflow", "run", "get", &format!("etl_nightly/{RUN}")],
+            vec![
+                Answer::json(&run("success")),
+                tasks(vec![ti("load_orders", "success", 1)]),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert!(!outcome.stderr.contains("[next:"), "{}", outcome.stderr);
     }
 }

@@ -1,4 +1,4 @@
-use agent_cli_core::{Ctx, Failure, command};
+use agent_cli_core::{Ctx, Failure, When, command, utc_time};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -119,6 +119,22 @@ fn monitor_get(ctx: &Ctx, args: MonitorGetArgs) -> Result<MonitorDetail> {
             ));
         }
     }
+    // An alert on a pod is answered by that pod's errors from just before it.
+    let alerting = groups
+        .iter()
+        .find(|group| group.state.as_deref() == Some("Alert"))
+        .filter(|_| monitor["overall_state"] == "Alert");
+    if let Some((pod, triggered)) = alerting.and_then(|group| {
+        Some((
+            group.pod.as_deref()?,
+            group.triggered.as_deref()?.parse::<When>().ok()?,
+        ))
+    }) {
+        let since = utc_time(triggered.0 - time::Duration::minutes(15));
+        ctx.note(format!(
+            "[next: agent-cli dd log list --pod {pod} --status error --since {since}]"
+        ));
+    }
     let downtimes = monitor["matching_downtimes"]
         .as_array()
         .into_iter()
@@ -218,6 +234,13 @@ mod tests {
                     .stderr
                     .contains("[1 OK groups not shown; --all-groups shows them]")
             );
+            assert!(
+                outcome.stderr.contains(
+                    "[next: agent-cli dd log list --pod prod/web/api-7d9f8c6b5-x2k4q --status error --since 2026-09-28T21:21:00Z]"
+                ),
+                "{}",
+                outcome.stderr
+            );
             assert_eq!(
                 transport.sent()[0].url,
                 "https://api.datadoghq.eu/api/v1/monitor/4711?group_states=all&with_downtimes=true"
@@ -230,6 +253,14 @@ mod tests {
         assert_eq!(
             outcome.json()["groups"][1]["resolved"],
             "2026-09-28T21:58:00Z"
+        );
+        let mut ok = monitor_detail();
+        ok["overall_state"] = json!("OK");
+        let (outcome, _) = dd(&["dd", "monitor", "get", "4711"], vec![Answer::json(&ok)]);
+        assert!(
+            !outcome.stderr.contains("[next:"),
+            "only an alert names a next step: {}",
+            outcome.stderr
         );
 
         let (outcome, transport) = dd(

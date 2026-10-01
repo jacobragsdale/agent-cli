@@ -65,6 +65,21 @@ fn a_failed_task_leads_to_its_line_in_the_dag_and_the_input_it_failed_on() {
 }
 
 #[test]
+fn a_failed_run_names_its_failed_tasks_log_as_the_next_step() {
+    let run = world::agent_cli(&["airflow", "run", "get", "etl_nightly/latest"]);
+    assert_eq!(run.code, 0, "{}", run.stderr);
+    let failed = format!("{RUN}/load_orders/2");
+    assert!(
+        run.stderr
+            .contains(&format!("[next: agent-cli airflow task logs {failed}]")),
+        "{}",
+        run.stderr
+    );
+    let log = ok(&["airflow", "task", "logs", &failed, "--fields", "at"]);
+    assert_eq!(log["at"], "etl_nightly:42");
+}
+
+#[test]
 fn a_tasks_pool_and_a_dags_connections_lead_to_the_sql_connection() {
     let task = ok(&[
         "airflow",
