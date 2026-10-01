@@ -6,6 +6,7 @@
 mod approval;
 mod client;
 mod code;
+mod commit;
 mod diff;
 mod doctor;
 mod file;
@@ -39,6 +40,7 @@ pub const DOMAIN: Domain = Domain {
         repo::list::REPO_LIST,
         repo::get::REPO_GET,
         diff::get::DIFF_GET,
+        commit::list::COMMIT_LIST,
         file::get::FILE_GET,
         file::list::FILE_LIST,
         code::list::CODE_LIST,
@@ -123,7 +125,7 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 39);
+        assert_eq!(DOMAIN.commands.len(), 40);
     }
 
     #[test]

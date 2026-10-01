@@ -427,6 +427,35 @@ fn a_container_stack_frame_is_read_as_the_repository_file_it_names() {
 }
 
 #[test]
+fn a_files_history_names_the_pull_request_behind_each_change_and_its_diff() {
+    let commits = ok(&["ado", "commit", "list", "api:src/Orders/OrderClient.cs"]);
+    assert_eq!(commits.as_array().map(Vec::len), Some(2), "{commits}");
+    assert_eq!(
+        commits[0]["commit"],
+        "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+    );
+    assert_eq!(
+        commits[0]["pr"],
+        json!({"id": 431, "title": "Retry on 429 from the orders service"})
+    );
+    assert!(commits[1].get("pr").is_none(), "{commits}");
+    let change = ok(&[
+        "ado",
+        "diff",
+        "get",
+        string(&commits[0], "diff"),
+        "--file",
+        "src/Orders/OrderClient.cs",
+    ]);
+    assert!(
+        change.to_string().contains("Backoff(response, attempt)"),
+        "{change}"
+    );
+    let pr = ok(&["ado", "pr", "get", "431", "--fields", "work_items"]);
+    assert_eq!(pr["work_items"], json!([1207, 1210]));
+}
+
+#[test]
 fn several_files_are_read_in_one_call_in_the_order_given() {
     const AT: &str = "api@4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9";
     let both = ok(&[

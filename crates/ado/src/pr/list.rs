@@ -156,7 +156,7 @@ fn pr_list(ctx: &Ctx, args: PrListArgs) -> Result<Vec<PrRow>> {
 
 command! {
     pub PR_LIST = ["ado", "pr", "list"], Read,
-    "List pull requests by repo, author, reviewer and their vote, branch or status",
+    "List pull requests by repo, author, reviewer, vote (approved …), branch, status",
     keywords: ["open", "active", "mine", "reviewer", "pending", "waiting", "drafts", "queue", "unreviewed", "approved"],
     example: "ado pr list --vote none --fields id,title,author,repo",
     run: pr_list,

@@ -478,3 +478,15 @@ expect = "ado test list"
 [[query]]
 text = "since when has this test been failing"
 expect = "ado test list"
+
+[[query]]
+text = "which commits changed src/Orders/OrderClient.cs"
+expect = "ado commit list"
+
+[[query]]
+text = "git log of a file to find the pull request that introduced a bug"
+expect = "ado commit list"
+
+[[query]]
+text = "who changed this file recently"
+expect = "ado commit list"

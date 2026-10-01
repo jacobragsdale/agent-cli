@@ -1,4 +1,4 @@
-# ado — Azure DevOps (39 commands)
+# ado — Azure DevOps (40 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -12,10 +12,11 @@
 | [`ado repo list`](#ado-repo-list) | read | List the project's Git repositories |
 | [`ado repo get`](#ado-repo-get) | read | Show a repository: its URLs, default branch and branches |
 | [`ado diff get`](#ado-diff-get) | read | Show what changed in a pull request or between two refs, as hunks per file |
+| [`ado commit list`](#ado-commit-list) | read | List the commits on a repository, file or folder, with the pull request of each |
 | [`ado file get`](#ado-file-get) | read | Show a file in a repository at a branch, tag or commit, around a line |
 | [`ado file list`](#ado-file-list) | read | List the files and folders in a repository folder at a branch, tag or commit |
 | [`ado code list`](#ado-code-list) | read | Search code in every repository: where a symbol is defined and who calls it |
-| [`ado pr list`](#ado-pr-list) | read | List pull requests by repo, author, reviewer and their vote, branch or status |
+| [`ado pr list`](#ado-pr-list) | read | List pull requests by repo, author, reviewer, vote (approved …), branch, status |
 | [`ado pr get`](#ado-pr-get) | read | Show a pull request: reviewers and votes, work items, policies, threads |
 | [`ado pr create`](#ado-pr-create) | write | Open a pull request linked to work items, or reuse the one already open |
 | [`ado pr vote`](#ado-pr-vote) | write | Record your vote on a pull request: approve, suggest, reject or none |
@@ -190,6 +191,22 @@ Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado diff get 436 --file '*.cs' --fields at,path,hunks
 ```
 
+### ado commit list
+
+```text
+agent-cli ado commit list — List the commits on a repository, file or folder, with the pull request of each
+ *<repo> str    The repository, or a file or folder in it: REPO[@REF][:PATH], as file get takes it (a line is ignored)
+  --ref str     The branch, tag or commit to read history back from (default: the default branch)
+  --since time  Committed after this
+  --until time  Committed before this
+  --author str  Who wrote it: name, email or @me
+  --limit int   Most rows to return (default 50)
+A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
+Returns: [{commit,author,date,message,pr{id,title},diff}]
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado commit list api:src/Orders/OrderClient.cs --fields commit,date,message,pr
+```
+
 ### ado file get
 
 ```text
@@ -235,7 +252,7 @@ e.g. agent-cli ado code list IOrderClient --fields id,text
 ### ado pr list
 
 ```text
-agent-cli ado pr list — List pull requests by repo, author, reviewer and their vote, branch or status
+agent-cli ado pr list — List pull requests by repo, author, reviewer, vote (approved …), branch, status
   --repo str                    The repository, by name
   --status active|completed|abandoned|all  Which pull requests (default active)
   --author str                  Who opened it: name, email or @me

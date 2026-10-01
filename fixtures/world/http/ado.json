@@ -4643,4 +4643,195 @@
   }
  }
 }
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/commits?searchCriteria.$top=51&searchCriteria.itemPath=%2Fsrc%2FOrders%2FOrderClient.cs&api-version=7.1",
+ "exact": [
+  "searchCriteria.itemPath"
+ ],
+ "note": "OrderClient.cs's history on main: PR 431's merge (v1.4.2) and the commit that added it (v1.4.1)",
+ "answer": {
+  "count": 2,
+  "value": [
+   {
+    "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "parents": [
+     "2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b",
+     "9d31e0a7c2b4f6e8a0c2e4f6a8b0c2d4e6f8a0b2"
+    ],
+    "author": {
+     "name": "Jane Doe",
+     "email": "jane@contoso.com",
+     "date": "2026-09-28T20:14:00Z"
+    },
+    "committer": {
+     "name": "Jane Doe",
+     "email": "jane@contoso.com",
+     "date": "2026-09-28T20:14:00Z"
+    },
+    "comment": "Merged PR 431: Retry on 429 from the orders service\n\nRetries orders-service calls that answer 429, honouring Retry-After, up to 5 times.\n\nFixes AB#1207 and AB#1210.",
+    "changeCounts": {
+     "Add": 0,
+     "Edit": 1,
+     "Delete": 0
+    },
+    "url": "https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/commits/4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+    "remoteUrl": "https://dev.azure.com/contoso/Fabrikam/_git/api/commit/4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+   },
+   {
+    "commitId": "2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b",
+    "parents": [
+     "7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c"
+    ],
+    "author": {
+     "name": "Sam Lee",
+     "email": "sam@contoso.com",
+     "date": "2026-09-15T16:20:41Z"
+    },
+    "committer": {
+     "name": "Sam Lee",
+     "email": "sam@contoso.com",
+     "date": "2026-09-15T16:22:08Z"
+    },
+    "comment": "Add the orders service client",
+    "changeCounts": {
+     "Add": 0,
+     "Edit": 1,
+     "Delete": 0
+    },
+    "url": "https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/00000000-0000-4000-8000-0000000a0001/commits/2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b",
+    "remoteUrl": "https://dev.azure.com/contoso/Fabrikam/_git/api/commit/2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b"
+   }
+  ]
+ }
+}
+,
+{
+ "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/pullrequestquery?api-version=7.1",
+ "body": {
+  "queries": [
+   {
+    "type": "lastMergeCommit",
+    "items": [
+     "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b"
+    ]
+   }
+  ]
+ },
+ "note": "commit list's pull requests: 4be1c0d2 is PR 431's merge; 2d8b6f4a was pushed to main",
+ "answer": {
+  "results": [
+   {
+    "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9": [
+     {
+      "pullRequestId": 431,
+      "codeReviewId": 431,
+      "status": "completed",
+      "repository": {
+       "id": "00000000-0000-4000-8000-0000000a0001",
+       "name": "api",
+       "project": {
+        "id": "00000000-0000-4000-8000-00000000f001",
+        "name": "Fabrikam"
+       }
+      },
+      "title": "Retry on 429 from the orders service",
+      "description": "Retries orders-service calls that answer **429**, honouring `Retry-After`, up to 5 times.\n\nFixes AB#1207 and AB#1210.",
+      "createdBy": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "creationDate": "2026-09-27T15:02:11.8830000Z",
+      "closedDate": "2026-09-28T20:14:00.1210000Z",
+      "sourceRefName": "refs/heads/1207-retry-on-429",
+      "targetRefName": "refs/heads/main",
+      "mergeStatus": "succeeded",
+      "isDraft": false,
+      "lastMergeSourceCommit": {
+       "commitId": "9d31e0a7c2b4f6e8a0c2e4f6a8b0c2d4e6f8a0b2"
+      },
+      "lastMergeCommit": {
+       "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9"
+      },
+      "reviewers": [
+       {
+        "displayName": "Sam Lee",
+        "uniqueName": "sam@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e2",
+        "vote": 10,
+        "isRequired": true
+       },
+       {
+        "displayName": "Priya Patel",
+        "uniqueName": "priya@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e3",
+        "vote": 10
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}
+,
+{
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/diffs/commits?baseVersion=2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b&baseVersionType=commit&targetVersion=4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9&targetVersionType=commit&diffCommonCommit=false&$top=1000&api-version=7.1",
+ "note": "commit list's diff for PR 431's merge: the same change as v1.4.1..v1.4.2",
+ "answer": {
+  "allChangesIncluded": true,
+  "changeCounts": {
+   "Edit": 2
+  },
+  "changes": [
+   {
+    "item": {
+     "objectId": "ce1fa765c0610fceca7acec5310003edceb047f7",
+     "gitObjectType": "tree",
+     "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "path": "/src/Orders",
+     "isFolder": true
+    },
+    "changeType": "edit"
+   },
+   {
+    "item": {
+     "objectId": "1155758efb8f5efb0c5600aca72446946b7f4968",
+     "gitObjectType": "tree",
+     "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "path": "/tests/Api.Tests",
+     "isFolder": true
+    },
+    "changeType": "edit"
+   },
+   {
+    "item": {
+     "objectId": "b328134bb10512528052ce9e6b3d5fdfc341f65a",
+     "originalObjectId": "686e8279aabc042d4739f1d68d2849141eb001b4",
+     "gitObjectType": "blob",
+     "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "path": "/src/Orders/OrderClient.cs"
+    },
+    "changeType": "edit"
+   },
+   {
+    "item": {
+     "objectId": "3fb451aa18a878f4ebf48fd6d7d2813cd58d08ae",
+     "originalObjectId": "aad1a453f4d3d38b77d8d8eaa9b1b62634b4d867",
+     "gitObjectType": "blob",
+     "commitId": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "path": "/tests/Api.Tests/OrdersClientTests.cs"
+    },
+    "changeType": "edit"
+   }
+  ],
+  "commonCommit": "2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b",
+  "baseCommit": "2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b",
+  "targetCommit": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+  "aheadCount": 1,
+  "behindCount": 0
+ }
+}
 ]
