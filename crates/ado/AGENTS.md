@@ -13,7 +13,10 @@ goes only to `dev.azure.com` and `*.visualstudio.com` (`trusted`).
 ## Ids
 Work item, PR and run: `8812`, `#8812`, `AB#8812`, or its web URL in this org
 (`Ado::id(Kind, raw)`; another org or kind is exit 2). Repos by name; an
-approval by its GUID; a pipeline by id or name (`Ado::pipeline_id`).
+approval by its GUID; a pipeline by id or name (`Ado::pipeline_id`). In
+`ids.rs`, with their URLs: a file `[PROJECT/]REPO[@REF]:PATH[:LINE[-LINE]]`
+(`FileId`, printed by `file_id`), `REPO@BASE..HEAD` (`Range`), a thread
+`436/7` (`thread_id`). A bare ref is a branch, else a tag (`resolving`).
 
 ## Where things are (`src/`)
 A command is `<resource>/<verb>.rs`: its args, rows, handler, `command!`
@@ -31,8 +34,10 @@ and tests (`approval/list.rs` is `ado approval list`). Copy a sibling.
     `segment`, `query_value`.
 - `work_items.rs`: work item rows read in batches, and the artifact links
   workitem, pr and run share. `markdown.rs`: rich text to Markdown and back.
-- `<resource>/mod.rs`: what its verbs share (`pr/mod.rs`: the PR row;
-  `run/mod.rs`: `RunRow`, `RunIdArgs`; `approval/mod.rs`: `answer`).
+- `<resource>/mod.rs`: what its verbs share (`pr/mod.rs`: the PR row,
+  `latest_iteration`; `run/mod.rs`: `RunRow`; `file/mod.rs`: `fetch` a file
+  at a ref; `thread/mod.rs`: `fetch_threads`, placed on the head; `diff/mod.rs`:
+  the line diff).
 - `testing.rs`: `ado`, `ado_with`, `ado_piped`, `urls`, `dry_run`, `CONFIG`,
   `CODE`, and sample answers (`page`, `item`, `wiql`, `pr`, `build`, …).
 
