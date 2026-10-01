@@ -1,11 +1,15 @@
-# airflow — Apache Airflow (15 commands)
+# airflow — Apache Airflow (21 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
 | [`airflow instance list`](#airflow-instance-list) | read | List the configured Airflow instances (from config, no network) |
+| [`airflow pool list`](#airflow-pool-list) | read | List pools with their slots: open, queued, scheduled and deferred |
+| [`airflow variable list`](#airflow-variable-list) | read | List Airflow Variables by key and description, never their values |
+| [`airflow connection list`](#airflow-connection-list) | read | List Airflow Connections: type, host and database, never passwords |
 | [`airflow dag list`](#airflow-dag-list) | read | List DAGs with their schedule, next run and whether they are paused |
 | [`airflow dag get`](#airflow-dag-get) | read | Show a DAG's status: paused, next run, params, schedule and its last five runs |
 | [`airflow dag update`](#airflow-dag-update) | write | Pause or unpause a DAG |
+| [`airflow source get`](#airflow-source-get) | read | Show a DAG's Python file around a line, as Airflow parsed it |
 | [`airflow run list`](#airflow-run-list) | read | List DAG runs, newest first, across DAGs or for one |
 | [`airflow run get`](#airflow-run-get) | read | Show a DAG run's state, task counts by state, and the tasks that failed |
 | [`airflow run create`](#airflow-run-create) | write | Trigger a DAG run, with a conf and optionally a logical date |
@@ -15,6 +19,8 @@
 | [`airflow task get`](#airflow-task-get) | read | Show a task instance: its tries, its pod, and what blocks it if it is stuck |
 | [`airflow task logs`](#airflow-task-logs) | read | Read the tail of a task instance's log, with the exception that failed it |
 | [`airflow task retry`](#airflow-task-retry) | destructive | Clear task instances in any state, and their downstream, so they run again |
+| [`airflow xcom list`](#airflow-xcom-list) | read | List the XComs a task instance pushed: their keys, not their values |
+| [`airflow xcom get`](#airflow-xcom-get) | read | Show an XCom's value: what a task returned or pushed for its downstream tasks |
 | [`airflow import-error list`](#airflow-import-error-list) | read | List DAG files that fail to import, newest first: why a DAG is missing |
 | [`airflow import-error get`](#airflow-import-error-get) | read | Show an import error's full stack trace |
 
@@ -25,6 +31,41 @@ agent-cli airflow instance list — List the configured Airflow instances (from 
 Returns: [{name,base_url,auth,read_only,k8s_scope,k8s_namespace}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow instance list --fields name,base_url,read_only
+```
+
+### airflow pool list
+
+```text
+agent-cli airflow pool list — List pools with their slots: open, queued, scheduled and deferred
+  --instance str  The [[airflow.instance]] name; defaults to the only one
+  --limit int     Most rows to return (default 50)
+Returns: [{id,slots,open,running,queued,scheduled,deferred,description}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow pool list --fields id,slots,open,queued
+```
+
+### airflow variable list
+
+```text
+agent-cli airflow variable list — List Airflow Variables by key and description, never their values
+  <pattern> str   Only keys containing this (% and _ are wildcards)
+  --instance str  The [[airflow.instance]] name; defaults to the only one
+  --limit int     Most rows to return (default 50)
+Returns: [{id,description,encrypted}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow variable list orders --fields id,description
+```
+
+### airflow connection list
+
+```text
+agent-cli airflow connection list — List Airflow Connections: type, host and database, never passwords
+  <pattern> str   Only connection ids containing this (% and _ are wildcards)
+  --instance str  The [[airflow.instance]] name; defaults to the only one
+  --limit int     Most rows to return (default 50)
+Returns: [{id,type,host,port,schema,description,sql_conn}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow connection list --fields id,type,host,sql_conn
 ```
 
 ### airflow dag list
@@ -63,6 +104,18 @@ agent-cli airflow dag update — Pause or unpause a DAG
 Returns: {id,paused,next_run}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow dag update etl_nightly --paused true
+```
+
+### airflow source get
+
+```text
+agent-cli airflow source get — Show a DAG's Python file around a line, as Airflow parsed it
+ *<source> str    The DAG and a line or range: DAG[:LINE[-LINE]] (etl_nightly:42, what task logs prints as at), or the DAG's Airflow UI URL
+  --line str      The line or range, when the id leaves it out: LINE or A-B
+  --instance str  The [[airflow.instance]] name; defaults to the only one
+Returns: {id,dag,file,version,lines,text,repo_file}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow source get etl_nightly:42 --fields lines,text,repo_file
 ```
 
 ### airflow run list
@@ -171,7 +224,7 @@ agent-cli airflow task logs — Read the tail of a task instance's log, with the
   --run str       The run id, when the id leaves it out
   --instance str  The [[airflow.instance]] name; defaults to the only one
   --tail int      How many of the last lines (0 for all) (default 200)
-Returns: {id,state,error,lines,kept,complete,sources[],text}
+Returns: {id,state,error,at,lines,kept,complete,sources[],text}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow task logs etl_nightly/latest/load_orders --tail 50
 ```
@@ -188,6 +241,34 @@ agent-cli airflow task retry — Clear task instances in any state, and their do
 Returns: {run,cleared[]}
 Destructive: needs --yes; --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow task retry etl_nightly/latest/load_orders --yes
+```
+
+### airflow xcom list
+
+```text
+agent-cli airflow xcom list — List the XComs a task instance pushed: their keys, not their values
+ *<task> str      The task instance: DAG/RUN/TASK[:MAP], or its Airflow UI URL
+  --dag str       The DAG, when the id leaves it out
+  --run str       The run id, when the id leaves it out
+  --instance str  The [[airflow.instance]] name; defaults to the only one
+  --limit int     Most rows to return (default 50)
+Returns: [{id,key,map,time}]
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow xcom list etl_nightly/latest/extract_orders --fields id,key
+```
+
+### airflow xcom get
+
+```text
+agent-cli airflow xcom get — Show an XCom's value: what a task returned or pushed for its downstream tasks
+ *<xcom> str      The XCom: DAG/RUN/TASK[:MAP]@KEY (from xcom list), or a task instance's id or URL with --key
+  --key str       The key, when the id leaves it out (default return_value)
+  --dag str       The DAG, when the id leaves it out
+  --run str       The run id, when the id leaves it out
+  --instance str  The [[airflow.instance]] name; defaults to the only one
+Returns: {id,key,time,value}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow xcom get etl_nightly/latest/extract_orders@return_value --fields value
 ```
 
 ### airflow import-error list

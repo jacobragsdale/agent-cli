@@ -143,6 +143,82 @@ expect = "airflow import-error get"
 text = "show import error 12"
 expect = "airflow import-error get"
 
+[[query]]
+text = "show the python source of the etl_nightly dag"
+expect = "airflow source get"
+
+[[query]]
+text = "read the dag file around line 42"
+expect = "airflow source get"
+
+[[query]]
+text = "dag code of etl_nightly"
+expect = "airflow source get"
+
+[[query]]
+text = "what xcoms did extract_orders push"
+expect = "airflow xcom list"
+
+[[query]]
+text = "list the xcom keys of a task instance"
+expect = "airflow xcom list"
+
+[[query]]
+text = "show the return value of the extract_orders task"
+expect = "airflow xcom get"
+
+[[query]]
+text = "what data did extract_orders pass to load_orders"
+expect = "airflow xcom get"
+
+[[query]]
+text = "read an xcom value"
+expect = "airflow xcom get"
+
+[[query]]
+text = "how many slots are free in the airflow pools"
+expect = "airflow pool list"
+
+[[query]]
+text = "is default_pool full"
+expect = "airflow pool list"
+
+[[query]]
+text = "which airflow variables are defined"
+expect = "airflow variable list"
+
+[[query]]
+text = "list airflow variables whose key starts with orders"
+expect = "airflow variable list"
+
+[[query]]
+text = "list airflow connections"
+expect = "airflow connection list"
+
+[[query]]
+text = "which database host does the orders_dw airflow connection use"
+expect = "airflow connection list"
+
+# ---------- flows (docs/plans/chains.md): each expects its first hop ----------
+# F6: why a DAG task failed, in its code and its input. F7: why tasks sit
+# queued, and where a DAG's data goes.
+
+[[query]]
+text = "show the code at the line load_orders failed"
+expect = "airflow task logs"
+
+[[query]]
+text = "which line of the dag raised the exception in load_orders"
+expect = "airflow task logs"
+
+[[query]]
+text = "why is the load_orders task stuck in queued"
+expect = "airflow task get"
+
+[[query]]
+text = "which database host and sql connection does an airflow connection point at"
+expect = "airflow connection list"
+
 # ---------- agent trials, 2026-09-30 (docs/trials/2026-09-30.md) ----------
 # Each trial task as the agent was given it, and the searches agents typed for
 # it, expecting the command an agent should reach first. A cross-domain task

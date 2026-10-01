@@ -32,6 +32,9 @@ pub struct TaskLogs {
     state: Option<String>,
     /// The exception that failed it, and where in the DAG's code.
     error: Option<String>,
+    /// DAG:LINE, the innermost frame of the traceback in the DAG's own file:
+    /// what source get takes.
+    at: Option<String>,
     lines: usize,
     /// The last lines kept (--tail).
     kept: usize,
@@ -89,6 +92,19 @@ fn task_logs(ctx: &Ctx, args: TaskLogsArgs) -> Result<TaskLogs> {
         ));
     }
     let rendered = render(&content);
+    // The DagBag line names the file the task ran from; without it, the
+    // DAG's path in its bundle costs one more read, made only on a failure.
+    let at = rendered
+        .error
+        .as_ref()
+        .and_then(|_| {
+            dag_file(&rendered.lines).or_else(|| {
+                let dag = client.get(&id.dag_path()).ok()?;
+                text(&dag["relative_fileloc"])
+            })
+        })
+        .and_then(|file| failing_line(&rendered.lines, &file))
+        .map(|line| format!("{}:{line}", id.dag));
     let lines = rendered.lines.len();
     let kept = if args.tail == 0 {
         lines
@@ -117,6 +133,7 @@ fn task_logs(ctx: &Ctx, args: TaskLogsArgs) -> Result<TaskLogs> {
         id: format!("{}/{attempt}", ti_id(&ti, false)),
         state,
         error: rendered.error,
+        at,
         lines,
         kept,
         complete,
@@ -128,7 +145,7 @@ fn task_logs(ctx: &Ctx, args: TaskLogsArgs) -> Result<TaskLogs> {
 command! {
     pub TASK_LOGS = ["airflow", "task", "logs"], Read,
     "Read the tail of a task instance's log, with the exception that failed it",
-    keywords: ["show", "log", "output", "error", "traceback", "exception", "failed", "why"],
+    keywords: ["show", "log", "output", "error", "traceback", "exception", "failed", "why", "line", "code", "raised"],
     example: "airflow task logs etl_nightly/latest/load_orders --tail 50",
     run: task_logs,
 }
@@ -281,6 +298,30 @@ fn summary(stack: &Value) -> String {
     }
 }
 
+/// The DAG file the task's DagBag filled from, as Airflow logs it at info.
+fn dag_file(lines: &[String]) -> Option<String> {
+    lines.iter().find_map(|line| {
+        let (_, rest) = line.split_once("Filling up the DagBag from ")?;
+        rest.split_whitespace().next().map(str::to_owned)
+    })
+}
+
+/// The line of the last traceback frame in `file`: the path the DagBag
+/// filled from, or the DAG's path in its bundle, which a frame's ends with.
+/// Python prints the innermost frame last, and a chain's raised exception
+/// after its causes.
+fn failing_line(lines: &[String], file: &str) -> Option<u64> {
+    let tail = format!("/{file}");
+    lines.iter().rev().find_map(|line| {
+        let (path, rest) = line
+            .trim_start()
+            .strip_prefix("File \"")?
+            .split_once("\", line ")?;
+        let number = rest.split(',').next()?.trim().parse().ok()?;
+        (path == file || path.ends_with(&tail)).then_some(number)
+    })
+}
+
 /// A plain-text log's last traceback, as its exception line.
 fn last_traceback(lines: &[String]) -> Option<String> {
     let start = lines
@@ -298,7 +339,7 @@ mod tests {
     use serde_json::{Value, json};
 
     use super::render;
-    use crate::testing::{RUN, RUN_PATH, airflow, paths, ti};
+    use crate::testing::{RUN, RUN_PATH, airflow, dag, paths, ti};
 
     fn log(content: Value) -> Answer {
         Answer::json(&json!({"content": content, "continuation_token": null}))
@@ -333,6 +374,7 @@ mod tests {
             vec![
                 Answer::json(&ti("load_orders", "failed", 2)),
                 log(failing_log()),
+                Answer::json(&dag("etl_nightly", false)),
             ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
@@ -340,6 +382,10 @@ mod tests {
         assert_eq!(
             got["error"],
             "ValueError: order 88123 has no customer_id (at /opt/airflow/dags/etl_nightly.py:42 in load_orders)"
+        );
+        assert_eq!(
+            got["at"], "etl_nightly:42",
+            "the DAG's file, by its relative_fileloc"
         );
         assert_eq!(got["id"], format!("etl_nightly/{RUN}/load_orders/2"));
         assert_eq!(
@@ -364,8 +410,29 @@ mod tests {
                 format!(
                     "{RUN_PATH}/taskInstances/load_orders/logs/2?full_content=true&map_index=-1"
                 ),
+                "dags/etl_nightly".to_owned(),
             ]
         );
+    }
+
+    #[test]
+    fn at_is_the_innermost_frame_in_the_file_the_dagbag_filled_from() {
+        let content = json!([
+            "[2026-09-29, 00:41:06 UTC] {dagbag.py:588} INFO - Filling up the DagBag from /opt/airflow/dags/team/etl.py",
+            "Traceback (most recent call last):\n  File \"/opt/airflow/dags/team/etl.py\", line 9, in load\n    check(row)\n  File \"/opt/airflow/dags/team/etl.py\", line 30, in check\n    common.require(row, 'customer_id')\n  File \"/opt/airflow/dags/team/common.py\", line 4, in require\n    raise KeyError(key)\nKeyError: 'customer_id'"
+        ]);
+        let (outcome, transport) = airflow(
+            &[
+                "airflow",
+                "task",
+                "logs",
+                &format!("etl_nightly/{RUN}/load_orders"),
+            ],
+            vec![Answer::json(&ti("load_orders", "failed", 1)), log(content)],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()["at"], "etl_nightly:30");
+        assert_eq!(transport.sent().len(), 2, "no read for the DAG's path");
     }
 
     #[test]
