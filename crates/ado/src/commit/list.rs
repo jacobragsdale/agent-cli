@@ -5,12 +5,15 @@ use serde::Serialize;
 use serde_json::json;
 
 use crate::client::{API, Ado, list, query_value, segment, stamp, text};
-use crate::ids::{FileId, resolving};
+use crate::ids::{FileId, agree, resolving};
 
 #[derive(clap::Args)]
 pub struct CommitListArgs {
     /// The repository, or a file or folder in it: REPO[@REF][:PATH], as file get takes it (a line is ignored)
     repo: String,
+    /// The file or folder in the repository, when REPO names none
+    #[arg(long)]
+    path: Option<String>,
     /// The branch, tag or commit to read history back from (default: the default branch)
     #[arg(long = "ref")]
     reference: Option<String>,
@@ -53,7 +56,16 @@ pub struct MergedBy {
 
 fn commit_list(ctx: &Ctx, args: CommitListArgs) -> Result<Vec<CommitRow>> {
     let ado = Ado::load(ctx)?;
-    let id = FileId::parse(&ado, &args.repo, args.reference.as_deref(), None)?;
+    let mut id = FileId::parse(&ado, &args.repo, args.reference.as_deref(), None)?;
+    if let Some(flag) = &args.path {
+        let mut held = Some(std::mem::take(&mut id.path)).filter(|path| !path.is_empty());
+        agree(
+            "--path",
+            &mut held,
+            flag.trim().trim_start_matches('/').to_owned(),
+        )?;
+        id.path = held.unwrap_or_default();
+    }
     let project = id.project(&ado).to_owned();
     let repo = segment(&id.repo);
     let mut query = format!("searchCriteria.$top={}", args.limit + 1);
@@ -218,6 +230,30 @@ mod tests {
             sent[1].body.as_ref().unwrap(),
             &json!({"queries": [{"type": "lastMergeCommit", "items": ["c2"]}]})
         );
+    }
+
+    #[test]
+    fn path_names_the_file_of_a_bare_repository_and_must_agree_with_one_in_the_id() {
+        let (outcome, transport) = ado(
+            &["ado", "commit", "list", "web", "--path", "/src/x.cs"],
+            vec![page(vec![])],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert!(urls(&transport)[0].contains("searchCriteria.itemPath=%2Fsrc%2Fx.cs"));
+        let (outcome, transport) = ado(
+            &[
+                "ado",
+                "commit",
+                "list",
+                "web:src/y.cs",
+                "--path",
+                "src/x.cs",
+            ],
+            vec![],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(outcome.stderr.contains("--path"), "{}", outcome.stderr);
+        assert!(urls(&transport).is_empty());
     }
 
     #[test]

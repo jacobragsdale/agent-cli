@@ -20,7 +20,7 @@ pub struct ServiceGetArgs {
     /// env tag (default [datadog] env, else every env)
     #[arg(long)]
     env: Option<String>,
-    /// From when (default 1h before --until)
+    /// From when: a deploy's or rollout's time, to see what it changed (default 1h before --until)
     #[arg(long)]
     since: Option<When>,
     /// Until when (default now)
@@ -159,9 +159,9 @@ fn service_get(ctx: &Ctx, args: ServiceGetArgs) -> Result<ServiceHealth> {
 
 command! {
     pub SERVICE_GET = ["dd", "service", "get"], Read,
-    "Show an APM service's health: request count, error rate, p50/p95/p99 latency",
-    keywords: ["latency", "p95", "error rate", "throughput", "health", "slow", "healthy", "requests"],
-    example: "dd service get api --env prod --fields error_rate,p95_ms,resources",
+    "Show an APM service's health --since a deploy, else the last hour: errors, p95",
+    keywords: ["latency", "p50", "p95", "p99", "error rate", "throughput", "health", "slow", "healthy", "requests"],
+    example: "dd service get api --since 2026-09-28T21:34:40Z --fields errors,error_rate,p95_ms,resources",
     run: service_get,
 }
 

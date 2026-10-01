@@ -86,7 +86,7 @@ fn pipeline_list(ctx: &Ctx, args: PipelineListArgs) -> Result<Vec<PipelineRow>> 
 
 command! {
     pub PIPELINE_LIST = ["ado", "pipeline", "list"], Read,
-    "List build pipelines with their last run",
+    "List build pipelines, each with its last result",
     keywords: ["definitions", "ci", "workflows", "find"],
     example: "ado pipeline list --repo web --fields id,name,last_run.result",
     run: pipeline_list,

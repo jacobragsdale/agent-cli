@@ -61,7 +61,7 @@ fn run_create(ctx: &Ctx, args: RunCreateArgs) -> Result<RunRow> {
 command! {
     pub RUN_CREATE = ["ado", "run", "create"], Write,
     "Start a pipeline run on a branch, with template parameters",
-    keywords: ["trigger", "queue", "start", "kick", "off", "build", "deploy", "launch"],
+    keywords: ["trigger", "queue", "start", "kick", "off", "build", "deploy", "launch", "pipeline"],
     example: "ado run create --pipeline web-ci --branch 42-fix-login",
     run: run_create,
 }

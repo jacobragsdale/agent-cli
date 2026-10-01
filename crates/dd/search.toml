@@ -223,3 +223,12 @@ expect = "dd event list"
 [[query]]
 text = "alert monitor triggered events"
 expect = "dd event list"
+
+# chains-2 trial: what agents typed
+[[query]]
+text = "service metrics performance"
+expect = "dd service get"
+
+[[query]]
+text = "api error prod september 28"
+expect = "dd log list"

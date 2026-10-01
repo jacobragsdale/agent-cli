@@ -202,3 +202,16 @@ expect = "k8s deployment list"
 [[query]]
 text = "is this image tag deployed in the cluster"
 expect = "k8s deployment list"
+
+# chains-2 trial: what agents typed
+[[query]]
+text = "deployment rollout"
+expect = "k8s deployment wait"
+
+[[query]]
+text = "which deployments use a secret"
+expect = "k8s pod list"
+
+[[query]]
+text = "pods using secret prod/web/worker-db"
+expect = "k8s pod list"

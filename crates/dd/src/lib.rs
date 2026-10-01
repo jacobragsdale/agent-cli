@@ -76,6 +76,8 @@ pub const DOMAIN: Domain = Domain {
         ("graph", &["metric"]),
         ("error rate", &["service", "error_rate"]),
         ("latency", &["service", "p95_ms"]),
+        ("performance", &["service", "p95_ms"]),
+        ("service metrics", &["service", "health"]),
         ("dashboards", &["dashboard"]),
     ],
     status: doctor::status,

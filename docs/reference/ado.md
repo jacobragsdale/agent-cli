@@ -28,11 +28,11 @@
 | [`ado thread list`](#ado-thread-list) | read | List a pull request's review threads with the code each comment is on |
 | [`ado thread comment`](#ado-thread-comment) | write | Reply to a pull request review thread, and resolve it with --resolve |
 | [`ado thread update`](#ado-thread-update) | write | Resolve, reopen or close pull request review threads |
-| [`ado pipeline list`](#ado-pipeline-list) | read | List build pipelines with their last run |
+| [`ado pipeline list`](#ado-pipeline-list) | read | List build pipelines, each with its last result |
 | [`ado pipeline get`](#ado-pipeline-get) | read | Show a pipeline's definition: the YAML file it runs and its default branch |
-| [`ado pipeline preview`](#ado-pipeline-preview) | read | Expand a pipeline's YAML, or an edit of it, without running it |
-| [`ado run list`](#ado-run-list) | read | List pipeline runs (builds), newest first |
-| [`ado run get`](#ado-run-get) | read | Show a run: status, commit, timing, what failed, its pull request and work items |
+| [`ado pipeline preview`](#ado-pipeline-preview) | read | Expand a pipeline's YAML, or an edit of it, without queuing anything |
+| [`ado run list`](#ado-run-list) | read | List pipeline runs, newest first |
+| [`ado run get`](#ado-run-get) | read | Show a run (build): status, commit, what failed, its pull request and work items |
 | [`ado run logs`](#ado-run-logs) | read | Print the tail of a run's logs: failed tasks by default, or a job or task |
 | [`ado run create`](#ado-run-create) | write | Start a pipeline run on a branch, with template parameters |
 | [`ado run wait`](#ado-run-wait) | read | Wait for a run to finish: exit 0 if it succeeded, 1 if not, 124 if still going |
@@ -196,6 +196,7 @@ e.g. agent-cli ado diff get 436 --file '*.cs' --fields at,path,hunks
 ```text
 agent-cli ado commit list — List the commits on a repository, file or folder, with the pull request of each
  *<repo> str    The repository, or a file or folder in it: REPO[@REF][:PATH], as file get takes it (a line is ignored)
+  --path str    The file or folder in the repository, when REPO names none
   --ref str     The branch, tag or commit to read history back from (default: the default branch)
   --since time  Committed after this
   --until time  Committed before this
@@ -415,7 +416,7 @@ e.g. agent-cli ado thread update 436/7 --status fixed
 ### ado pipeline list
 
 ```text
-agent-cli ado pipeline list — List build pipelines with their last run
+agent-cli ado pipeline list — List build pipelines, each with its last result
   <pattern> str  Only names containing this
   --repo str     Only pipelines that build this repository
   --limit int    Most rows to return (default 50)
@@ -437,7 +438,7 @@ e.g. agent-cli ado pipeline get api-ci --fields repo,yaml
 ### ado pipeline preview
 
 ```text
-agent-cli ado pipeline preview — Expand a pipeline's YAML, or an edit of it, without running it
+agent-cli ado pipeline preview — Expand a pipeline's YAML, or an edit of it, without queuing anything
  *<pipeline> str    The pipeline's id or name
   <yaml> str        YAML to expand instead of the pipeline's own file, or - to read stdin
   --yaml-file path  The YAML to expand, from a file
@@ -450,7 +451,7 @@ e.g. agent-cli ado pipeline preview api-ci --yaml-file azure-pipelines.yml
 ### ado run list
 
 ```text
-agent-cli ado run list — List pipeline runs (builds), newest first
+agent-cli ado run list — List pipeline runs, newest first
   --pipeline str                Pipeline name or id
   --branch str                  The branch or tag it built: main, v1.4.2, refs/heads/main, refs/tags/v1.4.2
   --since time                  Queued after this
@@ -469,7 +470,7 @@ e.g. agent-cli ado run list --branch refs/tags/v1.4.2 --fields id,pipeline,statu
 ### ado run get
 
 ```text
-agent-cli ado run get — Show a run: status, commit, timing, what failed, its pull request and work items
+agent-cli ado run get — Show a run (build): status, commit, what failed, its pull request and work items
  *<id> str  The run's id: 8812, #8812 or its web URL
 Returns: {id,pipeline,pipeline_id,build_number,status,result,branch,commit,requested_by,reason,queued,started,finished,url,pr{id,title,status},workitems[{id,type,title,state}],running[],failed[{type,name,log_id,errors[{message,at}]}]}
 Read. * required. Globals: --fields --raw --timeout --output

@@ -138,7 +138,11 @@ pub(crate) fn file_id(
 }
 
 /// A piece given in the id and as a flag must say the same.
-fn agree<T: PartialEq + std::fmt::Debug>(flag: &str, held: &mut Option<T>, given: T) -> Result<()> {
+pub(crate) fn agree<T: PartialEq + std::fmt::Debug>(
+    flag: &str,
+    held: &mut Option<T>,
+    given: T,
+) -> Result<()> {
     match held {
         Some(held) if *held != given => Err(Failure::usage(format!(
             "{flag} {given:?} disagrees with the id's {held:?}"

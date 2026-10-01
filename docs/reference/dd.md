@@ -13,7 +13,7 @@
 | [`dd downtime cancel`](#dd-downtime-cancel) | write | Unmute a Datadog monitor now, ending its downtime before it runs out |
 | [`dd event list`](#dd-event-list) | read | List Datadog events: deploys, monitor alerts, kubernetes events kept past 1h |
 | [`dd service list`](#dd-service-list) | read | List the APM services that send traces to Datadog |
-| [`dd service get`](#dd-service-get) | read | Show an APM service's health: request count, error rate, p50/p95/p99 latency |
+| [`dd service get`](#dd-service-get) | read | Show an APM service's health --since a deploy, else the last hour: errors, p95 |
 | [`dd span list`](#dd-span-list) | read | Search APM spans: failing or slow requests, or every span of one trace |
 | [`dd incident list`](#dd-incident-list) | read | List Datadog incidents, active and stable by default |
 | [`dd incident get`](#dd-incident-get) | read | Show a Datadog incident: state, severity, impact, timeline stamps and fields |
@@ -204,15 +204,15 @@ e.g. agent-cli dd service list --env prod
 ### dd service get
 
 ```text
-agent-cli dd service get — Show an APM service's health: request count, error rate, p50/p95/p99 latency
+agent-cli dd service get — Show an APM service's health --since a deploy, else the last hour: errors, p95
  *<service> str  The service, as dd service list prints it
   --env str      env tag (default [datadog] env, else every env)
-  --since time   From when (default 1h before --until)
+  --since time   From when: a deploy's or rollout's time, to see what it changed (default 1h before --until)
   --until time   Until when (default now)
 A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
 Returns: {id,env,since,until,spans,errors,error_rate,p50_ms,p95_ms,p99_ms,resources[{resource,spans,errors,p95_ms}]}
 Read. * required. Globals: --fields --raw --timeout --output
-e.g. agent-cli dd service get api --env prod --fields error_rate,p95_ms,resources
+e.g. agent-cli dd service get api --since 2026-09-28T21:34:40Z --fields errors,error_rate,p95_ms,resources
 ```
 
 ### dd span list

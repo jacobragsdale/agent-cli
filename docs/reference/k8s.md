@@ -8,7 +8,7 @@
 | [`k8s pod delete`](#k8s-pod-delete) | destructive | Delete a pod so its controller replaces it (a bare pod is gone for good) |
 | [`k8s event list`](#k8s-event-list) | read | List Kubernetes events, newest first: warnings, back-offs, failed pulls |
 | [`k8s deployment list`](#k8s-deployment-list) | read | List deployments: ready pods, images with tag and digest, when they rolled out |
-| [`k8s deployment restart`](#k8s-deployment-restart) | destructive | Rollout-restart a deployment, replacing its pods one at a time |
+| [`k8s deployment restart`](#k8s-deployment-restart) | destructive | Restart a deployment, replacing its pods one at a time |
 | [`k8s deployment scale`](#k8s-deployment-scale) | destructive | Scale a deployment to a number of replicas |
 | [`k8s deployment wait`](#k8s-deployment-wait) | read | Wait for a rollout: exit 0 once rolled out, 1 if it failed, 124 if still going |
 | [`k8s configmap list`](#k8s-configmap-list) | read | List configmaps and their keys |
@@ -108,7 +108,7 @@ e.g. agent-cli k8s deployment list --cluster prod --namespace web --fields id,re
 ### k8s deployment restart
 
 ```text
-agent-cli k8s deployment restart — Rollout-restart a deployment, replacing its pods one at a time
+agent-cli k8s deployment restart — Restart a deployment, replacing its pods one at a time
  *<name> str       A deployment's name or id (cluster/namespace/name), or statefulset/NAME, daemonset/NAME
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace

@@ -125,7 +125,7 @@ fn named_line(message: &str) -> Option<(String, usize)> {
 
 command! {
     pub PIPELINE_PREVIEW = ["ado", "pipeline", "preview"], Read,
-    "Expand a pipeline's YAML, or an edit of it, without running it",
+    "Expand a pipeline's YAML, or an edit of it, without queuing anything",
     keywords: ["validate", "lint", "check", "template", "expand", "dry", "syntax", "yml"],
     example: "ado pipeline preview api-ci --yaml-file azure-pipelines.yml",
     run: pipeline_preview,

@@ -134,9 +134,9 @@ You should see this on stderr, and `echo $?` prints the exit code, 2:
 ```text
 error: unknown verb "8812" in ado run; an id goes after the verb
 hint: closest commands:
-  agent-cli ado run get 8812  # Show a run: status, commit, timing, what failed, its pull request and work items
+  agent-cli ado run get 8812  # Show a run (build): status, commit, what failed, its pull request and work items
+  agent-cli ado run list  # List pipeline runs, newest first
   agent-cli ado run logs <id>  # Print the tail of a run's logs: failed tasks by default, or a job or task
-  agent-cli ado run list  # List pipeline runs (builds), newest first
   agent-cli ado run retry <id>  # Retry the failed jobs of a finished run (write)
   agent-cli ado run cancel <id>  # Cancel a run that is queued or in progress (destructive)
 ```

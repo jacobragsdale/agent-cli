@@ -490,3 +490,16 @@ expect = "ado commit list"
 [[query]]
 text = "who changed this file recently"
 expect = "ado commit list"
+
+# chains-2 trial: what agents typed
+[[query]]
+text = "build 8809"
+expect = "ado run get"
+
+[[query]]
+text = "run pipeline"
+expect = "ado run create"
+
+[[query]]
+text = "start pipeline run"
+expect = "ado run create"

@@ -234,8 +234,8 @@ fn run_get(ctx: &Ctx, args: RunIdArgs) -> Result<RunDetail> {
 
 command! {
     pub RUN_GET = ["ado", "run", "get"], Read,
-    "Show a run: status, commit, timing, what failed, its pull request and work items",
-    keywords: ["build", "why", "failed", "broken", "status", "result", "timeline", "errors", "shipped", "deployed", "release"],
+    "Show a run (build): status, commit, what failed, its pull request and work items",
+    keywords: ["build", "why", "failed", "broken", "status", "result", "timeline", "timing", "errors", "shipped", "deployed", "release"],
     example: "ado run get 1234 --fields status,result,commit,pr,workitems,failed",
     run: run_get,
 }

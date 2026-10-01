@@ -25,7 +25,7 @@ fn deployment_restart(ctx: &Ctx, args: RestartArgs) -> Result<Changed> {
 
 command! {
     pub DEPLOYMENT_RESTART = ["k8s", "deployment", "restart"], Destructive,
-    "Rollout-restart a deployment, replacing its pods one at a time",
+    "Restart a deployment, replacing its pods one at a time",
     keywords: ["rollout", "redeploy", "bounce", "recycle", "statefulset", "daemonset", "workload"],
     example: "k8s deployment restart orders-api --cluster qa --namespace dev",
     run: deployment_restart,
