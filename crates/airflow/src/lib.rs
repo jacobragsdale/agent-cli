@@ -1,10 +1,12 @@
-//! The airflow domain: DAGs, runs, task instances, their logs and import
-//! errors, live from Apache Airflow 3's REST API (`/api/v2`). Airflow 2's
-//! `/api/v1` is out of scope: doctor names a v2 server and stops.
+//! The airflow domain: DAGs and their source, runs, task instances, their
+//! logs and import errors, live from Apache Airflow 3's REST API
+//! (`/api/v2`). Airflow 2's `/api/v1` is out of scope: doctor names a v2
+//! server and stops.
 //!
-//! Every id is the ref: a DAG is `etl_nightly`, a run `DAG/RUN`, a task
-//! instance `DAG/RUN/TASK[:MAP][/TRY]`, and an instance with a `k8s_scope`
-//! prints the pod a task ran in as the id `k8s pod logs` takes.
+//! Every id is the ref: a DAG is `etl_nightly`, a line of its file
+//! `etl_nightly:42`, a run `DAG/RUN`, a task instance
+//! `DAG/RUN/TASK[:MAP][/TRY]`, and an instance with a `k8s_scope` prints the
+//! pod a task ran in as the id `k8s pod logs` takes.
 
 mod client;
 mod dag;
@@ -13,6 +15,7 @@ mod doctor;
 mod import_error;
 mod instance;
 mod run;
+mod source;
 mod task;
 #[cfg(test)]
 mod testing;
@@ -27,6 +30,7 @@ pub const DOMAIN: Domain = Domain {
         dag::list::DAG_LIST,
         dag::get::DAG_GET,
         dag::update::DAG_UPDATE,
+        source::get::SOURCE_GET,
         run::list::RUN_LIST,
         run::get::RUN_GET,
         run::create::RUN_CREATE,
@@ -49,6 +53,8 @@ pub const DOMAIN: Domain = Domain {
         ("task instances", &["task"]),
         ("data pipeline", &["dag"]),
         ("broken dag", &["import", "error"]),
+        ("dag code", &["source"]),
+        ("dag file", &["source"]),
     ],
     status: doctor::status,
     doctor: doctor::doctor,
@@ -64,7 +70,7 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 15);
+        assert_eq!(DOMAIN.commands.len(), 16);
     }
 
     #[test]

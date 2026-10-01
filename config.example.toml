@@ -88,6 +88,9 @@
 #                                        # pods run in: task get prints the pod
 #                                        # as the id `k8s pod logs` takes
 # k8s_namespace = "airflow"              # where those pods run; default "airflow"
+# dags_repo = "airflow-dags:dags"        # REPO[:FOLDER] in Azure DevOps its DAG
+#                                        # files deploy from: source get prints
+#                                        # the id `ado file get` takes for them
 #
 # [[airflow.instance]]
 # name = "qa"

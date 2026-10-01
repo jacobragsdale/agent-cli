@@ -143,6 +143,29 @@ expect = "airflow import-error get"
 text = "show import error 12"
 expect = "airflow import-error get"
 
+[[query]]
+text = "show the python source of the etl_nightly dag"
+expect = "airflow source get"
+
+[[query]]
+text = "read the dag file around line 42"
+expect = "airflow source get"
+
+[[query]]
+text = "dag code of etl_nightly"
+expect = "airflow source get"
+
+# ---------- flows (docs/plans/chains.md): each expects its first hop ----------
+# F6: why a DAG task failed, in its code and its input.
+
+[[query]]
+text = "show the code at the line load_orders failed"
+expect = "airflow task logs"
+
+[[query]]
+text = "which line of the dag raised the exception in load_orders"
+expect = "airflow task logs"
+
 # ---------- agent trials, 2026-09-30 (docs/trials/2026-09-30.md) ----------
 # Each trial task as the agent was given it, and the searches agents typed for
 # it, expecting the command an agent should reach first. A cross-domain task

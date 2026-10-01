@@ -1,4 +1,4 @@
-# airflow — Apache Airflow (15 commands)
+# airflow — Apache Airflow (16 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -6,6 +6,7 @@
 | [`airflow dag list`](#airflow-dag-list) | read | List DAGs with their schedule, next run and whether they are paused |
 | [`airflow dag get`](#airflow-dag-get) | read | Show a DAG's status: paused, next run, params, schedule and its last five runs |
 | [`airflow dag update`](#airflow-dag-update) | write | Pause or unpause a DAG |
+| [`airflow source get`](#airflow-source-get) | read | Show a DAG's Python file around a line, as Airflow parsed it |
 | [`airflow run list`](#airflow-run-list) | read | List DAG runs, newest first, across DAGs or for one |
 | [`airflow run get`](#airflow-run-get) | read | Show a DAG run's state, task counts by state, and the tasks that failed |
 | [`airflow run create`](#airflow-run-create) | write | Trigger a DAG run, with a conf and optionally a logical date |
@@ -63,6 +64,18 @@ agent-cli airflow dag update — Pause or unpause a DAG
 Returns: {id,paused,next_run}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow dag update etl_nightly --paused true
+```
+
+### airflow source get
+
+```text
+agent-cli airflow source get — Show a DAG's Python file around a line, as Airflow parsed it
+ *<source> str    The DAG and a line or range: DAG[:LINE[-LINE]] (etl_nightly:42, what task logs prints as at), or the DAG's Airflow UI URL
+  --line str      The line or range, when the id leaves it out: LINE or A-B
+  --instance str  The [[airflow.instance]] name; defaults to the only one
+Returns: {id,dag,file,version,lines,text,repo_file}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow source get etl_nightly:42 --fields lines,text,repo_file
 ```
 
 ### airflow run list
@@ -171,7 +184,7 @@ agent-cli airflow task logs — Read the tail of a task instance's log, with the
   --run str       The run id, when the id leaves it out
   --instance str  The [[airflow.instance]] name; defaults to the only one
   --tail int      How many of the last lines (0 for all) (default 200)
-Returns: {id,state,error,lines,kept,complete,sources[],text}
+Returns: {id,state,error,at,lines,kept,complete,sources[],text}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow task logs etl_nightly/latest/load_orders --tail 50
 ```
