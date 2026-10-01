@@ -25,6 +25,19 @@ password_cmd = "echo stand-in"
 read_only = true
 k8s_scope = "prod"
 k8s_namespace = "web"
+dags_repo = "airflow-dags:dags"
+
+# No sql recordings: the connection is here so airflow connection list can
+# name it as sql_conn.
+[[sql.connection]]
+name = "reporting"
+kind = "mssql"
+host = "sql.contoso.example"
+database = "reporting"
+user = "agent"
+password_cmd = "echo stand-in"
+read_only = true
+
 [datadog]
 site = "datadoghq.eu"
 env = "prod"

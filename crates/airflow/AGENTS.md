@@ -43,8 +43,8 @@ and tests (`run/retry.rs` is `airflow run retry`). Copy a sibling.
 
 ## Fixtures
 `fixtures/world/http/airflow.json` (`/api/v2` and `/auth/token`); facts
-`fixtures/world/facts/airflow.md`; the failed-DAG trace in
-`crates/cli/tests/world_cross.rs`; queries `crates/airflow/search.toml`.
+`fixtures/world/facts/airflow.md`; the failed-DAG trace and the chains
+flows in `crates/cli/tests/world_{cross,airflow}.rs`; queries `search.toml`.
 
 ## Quirks
 - A clear's `dry_run` **defaults to true** on the server: a real retry must

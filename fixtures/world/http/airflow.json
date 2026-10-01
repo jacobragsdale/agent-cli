@@ -1889,5 +1889,179 @@
    "bundle_name": "dags-folder",
    "stack_trace": "Traceback (most recent call last):\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"/opt/airflow/dags/customer_sync.py\", line 5, in <module>\n    from contoso_crm import Client\nModuleNotFoundError: No module named 'contoso_crm'\n"
   }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dagSources/etl_nightly",
+  "note": "version 7 of dags/etl_nightly.py; line 42 raises the ValueError load_orders failed on",
+  "answer": {
+   "content": "\"\"\"Loads yesterday's orders into the warehouse.\"\"\"\n\nfrom __future__ import annotations\n\nimport logging\n\nimport pendulum\nfrom airflow.providers.standard.operators.python import PythonOperator\nfrom airflow.sdk import DAG, BaseHook, Variable\n\nlog = logging.getLogger(\"task\")\n\n\ndef extract_orders(day: str) -> list[dict]:\n    \"\"\"The day's orders from the orders API.\"\"\"\n    from contoso_orders import OrdersClient\n\n    api = BaseHook.get_connection(\"orders_api\")\n    batch = int(Variable.get(\"orders_batch_size\", default=\"5000\"))\n    return OrdersClient(api.host).orders(day=day, batch=batch)\n\n\ndef transform_orders(ti) -> list[dict]:\n    orders = ti.xcom_pull(task_ids=\"extract_orders\")\n    return [{**order, \"total\": round(order[\"total\"], 2)} for order in orders]\n\n\ndef check(order: dict) -> dict:\n    \"\"\"A row the warehouse takes: every order needs its customer.\"\"\"\n    if order.get(\"customer_id\") is None:\n        log.warning(\"Order without a customer\", extra={\"order_id\": order[\"order_id\"]})\n    return order\n\n\ndef load_orders(day: str, ti) -> None:\n    orders = ti.xcom_pull(task_ids=\"extract_orders\")\n    log.info(\"Loading orders for %s\", day, extra={\"rows\": len(orders)})\n    hook = BaseHook.get_connection(\"reporting_dw\").get_hook()\n    rows = [check(order) for order in orders]\n    for row in rows:\n        if row.get(\"customer_id\") is None:\n            raise ValueError(f\"order {row['order_id']} has no customer_id\")\n    hook.insert_rows(\"dbo.orders\", [tuple(row.values()) for row in rows])\n\n\nwith DAG(\n    dag_id=\"etl_nightly\",\n    description=\"Loads yesterday's orders into the warehouse\",\n    schedule=\"0 0 * * *\",\n    start_date=pendulum.datetime(2026, 1, 1, tz=\"UTC\"),\n    catchup=False,\n    max_active_runs=1,\n    tags=[\"etl\", \"orders\"],\n    default_args={\"owner\": \"data-eng\", \"retries\": 1},\n) as dag:\n    day = \"{{ ds }}\"\n    extract = PythonOperator(task_id=\"extract_orders\", python_callable=extract_orders, op_kwargs={\"day\": day})\n    transform = PythonOperator(task_id=\"transform_orders\", python_callable=transform_orders)\n    load = PythonOperator(task_id=\"load_orders\", python_callable=load_orders, op_kwargs={\"day\": day})\n    report = PythonOperator(task_id=\"publish_report\", python_callable=lambda: None)\n    extract >> transform >> load >> report\n",
+   "dag_id": "etl_nightly",
+   "version_number": 7,
+   "dag_display_name": "etl_nightly"
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-29T00%3A00%3A00%2B00%3A00/taskInstances/extract_orders/xcomEntries?limit=50&offset=0",
+  "answer": {
+   "xcom_entries": [
+    {
+     "key": "extract_window",
+     "timestamp": "2026-09-29T00:00:07.311+00:00",
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "task_id": "extract_orders",
+     "dag_id": "etl_nightly",
+     "run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "dag_display_name": "etl_nightly"
+    },
+    {
+     "key": "return_value",
+     "timestamp": "2026-09-29T00:12:40.512+00:00",
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "task_id": "extract_orders",
+     "dag_id": "etl_nightly",
+     "run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "dag_display_name": "etl_nightly"
+    }
+   ],
+   "total_entries": 2
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-29T00%3A00%3A00%2B00%3A00/taskInstances/extract_orders/xcomEntries/return_value?deserialize=true&stringify=false",
+  "note": "order 88123 has no customer_id: what load_orders raised on",
+  "answer": {
+   "key": "return_value",
+   "timestamp": "2026-09-29T00:12:40.512+00:00",
+   "logical_date": "2026-09-29T00:00:00+00:00",
+   "map_index": -1,
+   "task_id": "extract_orders",
+   "dag_id": "etl_nightly",
+   "run_id": "scheduled__2026-09-29T00:00:00+00:00",
+   "dag_display_name": "etl_nightly",
+   "value": [
+    {
+     "order_id": 88121,
+     "customer_id": 5512,
+     "total": 129.9
+    },
+    {
+     "order_id": 88122,
+     "customer_id": 4411,
+     "total": 54.0
+    },
+    {
+     "order_id": 88123,
+     "total": 18.5
+    },
+    {
+     "order_id": 88124,
+     "customer_id": 6020,
+     "total": 302.75
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/pools?limit=50&offset=0",
+  "answer": {
+   "pools": [
+    {
+     "name": "default_pool",
+     "slots": 128,
+     "description": "Default pool",
+     "include_deferred": false,
+     "occupied_slots": 0,
+     "running_slots": 0,
+     "queued_slots": 0,
+     "scheduled_slots": 0,
+     "open_slots": 128,
+     "deferred_slots": 0
+    },
+    {
+     "name": "warehouse_writes",
+     "slots": 2,
+     "description": "Writes to the reporting warehouse",
+     "include_deferred": false,
+     "occupied_slots": 0,
+     "running_slots": 0,
+     "queued_slots": 0,
+     "scheduled_slots": 0,
+     "open_slots": 2,
+     "deferred_slots": 0
+    }
+   ],
+   "total_entries": 2
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/variables?limit=50&offset=0",
+  "note": "agent-cli never prints a value",
+  "answer": {
+   "variables": [
+    {
+     "key": "orders_batch_size",
+     "value": "5000",
+     "description": "Orders per page from the orders API",
+     "is_encrypted": false
+    },
+    {
+     "key": "orders_api_token",
+     "value": "***",
+     "description": "Bearer token for orders_api",
+     "is_encrypted": true
+    },
+    {
+     "key": "report_recipients",
+     "value": "[\"data-eng@contoso.example\"]",
+     "description": null,
+     "is_encrypted": false
+    }
+   ],
+   "total_entries": 3
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/connections?limit=50&offset=0",
+  "note": "agent-cli never prints login, password or extra",
+  "answer": {
+   "connections": [
+    {
+     "connection_id": "airflow_logs",
+     "conn_type": "wasb",
+     "description": "Remote task logs",
+     "host": "contosoairflowlogs.blob.core.windows.net",
+     "login": "contosoairflowlogs",
+     "schema": null,
+     "port": null,
+     "password": "***",
+     "extra": "{\"container\": \"airflow-logs\"}"
+    },
+    {
+     "connection_id": "orders_api",
+     "conn_type": "http",
+     "description": "The orders API extract_orders reads",
+     "host": "orders.contoso.example",
+     "login": null,
+     "schema": "https",
+     "port": 443,
+     "password": "***",
+     "extra": null
+    },
+    {
+     "connection_id": "reporting_dw",
+     "conn_type": "mssql",
+     "description": "The reporting warehouse load_orders writes to",
+     "host": "sql.contoso.example",
+     "login": "etl_writer",
+     "schema": "reporting",
+     "port": 1433,
+     "password": "***",
+     "extra": null
+    }
+   ],
+   "total_entries": 3
+  }
  }
 ]
