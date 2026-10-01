@@ -41,7 +41,7 @@ agent-cli dd log list — Search Datadog logs in a time window, newest first, as
   --full                        Whole messages and every attribute
   --limit int                   At most 1000 (one page); count more with dd log-count list (default 50)
 A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
-Returns: [{id,time,status,service,host,message,error{kind,message},trace_id,pod,attributes}]
+Returns: [{id,time,status,service,host,message,error{kind,message},at,trace_id,pod,attributes}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli dd log list --service api --status error --since 1h --fields time,message,pod
 ```
@@ -234,7 +234,7 @@ agent-cli dd span list — Search APM spans: failing or slow requests, or every 
   --limit int              At most 1000 (one page) (default 50)
 A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
 A duration is 500ms, 30s, 15m, 2h, 7d, 1w.
-Returns: [{trace_id,span_id,time,service,resource,operation,status,duration_ms,error{type,message},pod}]
+Returns: [{trace_id,span_id,time,service,resource,operation,status,duration_ms,error{type,message},at,pod}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli dd span list --service api --status error --since 30m --fields time,resource,error,trace_id
 ```

@@ -24,6 +24,14 @@ text = "search datadog logs for timeout exceptions"
 expect = "dd log list"
 
 [[query]]
+text = "find the source line of a production exception in datadog"
+expect = "dd log list"
+
+[[query]]
+text = "file and line of the api exceptions in datadog logs"
+expect = "dd log list"
+
+[[query]]
 text = "which services log the most errors"
 expect = "dd log-count list"
 

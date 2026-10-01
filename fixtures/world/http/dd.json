@@ -57,12 +57,15 @@
        "pod_name:api-7d9f8c6b5-x2k4q",
        "service:api",
        "kube_deployment:api",
+       "git.commit.sha:4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+       "git.repository_url:https://dev.azure.com/contoso/Fabrikam/_git/api",
        "version:v1.4.2"
       ],
       "attributes": {
        "error": {
         "kind": "HttpRequestException",
-        "message": "Connection refused (worker.web.svc:8080)"
+        "message": "Connection refused (worker.web.svc:8080)",
+        "stack": "System.Net.Http.HttpRequestException: Connection refused (worker.web.svc:8080)\n ---> System.Net.Sockets.SocketException (111): Connection refused\n   at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.ThrowException(SocketError error, CancellationToken cancellationToken)\n   at System.Net.Http.HttpConnectionPool.ConnectToTcpHostAsync(String host, Int32 port, HttpRequestMessage initialRequest, Boolean async, CancellationToken cancellationToken)\n   --- End of inner exception stack trace ---\n   at System.Net.Http.HttpConnectionPool.ConnectToTcpHostAsync(String host, Int32 port, HttpRequestMessage initialRequest, Boolean async, CancellationToken cancellationToken)\n   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)\n   at Contoso.Api.Orders.OrderClient.GetAsync(Int32 id, CancellationToken cancel) in /app/src/Orders/OrderClient.cs:line 19\n   at Contoso.Api.Orders.OrdersController.Post(OrderRequest request, CancellationToken cancel) in /app/src/Orders/OrdersController.cs:line 27"
        },
        "dd": {
         "trace_id": "1846223019175527734",
@@ -2114,6 +2117,8 @@
        "kube_namespace:web",
        "pod_name:api-7d9f8c6b5-x2k4q",
        "service:api",
+       "git.commit.sha:4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+       "git.repository_url:https://dev.azure.com/contoso/Fabrikam/_git/api",
        "version:v1.4.2"
       ],
       "custom": {
@@ -2126,7 +2131,8 @@
        },
        "error": {
         "type": "HttpRequestException",
-        "message": "Connection refused (worker.web.svc:8080)"
+        "message": "Connection refused (worker.web.svc:8080)",
+        "stack": "System.Net.Http.HttpRequestException: Connection refused (worker.web.svc:8080)\n ---> System.Net.Sockets.SocketException (111): Connection refused\n   at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.ThrowException(SocketError error, CancellationToken cancellationToken)\n   at System.Net.Http.HttpConnectionPool.ConnectToTcpHostAsync(String host, Int32 port, HttpRequestMessage initialRequest, Boolean async, CancellationToken cancellationToken)\n   --- End of inner exception stack trace ---\n   at System.Net.Http.HttpConnectionPool.ConnectToTcpHostAsync(String host, Int32 port, HttpRequestMessage initialRequest, Boolean async, CancellationToken cancellationToken)\n   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)\n   at Contoso.Api.Orders.OrderClient.GetAsync(Int32 id, CancellationToken cancel) in /app/src/Orders/OrderClient.cs:line 19\n   at Contoso.Api.Orders.OrdersController.Post(OrderRequest request, CancellationToken cancel) in /app/src/Orders/OrdersController.cs:line 27"
        }
       }
      }
@@ -2671,6 +2677,170 @@
     "elapsed": 41,
     "status": "done",
     "request_id": "pddv1ChZ3b3JsZC1yZXF1ZXN0"
+   }
+  }
+ },
+ {
+  "request": "POST https://api.datadoghq.eu/api/v2/spans/analytics/aggregate",
+  "note": "dd service get api --since 2026-09-28T21:34:40Z: since api v1.4.2 rolled out (what k8s deployment wait prod/web/api notes), the rollout's failed POST /orders and healthy traffic after",
+  "body": {
+   "data": {
+    "type": "aggregate_request",
+    "attributes": {
+     "compute": [
+      {
+       "aggregation": "count",
+       "type": "total"
+      },
+      {
+       "aggregation": "pc50",
+       "metric": "@duration",
+       "type": "total"
+      },
+      {
+       "aggregation": "pc95",
+       "metric": "@duration",
+       "type": "total"
+      },
+      {
+       "aggregation": "pc99",
+       "metric": "@duration",
+       "type": "total"
+      }
+     ],
+     "filter": {
+      "query": "service:api env:prod @_top_level:1",
+      "from": "1790631280000",
+      "to": "1790683200000"
+     },
+     "group_by": [
+      {
+       "facet": "resource_name",
+       "limit": 10,
+       "sort": {
+        "aggregation": "count",
+        "order": "desc"
+       },
+       "total": "__total__"
+      }
+     ]
+    }
+   }
+  },
+  "answer": {
+   "data": [
+    {
+     "id": "bucket-GET /orders/{id}",
+     "type": "bucket",
+     "attributes": {
+      "by": {
+       "resource_name": "GET /orders/{id}"
+      },
+      "compute": {
+       "c0": 43260,
+       "c1": 12000000.0,
+       "c2": 43000000.0,
+       "c3": 92000000.0
+      }
+     }
+    },
+    {
+     "id": "bucket-POST /orders",
+     "type": "bucket",
+     "attributes": {
+      "by": {
+       "resource_name": "POST /orders"
+      },
+      "compute": {
+       "c0": 8650,
+       "c1": 21000000.0,
+       "c2": 66000000.0,
+       "c3": 2510000000.0
+      }
+     }
+    },
+    {
+     "id": "bucket-__total__",
+     "type": "bucket",
+     "attributes": {
+      "by": {
+       "resource_name": "__total__"
+      },
+      "compute": {
+       "c0": 51910,
+       "c1": 13000000.0,
+       "c2": 49000000.0,
+       "c3": 99000000.0
+      }
+     }
+    }
+   ],
+   "meta": {
+    "status": "done"
+   }
+  }
+ },
+ {
+  "request": "POST https://api.datadoghq.eu/api/v2/spans/analytics/aggregate",
+  "note": "dd service get api --since 2026-09-28T21:34:40Z: since api v1.4.2 rolled out (what k8s deployment wait prod/web/api notes), the rollout's failed POST /orders and healthy traffic after (errors)",
+  "body": {
+   "data": {
+    "type": "aggregate_request",
+    "attributes": {
+     "compute": [
+      {
+       "aggregation": "count",
+       "type": "total"
+      }
+     ],
+     "filter": {
+      "query": "service:api env:prod @_top_level:1 status:error",
+      "from": "1790631280000",
+      "to": "1790683200000"
+     },
+     "group_by": [
+      {
+       "facet": "resource_name",
+       "limit": 10,
+       "sort": {
+        "aggregation": "count",
+        "order": "desc"
+       },
+       "total": "__total__"
+      }
+     ]
+    }
+   }
+  },
+  "answer": {
+   "data": [
+    {
+     "id": "bucket-POST /orders",
+     "type": "bucket",
+     "attributes": {
+      "by": {
+       "resource_name": "POST /orders"
+      },
+      "compute": {
+       "c0": 212
+      }
+     }
+    },
+    {
+     "id": "bucket-__total__",
+     "type": "bucket",
+     "attributes": {
+      "by": {
+       "resource_name": "__total__"
+      },
+      "compute": {
+       "c0": 212
+      }
+     }
+    }
+   ],
+   "meta": {
+    "status": "done"
    }
   }
  }

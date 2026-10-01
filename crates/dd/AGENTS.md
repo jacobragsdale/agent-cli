@@ -31,7 +31,7 @@ and tests (`log_count/list.rs` is `dd log-count list`). Copy a sibling.
   helpers `text`, `strings`, `tag`, `pod_ref`, `utc_ms`, `epoch`, `cut`,
   `limited`.
 - `search.rs`: what the log, span and event searches share (`LogStatus`,
-  paging, `MESSAGE_MAX`).
+  paging, `MESSAGE_MAX`, `at`: a stack's frame in the service's code).
 - `<resource>/mod.rs`: what its verbs share (`slo/mod.rs`: `SloRow`).
 - `testing.rs`: `dd`, `dd_with`, `CONFIG`, `TOKEN`, sample rows.
 

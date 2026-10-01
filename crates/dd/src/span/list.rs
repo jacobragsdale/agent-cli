@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use crate::client::{Dd, Scope, Window, any_of, cut, pod_ref, search_query, text, utc_ms};
-use crate::search::{check_page, id_text, millis, more_match, names, slow_window};
+use crate::search::{at, check_page, id_text, millis, more_match, names, slow_window};
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 pub enum SpanStatus {
@@ -53,6 +53,10 @@ pub struct SpanRow {
     duration_ms: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<SpanError>,
+    /// The innermost frame of error.stack in the service: PATH:LINE, or
+    /// PROJECT/REPO@SHA:PATH:LINE with the git tags; what ado file get takes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    at: Option<String>,
     /// The k8s pod id (cluster/namespace/pod) that `agent-cli k8s pod get` takes.
     pod: Option<String>,
 }
@@ -122,6 +126,7 @@ fn span_row(item: &Value) -> SpanRow {
             kind: text(&error["type"]),
             message: text(&error["message"]).map(|message| cut(&message, 300)),
         }),
+        at: at(&error["stack"], &attributes["tags"]),
         pod: pod_ref(&attributes["tags"]),
     }
 }
