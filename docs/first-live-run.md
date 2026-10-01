@@ -156,8 +156,10 @@ server names never go into this public repository. Replace them with `contoso`-s
 - **SecretProviderClass.** Does `pod get` read `objects` YAML with quoted
   names and aliases into the right kv ids?
 - **A rollout that gives up.** What exit code and message does `kubectl
-  rollout status` give for `ProgressDeadlineExceeded`? `deployment wait`
-  maps them.
+  rollout status` give for `ProgressDeadlineExceeded` (`deployment wait`
+  matches "exceeded its progress deadline") and for its own `--timeout`
+  ("timed out waiting")? Does the watch outlive `--request-timeout=10s`,
+  reconnecting until `--timeout`?
 
 ## Azure DevOps
 
@@ -184,10 +186,14 @@ Use a personal organization, never an employer's, and read only: set
    - **Timeline issues:** `data.sourcepath`, `data.linenumber`,
      `data.columnnumber`, `data.code` and `data.logFileLineNumber`, and which
      tasks fill them (`DotNetCoreCLI`, `VSBuild`, `npm` with a problem
-     matcher).
+     matcher); a pull request build's `triggerInfo["pr.sourceSha"]`, the
+     commit `run get` puts in `at`; a failed build policy's `status:
+     rejected` with `context.buildId`.
    - **Test results** (`ado test list`): `test/runs?buildUri=` without date
      bounds; results carrying `errorMessage`, `stackTrace` and
-     `failingSince.build.id` without `detailsToInclude`; the
+     `failingSince.build.id` without `detailsToInclude`; test runs'
+     `totalTests`, `passedTests` and `notApplicableTests`, which decide
+     whether `run get` names `test list`; the
      `vstmr.dev.azure.com` host, if `dev.azure.com` redirects there.
    - **Pipeline preview:** api-version `7.1-preview.1`, its 400s and
      `PATH (Line: N, Col: M)`. A template from another repository
@@ -204,8 +210,11 @@ Use a personal organization, never an employer's, and read only: set
      content with `includeContent`, short SHAs in `versionDescriptor`, an
      unknown branch as a 404 (TF401175) before the tag fallback;
      `recursionLevel=Full` size and paging on the largest repository;
-     commits `searchCriteria.itemPath` with `itemVersion` at a commit (`ado
-     commit list`).
+     a missing path as a 404 (TF401174), which `file get` answers with a
+     suffix match; commits `searchCriteria.itemPath` with `itemVersion` at a
+     commit, and whether list items carry `parents` (`ado commit list`'s
+     `diff` is null without them: read each commit, or diff from the first
+     parent); `pullrequestquery` with several `lastMergeCommit` items.
    - **Diffs:** `diffs/commits` with `$top=1000`, paging,
      `allChangesIncluded` and the rename fields.
    - **Code Search:** `includeSnippet` filling `matches.content[].line` and
@@ -260,4 +269,7 @@ committed once scrubbed.
 5. **Code links.** Do logs carry `git.commit.sha` and `git.repository_url`,
    or only spans? (The Agent may tag a container's telemetry from its
    image's `org.opencontainers.image.revision` and `.source` labels.) What
-   is the attribute path of `error.stack` in a span search result?
+   is the attribute path of `error.stack` in a span search result? `at`
+   reads logs' `attributes.attributes.error.stack` and spans'
+   `attributes.custom.error.stack`, and the git tags from `attributes.tags`
+   only; spans may carry them under `custom._dd.git.*` instead.

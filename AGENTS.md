@@ -95,6 +95,15 @@ They make one domain's output the next domain's input; (tested) marks what
   where prose resumes (`, then`, ` (`, two spaces, a backtick).
 - **An answer with a failing exit:** `Failure::…(…).with_data(value)` prints
   `value` like a success, then the error, with the failure's code.
+- **Next steps.** A field is not a signpost; a note naming the command is.
+  A one-object verb whose answer exits 0 but needs attention (a failed
+  run, an alerting monitor, a restarted container) prints one
+  `[next: agent-cli …]` note built from its row; a failure puts its next
+  command in the hint. Lists print none, but `ado test list`. World tests
+  walk them with `follow`.
+- **Frames to files.** An `at` from a stack frame is what `ado file get`
+  takes. ado prints the repository path; others print the frame's path as
+  the service did, and `file get` resolves it by unique suffix.
 - **Default timeouts.** A command that waits declares `timeout: 100,` in
   `command!`; everything else keeps core's 60 s.
 - **Credentials** are three keys, `KEY`, `KEY_env`, `KEY_cmd`, built with
