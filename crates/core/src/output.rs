@@ -44,8 +44,13 @@ pub(crate) fn emit(
             || kept
                 .as_array()
                 .is_some_and(|items| items.iter().all(|item| *item == json!({})));
-        if nothing {
-            let available = leaf_paths(&value, "", 0);
+        // An empty answer has nothing to match: it prints as itself, `[]`.
+        let available = if nothing {
+            leaf_paths(&value, "", 0)
+        } else {
+            Vec::new()
+        };
+        if !available.is_empty() {
             writeln!(
                 err,
                 "[--fields matched nothing. Available: {}]",
@@ -435,6 +440,13 @@ mod tests {
             err.trim(),
             "[--fields matched nothing. Available: id,author.name]"
         );
+    }
+
+    #[test]
+    fn an_empty_answer_with_fields_prints_empty_without_a_note() {
+        let (out, err) = run(json!([]), &fields("id"), false);
+        assert_eq!(out.trim(), "[]");
+        assert!(err.is_empty(), "{err}");
     }
 
     #[test]

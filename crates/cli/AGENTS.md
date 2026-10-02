@@ -36,6 +36,8 @@ failed DAG, the Datadog alert, an exception to its PR, an expired secret,
 an import error, ship and verify) and what a miss says. Run one:
 `cargo test -p agent-cli --features fixtures --test world_dd`.
 `tests/ado.rs`, `sql.rs`, `e2e.rs`: end-to-end runs of the real binary.
+`tests/live_ado.rs`: the work item commands against a live sandbox, off
+unless `AGENT_CLI_TEST_ADO=1` (`docs/first-live-run.md`).
 
 ## Never needed
 The domain crates' sources (their cards say where things are),

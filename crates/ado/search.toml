@@ -711,3 +711,15 @@ expect = "ado attachment create"
 [[query]]
 text = "upload a screenshot to the bug"
 expect = "ado attachment create"
+
+[[query]]
+text = "what did I do yesterday"
+expect = "ado activity list"
+
+[[query]]
+text = "standup notes for Sam"
+expect = "ado activity list"
+
+[[query]]
+text = "what has Priya been working on this week in azure devops"
+expect = "ado activity list"

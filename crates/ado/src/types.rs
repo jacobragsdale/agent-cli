@@ -16,6 +16,10 @@ use crate::client::{Ado, list, segment, text};
 
 const CACHE_TTL: Duration = Duration::from_secs(24 * 3600);
 
+/// Always required, yet Azure DevOps fills them from the area and iteration
+/// paths, which default to the project's root.
+const SYSTEM_SET: [&str; 2] = ["System.AreaId", "System.IterationId"];
+
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub(crate) struct State {
     pub(crate) name: String,
@@ -32,6 +36,8 @@ pub(crate) struct Field {
     /// string, integer, double, html, identity, dateTime, treePath, boolean …
     #[serde(rename = "type")]
     pub(crate) kind: Option<String>,
+    /// The caller must set it: always required, with no default, and not
+    /// one the system sets.
     pub(crate) required: bool,
     pub(crate) allowed_values: Vec<String>,
     pub(crate) default: Option<String>,
@@ -128,15 +134,18 @@ pub(crate) fn fields(ctx: &Ctx, ado: &Ado, kind: &str) -> Result<Vec<Field>> {
         .iter()
         .filter_map(|field| {
             let reference = text(&field["referenceName"])?;
+            let default = plain(&field["defaultValue"]);
             Some(Field {
                 name: text(&field["name"]).unwrap_or_else(|| reference.clone()),
                 kind: types.get(reference.as_str()).map(|kind| (*kind).to_owned()),
-                required: field["alwaysRequired"].as_bool().unwrap_or(false),
+                required: field["alwaysRequired"].as_bool().unwrap_or(false)
+                    && default.is_none()
+                    && !SYSTEM_SET.contains(&reference.as_str()),
                 allowed_values: list(&field["allowedValues"])
                     .iter()
                     .filter_map(plain)
                     .collect(),
-                default: plain(&field["defaultValue"]),
+                default,
                 reference,
             })
         })
