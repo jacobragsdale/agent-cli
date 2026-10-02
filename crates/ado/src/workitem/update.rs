@@ -147,11 +147,11 @@ mod tests {
         }
 
         let (outcome, _) = ado(
-            &["ado", "workitem", "update", "42", "--state", "Nope"],
+            &["ado", "workitem", "update", "42", "--state", "Doing"],
             vec![
                 Answer::status(
                     400,
-                    r#"{"message":"TF401326: Invalid field status 'InvalidListValue' for field 'System.State'."}"#,
+                    r#"{"message":"The field 'State' contains the value 'Doing' that is not in the list of supported values","typeKey":"RuleValidationException"}"#,
                 ),
                 Answer::json(&json!({"id": 42, "fields": {"System.WorkItemType": "User Story"}})),
             ],
@@ -160,7 +160,7 @@ mod tests {
         assert!(
             outcome
                 .stderr
-                .contains("answered 400: TF401326: Invalid field status")
+                .contains("answered 400: The field 'State' contains the value 'Doing'")
                 && outcome
                     .stderr
                     .contains("hint: agent-cli ado workitem-type get \"User Story\""),

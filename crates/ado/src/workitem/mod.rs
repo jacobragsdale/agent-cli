@@ -90,9 +90,15 @@ const TYPED: &[(&str, &str)] = &[
 ];
 
 /// The codes Azure DevOps refuses a patch with when it breaks the type's
-/// rules: TF401320 a required or limited field, TF401326 a value (a state
-/// among them) the field does not allow, TF51535 a field the type lacks.
-const RULE_ERRORS: &[&str] = &["TF401320", "TF401326", "TF51535"];
+/// rules: TF401320 a required or limited field, TF401326 a value the field
+/// does not allow, TF51535 a field the type lacks. A state or picklist value
+/// outside the list comes back live with no code, only these words.
+const RULE_ERRORS: &[&str] = &[
+    "TF401320",
+    "TF401326",
+    "TF51535",
+    "not in the list of supported values",
+];
 
 /// One JSON Patch operation setting a field. Azure DevOps takes `add` for a
 /// field that is already set as well as for one that is not.
