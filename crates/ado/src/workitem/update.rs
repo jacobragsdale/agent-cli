@@ -103,18 +103,16 @@ fn item_type(ctx: &Ctx, ado: &Ado, id: i64) -> Result<String> {
 }
 
 /// The backlog move `--above` or `--below` asks for: a `ReorderOperation`
-/// naming the other item as the next one or the previous one.
+/// naming the other item as the next one or the previous one. The other
+/// side is left out: `previousId: 0` means the top of the backlog, not
+/// "whatever is above it".
 // ponytail: parentId 0 ranks it among the whole backlog; an item shown
 // nested under its parent may need that parent's id here.
 fn rank(ado: &Ado, id: i64, above: Option<&str>, below: Option<&str>) -> Result<Option<Value>> {
     let other = |raw| ado.id(Kind::WorkItem, raw);
     Ok(match (above, below) {
-        (Some(above), _) => {
-            Some(json!({"ids": [id], "parentId": 0, "previousId": 0, "nextId": other(above)?}))
-        }
-        (_, Some(below)) => {
-            Some(json!({"ids": [id], "parentId": 0, "previousId": other(below)?, "nextId": 0}))
-        }
+        (Some(above), _) => Some(json!({"ids": [id], "parentId": 0, "nextId": other(above)?})),
+        (_, Some(below)) => Some(json!({"ids": [id], "parentId": 0, "previousId": other(below)?})),
         _ => None,
     })
 }
@@ -241,7 +239,7 @@ mod tests {
         assert_eq!(plans[0]["url"], order);
         assert_eq!(
             plans[0]["body"],
-            json!({"ids": [42], "parentId": 0, "previousId": 0, "nextId": 7})
+            json!({"ids": [42], "parentId": 0, "nextId": 7})
         );
 
         let (outcome, transport) = ado(
@@ -263,7 +261,7 @@ mod tests {
         assert_eq!(sent[1].url, order);
         assert_eq!(
             sent[1].body.as_ref().unwrap(),
-            &json!({"ids": [42], "parentId": 0, "previousId": 7, "nextId": 0})
+            &json!({"ids": [42], "parentId": 0, "previousId": 7})
         );
 
         let (outcome, transport) = ado(

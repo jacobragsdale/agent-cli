@@ -37,7 +37,7 @@ pub struct ListArgs {
     /// Bug, "User Story", Task … (repeatable)
     #[arg(long = "type", value_delimiter = ',')]
     work_item_type: Vec<String>,
-    /// Iteration path, or @current, @next or @previous for the team's sprint
+    /// Iteration path or sprint name, or @current, @next or @previous for the team's sprint
     #[arg(long)]
     iteration: Option<String>,
     /// Area path (children included)
@@ -168,14 +168,7 @@ fn iteration_condition(
         return Ok((None, None));
     };
     if !iteration.eq_ignore_ascii_case("@current") {
-        let path = if ["@next", "@previous"]
-            .iter()
-            .any(|m| m.eq_ignore_ascii_case(iteration))
-        {
-            crate::iteration::resolve(ctx, ado, team, iteration)?.path
-        } else {
-            iteration.to_owned()
-        };
+        let path = crate::iteration::path(ctx, ado, team, iteration)?;
         return Ok((
             Some(format!("[System.IterationPath] UNDER {}", quoted(&path))),
             None,
@@ -387,6 +380,16 @@ mod tests {
             {"id": "i-13", "name": "Sprint 13", "path": "Fabrikam\\Sprint 13",
                 "attributes": {"timeFrame": "future"}}
         ]}));
+        let (outcome, named) = ado(
+            &["ado", "workitem", "list", "--iteration", "sprint 12"],
+            vec![sprints.clone(), wiql(&[])],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let query = query_of(&named, 1);
+        assert!(
+            query.contains("[System.IterationPath] UNDER 'Fabrikam\\Sprint 12'"),
+            "{query}"
+        );
         let (outcome, transport) = ado(
             &["ado", "workitem", "list", "--iteration", "@next"],
             vec![sprints, wiql(&[])],

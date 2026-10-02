@@ -19,6 +19,14 @@ fn relation_create(ctx: &Ctx, args: RelationCreateArgs) -> Result<Linked> {
     let ado = Ado::load(ctx)?;
     let (id, item, rev) = read(ctx, &ado, &args.id)?;
     let (kind, rel, other) = args.kind.pick();
+    // Azure DevOps answers this with a 500.
+    if other == id {
+        return Err(
+            Failure::usage(format!("work item {id} cannot be linked to itself"))
+                .hint(format!("agent-cli ado relation create {id} --{kind} OTHER"))
+                .into(),
+        );
+    }
     let linked = |already| Linked {
         work_item: id,
         link: kind,
@@ -148,6 +156,14 @@ mod tests {
             "{}",
             outcome.stderr
         );
+        assert_eq!(transport.sent().len(), 1);
+
+        let (outcome, transport) = ado(
+            &["ado", "relation", "create", "42", "--related", "42"],
+            vec![Answer::json(&linked_item())],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(outcome.stderr.contains("cannot be linked to itself"));
         assert_eq!(transport.sent().len(), 1);
     }
 

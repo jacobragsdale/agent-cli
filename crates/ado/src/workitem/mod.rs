@@ -31,7 +31,7 @@ struct Fields {
     /// Name, email or @me ("" unassigns)
     #[arg(long)]
     assignee: Option<String>,
-    /// Full iteration path, or @current, @next or @previous for the team's sprint
+    /// Iteration path or sprint name, or @current, @next or @previous for the team's sprint
     #[arg(long)]
     iteration: Option<String>,
     /// Full area path
@@ -143,12 +143,8 @@ fn field_ops(
             set("System.AssignedTo", who)
         });
     }
-    if let Some(iteration) = fields.iteration.as_deref().map(str::trim) {
-        let path = if iteration.starts_with('@') {
-            crate::iteration::resolve(ctx, ado, fields.team.as_deref(), iteration)?.path
-        } else {
-            iteration.to_owned()
-        };
+    if let Some(iteration) = &fields.iteration {
+        let path = crate::iteration::path(ctx, ado, fields.team.as_deref(), iteration)?;
         ops.push(set("System.IterationPath", path));
     }
     if let Some(area) = &fields.area {

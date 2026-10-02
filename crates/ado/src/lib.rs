@@ -3,6 +3,7 @@
 //! every read asks Azure DevOps (WIQL and REST), so an answer is never older
 //! than the command.
 
+mod activity;
 mod approval;
 mod attachment;
 mod backlog;
@@ -65,6 +66,7 @@ pub const DOMAIN: Domain = Domain {
         backlog::list::BACKLOG_LIST,
         team::list::TEAM_LIST,
         person::list::PERSON_LIST,
+        activity::list::ACTIVITY_LIST,
         repo::list::REPO_LIST,
         repo::get::REPO_GET,
         diff::get::DIFF_GET,
@@ -153,7 +155,7 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 56);
+        assert_eq!(DOMAIN.commands.len(), 57);
     }
 
     #[test]

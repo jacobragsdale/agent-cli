@@ -119,6 +119,17 @@ pub(crate) fn resolve(ctx: &Ctx, ado: &Ado, team: Option<&str>, raw: &str) -> Re
     })
 }
 
+/// The iteration path `--iteration` means: a full path as given (any node,
+/// not only the team's sprints), else the team's sprint by macro or by name,
+/// which Azure DevOps would refuse as a path.
+pub(crate) fn path(ctx: &Ctx, ado: &Ado, team: Option<&str>, raw: &str) -> Result<String> {
+    let raw = raw.trim();
+    if raw.starts_with('@') || !(raw.contains('\\') || raw.eq_ignore_ascii_case(&ado.project)) {
+        return Ok(resolve(ctx, ado, team, raw)?.path);
+    }
+    Ok(raw.to_owned())
+}
+
 #[cfg(test)]
 mod tests {
     use agent_cli_core::testing::{Answer, FakeTransport, ctx};

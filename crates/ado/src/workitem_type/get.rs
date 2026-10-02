@@ -71,7 +71,7 @@ mod tests {
     use crate::testing::{CODE, ado, page, urls};
 
     #[test]
-    fn a_type_shows_its_states_moves_and_fields_with_their_data_types() {
+    fn a_type_shows_its_states_moves_and_fields_and_requires_only_what_nothing_fills() {
         let (outcome, transport) = ado(
             &["ado", "workitem-type", "get", "bug"],
             vec![
@@ -89,10 +89,12 @@ mod tests {
                 page(vec![
                     json!({"name": "Title", "referenceName": "System.Title", "alwaysRequired": true,
                         "defaultValue": null, "allowedValues": []}),
+                    json!({"name": "Iteration ID", "referenceName": "System.IterationId",
+                        "alwaysRequired": true, "defaultValue": null, "allowedValues": []}),
                     json!({"name": "Priority", "referenceName": "Microsoft.VSTS.Common.Priority",
                         "alwaysRequired": false, "defaultValue": 2, "allowedValues": [1, 2, 3, 4]}),
                     json!({"name": "Severity", "referenceName": "Microsoft.VSTS.Common.Severity",
-                        "alwaysRequired": false, "defaultValue": "3 - Medium",
+                        "alwaysRequired": true, "defaultValue": "3 - Medium",
                         "allowedValues": ["1 - Critical", "3 - Medium"]}),
                 ]),
                 page(vec![
@@ -115,6 +117,7 @@ mod tests {
                 "transitions": {"Active": ["Closed", "New"], "New": ["Active"]},
                 "fields": [
                     {"name": "Title", "ref": "System.Title", "type": "string", "required": true},
+                    {"name": "Iteration ID", "ref": "System.IterationId", "required": false},
                     {"name": "Priority", "ref": "Microsoft.VSTS.Common.Priority", "type": "integer",
                         "required": false, "allowed_values": ["1", "2", "3", "4"], "default": "2"},
                     {"name": "Severity", "ref": "Microsoft.VSTS.Common.Severity", "required": false,

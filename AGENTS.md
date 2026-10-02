@@ -151,4 +151,6 @@ reference (`UPDATE_DOCS=1 cargo test -p agent-cli reference` rewrites it)
 and the docs' command lines. The `fixtures` feature (never in a release)
 replays `fixtures/world`; `eval "$(scripts/trial-env.sh)"` sets up a shell
 for it. The sql database tests need `scripts/db-up.sh` and
-`AGENT_CLI_TEST_DBS=1`.
+`AGENT_CLI_TEST_DBS=1`. The live ado suite (`crates/cli/tests/live_ado.rs`)
+needs `AGENT_CLI_TEST_ADO=1` and a sandbox project seeded by
+`scripts/ado-sandbox.py`; `AGENT_CLI_TEST_ADO_CONFIG` adds a second one.

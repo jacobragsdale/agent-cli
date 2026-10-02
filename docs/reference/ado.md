@@ -1,4 +1,4 @@
-# ado — Azure DevOps (56 commands)
+# ado — Azure DevOps (57 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -25,6 +25,7 @@
 | [`ado backlog list`](#ado-backlog-list) | read | List a team's ranked backlog (stories, features or epics) with points |
 | [`ado team list`](#ado-team-list) | read | List the project's teams (for [ado] team, which @current needs) |
 | [`ado person list`](#ado-person-list) | read | List a team's members with the address --assignee and @mentions take |
+| [`ado activity list`](#ado-activity-list) | read | List what someone did: work items changed, comments, PRs, votes, commits, runs |
 | [`ado repo list`](#ado-repo-list) | read | List the project's Git repositories |
 | [`ado repo get`](#ado-repo-get) | read | Show a repository: its URLs, default branch and branches |
 | [`ado diff get`](#ado-diff-get) | read | Show what changed in a pull request or between two refs, as hunks per file |
@@ -66,7 +67,7 @@ agent-cli ado workitem list — List work items matching filters (live WIQL)
   --assignee str          Name, email or @me
   --state str[]           Active, "In Progress" … (repeatable)
   --type str[]            Bug, "User Story", Task … (repeatable)
-  --iteration str         Iteration path, or @current, @next or @previous for the team's sprint
+  --iteration str         Iteration path or sprint name, or @current, @next or @previous for the team's sprint
   --area str              Area path (children included)
   --tag str[]             A tag it carries (repeatable)
   --priority int[]        1 (highest) to 4 (repeatable)
@@ -106,7 +107,7 @@ agent-cli ado workitem create — Create a work item (bug, task, story …), opt
   --parent int                  The work item it goes under
   --state str                   Active, Closed …
   --assignee str                Name, email or @me ("" unassigns)
-  --iteration str               Full iteration path, or @current, @next or @previous for the team's sprint
+  --iteration str               Iteration path or sprint name, or @current, @next or @previous for the team's sprint
   --area str                    Full area path
   --priority int                1 (highest) to 4
   --tags str                    Comma-separated; replaces the tags it has
@@ -129,7 +130,7 @@ agent-cli ado workitem update — Change a work item's state, assignee, fields o
   --title str                   A new title
   --state str                   Active, Closed …
   --assignee str                Name, email or @me ("" unassigns)
-  --iteration str               Full iteration path, or @current, @next or @previous for the team's sprint
+  --iteration str               Iteration path or sprint name, or @current, @next or @previous for the team's sprint
   --area str                    Full area path
   --priority int                1 (highest) to 4
   --tags str                    Comma-separated; replaces the tags it has
@@ -369,6 +370,19 @@ agent-cli ado person list — List a team's members with the address --assignee 
 Returns: [{id,name,team}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado person list --text sam --fields id,name
+```
+
+### ado activity list
+
+```text
+agent-cli ado activity list — List what someone did: work items changed, comments, PRs, votes, commits, runs
+  --person str  Whose activity: name, email or @me (default @me)
+  --since time  Only what happened after this (default 1d)
+  --limit int   Most rows to return (default 50)
+A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
+Returns: [{at,kind,action,id,title}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado activity list --person @me --since 1d --fields at,kind,action,id,title
 ```
 
 ### ado repo list

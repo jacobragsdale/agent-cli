@@ -94,13 +94,13 @@ pub struct FieldChange {
 }
 
 /// `fields[name].newValue` of one update.
-fn new_value<'a>(update: &'a Value, name: &str) -> &'a Value {
+pub(crate) fn new_value<'a>(update: &'a Value, name: &str) -> &'a Value {
     &update["fields"][name]["newValue"]
 }
 
 /// `WEF_{board}_Kanban.Column` and its kin are a board's private copy of
 /// System.BoardColumn.
-fn noise(reference: &str) -> bool {
+pub(crate) fn noise(reference: &str) -> bool {
     NOISE.contains(&reference)
         || reference.starts_with("WEF_")
         || (reference.starts_with("System.")
@@ -143,9 +143,8 @@ fn hours(since: When, until: When) -> f64 {
     (seconds as f64 / 360.0).round() / 10.0
 }
 
-fn history_get(ctx: &Ctx, args: HistoryGetArgs) -> Result<History> {
-    let ado = Ado::load(ctx)?;
-    let id = ado.id(Kind::WorkItem, &args.id)?;
+/// Every update to work item `id`, oldest first, page by page.
+pub(crate) fn updates(ctx: &Ctx, ado: &Ado, id: i64) -> Result<Vec<Value>> {
     let mut updates = Vec::new();
     loop {
         let url = ado.work(
@@ -156,9 +155,15 @@ fn history_get(ctx: &Ctx, args: HistoryGetArgs) -> Result<History> {
         let page = list(&page["value"]);
         updates.extend_from_slice(page);
         if page.len() < PAGE {
-            break;
+            return Ok(updates);
         }
     }
+}
+
+fn history_get(ctx: &Ctx, args: HistoryGetArgs) -> Result<History> {
+    let ado = Ado::load(ctx)?;
+    let id = ado.id(Kind::WorkItem, &args.id)?;
+    let updates = updates(ctx, &ado, id)?;
     let latest = |name: &str| updates.iter().rev().find_map(|u| text(new_value(u, name)));
     let kind = latest("System.WorkItemType");
     let fields = match &kind {
