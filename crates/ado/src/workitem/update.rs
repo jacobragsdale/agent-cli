@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 use crate::client::{Ado, Kind};
 use crate::work_items::{WorkItemRow, moved_on, row};
 
-use super::{Fields, field_ops};
+use super::{Comment, Fields, broke_rules, field_ops};
 
 #[derive(clap::Args)]
 pub struct UpdateArgs {
@@ -16,6 +16,8 @@ pub struct UpdateArgs {
     title: Option<String>,
     #[command(flatten)]
     fields: Fields,
+    #[command(flatten)]
+    comment: Comment,
     /// Refuse unless it is still at this rev (from workitem get)
     #[arg(long)]
     if_rev: Option<i64>,
@@ -24,11 +26,19 @@ pub struct UpdateArgs {
 fn workitem_update(ctx: &Ctx, args: UpdateArgs) -> Result<WorkItemRow> {
     let ado = Ado::load(ctx)?;
     let id = ado.id(Kind::WorkItem, &args.id)?;
-    let changes = field_ops(ctx, &ado, args.title.as_deref(), &args.fields)?;
+    let kind = || item_type(ctx, &ado, id);
+    let changes = field_ops(
+        ctx,
+        &ado,
+        args.title.as_deref(),
+        &args.fields,
+        Some(&args.comment),
+        &kind,
+    )?;
     if changes.is_empty() {
         return Err(Failure::usage("nothing to change")
             .hint(format!(
-                "pass at least one of --state --assignee --title --iteration --area --priority --tags --description --acceptance-criteria, e.g. agent-cli ado workitem update {id} --state Active"
+                "pass at least one of --state --assignee --title --iteration --area --priority --tags --description --acceptance-criteria --field --comment, e.g. agent-cli ado workitem update {id} --state Active"
             ))
             .into());
     }
@@ -42,15 +52,29 @@ fn workitem_update(ctx: &Ctx, args: UpdateArgs) -> Result<WorkItemRow> {
     let url = ado.api(None, &format!("wit/workitems/{id}"), "", crate::client::API);
     let updated = ado
         .patch_work_item(ctx, Method::Patch, &url, document)
-        .map_err(|error| moved_on(error, id))?;
+        .map_err(|error| moved_on(error, id))
+        .map_err(|error| broke_rules(error, || kind().unwrap_or_else(|_| "TYPE".to_owned())))?;
     Ok(row(&updated))
+}
+
+/// The work item's type, whose fields `--field` names.
+fn item_type(ctx: &Ctx, ado: &Ado, id: i64) -> Result<String> {
+    let url = ado.api(
+        None,
+        &format!("wit/workitems/{id}"),
+        "fields=System.WorkItemType",
+        crate::client::API,
+    );
+    let item = ado.get(ctx, &url)?;
+    crate::client::text(&item["fields"]["System.WorkItemType"])
+        .ok_or_else(|| anyhow::anyhow!("work item {id} came back without its type"))
 }
 
 command! {
     pub WORKITEM_UPDATE = ["ado", "workitem", "update"], Write,
-    "Change a work item's state, assignee, title, iteration, tags or description",
-    keywords: ["edit", "move", "reassign", "close", "resolve", "reopen", "set", "rev", "markdown"],
-    example: "ado workitem update 42 --state Active --assignee @me --if-rev 7",
+    "Change a work item's state, assignee, fields or description, with a comment",
+    keywords: ["edit", "move", "reassign", "take", "close", "resolve", "reopen", "set", "custom", "field", "points", "rev", "markdown"],
+    example: "ado workitem update 42 --assignee @me --comment 'Taking this, @<Sam Lee>' --if-rev 7",
     run: workitem_update,
 }
 
@@ -124,14 +148,24 @@ mod tests {
 
         let (outcome, _) = ado(
             &["ado", "workitem", "update", "42", "--state", "Nope"],
-            vec![Answer::status(
-                400,
-                r#"{"message":"TF401320: Rule error for field State."}"#,
-            )],
+            vec![
+                Answer::status(
+                    400,
+                    r#"{"message":"TF401326: Invalid field status 'InvalidListValue' for field 'System.State'."}"#,
+                ),
+                Answer::json(&json!({"id": 42, "fields": {"System.WorkItemType": "User Story"}})),
+            ],
         );
-        assert_eq!(
-            outcome.code, 2,
-            "any other refusal keeps its code: {outcome:?}"
+        assert_eq!(outcome.code, 2, "a broken rule keeps its code: {outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("answered 400: TF401326: Invalid field status")
+                && outcome
+                    .stderr
+                    .contains("hint: agent-cli ado workitem-type get \"User Story\""),
+            "{}",
+            outcome.stderr
         );
 
         let (outcome, transport) = ado(&["ado", "workitem", "update", "42"], vec![]);

@@ -5,7 +5,7 @@
 | [`ado workitem list`](#ado-workitem-list) | read | List work items matching filters (live WIQL) |
 | [`ado workitem get`](#ado-workitem-get) | read | Show a work item: fields, description as Markdown, links, latest comments |
 | [`ado workitem create`](#ado-workitem-create) | write | Create a work item (bug, task, story …), optionally under a parent |
-| [`ado workitem update`](#ado-workitem-update) | write | Change a work item's state, assignee, title, iteration, tags or description |
+| [`ado workitem update`](#ado-workitem-update) | write | Change a work item's state, assignee, fields or description, with a comment |
 | [`ado workitem comment`](#ado-workitem-comment) | write | Add a comment to a work item (Markdown, - for stdin, or --text-file) |
 | [`ado workitem link`](#ado-workitem-link) | write | Link a work item to a branch, creating the branch when missing |
 | [`ado workitem-type list`](#ado-workitem-type-list) | read | List the project's work item types (Bug, User Story, Task …) and their states |
@@ -98,15 +98,16 @@ agent-cli ado workitem create — Create a work item (bug, task, story …), opt
   --description-file path       The description from a Markdown file
   --acceptance-criteria str     Markdown, stored as HTML; - reads stdin
   --acceptance-criteria-file path  The acceptance criteria from a Markdown file
+  --field str[]                 Any other field by reference or display name, repeatable; NAME= clears it
 Returns: {id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
-e.g. agent-cli ado workitem create --type Bug --title 'Login fails on Safari' --priority 2
+e.g. agent-cli ado workitem create --type 'User Story' --title 'Pay by card' --field 'Story Points=3'
 ```
 
 ### ado workitem update
 
 ```text
-agent-cli ado workitem update — Change a work item's state, assignee, title, iteration, tags or description
+agent-cli ado workitem update — Change a work item's state, assignee, fields or description, with a comment
  *<id> str                      The work item's id: 1207, #1207, AB#1207 or its web URL
   --title str                   A new title
   --state str                   Active, Closed …
@@ -119,10 +120,13 @@ agent-cli ado workitem update — Change a work item's state, assignee, title, i
   --description-file path       The description from a Markdown file
   --acceptance-criteria str     Markdown, stored as HTML; - reads stdin
   --acceptance-criteria-file path  The acceptance criteria from a Markdown file
+  --field str[]                 Any other field by reference or display name, repeatable; NAME= clears it
+  --comment str                 Markdown, sent with the change; @<Name> mentions; - reads stdin
+  --comment-file path           The comment from a Markdown file
   --if-rev int                  Refuse unless it is still at this rev (from workitem get)
 Returns: {id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
-e.g. agent-cli ado workitem update 42 --state Active --assignee @me --if-rev 7
+e.g. agent-cli ado workitem update 42 --assignee @me --comment 'Taking this, @<Sam Lee>' --if-rev 7
 ```
 
 ### ado workitem comment

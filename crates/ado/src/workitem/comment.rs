@@ -7,7 +7,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use crate::client::{Ado, COMMENTS_API, Kind, stamp};
-use crate::markdown::CommentBody;
+use crate::compose::{CommentBody, rich_text};
 
 #[derive(clap::Args)]
 pub struct CommentArgs {
@@ -39,12 +39,13 @@ fn workitem_comment(ctx: &Ctx, args: CommentArgs) -> Result<CommentPosted> {
         "",
         COMMENTS_API,
     );
+    let html = rich_text(ctx, &ado, &body.markdown())?;
     let posted = ado.change(
         ctx,
         Effect::Write,
         Method::Post,
         &url,
-        json!({"text": body.html()}),
+        json!({"text": html}),
     )?;
     Ok(CommentPosted {
         work_item: id,
@@ -66,7 +67,7 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{BASE, ado, ado_piped, dry_run};
+    use crate::testing::{BASE, ado, ado_piped, dry_run, page, person};
 
     #[test]
     fn comment_posts_markdown_as_html_to_the_preview_endpoint() {
@@ -157,5 +158,45 @@ mod tests {
         }
         let (outcome, _) = ado(&["ado", "workitem", "comment", "42"], vec![]);
         assert_eq!(outcome.code, 2, "text or --text-file: {outcome:?}");
+    }
+
+    #[test]
+    fn mentions_become_anchors_that_notify_and_an_unknown_one_sends_nothing() {
+        let sam = || person("u-2", "Sam Lee", "sam@contoso.com");
+        let plans = dry_run(
+            &[
+                "ado",
+                "workitem",
+                "comment",
+                "42",
+                "cc @<Sam Lee> and @sam@contoso.com, not jane@contoso.com or `@<x>`",
+            ],
+            vec![sam(), sam()],
+        );
+        let anchor = r##"<a href="#" data-vss-mention="version:2.0,u-2">@Sam Lee</a>"##;
+        assert_eq!(
+            plans[0]["body"]["text"],
+            format!(
+                "<p>cc {anchor} and {anchor}, not jane@contoso.com or <code>@&lt;x&gt;</code></p>"
+            )
+        );
+
+        let (outcome, transport) = ado(
+            &["ado", "workitem", "comment", "42", "ask @<Nobody>"],
+            vec![page(vec![])],
+        );
+        assert_eq!(outcome.code, 4, "{outcome:?}");
+        assert!(outcome.stderr.contains("agent-cli ado person list"));
+        assert!(transport.sent().iter().all(|sent| sent.method.is_read()));
+
+        let (outcome, transport) = ado(
+            &["ado", "workitem", "comment", "42", "ask @<Sam>"],
+            vec![page(vec![
+                json!({"id": "u-2", "providerDisplayName": "Sam Lee", "properties": {}}),
+                json!({"id": "u-3", "providerDisplayName": "Sam Leeds", "properties": {}}),
+            ])],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(transport.sent().iter().all(|sent| sent.method.is_read()));
     }
 }

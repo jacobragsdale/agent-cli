@@ -7,8 +7,8 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use crate::client::{Ado, Kind, text};
+use crate::compose::{CommentBody, with_mentions};
 use crate::ids::FileId;
-use crate::markdown::CommentBody;
 
 use super::{fetch_pr, pr_home};
 
@@ -44,7 +44,7 @@ fn pr_comment(ctx: &Ctx, args: PrCommentArgs) -> Result<PrCommented> {
         "",
     );
     let mut thread = json!({
-        "comments": [{"parentCommentId": 0, "content": body.markdown(), "commentType": "text"}],
+        "comments": [{"parentCommentId": 0, "content": with_mentions(ctx, &ado, &body.markdown())?, "commentType": "text"}],
         "status": "active",
     });
     if let Some(at) = &args.at {

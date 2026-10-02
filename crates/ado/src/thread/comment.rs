@@ -7,7 +7,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use crate::client::{Ado, text};
-use crate::markdown::CommentBody;
+use crate::compose::{CommentBody, with_mentions};
 
 use super::locate;
 
@@ -42,7 +42,8 @@ fn thread_comment(ctx: &Ctx, args: ThreadCommentArgs) -> Result<ThreadReplied> {
     let ado = Ado::load(ctx)?;
     let (id, path) = locate(ctx, &ado, &args.id, args.pr.as_deref())?;
     // A reply goes under the thread's first comment, as the web UI posts it.
-    let reply = json!({"parentCommentId": 1, "content": body.markdown(), "commentType": "text"});
+    let content = with_mentions(ctx, &ado, &body.markdown())?;
+    let reply = json!({"parentCommentId": 1, "content": content, "commentType": "text"});
     let url = ado.code(&format!("{path}/comments"), "");
     let comment = ado.change(ctx, Effect::Write, Method::Post, &url, reply)?;
     let mut status = None;
@@ -77,7 +78,7 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{CODE, ado, dry_run, pr, urls};
+    use crate::testing::{CODE, ado, dry_run, person, pr, urls};
 
     #[test]
     fn a_reply_goes_under_the_first_comment_and_resolve_marks_it_fixed() {
@@ -132,5 +133,17 @@ mod tests {
         let (outcome, transport) = ado(&["ado", "thread", "comment", "7", "ok"], vec![]);
         assert_eq!(outcome.code, 2, "{outcome:?}");
         assert!(transport.sent().is_empty());
+    }
+
+    #[test]
+    fn a_mention_in_a_reply_is_written_as_the_markdown_editor_writes_it() {
+        let plans = dry_run(
+            &["ado", "thread", "comment", "17/7", "@<Sam Lee> capped it"],
+            vec![
+                Answer::json(&pr(17, false)),
+                person("u-2", "Sam Lee", "sam@contoso.com"),
+            ],
+        );
+        assert_eq!(plans[0]["body"]["content"], "@<u-2> capped it");
     }
 }

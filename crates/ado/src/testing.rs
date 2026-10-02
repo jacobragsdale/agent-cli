@@ -174,3 +174,33 @@ pub(crate) fn timeline() -> Answer {
         failed,
     ]}))
 }
+
+/// The identity search finding one person.
+pub(crate) fn person(id: &str, name: &str, email: &str) -> Answer {
+    Answer::json(
+        &json!({"count": 1, "value": [{"id": id, "providerDisplayName": name,
+        "properties": {"Mail": {"$value": email}, "Account": {"$value": email}}}]}),
+    )
+}
+
+/// What `types::fields` reads for a User Story: its fields, then the
+/// project's data types.
+pub(crate) fn story_fields() -> Vec<Answer> {
+    vec![
+        page(vec![
+            json!({"name": "Title", "referenceName": "System.Title", "alwaysRequired": true}),
+            json!({"name": "State", "referenceName": "System.State", "alwaysRequired": true}),
+            json!({"name": "Story Points", "referenceName": "Microsoft.VSTS.Scheduling.StoryPoints"}),
+            json!({"name": "Risk", "referenceName": "Microsoft.VSTS.Common.Risk",
+                "allowedValues": ["1 - High", "2 - Medium", "3 - Low"]}),
+            json!({"name": "Repro Steps", "referenceName": "Microsoft.VSTS.TCM.ReproSteps"}),
+        ]),
+        page(vec![
+            json!({"referenceName": "System.Title", "type": "string"}),
+            json!({"referenceName": "System.State", "type": "string"}),
+            json!({"referenceName": "Microsoft.VSTS.Scheduling.StoryPoints", "type": "double"}),
+            json!({"referenceName": "Microsoft.VSTS.Common.Risk", "type": "string"}),
+            json!({"referenceName": "Microsoft.VSTS.TCM.ReproSteps", "type": "html"}),
+        ]),
+    ]
+}
