@@ -1,4 +1,4 @@
-# ado — Azure DevOps (51 commands)
+# ado — Azure DevOps (56 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -12,6 +12,11 @@
 | [`ado relation delete`](#ado-relation-delete) | write | Unlink two work items: remove a parent, child, related or blocking link |
 | [`ado tree get`](#ado-tree-get) | read | Show a work item's hierarchy with progress rolled up: done, points, remaining |
 | [`ado history get`](#ado-history-get) | read | Show a work item's history: days spent in each state, who set which field |
+| [`ado attachment list`](#ado-attachment-list) | read | List a work item's attachments: the files (logs, screenshots) attached to it |
+| [`ado attachment get`](#ado-attachment-get) | read | Show a work item attachment's text, or save the file with --output |
+| [`ado attachment create`](#ado-attachment-create) | write | Attach a file (a log, a screenshot) to a work item |
+| [`ado query list`](#ado-query-list) | read | List saved work item queries in My Queries and Shared Queries |
+| [`ado query run`](#ado-query-run) | read | Run a saved work item query (shared or my query) and list the work items |
 | [`ado workitem-type list`](#ado-workitem-type-list) | read | List the project's work item types (Bug, User Story, Task …) and their states |
 | [`ado workitem-type get`](#ado-workitem-type-get) | read | Show a work item type's states, moves and fields (required, allowed values) |
 | [`ado sprint list`](#ado-sprint-list) | read | List a team's sprints (iterations) with their dates, oldest first |
@@ -222,6 +227,61 @@ A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
 Returns: {id,title,states[{state,by,since,until,hours}],changes[{rev,by,date,fields[{field,old,new}],comment}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado history get 42 --field state --fields states
+```
+
+### ado attachment list
+
+```text
+agent-cli ado attachment list — List a work item's attachments: the files (logs, screenshots) attached to it
+ *<id> str     The work item: 1207, #1207, AB#1207 or its web URL
+  --limit int  Most rows to return (default 50)
+Returns: [{id,name,size,date,comment}]
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado attachment list 1207 --fields id,name,size
+```
+
+### ado attachment get
+
+```text
+agent-cli ado attachment get — Show a work item attachment's text, or save the file with --output
+ *<attachment> str  The attachment: its id, as attachment list prints it, or its URL. Text up to 1 MiB prints; anything else needs --output FILE
+Returns: {id,name,size,text,saved}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado attachment get 098a279a-60b9-40a8-868b-b7fd00c0a439
+```
+
+### ado attachment create
+
+```text
+agent-cli ado attachment create — Attach a file (a log, a screenshot) to a work item
+ *<id> str       The work item: 1207, #1207, AB#1207 or its web URL
+ *--file str     The file to attach (60 MB at most)
+  --comment str  A note shown beside the attachment
+Returns: {id,name,size,date,comment}
+Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado attachment create 1207 --file crash.log --comment 'Log from the failed run'
+```
+
+### ado query list
+
+```text
+agent-cli ado query list — List saved work item queries in My Queries and Shared Queries
+  --text str   Only queries whose name or path holds this text (any case)
+  --limit int  Most rows to return (default 50)
+Returns: [{id,name,path,type,is_public}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado query list --text triage --fields id,path,type
+```
+
+### ado query run
+
+```text
+agent-cli ado query run — Run a saved work item query (shared or my query) and list the work items
+ *<query> str  The saved query: its id or path as query list prints them, a name no other query has, or its web URL
+  --limit int  Most rows to return (default 50)
+Returns: [{id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev,parent,linked_from}]
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado query run 'Shared Queries/Triage' --fields id,title,state,assignee
 ```
 
 ### ado workitem-type list

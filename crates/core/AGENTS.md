@@ -18,14 +18,15 @@ a definition for details rather than reading whole files.
 ## Ctx: every effect goes through it
 - `Ctx`: `read(op)`, `write(effect, op)` (where --dry-run, read-only and
   --yes are enforced), `note`, `env`, `section`, `config`, `cache`,
-  `deadline`, `remaining`, `long_text` (returns `LongText`). `Op`: what
-  read and write perform.
+  `deadline`, `remaining`, `long_text` (returns `LongText`), `save` (bytes
+  to `--output`; the row then prints). `Op`: what read and write perform.
 - `Globals`, `Setup`, `DEFAULT_TIMEOUT`: the run's surroundings.
 - `Config`; `pick`: the one rule for scope flags; `Cache`: keyed, with a TTL.
 
 ## HTTP and processes
 - `Request` (`get`, `query` = a POST that only reads, `.json`, `.form`,
-  `.header`, `.auth(Mint)`), `Response`, `Method`, `Body`, `Mint`.
+  `.bytes`, `.header`, `.auth(Mint)`), `Response` (`bytes` when not UTF-8,
+  `into_bytes`), `Method`, `Body`, `Mint`.
 - `Transport`, `Https`: the seam tests fake, and the real one.
 - `host_under(url, suffix)` before any token goes out; `percent_encode`,
   `form_encode`; `failure_message`: a refusal in the service's own words.

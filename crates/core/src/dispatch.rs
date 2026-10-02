@@ -170,14 +170,15 @@ fn dispatch(
     let result = (command.run)(&ctx, &matches);
     let plans = ctx.take_plans();
     let keep_tail = command.path[2] == "logs";
+    let printing = ctx.printing();
     let emitted = if plans.is_empty() {
         match result {
-            Ok(value) => output::emit(value, ctx.globals(), keep_tail, out, err, tty),
+            Ok(value) => output::emit(value, &printing, keep_tail, out, err, tty),
             // A failure with an answer (a wait that ended badly) prints it
             // as a success would, then exits with its own code.
             Err(error) => match data_of(&error) {
                 Some(data) => {
-                    output::emit(data, ctx.globals(), keep_tail, out, err, tty).and(Err(error))
+                    output::emit(data, &printing, keep_tail, out, err, tty).and(Err(error))
                 }
                 None => Err(error),
             },

@@ -4,6 +4,7 @@
 //! than the command.
 
 mod approval;
+mod attachment;
 mod backlog;
 mod client;
 mod code;
@@ -19,6 +20,7 @@ mod markdown;
 mod person;
 mod pipeline;
 mod pr;
+mod query;
 mod relation;
 mod repo;
 mod run;
@@ -50,6 +52,11 @@ pub const DOMAIN: Domain = Domain {
         relation::delete::RELATION_DELETE,
         tree::get::TREE_GET,
         history::get::HISTORY_GET,
+        attachment::list::ATTACHMENT_LIST,
+        attachment::get::ATTACHMENT_GET,
+        attachment::create::ATTACHMENT_CREATE,
+        query::list::QUERY_LIST,
+        query::run::QUERY_RUN,
         workitem_type::list::WORKITEM_TYPE_LIST,
         workitem_type::get::WORKITEM_TYPE_GET,
         sprint::list::SPRINT_LIST,
@@ -146,7 +153,7 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 51);
+        assert_eq!(DOMAIN.commands.len(), 56);
     }
 
     #[test]

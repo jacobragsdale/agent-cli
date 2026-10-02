@@ -24,6 +24,7 @@ mod replay;
 mod search;
 mod secret;
 pub mod testing;
+mod throttle;
 mod when;
 
 pub use anyhow;

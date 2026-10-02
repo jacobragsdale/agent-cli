@@ -431,6 +431,15 @@ pub(crate) fn query_param(query: &str, name: &str) -> Option<String> {
     })
 }
 
+/// `8-4-4-4-12` hex digits: a saved query's or an attachment's id.
+pub(crate) fn is_guid(raw: &str) -> bool {
+    let groups: Vec<&str> = raw.split('-').collect();
+    groups.iter().map(|group| group.len()).eq([8, 4, 4, 4, 12])
+        && groups
+            .iter()
+            .all(|group| group.chars().all(|c| c.is_ascii_hexdigit()))
+}
+
 /// Every `%XX` decoded.
 fn decode(raw: &str) -> String {
     let bytes = raw.as_bytes();
