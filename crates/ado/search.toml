@@ -604,3 +604,58 @@ expect = "ado tree get"
 [[query]]
 text = "breakdown of everything under epic 300"
 expect = "ado tree get"
+[[query]]
+text = "when does the next sprint start"
+expect = "ado sprint list"
+
+[[query]]
+text = "list our team's iterations with their dates"
+expect = "ado sprint list"
+
+[[query]]
+text = "how is the current sprint going"
+expect = "ado sprint get"
+
+[[query]]
+text = "who on the team is overloaded this sprint"
+expect = "ado sprint get"
+
+[[query]]
+text = "remaining capacity and story points done in the sprint"
+expect = "ado sprint get"
+
+[[query]]
+text = "roll over unfinished work to the next sprint"
+expect = "ado sprint complete"
+
+[[query]]
+text = "close out the sprint and carry incomplete items over"
+expect = "ado sprint complete"
+
+[[query]]
+text = "show the product backlog in priority order"
+expect = "ado backlog list"
+
+[[query]]
+text = "what are the top ranked stories on the backlog"
+expect = "ado backlog list"
+
+[[query]]
+text = "list the features backlog"
+expect = "ado backlog list"
+
+[[query]]
+text = "move story 1207 above 1180 in the backlog"
+expect = "ado workitem update"
+
+[[query]]
+text = "reorder the backlog so this bug ranks first"
+expect = "ado workitem update"
+
+[[query]]
+text = "work items where I was mentioned"
+expect = "ado workitem list"
+
+[[query]]
+text = "tickets I follow"
+expect = "ado workitem list"

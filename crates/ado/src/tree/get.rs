@@ -8,17 +8,9 @@ use serde_json::{Value, json};
 
 use crate::client::{Ado, Kind, list, text};
 use crate::types;
-use crate::work_items::{batch, person};
+use crate::work_items::{POINTS, person, points, read};
 
 const CHILD: &str = "System.LinkTypes.Hierarchy-Forward";
-
-/// Story points go by a different field in each process: Agile's Story
-/// Points, Scrum's Effort, CMMI's Size. Every organization has all three.
-const POINTS: [&str; 3] = [
-    "Microsoft.VSTS.Scheduling.StoryPoints",
-    "Microsoft.VSTS.Scheduling.Effort",
-    "Microsoft.VSTS.Scheduling.Size",
-];
 
 const REMAINING: &str = "Microsoft.VSTS.Scheduling.RemainingWork";
 
@@ -117,7 +109,7 @@ fn node(item: &Value) -> Node {
         title: text(&fields["System.Title"]),
         state: text(&fields["System.State"]),
         assignee: person(&fields["System.AssignedTo"]),
-        points: POINTS.iter().find_map(|field| fields[field].as_f64()),
+        points: points(item),
         remaining_work: fields[REMAINING].as_f64(),
         rollup: None,
         children: Vec::new(),
@@ -196,7 +188,7 @@ fn tree_get(ctx: &Ctx, args: TreeGetArgs) -> Result<Node> {
         children.entry(source).or_default().push(target);
         ids.push(target);
     }
-    let read = batch(ctx, &ado, &ids, &FIELDS)?;
+    let read = read(ctx, &ado, &ids, &FIELDS)?;
     let items: HashMap<i64, &Value> = read
         .iter()
         .filter_map(|item| Some((item["id"].as_i64()?, item)))

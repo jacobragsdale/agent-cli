@@ -31,7 +31,7 @@ struct Fields {
     /// Name, email or @me ("" unassigns)
     #[arg(long)]
     assignee: Option<String>,
-    /// Full iteration path
+    /// Full iteration path, or @current, @next or @previous for the team's sprint
     #[arg(long)]
     iteration: Option<String>,
     /// Full area path
@@ -58,6 +58,9 @@ struct Fields {
     /// Any other field by reference or display name, repeatable; NAME= clears it
     #[arg(long = "field", value_name = "NAME=VALUE")]
     field: Vec<String>,
+    /// The team whose sprints and backlog these are (default: [ado] team)
+    #[arg(long)]
+    team: Option<String>,
 }
 
 /// `update`'s comment, which goes in the same patch as its field changes:
@@ -140,8 +143,13 @@ fn field_ops(
             set("System.AssignedTo", who)
         });
     }
-    if let Some(iteration) = &fields.iteration {
-        ops.push(set("System.IterationPath", iteration.trim()));
+    if let Some(iteration) = fields.iteration.as_deref().map(str::trim) {
+        let path = if iteration.starts_with('@') {
+            crate::iteration::resolve(ctx, ado, fields.team.as_deref(), iteration)?.path
+        } else {
+            iteration.to_owned()
+        };
+        ops.push(set("System.IterationPath", path));
     }
     if let Some(area) = &fields.area {
         ops.push(set("System.AreaPath", area.trim()));
