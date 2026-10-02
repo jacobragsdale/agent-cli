@@ -5,7 +5,7 @@ Open work only. What is built is in the code, the crate cards and
 
 ## Live runs
 
-- [ ] Work through `docs/first-live-run.md`: no domain but sql has run against its real service
+- [ ] Work through `docs/first-live-run.md`: sql and ado have run against their real services (ado against a sandbox organization on 2026-10-02); the others have not
 - [ ] Then the one-line global CLAUDE.md note that agent-cli exists (the README gives the line)
 
 ## Phase 5: consolidate
@@ -29,6 +29,7 @@ Open work only. What is built is in the code, the crate cards and
 ## Built only when asked
 
 - [ ] `ado pr list --build succeeded|failed|running|none`: the PR search carries no build status, so it costs one policy-evaluations read per PR (what `pr get` does); cap it
+- [ ] The ceilings ado's work item commands left (each a `ponytail:` comment): `sprint get` counts Monday to Friday (read teamsettings' working days); `workitem update --above/--below` ranks with parentId 0 (a parent's id for an item nested under it); `person list` reads one page of 1,000 members a team; `attachment get` reads at most core's 32 MiB of an answer, ADO keeps 60 MB (stream to `--output`); `activity list` reads updates for at most 50 work items and commits from at most 20 repositories
 - [ ] `airflow run cancel`: one destructive `PATCH` of the run's state to failed
 - [ ] Live tests, off by default: `AGENT_CLI_TEST_AIRFLOW=1` with a `scripts/airflow-up.sh` running Airflow's pinned docker-compose (a smoke DAG that passes, fails and maps; one broken DAG file), and `AGENT_CLI_TEST_DATADOG=1` running every dd read with `--limit 1` against the sandbox in `docs/first-live-run.md`
 - [ ] Commands that run a whole chain (an `airflow task triage`: the error, its source lines, the upstream XCom and `repo_file` in one row), for a flow a trial shows still costs Haiku 15 or more calls with the notes in place

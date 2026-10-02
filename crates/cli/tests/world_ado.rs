@@ -566,3 +566,154 @@ fn the_run_a_create_queued_reads_back_succeeded() {
     assert_eq!(run.get("failed"), None, "{run}");
     assert_eq!(run["pr"]["id"], 431);
 }
+
+#[test]
+fn a_bug_and_a_story_show_their_states_moves_and_required_fields() {
+    let bug = ok(&[
+        "ado",
+        "workitem-type",
+        "get",
+        "Bug",
+        "--fields",
+        "states,transitions",
+    ]);
+    let states: Vec<&str> = bug["states"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|state| string(state, "name"))
+        .collect();
+    assert_eq!(states, ["New", "Active", "Resolved", "Closed"]);
+    assert_eq!(bug["transitions"]["Closed"], json!(["Active"]));
+    let story = ok(&["ado", "workitem-type", "get", "User Story"]);
+    let value_area = story["fields"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|field| field["name"] == "Value Area")
+        .unwrap_or_else(|| panic!("{story}"));
+    assert_eq!(
+        (&value_area["required"], &value_area["default"]),
+        (&json!(true), &json!("Business"))
+    );
+}
+
+#[test]
+fn a_teammate_is_found_by_name_with_the_address_assignee_takes() {
+    let found = ok(&["ado", "person", "list", "--text", "priya"]);
+    assert_eq!(
+        found,
+        json!([{"id": "priya@contoso.com", "name": "Priya Patel", "team": "Fabrikam Team"}])
+    );
+}
+
+#[test]
+fn the_sprint_list_has_sprint_42_current_between_41_and_43() {
+    let sprints = ok(&["ado", "sprint", "list", "--fields", "name,timeframe"]);
+    assert_eq!(
+        sprints,
+        json!([{"name": "Sprint 41", "timeframe": "past"},
+            {"name": "Sprint 42", "timeframe": "current"},
+            {"name": "Sprint 43", "timeframe": "future"}])
+    );
+}
+
+#[test]
+fn the_current_sprint_shows_jane_overloaded_and_its_note_lists_her_work() {
+    let walked = world::follow(&["ado", "sprint", "get"]);
+    let sprint = walked[0].json();
+    assert_eq!(sprint["name"], "Sprint 42");
+    assert_eq!(sprint["working_days_left"], 4);
+    let jane = &sprint["people"][0];
+    assert_eq!(
+        (
+            &jane["name"],
+            &jane["remaining_work"],
+            &jane["capacity_left"]
+        ),
+        (&json!("Jane Doe"), &json!(22.0), &json!(18.0)),
+        "{sprint}"
+    );
+    assert_eq!(walked.len(), 2, "{}", walked[0].stderr);
+    let work = walked[1].json();
+    let ids: Vec<&Value> = work
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|item| &item["id"])
+        .collect();
+    assert_eq!(ids, [&json!(1218), &json!(1215), &json!(1207)]);
+}
+
+#[test]
+fn the_stories_backlog_is_ranked_with_points() {
+    let backlog = ok(&["ado", "backlog", "list", "--fields", "rank,id,points"]);
+    assert_eq!(
+        backlog,
+        json!([{"rank": 1, "id": 1216, "points": 2.0}, {"rank": 2, "id": 1207, "points": 3.0},
+            {"rank": 3, "id": 1224, "points": 3.0}, {"rank": 4, "id": 1221, "points": 5.0}])
+    );
+}
+
+#[test]
+fn a_tasks_history_shows_its_reassignment_and_the_hours_it_sat_new() {
+    let history = ok(&["ado", "history", "get", "1215"]);
+    assert_eq!(history["states"][0]["state"], "New");
+    assert_eq!(history["states"][0]["hours"], 163.2);
+    assert_eq!(history["states"][1]["by"], "Jane Doe");
+    let handed = &history["changes"][1];
+    assert_eq!(
+        handed["fields"],
+        json!([{"field": "Assigned To", "old": "Sam Lee", "new": "Jane Doe"}])
+    );
+    assert_eq!(
+        handed["comment"],
+        "Handing this to @<Jane Doe>: you are in the retry code already."
+    );
+}
+
+#[test]
+fn an_epics_tree_rolls_up_its_stories_points_and_tasks_hours() {
+    let tree = ok(&["ado", "tree", "get", "1190"]);
+    assert_eq!(
+        tree["rollup"],
+        json!({"items": 6, "done": 1, "by_state": {"Active": 3, "Closed": 1, "Resolved": 2},
+            "points": 7.0, "points_done": 2.0, "remaining_work": 6.0, "percent_done": 29})
+    );
+    let stories: Vec<&Value> = tree["children"][0]["children"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|story| &story["id"])
+        .collect();
+    assert_eq!(stories, [&json!(1201), &json!(1207), &json!(1216)]);
+}
+
+#[test]
+fn the_triage_query_is_found_by_name_and_lists_the_new_bugs() {
+    let queries = ok(&["ado", "query", "list", "--fields", "path"]);
+    assert_eq!(
+        queries,
+        json!([{"path": "My Queries/Assigned to me"}, {"path": "Shared Queries/Triage"}])
+    );
+    let bugs = ok(&["ado", "query", "run", "Triage", "--fields", "id,priority"]);
+    assert_eq!(
+        bugs,
+        json!([{"id": 1218, "priority": 1}, {"id": 1222, "priority": 3}])
+    );
+}
+
+#[test]
+fn the_crash_loop_bug_is_blocked_by_the_task_that_resets_the_password() {
+    let bug = ok(&["ado", "workitem", "get", "1218", "--fields", "blocked_by"]);
+    assert_eq!(bug["blocked_by"], json!([1219]));
+    let task = ok(&[
+        "ado",
+        "workitem",
+        "get",
+        "1219",
+        "--fields",
+        "blocks,assignee",
+    ]);
+    assert_eq!(task, json!({"blocks": [1218], "assignee": "Priya Patel"}));
+}

@@ -2217,6 +2217,14 @@
    },
    "relations": [
     {
+     "rel": "System.LinkTypes.Hierarchy-Reverse",
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1195",
+     "attributes": {
+      "isLocked": false,
+      "name": "Parent"
+     }
+    },
+    {
      "rel": "System.LinkTypes.Hierarchy-Forward",
      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1210"
     },
@@ -2291,7 +2299,17 @@
     "Microsoft.VSTS.Common.Priority": 2,
     "System.Tags": "retry; orders",
     "System.ChangedDate": "2026-09-29T09:12:44.901Z"
-   }
+   },
+   "relations": [
+    {
+     "rel": "System.LinkTypes.Hierarchy-Reverse",
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1216",
+     "attributes": {
+      "isLocked": false,
+      "name": "Parent"
+     }
+    }
+   ]
   }
  },
  {
@@ -2314,7 +2332,17 @@
     "Microsoft.VSTS.Common.Priority": 1,
     "System.Tags": "prod; worker",
     "System.ChangedDate": "2026-09-29T11:40:03.550Z"
-   }
+   },
+   "relations": [
+    {
+     "rel": "System.LinkTypes.Dependency-Reverse",
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1219",
+     "attributes": {
+      "isLocked": false,
+      "name": "Predecessor"
+     }
+    }
+   ]
   }
  },
  {
@@ -5379,5 +5407,2454 @@
    "2026-09-29T09:12:58.0131184Z ##[section]Finishing: Build"
   ]
  }
-}
+},
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemtypes?api-version=7.1",
+  "note": "Fabrikam's process: Agile, with a Resolved state added to Task",
+  "answer": {
+   "count": 5,
+   "value": [
+    {
+     "name": "Bug",
+     "description": "Describes a divergence between required and actual behavior, and tracks the work done to correct the defect and verify the correction.",
+     "isDisabled": false,
+     "states": [
+      {
+       "name": "New",
+       "color": "b2b2b2",
+       "category": "Proposed"
+      },
+      {
+       "name": "Active",
+       "color": "007acc",
+       "category": "InProgress"
+      },
+      {
+       "name": "Resolved",
+       "color": "ff9d00",
+       "category": "Resolved"
+      },
+      {
+       "name": "Closed",
+       "color": "339933",
+       "category": "Completed"
+      }
+     ],
+     "url": "https://dev.azure.com/contoso/Fabrikam/_apis/wit/workItemTypes/Bug"
+    },
+    {
+     "name": "Epic",
+     "description": "Epics help teams effectively manage and groom their product backlog",
+     "isDisabled": false,
+     "states": [
+      {
+       "name": "New",
+       "color": "b2b2b2",
+       "category": "Proposed"
+      },
+      {
+       "name": "Active",
+       "color": "007acc",
+       "category": "InProgress"
+      },
+      {
+       "name": "Resolved",
+       "color": "ff9d00",
+       "category": "Resolved"
+      },
+      {
+       "name": "Closed",
+       "color": "339933",
+       "category": "Completed"
+      },
+      {
+       "name": "Removed",
+       "color": "ffffff",
+       "category": "Removed"
+      }
+     ],
+     "url": "https://dev.azure.com/contoso/Fabrikam/_apis/wit/workItemTypes/Epic"
+    },
+    {
+     "name": "Feature",
+     "description": "Tracks a feature that will be released with the product",
+     "isDisabled": false,
+     "states": [
+      {
+       "name": "New",
+       "color": "b2b2b2",
+       "category": "Proposed"
+      },
+      {
+       "name": "Active",
+       "color": "007acc",
+       "category": "InProgress"
+      },
+      {
+       "name": "Resolved",
+       "color": "ff9d00",
+       "category": "Resolved"
+      },
+      {
+       "name": "Closed",
+       "color": "339933",
+       "category": "Completed"
+      },
+      {
+       "name": "Removed",
+       "color": "ffffff",
+       "category": "Removed"
+      }
+     ],
+     "url": "https://dev.azure.com/contoso/Fabrikam/_apis/wit/workItemTypes/Feature"
+    },
+    {
+     "name": "Task",
+     "description": "Tracks work that needs to be done.",
+     "isDisabled": false,
+     "states": [
+      {
+       "name": "New",
+       "color": "b2b2b2",
+       "category": "Proposed"
+      },
+      {
+       "name": "Active",
+       "color": "007acc",
+       "category": "InProgress"
+      },
+      {
+       "name": "Resolved",
+       "color": "ff9d00",
+       "category": "Resolved"
+      },
+      {
+       "name": "Closed",
+       "color": "339933",
+       "category": "Completed"
+      },
+      {
+       "name": "Removed",
+       "color": "ffffff",
+       "category": "Removed"
+      }
+     ],
+     "url": "https://dev.azure.com/contoso/Fabrikam/_apis/wit/workItemTypes/Task"
+    },
+    {
+     "name": "User Story",
+     "description": "Tracks an activity the user will be able to perform with the product",
+     "isDisabled": false,
+     "states": [
+      {
+       "name": "New",
+       "color": "b2b2b2",
+       "category": "Proposed"
+      },
+      {
+       "name": "Active",
+       "color": "007acc",
+       "category": "InProgress"
+      },
+      {
+       "name": "Resolved",
+       "color": "ff9d00",
+       "category": "Resolved"
+      },
+      {
+       "name": "Closed",
+       "color": "339933",
+       "category": "Completed"
+      },
+      {
+       "name": "Removed",
+       "color": "ffffff",
+       "category": "Removed"
+      }
+     ],
+     "url": "https://dev.azure.com/contoso/Fabrikam/_apis/wit/workItemTypes/User%20Story"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemtypes/Bug?api-version=7.1",
+  "answer": {
+   "name": "Bug",
+   "referenceName": "Microsoft.VSTS.WorkItemTypes.Bug",
+   "description": "Describes a divergence between required and actual behavior, and tracks the work done to correct the defect and verify the correction.",
+   "color": "CC293D",
+   "isDisabled": false,
+   "states": [
+    {
+     "name": "New",
+     "color": "b2b2b2",
+     "category": "Proposed"
+    },
+    {
+     "name": "Active",
+     "color": "007acc",
+     "category": "InProgress"
+    },
+    {
+     "name": "Resolved",
+     "color": "ff9d00",
+     "category": "Resolved"
+    },
+    {
+     "name": "Closed",
+     "color": "339933",
+     "category": "Completed"
+    }
+   ],
+   "transitions": {
+    "": [
+     {
+      "to": "New",
+      "actions": null
+     }
+    ],
+    "New": [
+     {
+      "to": "New",
+      "actions": null
+     },
+     {
+      "to": "Active",
+      "actions": null
+     },
+     {
+      "to": "Resolved",
+      "actions": null
+     },
+     {
+      "to": "Closed",
+      "actions": null
+     }
+    ],
+    "Active": [
+     {
+      "to": "Active",
+      "actions": null
+     },
+     {
+      "to": "New",
+      "actions": null
+     },
+     {
+      "to": "Resolved",
+      "actions": null
+     },
+     {
+      "to": "Closed",
+      "actions": null
+     }
+    ],
+    "Resolved": [
+     {
+      "to": "Resolved",
+      "actions": null
+     },
+     {
+      "to": "Active",
+      "actions": null
+     },
+     {
+      "to": "Closed",
+      "actions": null
+     }
+    ],
+    "Closed": [
+     {
+      "to": "Closed",
+      "actions": null
+     },
+     {
+      "to": "Active",
+      "actions": null
+     }
+    ]
+   },
+   "url": "https://dev.azure.com/contoso/Fabrikam/_apis/wit/workItemTypes/Bug"
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemtypes/Bug/fields?$expand=allowedValues&api-version=7.1",
+  "answer": {
+   "count": 16,
+   "value": [
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.WorkItemType",
+     "name": "Work Item Type"
+    },
+    {
+     "alwaysRequired": true,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.Title",
+     "name": "Title"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": "New",
+     "allowedValues": [
+      "New",
+      "Active",
+      "Resolved",
+      "Closed"
+     ],
+     "referenceName": "System.State",
+     "name": "State"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.Reason",
+     "name": "Reason"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.AssignedTo",
+     "name": "Assigned To"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.IterationPath",
+     "name": "Iteration Path"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.AreaPath",
+     "name": "Area Path"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.Tags",
+     "name": "Tags"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.History",
+     "name": "History"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "Microsoft.VSTS.TCM.ReproSteps",
+     "name": "Repro Steps"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": 2,
+     "allowedValues": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "referenceName": "Microsoft.VSTS.Common.Priority",
+     "name": "Priority"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": "3 - Medium",
+     "allowedValues": [
+      "1 - Critical",
+      "2 - High",
+      "3 - Medium",
+      "4 - Low"
+     ],
+     "referenceName": "Microsoft.VSTS.Common.Severity",
+     "name": "Severity"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "Microsoft.VSTS.Scheduling.StoryPoints",
+     "name": "Story Points"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "Microsoft.VSTS.Scheduling.RemainingWork",
+     "name": "Remaining Work"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "Microsoft.VSTS.Common.ActivatedBy",
+     "name": "Activated By"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "Microsoft.VSTS.Common.ActivatedDate",
+     "name": "Activated Date"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemtypes/User%20Story?api-version=7.1",
+  "answer": {
+   "name": "User Story",
+   "referenceName": "Microsoft.VSTS.WorkItemTypes.UserStory",
+   "description": "Tracks an activity the user will be able to perform with the product",
+   "color": "009CCC",
+   "isDisabled": false,
+   "states": [
+    {
+     "name": "New",
+     "color": "b2b2b2",
+     "category": "Proposed"
+    },
+    {
+     "name": "Active",
+     "color": "007acc",
+     "category": "InProgress"
+    },
+    {
+     "name": "Resolved",
+     "color": "ff9d00",
+     "category": "Resolved"
+    },
+    {
+     "name": "Closed",
+     "color": "339933",
+     "category": "Completed"
+    },
+    {
+     "name": "Removed",
+     "color": "ffffff",
+     "category": "Removed"
+    }
+   ],
+   "transitions": {
+    "": [
+     {
+      "to": "New",
+      "actions": null
+     }
+    ],
+    "New": [
+     {
+      "to": "New",
+      "actions": null
+     },
+     {
+      "to": "Active",
+      "actions": null
+     },
+     {
+      "to": "Resolved",
+      "actions": null
+     },
+     {
+      "to": "Closed",
+      "actions": null
+     },
+     {
+      "to": "Removed",
+      "actions": null
+     }
+    ],
+    "Active": [
+     {
+      "to": "Active",
+      "actions": null
+     },
+     {
+      "to": "New",
+      "actions": null
+     },
+     {
+      "to": "Resolved",
+      "actions": null
+     },
+     {
+      "to": "Closed",
+      "actions": null
+     },
+     {
+      "to": "Removed",
+      "actions": null
+     }
+    ],
+    "Resolved": [
+     {
+      "to": "Resolved",
+      "actions": null
+     },
+     {
+      "to": "Active",
+      "actions": null
+     },
+     {
+      "to": "Closed",
+      "actions": null
+     },
+     {
+      "to": "Removed",
+      "actions": null
+     }
+    ],
+    "Closed": [
+     {
+      "to": "Closed",
+      "actions": null
+     },
+     {
+      "to": "Active",
+      "actions": null
+     },
+     {
+      "to": "Resolved",
+      "actions": null
+     }
+    ],
+    "Removed": [
+     {
+      "to": "Removed",
+      "actions": null
+     },
+     {
+      "to": "New",
+      "actions": null
+     }
+    ]
+   },
+   "url": "https://dev.azure.com/contoso/Fabrikam/_apis/wit/workItemTypes/User%20Story"
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemtypes/User%20Story/fields?$expand=allowedValues&api-version=7.1",
+  "answer": {
+   "count": 17,
+   "value": [
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.WorkItemType",
+     "name": "Work Item Type"
+    },
+    {
+     "alwaysRequired": true,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.Title",
+     "name": "Title"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": "New",
+     "allowedValues": [
+      "New",
+      "Active",
+      "Resolved",
+      "Closed",
+      "Removed"
+     ],
+     "referenceName": "System.State",
+     "name": "State"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.Reason",
+     "name": "Reason"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.AssignedTo",
+     "name": "Assigned To"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.IterationPath",
+     "name": "Iteration Path"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.AreaPath",
+     "name": "Area Path"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.Tags",
+     "name": "Tags"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.History",
+     "name": "History"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.Description",
+     "name": "Description"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "Microsoft.VSTS.Common.AcceptanceCriteria",
+     "name": "Acceptance Criteria"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": 2,
+     "allowedValues": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "referenceName": "Microsoft.VSTS.Common.Priority",
+     "name": "Priority"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [
+      "1 - High",
+      "2 - Medium",
+      "3 - Low"
+     ],
+     "referenceName": "Microsoft.VSTS.Common.Risk",
+     "name": "Risk"
+    },
+    {
+     "alwaysRequired": true,
+     "defaultValue": "Business",
+     "allowedValues": [
+      "Architectural",
+      "Business"
+     ],
+     "referenceName": "Microsoft.VSTS.Common.ValueArea",
+     "name": "Value Area"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "Microsoft.VSTS.Scheduling.StoryPoints",
+     "name": "Story Points"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "Microsoft.VSTS.Common.ActivatedBy",
+     "name": "Activated By"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "Microsoft.VSTS.Common.ActivatedDate",
+     "name": "Activated Date"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemtypes/Bug/states?api-version=7.1",
+  "answer": {
+   "count": 4,
+   "value": [
+    {
+     "name": "New",
+     "color": "b2b2b2",
+     "category": "Proposed"
+    },
+    {
+     "name": "Active",
+     "color": "007acc",
+     "category": "InProgress"
+    },
+    {
+     "name": "Resolved",
+     "color": "ff9d00",
+     "category": "Resolved"
+    },
+    {
+     "name": "Closed",
+     "color": "339933",
+     "category": "Completed"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemtypes/User%20Story/states?api-version=7.1",
+  "answer": {
+   "count": 5,
+   "value": [
+    {
+     "name": "New",
+     "color": "b2b2b2",
+     "category": "Proposed"
+    },
+    {
+     "name": "Active",
+     "color": "007acc",
+     "category": "InProgress"
+    },
+    {
+     "name": "Resolved",
+     "color": "ff9d00",
+     "category": "Resolved"
+    },
+    {
+     "name": "Closed",
+     "color": "339933",
+     "category": "Completed"
+    },
+    {
+     "name": "Removed",
+     "color": "ffffff",
+     "category": "Removed"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemtypes/Task/states?api-version=7.1",
+  "answer": {
+   "count": 5,
+   "value": [
+    {
+     "name": "New",
+     "color": "b2b2b2",
+     "category": "Proposed"
+    },
+    {
+     "name": "Active",
+     "color": "007acc",
+     "category": "InProgress"
+    },
+    {
+     "name": "Resolved",
+     "color": "ff9d00",
+     "category": "Resolved"
+    },
+    {
+     "name": "Closed",
+     "color": "339933",
+     "category": "Completed"
+    },
+    {
+     "name": "Removed",
+     "color": "ffffff",
+     "category": "Removed"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemtypes/Epic/states?api-version=7.1",
+  "answer": {
+   "count": 5,
+   "value": [
+    {
+     "name": "New",
+     "color": "b2b2b2",
+     "category": "Proposed"
+    },
+    {
+     "name": "Active",
+     "color": "007acc",
+     "category": "InProgress"
+    },
+    {
+     "name": "Resolved",
+     "color": "ff9d00",
+     "category": "Resolved"
+    },
+    {
+     "name": "Closed",
+     "color": "339933",
+     "category": "Completed"
+    },
+    {
+     "name": "Removed",
+     "color": "ffffff",
+     "category": "Removed"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemtypes/Feature/states?api-version=7.1",
+  "answer": {
+   "count": 5,
+   "value": [
+    {
+     "name": "New",
+     "color": "b2b2b2",
+     "category": "Proposed"
+    },
+    {
+     "name": "Active",
+     "color": "007acc",
+     "category": "InProgress"
+    },
+    {
+     "name": "Resolved",
+     "color": "ff9d00",
+     "category": "Resolved"
+    },
+    {
+     "name": "Closed",
+     "color": "339933",
+     "category": "Completed"
+    },
+    {
+     "name": "Removed",
+     "color": "ffffff",
+     "category": "Removed"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/fields?api-version=7.1",
+  "note": "each field's data type, which a type's field list does not carry",
+  "answer": {
+   "count": 28,
+   "value": [
+    {
+     "name": "Title",
+     "referenceName": "System.Title",
+     "type": "string",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "State",
+     "referenceName": "System.State",
+     "type": "string",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Reason",
+     "referenceName": "System.Reason",
+     "type": "string",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Assigned To",
+     "referenceName": "System.AssignedTo",
+     "type": "identity",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Iteration Path",
+     "referenceName": "System.IterationPath",
+     "type": "treePath",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Area Path",
+     "referenceName": "System.AreaPath",
+     "type": "treePath",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Tags",
+     "referenceName": "System.Tags",
+     "type": "plainText",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "History",
+     "referenceName": "System.History",
+     "type": "history",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Description",
+     "referenceName": "System.Description",
+     "type": "html",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Acceptance Criteria",
+     "referenceName": "Microsoft.VSTS.Common.AcceptanceCriteria",
+     "type": "html",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Repro Steps",
+     "referenceName": "Microsoft.VSTS.TCM.ReproSteps",
+     "type": "html",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Priority",
+     "referenceName": "Microsoft.VSTS.Common.Priority",
+     "type": "integer",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Severity",
+     "referenceName": "Microsoft.VSTS.Common.Severity",
+     "type": "string",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Risk",
+     "referenceName": "Microsoft.VSTS.Common.Risk",
+     "type": "string",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Value Area",
+     "referenceName": "Microsoft.VSTS.Common.ValueArea",
+     "type": "string",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Activity",
+     "referenceName": "Microsoft.VSTS.Common.Activity",
+     "type": "string",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Story Points",
+     "referenceName": "Microsoft.VSTS.Scheduling.StoryPoints",
+     "type": "double",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Remaining Work",
+     "referenceName": "Microsoft.VSTS.Scheduling.RemainingWork",
+     "type": "double",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Original Estimate",
+     "referenceName": "Microsoft.VSTS.Scheduling.OriginalEstimate",
+     "type": "double",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Completed Work",
+     "referenceName": "Microsoft.VSTS.Scheduling.CompletedWork",
+     "type": "double",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Activated By",
+     "referenceName": "Microsoft.VSTS.Common.ActivatedBy",
+     "type": "identity",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Activated Date",
+     "referenceName": "Microsoft.VSTS.Common.ActivatedDate",
+     "type": "dateTime",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Work Item Type",
+     "referenceName": "System.WorkItemType",
+     "type": "string",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "ID",
+     "referenceName": "System.Id",
+     "type": "integer",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Changed Date",
+     "referenceName": "System.ChangedDate",
+     "type": "dateTime",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Changed By",
+     "referenceName": "System.ChangedBy",
+     "type": "identity",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Created Date",
+     "referenceName": "System.CreatedDate",
+     "type": "dateTime",
+     "usage": "workItem",
+     "readOnly": false
+    },
+    {
+     "name": "Created By",
+     "referenceName": "System.CreatedBy",
+     "type": "identity",
+     "usage": "workItem",
+     "readOnly": false
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/_apis/projects/Fabrikam/teams/Fabrikam%20Team/members?$top=1000&api-version=7.1",
+  "note": "Fabrikam Team: Jane Doe, Sam Lee (its admin) and Priya Patel",
+  "answer": {
+   "count": 3,
+   "value": [
+    {
+     "isTeamAdmin": false,
+     "identity": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1",
+      "url": "https://vssps.dev.azure.com/contoso/_apis/Identities/00000000-0000-4000-8000-0000000000e1",
+      "imageUrl": "https://dev.azure.com/contoso/_apis/GraphProfile/MemberAvatars/aad.00000000-0000-4000-8000-0000000000e1"
+     }
+    },
+    {
+     "isTeamAdmin": true,
+     "identity": {
+      "displayName": "Sam Lee",
+      "uniqueName": "sam@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e2",
+      "url": "https://vssps.dev.azure.com/contoso/_apis/Identities/00000000-0000-4000-8000-0000000000e2",
+      "imageUrl": "https://dev.azure.com/contoso/_apis/GraphProfile/MemberAvatars/aad.00000000-0000-4000-8000-0000000000e2"
+     }
+    },
+    {
+     "isTeamAdmin": false,
+     "identity": {
+      "displayName": "Priya Patel",
+      "uniqueName": "priya@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e3",
+      "url": "https://vssps.dev.azure.com/contoso/_apis/Identities/00000000-0000-4000-8000-0000000000e3",
+      "imageUrl": "https://dev.azure.com/contoso/_apis/GraphProfile/MemberAvatars/aad.00000000-0000-4000-8000-0000000000e3"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/teamsettings/iterations?api-version=7.1",
+  "note": "Fabrikam Team's sprints: two weeks each, Sprint 42 current",
+  "answer": {
+   "count": 3,
+   "value": [
+    {
+     "id": "00000000-0000-4000-8000-0000000c0041",
+     "name": "Sprint 41",
+     "path": "Fabrikam\\Sprint 41",
+     "attributes": {
+      "startDate": "2026-09-07T00:00:00Z",
+      "finishDate": "2026-09-18T00:00:00Z",
+      "timeFrame": "past"
+     },
+     "url": "https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/teamsettings/iterations/00000000-0000-4000-8000-0000000c0041"
+    },
+    {
+     "id": "00000000-0000-4000-8000-0000000c0042",
+     "name": "Sprint 42",
+     "path": "Fabrikam\\Sprint 42",
+     "attributes": {
+      "startDate": "2026-09-21T00:00:00Z",
+      "finishDate": "2026-10-02T00:00:00Z",
+      "timeFrame": "current"
+     },
+     "url": "https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/teamsettings/iterations/00000000-0000-4000-8000-0000000c0042"
+    },
+    {
+     "id": "00000000-0000-4000-8000-0000000c0043",
+     "name": "Sprint 43",
+     "path": "Fabrikam\\Sprint 43",
+     "attributes": {
+      "startDate": "2026-10-05T00:00:00Z",
+      "finishDate": "2026-10-16T00:00:00Z",
+      "timeFrame": "future"
+     },
+     "url": "https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/teamsettings/iterations/00000000-0000-4000-8000-0000000c0043"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/teamsettings/iterations/00000000-0000-4000-8000-0000000c0042/workitems?api-version=7.1",
+  "note": "Sprint 42's backlog items and their tasks",
+  "answer": {
+   "workItemRelations": [
+    {
+     "rel": null,
+     "source": null,
+     "target": {
+      "id": 1207,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1207"
+     }
+    },
+    {
+     "rel": "System.LinkTypes.Hierarchy-Forward",
+     "source": {
+      "id": 1207,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1207"
+     },
+     "target": {
+      "id": 1210,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1210"
+     }
+    },
+    {
+     "rel": null,
+     "source": null,
+     "target": {
+      "id": 1216,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1216"
+     }
+    },
+    {
+     "rel": "System.LinkTypes.Hierarchy-Forward",
+     "source": {
+      "id": 1216,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1216"
+     },
+     "target": {
+      "id": 1215,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1215"
+     }
+    },
+    {
+     "rel": null,
+     "source": null,
+     "target": {
+      "id": 1218,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1218"
+     }
+    },
+    {
+     "rel": null,
+     "source": null,
+     "target": {
+      "id": 1219,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1219"
+     }
+    }
+   ],
+   "url": "https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/teamsettings/iterations/00000000-0000-4000-8000-0000000c0042/workitems"
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/teamsettings/iterations/00000000-0000-4000-8000-0000000c0042/capacities?api-version=7.1",
+  "note": "Jane Doe is off on Friday 2 October",
+  "answer": {
+   "teamMembers": [
+    {
+     "teamMember": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1",
+      "url": "https://vssps.dev.azure.com/contoso/_apis/Identities/00000000-0000-4000-8000-0000000000e1"
+     },
+     "activities": [
+      {
+       "capacityPerDay": 6,
+       "name": "Development"
+      }
+     ],
+     "daysOff": [
+      {
+       "start": "2026-10-02T00:00:00Z",
+       "end": "2026-10-02T00:00:00Z"
+      }
+     ],
+     "url": "https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/teamsettings/iterations/00000000-0000-4000-8000-0000000c0042/capacities/00000000-0000-4000-8000-0000000000e1"
+    },
+    {
+     "teamMember": {
+      "displayName": "Sam Lee",
+      "uniqueName": "sam@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e2",
+      "url": "https://vssps.dev.azure.com/contoso/_apis/Identities/00000000-0000-4000-8000-0000000000e2"
+     },
+     "activities": [
+      {
+       "capacityPerDay": 6,
+       "name": "Development"
+      }
+     ],
+     "daysOff": [],
+     "url": "https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/teamsettings/iterations/00000000-0000-4000-8000-0000000c0042/capacities/00000000-0000-4000-8000-0000000000e2"
+    },
+    {
+     "teamMember": {
+      "displayName": "Priya Patel",
+      "uniqueName": "priya@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e3",
+      "url": "https://vssps.dev.azure.com/contoso/_apis/Identities/00000000-0000-4000-8000-0000000000e3"
+     },
+     "activities": [
+      {
+       "capacityPerDay": 4,
+       "name": "Development"
+      }
+     ],
+     "daysOff": [],
+     "url": "https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/teamsettings/iterations/00000000-0000-4000-8000-0000000c0042/capacities/00000000-0000-4000-8000-0000000000e3"
+    }
+   ],
+   "totalCapacityPerDay": 16,
+   "totalDaysOff": 1
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/teamsettings/iterations/00000000-0000-4000-8000-0000000c0042/teamdaysoff?api-version=7.1",
+  "answer": {
+   "daysOff": [],
+   "url": "https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/teamsettings/iterations/00000000-0000-4000-8000-0000000c0042/teamdaysoff"
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/backlogs?api-version=7.1",
+  "answer": {
+   "count": 4,
+   "value": [
+    {
+     "id": "Microsoft.EpicCategory",
+     "name": "Epics",
+     "rank": 4,
+     "type": "portfolio",
+     "isHidden": false,
+     "workItemCountLimit": 1000,
+     "color": "FF7B00",
+     "workItemTypes": [
+      {
+       "name": "Epic"
+      }
+     ],
+     "defaultWorkItemType": {
+      "name": "Epic"
+     },
+     "url": "https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/backlogs/Microsoft.EpicCategory"
+    },
+    {
+     "id": "Microsoft.FeatureCategory",
+     "name": "Features",
+     "rank": 3,
+     "type": "portfolio",
+     "isHidden": false,
+     "workItemCountLimit": 1000,
+     "color": "773B93",
+     "workItemTypes": [
+      {
+       "name": "Feature"
+      }
+     ],
+     "defaultWorkItemType": {
+      "name": "Feature"
+     },
+     "url": "https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/backlogs/Microsoft.FeatureCategory"
+    },
+    {
+     "id": "Microsoft.RequirementCategory",
+     "name": "Stories",
+     "rank": 2,
+     "type": "requirement",
+     "isHidden": false,
+     "workItemCountLimit": 1000,
+     "color": "009CCC",
+     "workItemTypes": [
+      {
+       "name": "User Story"
+      }
+     ],
+     "defaultWorkItemType": {
+      "name": "User Story"
+     },
+     "url": "https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/backlogs/Microsoft.RequirementCategory"
+    },
+    {
+     "id": "Microsoft.TaskCategory",
+     "name": "Tasks",
+     "rank": 1,
+     "type": "task",
+     "isHidden": false,
+     "workItemCountLimit": 1000,
+     "color": "F2CB1D",
+     "workItemTypes": [
+      {
+       "name": "Task"
+      }
+     ],
+     "defaultWorkItemType": {
+      "name": "Task"
+     },
+     "url": "https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/backlogs/Microsoft.TaskCategory"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/work/backlogs/Microsoft.RequirementCategory/workItems?api-version=7.1",
+  "note": "the Stories backlog in its ranked order",
+  "answer": {
+   "workItems": [
+    {
+     "rel": null,
+     "source": null,
+     "target": {
+      "id": 1216,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1216"
+     }
+    },
+    {
+     "rel": null,
+     "source": null,
+     "target": {
+      "id": 1207,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1207"
+     }
+    },
+    {
+     "rel": null,
+     "source": null,
+     "target": {
+      "id": 1224,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1224"
+     }
+    },
+    {
+     "rel": null,
+     "source": null,
+     "target": {
+      "id": 1221,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1221"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workItems/1215/updates?$skip=0&$top=200&api-version=7.1",
+  "note": "1215: Sam Lee filed it, handed it to Jane Doe, who started it the morning she opened PR 436",
+  "answer": {
+   "count": 3,
+   "value": [
+    {
+     "id": 1,
+     "workItemId": 1215,
+     "rev": 1,
+     "revisedBy": {
+      "displayName": "Sam Lee",
+      "uniqueName": "sam@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e2"
+     },
+     "revisedDate": "2026-09-25T10:41:52.483Z",
+     "fields": {
+      "System.Rev": {
+       "newValue": 1
+      },
+      "System.ChangedDate": {
+       "newValue": "2026-09-22T14:03:11.27Z"
+      },
+      "System.ChangedBy": {
+       "newValue": {
+        "displayName": "Sam Lee",
+        "uniqueName": "sam@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e2"
+       }
+      },
+      "System.WorkItemType": {
+       "newValue": "Task"
+      },
+      "System.Title": {
+       "newValue": "Add jitter to the retry backoff"
+      },
+      "System.State": {
+       "newValue": "New"
+      },
+      "System.Reason": {
+       "newValue": "New"
+      },
+      "System.AssignedTo": {
+       "newValue": {
+        "displayName": "Sam Lee",
+        "uniqueName": "sam@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e2"
+       }
+      },
+      "System.CreatedDate": {
+       "newValue": "2026-09-22T14:03:11.27Z"
+      },
+      "System.CreatedBy": {
+       "newValue": {
+        "displayName": "Sam Lee",
+        "uniqueName": "sam@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e2"
+       }
+      },
+      "System.IterationPath": {
+       "newValue": "Fabrikam\\Sprint 42"
+      },
+      "System.AreaPath": {
+       "newValue": "Fabrikam\\api"
+      },
+      "System.Tags": {
+       "newValue": "retry; orders"
+      },
+      "Microsoft.VSTS.Common.Priority": {
+       "newValue": 2
+      },
+      "Microsoft.VSTS.Common.Activity": {
+       "newValue": "Development"
+      },
+      "Microsoft.VSTS.Scheduling.RemainingWork": {
+       "newValue": 8
+      },
+      "Microsoft.VSTS.Common.StateChangeDate": {
+       "newValue": "2026-09-22T14:03:11.27Z"
+      }
+     },
+     "relations": {
+      "added": [
+       {
+        "rel": "System.LinkTypes.Hierarchy-Reverse",
+        "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1216",
+        "attributes": {
+         "isLocked": false,
+         "name": "Parent"
+        }
+       }
+      ]
+     },
+     "url": "https://dev.azure.com/contoso/Fabrikam/_apis/wit/workItems/1215/updates/1"
+    },
+    {
+     "id": 2,
+     "workItemId": 1215,
+     "rev": 2,
+     "revisedBy": {
+      "displayName": "Sam Lee",
+      "uniqueName": "sam@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e2"
+     },
+     "revisedDate": "2026-09-29T09:12:44.901Z",
+     "fields": {
+      "System.Rev": {
+       "oldValue": 1,
+       "newValue": 2
+      },
+      "System.ChangedDate": {
+       "newValue": "2026-09-25T10:41:52.483Z"
+      },
+      "System.ChangedBy": {
+       "newValue": {
+        "displayName": "Sam Lee",
+        "uniqueName": "sam@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e2"
+       }
+      },
+      "System.AssignedTo": {
+       "oldValue": {
+        "displayName": "Sam Lee",
+        "uniqueName": "sam@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e2"
+       },
+       "newValue": {
+        "displayName": "Jane Doe",
+        "uniqueName": "jane@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e1"
+       }
+      },
+      "System.History": {
+       "newValue": "<div>Handing this to <a href=\"#\" data-vss-mention=\"version:2.0,00000000-0000-4000-8000-0000000000e1\">@Jane Doe</a>: you are in the retry code already.</div>"
+      }
+     },
+     "url": "https://dev.azure.com/contoso/Fabrikam/_apis/wit/workItems/1215/updates/2"
+    },
+    {
+     "id": 3,
+     "workItemId": 1215,
+     "rev": 3,
+     "revisedBy": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e1"
+     },
+     "revisedDate": "9999-01-01T00:00:00Z",
+     "fields": {
+      "System.Rev": {
+       "oldValue": 2,
+       "newValue": 3
+      },
+      "System.ChangedDate": {
+       "newValue": "2026-09-29T09:12:44.901Z"
+      },
+      "System.ChangedBy": {
+       "newValue": {
+        "displayName": "Jane Doe",
+        "uniqueName": "jane@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e1"
+       }
+      },
+      "System.State": {
+       "oldValue": "New",
+       "newValue": "Active"
+      },
+      "System.Reason": {
+       "oldValue": "New",
+       "newValue": "Work started"
+      },
+      "Microsoft.VSTS.Scheduling.RemainingWork": {
+       "oldValue": 8,
+       "newValue": 6
+      },
+      "Microsoft.VSTS.Common.ActivatedBy": {
+       "newValue": {
+        "displayName": "Jane Doe",
+        "uniqueName": "jane@contoso.com",
+        "id": "00000000-0000-4000-8000-0000000000e1"
+       }
+      },
+      "Microsoft.VSTS.Common.ActivatedDate": {
+       "newValue": "2026-09-29T09:12:44.901Z"
+      },
+      "Microsoft.VSTS.Common.StateChangeDate": {
+       "oldValue": "2026-09-22T14:03:11.27Z",
+       "newValue": "2026-09-29T09:12:44.901Z"
+      }
+     },
+     "url": "https://dev.azure.com/contoso/Fabrikam/_apis/wit/workItems/1215/updates/3"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemtypes/Task/fields?$expand=allowedValues&api-version=7.1",
+  "answer": {
+   "count": 17,
+   "value": [
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.WorkItemType",
+     "name": "Work Item Type"
+    },
+    {
+     "alwaysRequired": true,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.Title",
+     "name": "Title"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": "New",
+     "allowedValues": [
+      "New",
+      "Active",
+      "Resolved",
+      "Closed",
+      "Removed"
+     ],
+     "referenceName": "System.State",
+     "name": "State"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.Reason",
+     "name": "Reason"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.AssignedTo",
+     "name": "Assigned To"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.IterationPath",
+     "name": "Iteration Path"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.AreaPath",
+     "name": "Area Path"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.Tags",
+     "name": "Tags"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.History",
+     "name": "History"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "System.Description",
+     "name": "Description"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": 2,
+     "allowedValues": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "referenceName": "Microsoft.VSTS.Common.Priority",
+     "name": "Priority"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [
+      "Deployment",
+      "Design",
+      "Development",
+      "Documentation",
+      "Requirements",
+      "Testing"
+     ],
+     "referenceName": "Microsoft.VSTS.Common.Activity",
+     "name": "Activity"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "Microsoft.VSTS.Scheduling.OriginalEstimate",
+     "name": "Original Estimate"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "Microsoft.VSTS.Scheduling.RemainingWork",
+     "name": "Remaining Work"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "Microsoft.VSTS.Scheduling.CompletedWork",
+     "name": "Completed Work"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "Microsoft.VSTS.Common.ActivatedBy",
+     "name": "Activated By"
+    },
+    {
+     "alwaysRequired": false,
+     "defaultValue": null,
+     "allowedValues": [],
+     "referenceName": "Microsoft.VSTS.Common.ActivatedDate",
+     "name": "Activated Date"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/wit/wiql?api-version=7.1",
+  "body": {
+   "query": "SELECT [System.Id] FROM WorkItemLinks WHERE [Source].[System.Id] = 1190 AND [System.Links.LinkType] = 'System.LinkTypes.Hierarchy-Forward' MODE (Recursive)"
+  },
+  "note": "epic 1190's tree: feature 1195, its three stories and their tasks",
+  "answer": {
+   "queryType": "tree",
+   "queryResultType": "workItemLink",
+   "asOf": "2026-09-29T12:00:00.000Z",
+   "columns": [
+    {
+     "referenceName": "System.Id",
+     "name": "ID",
+     "url": "https://dev.azure.com/contoso/_apis/wit/fields/System.Id"
+    }
+   ],
+   "workItemRelations": [
+    {
+     "rel": null,
+     "source": null,
+     "target": {
+      "id": 1190,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1190"
+     }
+    },
+    {
+     "rel": "System.LinkTypes.Hierarchy-Forward",
+     "source": {
+      "id": 1190,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1190"
+     },
+     "target": {
+      "id": 1195,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1195"
+     }
+    },
+    {
+     "rel": "System.LinkTypes.Hierarchy-Forward",
+     "source": {
+      "id": 1195,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1195"
+     },
+     "target": {
+      "id": 1201,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1201"
+     }
+    },
+    {
+     "rel": "System.LinkTypes.Hierarchy-Forward",
+     "source": {
+      "id": 1195,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1195"
+     },
+     "target": {
+      "id": 1207,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1207"
+     }
+    },
+    {
+     "rel": "System.LinkTypes.Hierarchy-Forward",
+     "source": {
+      "id": 1195,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1195"
+     },
+     "target": {
+      "id": 1216,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1216"
+     }
+    },
+    {
+     "rel": "System.LinkTypes.Hierarchy-Forward",
+     "source": {
+      "id": 1207,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1207"
+     },
+     "target": {
+      "id": 1210,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1210"
+     }
+    },
+    {
+     "rel": "System.LinkTypes.Hierarchy-Forward",
+     "source": {
+      "id": 1216,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1216"
+     },
+     "target": {
+      "id": 1215,
+      "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1215"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/queries?$depth=2&$expand=minimal&api-version=7.1",
+  "note": "My Queries (Jane Doe's) and Shared Queries",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "id": "00000000-0000-4000-8000-0000000d0001",
+     "name": "My Queries",
+     "path": "My Queries",
+     "isPublic": false,
+     "isFolder": true,
+     "hasChildren": true,
+     "children": [
+      {
+       "id": "00000000-0000-4000-8000-0000000d0011",
+       "name": "Assigned to me",
+       "path": "My Queries/Assigned to me",
+       "isPublic": false,
+       "queryType": "flat",
+       "url": "https://dev.azure.com/contoso/Fabrikam/_apis/wit/queries/00000000-0000-4000-8000-0000000d0011"
+      }
+     ],
+     "url": "https://dev.azure.com/contoso/Fabrikam/_apis/wit/queries/00000000-0000-4000-8000-0000000d0001"
+    },
+    {
+     "id": "00000000-0000-4000-8000-0000000d0002",
+     "name": "Shared Queries",
+     "path": "Shared Queries",
+     "isPublic": true,
+     "isFolder": true,
+     "hasChildren": true,
+     "children": [
+      {
+       "id": "00000000-0000-4000-8000-0000000d0021",
+       "name": "Triage",
+       "path": "Shared Queries/Triage",
+       "isPublic": true,
+       "queryType": "flat",
+       "url": "https://dev.azure.com/contoso/Fabrikam/_apis/wit/queries/00000000-0000-4000-8000-0000000d0021"
+      }
+     ],
+     "url": "https://dev.azure.com/contoso/Fabrikam/_apis/wit/queries/00000000-0000-4000-8000-0000000d0002"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/Fabrikam%20Team/_apis/wit/wiql/00000000-0000-4000-8000-0000000d0021?$top=51&api-version=7.1",
+  "note": "Shared Queries/Triage: bugs still New, by priority",
+  "answer": {
+   "queryType": "flat",
+   "queryResultType": "workItem",
+   "asOf": "2026-09-29T12:00:00.000Z",
+   "columns": [
+    {
+     "referenceName": "System.Id",
+     "name": "ID",
+     "url": "https://dev.azure.com/contoso/_apis/wit/fields/System.Id"
+    },
+    {
+     "referenceName": "System.Title",
+     "name": "Title",
+     "url": "https://dev.azure.com/contoso/_apis/wit/fields/System.Title"
+    },
+    {
+     "referenceName": "System.State",
+     "name": "State",
+     "url": "https://dev.azure.com/contoso/_apis/wit/fields/System.State"
+    },
+    {
+     "referenceName": "System.AssignedTo",
+     "name": "Assigned To",
+     "url": "https://dev.azure.com/contoso/_apis/wit/fields/System.AssignedTo"
+    },
+    {
+     "referenceName": "Microsoft.VSTS.Common.Priority",
+     "name": "Priority",
+     "url": "https://dev.azure.com/contoso/_apis/wit/fields/Microsoft.VSTS.Common.Priority"
+    }
+   ],
+   "sortColumns": [
+    {
+     "field": {
+      "referenceName": "Microsoft.VSTS.Common.Priority",
+      "name": "Priority"
+     },
+     "descending": false
+    }
+   ],
+   "workItems": [
+    {
+     "id": 1218,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1218"
+    },
+    {
+     "id": 1222,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1222"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemsbatch?api-version=7.1",
+  "body": {
+   "ids": [
+    1207,
+    1210,
+    1216,
+    1215,
+    1218,
+    1219
+   ],
+   "fields": [
+    "System.AssignedTo",
+    "Microsoft.VSTS.Scheduling.RemainingWork",
+    "Microsoft.VSTS.Scheduling.StoryPoints",
+    "Microsoft.VSTS.Scheduling.Effort",
+    "Microsoft.VSTS.Scheduling.Size",
+    "System.WorkItemType",
+    "System.State",
+    "System.IterationPath"
+   ],
+   "errorPolicy": "omit"
+  },
+  "answer": {
+   "count": 6,
+   "value": [
+    {
+     "id": 1207,
+     "rev": 9,
+     "fields": {
+      "System.Id": 1207,
+      "System.WorkItemType": "User Story",
+      "System.State": "Resolved",
+      "System.AssignedTo": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "Microsoft.VSTS.Scheduling.StoryPoints": 3
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1207"
+    },
+    {
+     "id": 1210,
+     "rev": 4,
+     "fields": {
+      "System.Id": 1210,
+      "System.WorkItemType": "Task",
+      "System.State": "Resolved",
+      "System.AssignedTo": {
+       "displayName": "Sam Lee",
+       "uniqueName": "sam@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e2"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "Microsoft.VSTS.Scheduling.RemainingWork": 0
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1210"
+    },
+    {
+     "id": 1216,
+     "rev": 4,
+     "fields": {
+      "System.Id": 1216,
+      "System.WorkItemType": "User Story",
+      "System.State": "Active",
+      "System.AssignedTo": {
+       "displayName": "Sam Lee",
+       "uniqueName": "sam@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e2"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "Microsoft.VSTS.Scheduling.StoryPoints": 2
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1216"
+    },
+    {
+     "id": 1215,
+     "rev": 3,
+     "fields": {
+      "System.Id": 1215,
+      "System.WorkItemType": "Task",
+      "System.State": "Active",
+      "System.AssignedTo": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "Microsoft.VSTS.Scheduling.RemainingWork": 6
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1215"
+    },
+    {
+     "id": 1218,
+     "rev": 2,
+     "fields": {
+      "System.Id": 1218,
+      "System.WorkItemType": "Bug",
+      "System.State": "New",
+      "System.AssignedTo": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "Microsoft.VSTS.Scheduling.StoryPoints": 3,
+      "Microsoft.VSTS.Scheduling.RemainingWork": 16
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1218"
+    },
+    {
+     "id": 1219,
+     "rev": 3,
+     "fields": {
+      "System.Id": 1219,
+      "System.WorkItemType": "Task",
+      "System.State": "Active",
+      "System.AssignedTo": {
+       "displayName": "Priya Patel",
+       "uniqueName": "priya@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e3"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "Microsoft.VSTS.Scheduling.RemainingWork": 2
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1219"
+    }
+   ]
+  },
+  "note": "sprint get: Sprint 42's load"
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/wit/wiql?$top=20000&api-version=7.1",
+  "body": {
+   "query": "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.AssignedTo] = 'jane@contoso.com' AND [System.IterationPath] UNDER 'Fabrikam\\Sprint 42' ORDER BY [System.ChangedDate] DESC"
+  },
+  "note": "sprint get's next step: Jane Doe's Sprint 42 work",
+  "answer": {
+   "queryType": "flat",
+   "workItems": [
+    {
+     "id": 1218,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1218"
+    },
+    {
+     "id": 1215,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1215"
+    },
+    {
+     "id": 1207,
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1207"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemsbatch?api-version=7.1",
+  "body": {
+   "ids": [
+    1216,
+    1207,
+    1224,
+    1221
+   ],
+   "fields": [
+    "System.WorkItemType",
+    "System.Title",
+    "System.State",
+    "System.AssignedTo",
+    "System.IterationPath",
+    "System.AreaPath",
+    "Microsoft.VSTS.Common.Priority",
+    "System.Tags",
+    "System.ChangedDate",
+    "System.Id",
+    "Microsoft.VSTS.Scheduling.StoryPoints",
+    "Microsoft.VSTS.Scheduling.Effort",
+    "Microsoft.VSTS.Scheduling.Size"
+   ],
+   "errorPolicy": "omit"
+  },
+  "answer": {
+   "count": 4,
+   "value": [
+    {
+     "id": 1216,
+     "rev": 4,
+     "fields": {
+      "System.Id": 1216,
+      "System.WorkItemType": "User Story",
+      "System.Title": "Spread retries with jitter",
+      "System.State": "Active",
+      "System.AssignedTo": {
+       "displayName": "Sam Lee",
+       "uniqueName": "sam@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e2"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "System.AreaPath": "Fabrikam\\api",
+      "Microsoft.VSTS.Common.Priority": 2,
+      "System.Tags": "retry; orders",
+      "System.ChangedDate": "2026-09-25T10:38:20.664Z",
+      "Microsoft.VSTS.Scheduling.StoryPoints": 2
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1216"
+    },
+    {
+     "id": 1207,
+     "rev": 9,
+     "fields": {
+      "System.Id": 1207,
+      "System.WorkItemType": "User Story",
+      "System.Title": "Retry orders-service calls on 429",
+      "System.State": "Resolved",
+      "System.AssignedTo": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "System.AreaPath": "Fabrikam\\api",
+      "Microsoft.VSTS.Common.Priority": 2,
+      "System.Tags": "retry; orders",
+      "System.ChangedDate": "2026-09-28T21:05:40.263Z",
+      "Microsoft.VSTS.Scheduling.StoryPoints": 3
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1207"
+    },
+    {
+     "id": 1224,
+     "rev": 2,
+     "fields": {
+      "System.Id": 1224,
+      "System.WorkItemType": "User Story",
+      "System.Title": "Show the retry count on the orders dashboard",
+      "System.State": "New",
+      "System.AssignedTo": {
+       "displayName": "Priya Patel",
+       "uniqueName": "priya@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e3"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 43",
+      "System.AreaPath": "Fabrikam\\api",
+      "Microsoft.VSTS.Common.Priority": 3,
+      "System.Tags": "retry; orders",
+      "System.ChangedDate": "2026-09-26T09:15:04.002Z",
+      "Microsoft.VSTS.Scheduling.StoryPoints": 3
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1224"
+    },
+    {
+     "id": 1221,
+     "rev": 1,
+     "fields": {
+      "System.Id": 1221,
+      "System.WorkItemType": "User Story",
+      "System.Title": "Export orders as CSV, one page at a time",
+      "System.State": "New",
+      "System.IterationPath": "Fabrikam\\Sprint 43",
+      "System.AreaPath": "Fabrikam\\api",
+      "Microsoft.VSTS.Common.Priority": 3,
+      "System.Tags": "orders; export",
+      "System.ChangedDate": "2026-09-24T13:02:51.940Z",
+      "Microsoft.VSTS.Scheduling.StoryPoints": 5
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1221"
+    }
+   ]
+  },
+  "note": "backlog list: the Stories backlog's rows"
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemsbatch?api-version=7.1",
+  "body": {
+   "ids": [
+    1190,
+    1195,
+    1201,
+    1207,
+    1216,
+    1210,
+    1215
+   ],
+   "fields": [
+    "System.Id",
+    "System.WorkItemType",
+    "System.Title",
+    "System.State",
+    "System.AssignedTo",
+    "Microsoft.VSTS.Scheduling.StoryPoints",
+    "Microsoft.VSTS.Scheduling.Effort",
+    "Microsoft.VSTS.Scheduling.Size",
+    "Microsoft.VSTS.Scheduling.RemainingWork"
+   ],
+   "errorPolicy": "omit"
+  },
+  "answer": {
+   "count": 7,
+   "value": [
+    {
+     "id": 1190,
+     "rev": 4,
+     "fields": {
+      "System.Id": 1190,
+      "System.WorkItemType": "Epic",
+      "System.Title": "Resilient order processing",
+      "System.State": "Active",
+      "System.AssignedTo": {
+       "displayName": "Priya Patel",
+       "uniqueName": "priya@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e3"
+      }
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1190"
+    },
+    {
+     "id": 1195,
+     "rev": 5,
+     "fields": {
+      "System.Id": 1195,
+      "System.WorkItemType": "Feature",
+      "System.Title": "Retry and back off when the orders service throttles",
+      "System.State": "Active",
+      "System.AssignedTo": {
+       "displayName": "Sam Lee",
+       "uniqueName": "sam@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e2"
+      }
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1195"
+    },
+    {
+     "id": 1201,
+     "rev": 7,
+     "fields": {
+      "System.Id": 1201,
+      "System.WorkItemType": "User Story",
+      "System.Title": "Time out orders-service calls after 10 s",
+      "System.State": "Closed",
+      "System.AssignedTo": {
+       "displayName": "Sam Lee",
+       "uniqueName": "sam@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e2"
+      },
+      "Microsoft.VSTS.Scheduling.StoryPoints": 2
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1201"
+    },
+    {
+     "id": 1207,
+     "rev": 9,
+     "fields": {
+      "System.Id": 1207,
+      "System.WorkItemType": "User Story",
+      "System.Title": "Retry orders-service calls on 429",
+      "System.State": "Resolved",
+      "System.AssignedTo": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "Microsoft.VSTS.Scheduling.StoryPoints": 3
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1207"
+    },
+    {
+     "id": 1216,
+     "rev": 4,
+     "fields": {
+      "System.Id": 1216,
+      "System.WorkItemType": "User Story",
+      "System.Title": "Spread retries with jitter",
+      "System.State": "Active",
+      "System.AssignedTo": {
+       "displayName": "Sam Lee",
+       "uniqueName": "sam@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e2"
+      },
+      "Microsoft.VSTS.Scheduling.StoryPoints": 2
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1216"
+    },
+    {
+     "id": 1210,
+     "rev": 4,
+     "fields": {
+      "System.Id": 1210,
+      "System.WorkItemType": "Task",
+      "System.Title": "Log the retry count on each attempt",
+      "System.State": "Resolved",
+      "System.AssignedTo": {
+       "displayName": "Sam Lee",
+       "uniqueName": "sam@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e2"
+      },
+      "Microsoft.VSTS.Scheduling.RemainingWork": 0
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1210"
+    },
+    {
+     "id": 1215,
+     "rev": 3,
+     "fields": {
+      "System.Id": 1215,
+      "System.WorkItemType": "Task",
+      "System.Title": "Add jitter to the retry backoff",
+      "System.State": "Active",
+      "System.AssignedTo": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "Microsoft.VSTS.Scheduling.RemainingWork": 6
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1215"
+    }
+   ]
+  },
+  "note": "tree get 1190"
+ },
+ {
+  "request": "POST https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemsbatch?api-version=7.1",
+  "body": {
+   "ids": [
+    1218,
+    1222
+   ],
+   "fields": [
+    "System.WorkItemType",
+    "System.Title",
+    "System.State",
+    "System.AssignedTo",
+    "System.IterationPath",
+    "System.AreaPath",
+    "Microsoft.VSTS.Common.Priority",
+    "System.Tags",
+    "System.ChangedDate",
+    "System.Id"
+   ],
+   "errorPolicy": "omit"
+  },
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "id": 1218,
+     "rev": 2,
+     "fields": {
+      "System.Id": 1218,
+      "System.WorkItemType": "Bug",
+      "System.Title": "worker crash-loops in prod after the database password rotation",
+      "System.State": "New",
+      "System.AssignedTo": {
+       "displayName": "Jane Doe",
+       "uniqueName": "jane@contoso.com",
+       "id": "00000000-0000-4000-8000-0000000000e1"
+      },
+      "System.IterationPath": "Fabrikam\\Sprint 42",
+      "System.AreaPath": "Fabrikam\\api",
+      "Microsoft.VSTS.Common.Priority": 1,
+      "System.Tags": "prod; worker",
+      "System.ChangedDate": "2026-09-29T11:40:03.550Z"
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1218"
+    },
+    {
+     "id": 1222,
+     "rev": 1,
+     "fields": {
+      "System.Id": 1222,
+      "System.WorkItemType": "Bug",
+      "System.Title": "Orders export times out for customers with 10,000+ orders",
+      "System.State": "New",
+      "System.IterationPath": "Fabrikam",
+      "System.AreaPath": "Fabrikam\\api",
+      "Microsoft.VSTS.Common.Priority": 3,
+      "System.Tags": "orders; export",
+      "System.ChangedDate": "2026-09-28T16:47:30.388Z"
+     },
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1222"
+    }
+   ]
+  },
+  "note": "query run Triage"
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/_apis/wit/workitems/1219?$expand=relations&api-version=7.1",
+  "note": "1219 blocks 1218: the worker cannot log in until its password is set again",
+  "answer": {
+   "id": 1219,
+   "rev": 3,
+   "fields": {
+    "System.Id": 1219,
+    "System.WorkItemType": "Task",
+    "System.Title": "Set a new worker-db-password in kv-contoso-prod",
+    "System.State": "Active",
+    "System.AssignedTo": {
+     "displayName": "Priya Patel",
+     "uniqueName": "priya@contoso.com",
+     "id": "00000000-0000-4000-8000-0000000000e3"
+    },
+    "System.IterationPath": "Fabrikam\\Sprint 42",
+    "System.AreaPath": "Fabrikam\\api",
+    "Microsoft.VSTS.Common.Priority": 1,
+    "System.Tags": "prod; worker",
+    "System.ChangedDate": "2026-09-29T11:38:47.215Z",
+    "Microsoft.VSTS.Scheduling.RemainingWork": 2,
+    "System.Description": "<p>worker-db-password expired on 2026-09-20. Set a new one in <code>kv-contoso-prod</code> and restart the worker.</p>"
+   },
+   "relations": [
+    {
+     "rel": "System.LinkTypes.Dependency-Forward",
+     "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1218",
+     "attributes": {
+      "isLocked": false,
+      "name": "Successor"
+     }
+    }
+   ],
+   "url": "https://dev.azure.com/contoso/_apis/wit/workItems/1219"
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/wit/workItems/1219/comments?$top=5&order=desc&api-version=7.1-preview.4",
+  "answer": {
+   "totalCount": 0,
+   "comments": []
+  }
+ }
 ]

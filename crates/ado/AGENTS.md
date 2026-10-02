@@ -1,60 +1,55 @@
 # ado: Azure DevOps
 
-Work items, PRs, repos, pipelines, runs and approvals, live over REST:
+Work items, sprints, PRs, repos, pipelines, runs and approvals over REST:
 https://learn.microsoft.com/rest/api/azure/devops/
 
 ## Config
-`[ado]`: `org` (slug or URL), `project`, `code_project` (repos and pipelines,
-when they live elsewhere), `team` (one or a list; what `@current` means).
-Unset org and project fall back to `az devops configure`.
-Credential: `AZURE_DEVOPS_EXT_PAT` (Basic), else an `az` token (Bearer). It
-goes only to `dev.azure.com` and `*.visualstudio.com` (`trusted`).
+`[ado]`: `org`, `project`, `code_project` (repos and pipelines, if
+elsewhere), `team` (one or a list: `@current`, sprints, people). Unset org
+and project fall back to `az devops configure`. Credential:
+`AZURE_DEVOPS_EXT_PAT` (Basic), else an `az` token; only to `trusted` hosts.
 
 ## Ids
-Work item, PR and run: `8812`, `#8812`, `AB#8812`, or its web URL in this org
-(`Ado::id(Kind, raw)`; another org or kind is exit 2). Repos by name; an
-approval by its GUID; a pipeline by id or name (`Ado::pipeline_id`). In
-`ids.rs`, with their URLs: a file `[PROJECT/]REPO[@REF]:PATH[:LINE[-LINE]]`
-(`FileId`, printed by `file_id`), `REPO@BASE..HEAD` (`Range`), a thread
-`436/7` (`thread_id`). A bare ref is a branch, else a tag (`resolving`).
-`each` runs a verb over `ID…` (`Each`: one object, or an array).
+Work item, PR, run: `8812`, `AB#8812` or its web URL (`Ado::id(Kind, raw)`).
+Repos by name; approvals and queries by GUID; pipelines by id or name. In
+`ids.rs`: a file `[PROJECT/]REPO[@REF]:PATH[:LINE[-LINE]]` (`FileId`),
+`REPO@BASE..HEAD` (`Range`), a thread `436/7`. A bare ref is a branch, else
+a tag. `each` runs a verb over `ID…`.
 
 ## Where things are (`src/`)
-A command is `<resource>/<verb>.rs`: args, rows, handler, `command!`, tests.
-- `lib.rs`: `DOMAIN` (its `commands` order is the listing's). `doctor.rs`.
-- `client.rs`: `Ado::load(ctx)`, then:
-  - `get` a read; `query` a POST that only reads (WIQL, batches); `change`
-    a write; `patch_work_item` a JSON Patch.
-  - URLs: `api(project, path, query, version)`, `work`, `code`, `team`;
-    `API`, `PREVIEW_API`, `COMMENTS_API` versions.
-  - Cached: `me`, `person` (`@me`, a name or an address), `identity` (its
-    id), `repo`, `repos`, `pipeline_id`.
-  - Row helpers: `text`, `stamp` (UTC), `list`, `short_branch`, `full_ref`,
-    `segment`, `query_value`.
-- `iteration.rs`: `team` (named, else `[ado] team`), `iterations` (cached
-  an hour), `resolve` (`@current|@next|@previous`, a path or a name).
-- `types.rs`: a type's `states`, `fields` (cached a day) and `done` (by
-  category, never by a state's name).
-- `work_items.rs`: work item rows read in batches, and the artifact links
-  workitem, pr and run share. `markdown.rs`: rich text to Markdown and back.
-- `<resource>/mod.rs`: what its verbs share (`pr/mod.rs`: the PR row,
-  `latest_iteration`; `run/mod.rs`: `RunRow`, `line_at`; `file/mod.rs`:
-  `fetch`, and `resolve` a printed path in a `tree`; `thread/mod.rs`:
-  `fetch_threads`; `diff/mod.rs`: the line diff).
-- `testing.rs`: `ado`, `urls`, `dry_run`, `CODE`, answers (`page`, `pr`, …).
+A command is `<resource>/<verb>.rs`; `<resource>/mod.rs` is what they share.
+- `lib.rs`: `DOMAIN` (the listing's order). `doctor.rs`.
+- `client.rs`: `Ado::load`; `get`, `query` (a POST that reads), `change`,
+  `patch_work_item`; URLs `api`, `work`, `code`, `team`; cached `me`,
+  `person` (`@me`, a name or an address), `identity`, `repo`, `pipeline_id`;
+  row helpers `text`, `stamp` (UTC), `list`, `segment`.
+- `iteration.rs`: `team`, `iterations` (cached an hour), `resolve`.
+- `types.rs`: a type's `states`, `fields` (a day), `done` (by category).
+- `work_items.rs`: batch rows, `POINTS`, artifact links. `markdown.rs`:
+  HTML to Markdown and back. `compose.rs`: mentions resolved to people.
+- Work: `sprint/`, `backlog/`, `history/`, `relation/`, `tree/`, `query/`,
+  `attachment/`, `workitem_type/`, `person/`, `activity/` (a person's feed).
+- `testing.rs`: `ado`, `urls`, `dry_run`, `CODE`, answers (`page`, `pr`).
 
 ## Fixtures
 `fixtures/world/http/ado.json`, `fixtures/world/facts/ado.md`,
 `crates/cli/tests/world_ado.rs`.
 
 ## Quirks
-- Bad credentials can come back as a **203 sign-in page**, not a 401: `send`
-  reads it as exit 3.
-- WIQL returns ids only, capped by `$top` (20,000); rows come from a batch
-  fetch. With `--since`/`--until` the request needs `timePrecision=true`, or
-  dates compare by day.
-- Lists ask for `limit + 1` (`$top`) to know when to note "more".
-- A field's data type is only in the project's `wit/fields`.
+- Bad credentials can answer a 203 sign-in page (exit 3). An org backed by
+  a Microsoft account (resource tenant all zeros) refuses az tokens: set
+  `AZURE_DEVOPS_EXT_PAT`.
+- WIQL answers ids (`$top` at most 20,000), a batch the rows; `--since`
+  needs `timePrecision=true`, else dates compare by day. Lists ask `limit + 1`.
+- A field's data type is only in `wit/fields`. Points are Story Points,
+  Effort or Size by process (`POINTS`). A value outside a picklist is a
+  RuleValidationException with no TF code.
+- `workitemsorder` needs the team. Backlog order is
+  `backlogs/{id}/workItems`, not WIQL; stories are the `requirement` level.
+- `updates` pages by `$top` and `$skip`; a revision's time is its
+  ChangedDate (revisedDate is when the next one replaced it).
+- Mentions are `data-vss-mention` anchors in work item HTML, `@<id>` in PR
+  Markdown. Attachments download from the org's URL, upload to the project.
 
 ## Never needed
 Other crates' sources and fixtures, `docs/plans/`, `docs/reference/`.
