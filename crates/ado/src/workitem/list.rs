@@ -37,7 +37,7 @@ pub struct ListArgs {
     /// Bug, "User Story", Task … (repeatable)
     #[arg(long = "type", value_delimiter = ',')]
     work_item_type: Vec<String>,
-    /// Iteration path, or @current for the team's sprint
+    /// Iteration path, or @current, @next or @previous for the team's sprint
     #[arg(long)]
     iteration: Option<String>,
     /// Area path (children included)
@@ -141,7 +141,8 @@ fn wiql(args: &ListArgs, iteration: Option<String>) -> String {
 /// `--iteration` as a WIQL condition, and the team whose URL the query must
 /// go to. `@current` is WIQL's own `@CurrentIteration` when one team is
 /// configured (the macro reads the team from the URL); with several, each
-/// team's current sprint is read from its settings.
+/// team's current sprint is read from its settings. `@next` and `@previous`
+/// have no macro, so the team's sprints say which path they are.
 fn iteration_condition(
     ctx: &Ctx,
     ado: &Ado,
@@ -151,11 +152,16 @@ fn iteration_condition(
         return Ok((None, None));
     };
     if !iteration.eq_ignore_ascii_case("@current") {
+        let path = if ["@next", "@previous"]
+            .iter()
+            .any(|m| m.eq_ignore_ascii_case(iteration))
+        {
+            crate::iteration::resolve(ctx, ado, None, iteration)?.path
+        } else {
+            iteration.to_owned()
+        };
         return Ok((
-            Some(format!(
-                "[System.IterationPath] UNDER {}",
-                quoted(iteration)
-            )),
+            Some(format!("[System.IterationPath] UNDER {}", quoted(&path))),
             None,
         ));
     }
@@ -351,6 +357,35 @@ mod tests {
         );
         assert!(
             query.contains("[System.IterationPath] = @CurrentIteration"),
+            "{query}"
+        );
+    }
+
+    #[test]
+    fn next_and_previous_iteration_are_the_teams_sprint_paths() {
+        let sprints = Answer::json(&json!({"count": 2, "value": [
+            {"id": "i-12", "name": "Sprint 12", "path": "Fabrikam\\Sprint 12",
+                "attributes": {"timeFrame": "current"}},
+            {"id": "i-13", "name": "Sprint 13", "path": "Fabrikam\\Sprint 13",
+                "attributes": {"timeFrame": "future"}}
+        ]}));
+        let (outcome, transport) = ado(
+            &["ado", "workitem", "list", "--iteration", "@next"],
+            vec![sprints, wiql(&[])],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            urls(&transport),
+            [
+                format!(
+                    "{BASE}/Fabrikam/Web%20Team/_apis/work/teamsettings/iterations?api-version=7.1"
+                ),
+                format!("{BASE}/Fabrikam/_apis/wit/wiql?$top=20000&api-version=7.1"),
+            ]
+        );
+        let query = query_of(&transport, 1);
+        assert!(
+            query.contains("[System.IterationPath] UNDER 'Fabrikam\\Sprint 13'"),
             "{query}"
         );
     }

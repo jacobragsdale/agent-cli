@@ -11,7 +11,9 @@ mod diff;
 mod doctor;
 mod file;
 mod ids;
+mod iteration;
 mod markdown;
+mod person;
 mod pipeline;
 mod pr;
 mod repo;
@@ -21,8 +23,10 @@ mod test;
 #[cfg(test)]
 mod testing;
 mod thread;
+mod types;
 mod work_items;
 mod workitem;
+mod workitem_type;
 
 use agent_cli_core::Domain;
 
@@ -36,7 +40,10 @@ pub const DOMAIN: Domain = Domain {
         workitem::update::WORKITEM_UPDATE,
         workitem::comment::WORKITEM_COMMENT,
         workitem::link::WORKITEM_LINK,
+        workitem_type::list::WORKITEM_TYPE_LIST,
+        workitem_type::get::WORKITEM_TYPE_GET,
         team::list::TEAM_LIST,
+        person::list::PERSON_LIST,
         repo::list::REPO_LIST,
         repo::get::REPO_GET,
         diff::get::DIFF_GET,
@@ -125,7 +132,7 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 40);
+        assert_eq!(DOMAIN.commands.len(), 43);
     }
 
     #[test]

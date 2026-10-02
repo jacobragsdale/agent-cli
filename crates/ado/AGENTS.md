@@ -1,12 +1,12 @@
 # ado: Azure DevOps
 
-Work items, pull requests, repos, pipelines, runs and approvals, live over
-REST: https://learn.microsoft.com/rest/api/azure/devops/
+Work items, PRs, repos, pipelines, runs and approvals, live over REST:
+https://learn.microsoft.com/rest/api/azure/devops/
 
 ## Config
 `[ado]`: `org` (slug or URL), `project`, `code_project` (repos and pipelines,
 when they live elsewhere), `team` (one or a list; what `@current` means).
-Unset org and project fall back to `az devops configure` defaults.
+Unset org and project fall back to `az devops configure`.
 Credential: `AZURE_DEVOPS_EXT_PAT` (Basic), else an `az` token (Bearer). It
 goes only to `dev.azure.com` and `*.visualstudio.com` (`trusted`).
 
@@ -20,19 +20,21 @@ approval by its GUID; a pipeline by id or name (`Ado::pipeline_id`). In
 `each` runs a verb over `ID…` (`Each`: one object, or an array).
 
 ## Where things are (`src/`)
-A command is `<resource>/<verb>.rs`: its args, rows, handler, `command!`
-and tests (`approval/list.rs` is `ado approval list`). Copy a sibling.
-- `lib.rs`: `DOMAIN`, whose `commands` registers every command (its order
-  is the listing's). `doctor.rs`: status and doctor.
+A command is `<resource>/<verb>.rs`: args, rows, handler, `command!`, tests.
+- `lib.rs`: `DOMAIN` (its `commands` order is the listing's). `doctor.rs`.
 - `client.rs`: `Ado::load(ctx)`, then:
-  - `get(ctx, url)` a read; `query(ctx, url, body)` a POST that only reads
-    (WIQL, batches); `change(ctx, effect, method, url, body)` a write;
-    `patch_work_item` a JSON Patch.
+  - `get` a read; `query` a POST that only reads (WIQL, batches); `change`
+    a write; `patch_work_item` a JSON Patch.
   - URLs: `api(project, path, query, version)`, `work`, `code`, `team`;
     `API`, `PREVIEW_API`, `COMMENTS_API` versions.
-  - Cached lookups: `me`, `identity` (`@me`), `repo`, `repos`, `pipeline_id`.
+  - Cached: `me`, `person` (`@me`, a name or an address), `identity` (its
+    id), `repo`, `repos`, `pipeline_id`.
   - Row helpers: `text`, `stamp` (UTC), `list`, `short_branch`, `full_ref`,
     `segment`, `query_value`.
+- `iteration.rs`: `team` (named, else `[ado] team`), `iterations` (cached
+  an hour), `resolve` (`@current|@next|@previous`, a path or a name).
+- `types.rs`: a type's `states`, `fields` (cached a day) and `done` (by
+  category, never by a state's name).
 - `work_items.rs`: work item rows read in batches, and the artifact links
   workitem, pr and run share. `markdown.rs`: rich text to Markdown and back.
 - `<resource>/mod.rs`: what its verbs share (`pr/mod.rs`: the PR row,
@@ -52,7 +54,7 @@ and tests (`approval/list.rs` is `ado approval list`). Copy a sibling.
   fetch. With `--since`/`--until` the request needs `timePrecision=true`, or
   dates compare by day.
 - Lists ask for `limit + 1` (`$top`) to know when to note "more".
-- `@me` resolves through connection data, cached for a day.
+- A field's data type is only in the project's `wit/fields`.
 
 ## Never needed
 Other crates' sources and fixtures, `docs/plans/`, `docs/reference/`.

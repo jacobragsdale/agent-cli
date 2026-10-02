@@ -503,3 +503,35 @@ expect = "ado run create"
 [[query]]
 text = "start pipeline run"
 expect = "ado run create"
+
+[[query]]
+text = "what work item types does the project have"
+expect = "ado workitem-type list"
+
+[[query]]
+text = "which ticket kinds can I create"
+expect = "ado workitem-type list"
+
+[[query]]
+text = "what states can a bug move to"
+expect = "ado workitem-type get"
+
+[[query]]
+text = "which fields are required on a user story"
+expect = "ado workitem-type get"
+
+[[query]]
+text = "allowed values for severity on a bug"
+expect = "ado workitem-type get"
+
+[[query]]
+text = "who is on the web team"
+expect = "ado person list"
+
+[[query]]
+text = "find sam's email address to assign him"
+expect = "ado person list"
+
+[[query]]
+text = "list team members"
+expect = "ado person list"

@@ -1,4 +1,4 @@
-# ado — Azure DevOps (40 commands)
+# ado — Azure DevOps (43 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -8,7 +8,10 @@
 | [`ado workitem update`](#ado-workitem-update) | write | Change a work item's state, assignee, title, iteration, tags or description |
 | [`ado workitem comment`](#ado-workitem-comment) | write | Add a comment to a work item (Markdown, - for stdin, or --text-file) |
 | [`ado workitem link`](#ado-workitem-link) | write | Link a work item to a branch, creating the branch when missing |
+| [`ado workitem-type list`](#ado-workitem-type-list) | read | List the project's work item types (Bug, User Story, Task …) and their states |
+| [`ado workitem-type get`](#ado-workitem-type-get) | read | Show a work item type's states, moves and fields (required, allowed values) |
 | [`ado team list`](#ado-team-list) | read | List the project's teams (for [ado] team, which @current needs) |
+| [`ado person list`](#ado-person-list) | read | List a team's members with the address --assignee and @mentions take |
 | [`ado repo list`](#ado-repo-list) | read | List the project's Git repositories |
 | [`ado repo get`](#ado-repo-get) | read | Show a repository: its URLs, default branch and branches |
 | [`ado diff get`](#ado-diff-get) | read | Show what changed in a pull request or between two refs, as hunks per file |
@@ -50,7 +53,7 @@ agent-cli ado workitem list — List work items matching filters (live WIQL)
   --assignee str          Name, email or @me
   --state str[]           Active, "In Progress" … (repeatable)
   --type str[]            Bug, "User Story", Task … (repeatable)
-  --iteration str         Iteration path, or @current for the team's sprint
+  --iteration str         Iteration path, or @current, @next or @previous for the team's sprint
   --area str              Area path (children included)
   --tag str[]             A tag it carries (repeatable)
   --priority int[]        1 (highest) to 4 (repeatable)
@@ -146,6 +149,25 @@ Write: --dry-run shows the change without making it. * required. Globals: --fiel
 e.g. agent-cli ado workitem link 42 --repo web --branch 42-fix-login
 ```
 
+### ado workitem-type list
+
+```text
+agent-cli ado workitem-type list — List the project's work item types (Bug, User Story, Task …) and their states
+Returns: [{name,description,states[]}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado workitem-type list --fields name,states
+```
+
+### ado workitem-type get
+
+```text
+agent-cli ado workitem-type get — Show a work item type's states, moves and fields (required, allowed values)
+ *<type> str  Bug, "User Story", Task … (any case), from workitem-type list
+Returns: {name,description,states[{name,category}],transitions,fields[{name,ref,type,required,allowed_values[],default}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado workitem-type get Bug --fields states,transitions
+```
+
 ### ado team list
 
 ```text
@@ -154,6 +176,18 @@ agent-cli ado team list — List the project's teams (for [ado] team, which @cur
 Returns: [{name,id,description}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado team list --fields name
+```
+
+### ado person list
+
+```text
+agent-cli ado person list — List a team's members with the address --assignee and @mentions take
+  --team str   A team's name (default: every team in [ado] team)
+  --text str   Words in the name or address
+  --limit int  Most rows to return (default 50)
+Returns: [{id,name,team}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado person list --text sam --fields id,name
 ```
 
 ### ado repo list

@@ -82,7 +82,7 @@ fn field_ops(ctx: &Ctx, ado: &Ado, title: Option<&str>, fields: &Fields) -> Resu
             json!({"op": "remove", "path": "/fields/System.AssignedTo"})
         } else if who.eq_ignore_ascii_case("@me") {
             let me = ado.me(ctx)?;
-            set("System.AssignedTo", me.account.unwrap_or(me.name))
+            set("System.AssignedTo", me.email.unwrap_or(me.name))
         } else {
             set("System.AssignedTo", who)
         });

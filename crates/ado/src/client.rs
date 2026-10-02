@@ -356,7 +356,7 @@ impl Ado {
     /// under this id, and `@me` assigns to its sign-in address.
     // ponytail: cached per organization, not per credential; after signing in
     // as someone else, --no-cache (or a day) catches up.
-    pub(crate) fn me(&self, ctx: &Ctx) -> Result<Me> {
+    pub(crate) fn me(&self, ctx: &Ctx) -> Result<Person> {
         match ctx.cache().get(&self.cache_key("me")) {
             Some(me) => Ok(me),
             None => self.fetch_me(ctx),
@@ -365,13 +365,13 @@ impl Ado {
 
     /// [`Self::me`] asked of Azure DevOps now, which is also what doctor's
     /// connection check is.
-    pub(crate) fn fetch_me(&self, ctx: &Ctx) -> Result<Me> {
+    pub(crate) fn fetch_me(&self, ctx: &Ctx) -> Result<Person> {
         let data = self.get(
             ctx,
             &self.api(None, "connectionData", "", CONNECTION_DATA_API),
         )?;
         let user = &data["authenticatedUser"];
-        let me = Me {
+        let me = Person {
             id: user["id"]
                 .as_str()
                 .context("Azure DevOps did not say who is signed in")?
@@ -379,7 +379,7 @@ impl Ado {
             name: text(&user["providerDisplayName"])
                 .or_else(|| text(&user["customDisplayName"]))
                 .unwrap_or_default(),
-            account: text(&user["properties"]["Account"]["$value"]),
+            email: text(&user["properties"]["Account"]["$value"]),
         };
         ctx.cache().put(&self.cache_key("me"), &me, CACHE_TTL);
         Ok(me)
@@ -388,12 +388,19 @@ impl Ado {
     /// The identity id a name, an address or `@me` stands for, which is what
     /// the pull request search filters by.
     pub(crate) fn identity(&self, ctx: &Ctx, who: &str) -> Result<String> {
+        Ok(self.person(ctx, who)?.id)
+    }
+
+    /// The one person a name, an address or `@me` stands for: exit 4 for
+    /// nobody, exit 2 for several, so nothing is assigned or mentioned on a
+    /// guess.
+    pub(crate) fn person(&self, ctx: &Ctx, who: &str) -> Result<Person> {
         if who.eq_ignore_ascii_case("@me") {
-            return Ok(self.me(ctx)?.id);
+            return self.me(ctx);
         }
-        let key = self.cache_key(&format!("identity:{}", who.to_lowercase()));
-        if let Some(id) = ctx.cache().get(&key) {
-            return Ok(id);
+        let key = self.cache_key(&format!("person:{}", who.to_lowercase()));
+        if let Some(person) = ctx.cache().get(&key) {
+            return Ok(person);
         }
         let url = format!(
             "https://vssps.dev.azure.com/{}/_apis/identities?searchFilter=General&filterValue={}&queryMembership=None&api-version={API}",
@@ -401,34 +408,36 @@ impl Ado {
             query_value(who)
         );
         let found = self.get(ctx, &url)?;
-        // (id, display name, whether a name or address is exactly `who`)
-        let people: Vec<(String, String, bool)> = list(&found["value"])
+        // (the person, whether a name or address is exactly `who`)
+        let people: Vec<(Person, bool)> = list(&found["value"])
             .iter()
             .filter_map(|identity| {
+                let properties = &identity["properties"];
                 let names = [
                     &identity["providerDisplayName"],
-                    &identity["properties"]["Mail"]["$value"],
-                    &identity["properties"]["Account"]["$value"],
+                    &properties["Mail"]["$value"],
+                    &properties["Account"]["$value"],
                 ];
                 let exact = names.iter().any(|name| {
                     name.as_str()
                         .is_some_and(|name| name.eq_ignore_ascii_case(who))
                 });
-                Some((
-                    identity["id"].as_str()?.to_owned(),
-                    text(names[0]).unwrap_or_default(),
-                    exact,
-                ))
+                let person = Person {
+                    id: identity["id"].as_str()?.to_owned(),
+                    name: text(names[0]).unwrap_or_default(),
+                    email: text(names[2]).or_else(|| text(names[1])),
+                };
+                Some((person, exact))
             })
             .collect();
-        let exact: Vec<&(String, String, bool)> = people.iter().filter(|person| person.2).collect();
+        let exact: Vec<&(Person, bool)> = people.iter().filter(|person| person.1).collect();
         let chosen = match (exact.as_slice(), people.as_slice()) {
             ([one], _) => *one,
             (_, [one]) => one,
             (_, []) => {
                 return Err(
                     Failure::not_found(format!("nobody in {} matches {who:?}", self.org))
-                        .hint("give a full sign-in address, such as jane@contoso.com")
+                        .hint("agent-cli ado person list --text NAME (or give a full sign-in address, such as jane@contoso.com)")
                         .into(),
                 );
             }
@@ -436,7 +445,7 @@ impl Ado {
                 let names: Vec<&str> = many
                     .iter()
                     .take(5)
-                    .map(|person| person.1.as_str())
+                    .map(|person| person.0.name.as_str())
                     .collect();
                 return Err(Failure::usage(format!(
                     "{who:?} matches {} people: {}",
@@ -576,13 +585,16 @@ pub(crate) enum Body {
     Patch(Value),
 }
 
-/// The signed-in user, as connection data describes them.
+/// Someone `--assignee`, a mention or a reviewer names, or who signed in.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct Me {
+pub(crate) struct Person {
+    /// The identity id, which reviewers and the pull request search take.
     pub(crate) id: String,
     pub(crate) name: String,
-    /// The sign-in address, which is what an assignment is written with.
-    pub(crate) account: Option<String>,
+    /// The sign-in address (else their mail), which an assignment is
+    /// written with. `account` is what a day-old cached `me` calls it.
+    #[serde(alias = "account")]
+    pub(crate) email: Option<String>,
 }
 
 /// What the writes need to know about a repository.
@@ -1069,7 +1081,7 @@ mod tests {
             .unwrap()
         };
         assert_eq!(
-            ado.me(&ctx).unwrap().account.as_deref(),
+            ado.me(&ctx).unwrap().email.as_deref(),
             Some("jane@contoso.com")
         );
         assert_eq!(
@@ -1082,6 +1094,12 @@ mod tests {
             ado.identity(&ctx, "SAM@contoso.com").unwrap(),
             "u-2",
             "cached"
+        );
+        let sam = ado.person(&ctx, "sam@contoso.com").unwrap();
+        assert_eq!(
+            (sam.name.as_str(), sam.email.as_deref()),
+            ("Sam Lee", Some("sam@contoso.com")),
+            "cached as a whole person"
         );
         let error = ado.identity(&ctx, "Sam").unwrap_err();
         let failure = error.downcast_ref::<Failure>().unwrap();
@@ -1100,6 +1118,22 @@ mod tests {
         assert!(transport.sent()[1].url.starts_with("https://vssps.dev.azure.com/contoso/_apis/identities?searchFilter=General&filterValue=sam%40contoso.com"));
         let stored = std::fs::read_to_string(dir.path().join("cache.json")).unwrap();
         assert!(!stored.contains("fixture-pat") && !stored.contains("Basic"));
+    }
+
+    #[test]
+    fn nobody_matching_is_not_found_and_points_to_person_list() {
+        let (outcome, _) = testing::ado(
+            &["ado", "pr", "list", "--author", "Nobody Here"],
+            vec![testing::page(vec![])],
+        );
+        assert_eq!(outcome.code, 4, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("hint: agent-cli ado person list --text NAME (or give"),
+            "{}",
+            outcome.stderr
+        );
     }
 
     #[test]
