@@ -91,13 +91,6 @@ pub(crate) fn states(ctx: &Ctx, ado: &Ado, kind: &str) -> Result<Vec<State>> {
 
 /// Whether `state` is finished work for `kind`: its category is Completed or
 /// Removed.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "sprint totals, the rollover and tree roll-ups are its callers to come"
-    )
-)]
 pub(crate) fn done(ctx: &Ctx, ado: &Ado, kind: &str, state: &str) -> Result<bool> {
     let states = states(ctx, ado, kind)?;
     let Some(found) = states

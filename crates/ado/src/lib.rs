@@ -4,6 +4,7 @@
 //! than the command.
 
 mod approval;
+mod backlog;
 mod client;
 mod code;
 mod commit;
@@ -18,6 +19,7 @@ mod pipeline;
 mod pr;
 mod repo;
 mod run;
+mod sprint;
 mod team;
 mod test;
 #[cfg(test)]
@@ -42,6 +44,10 @@ pub const DOMAIN: Domain = Domain {
         workitem::link::WORKITEM_LINK,
         workitem_type::list::WORKITEM_TYPE_LIST,
         workitem_type::get::WORKITEM_TYPE_GET,
+        sprint::list::SPRINT_LIST,
+        sprint::get::SPRINT_GET,
+        sprint::complete::SPRINT_COMPLETE,
+        backlog::list::BACKLOG_LIST,
         team::list::TEAM_LIST,
         person::list::PERSON_LIST,
         repo::list::REPO_LIST,
@@ -132,7 +138,7 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 43);
+        assert_eq!(DOMAIN.commands.len(), 47);
     }
 
     #[test]

@@ -67,6 +67,15 @@ pub struct ListArgs {
     /// Raw WIQL WHERE clause, ANDed with the rest
     #[arg(long)]
     wiql: Option<String>,
+    /// Only work items that @mention you (the last 30 days)
+    #[arg(long)]
+    mentioned: bool,
+    /// Only work items you follow
+    #[arg(long)]
+    following: bool,
+    /// The team whose sprint @current, @next and @previous mean (default: [ado] team)
+    #[arg(long)]
+    team: Option<String>,
     /// Most rows to return
     #[arg(long, default_value_t = 50)]
     limit: usize,
@@ -129,6 +138,12 @@ fn wiql(args: &ListArgs, iteration: Option<String>) -> String {
     if let Some(parent) = args.parent {
         conditions.push(format!("[System.Parent] = {parent}"));
     }
+    if args.mentioned {
+        conditions.push("[System.Id] IN (@RecentMentions)".to_owned());
+    }
+    if args.following {
+        conditions.push("[System.Id] IN (@Follows)".to_owned());
+    }
     if let Some(raw) = &args.wiql {
         conditions.push(format!("({raw})"));
     }
@@ -140,12 +155,13 @@ fn wiql(args: &ListArgs, iteration: Option<String>) -> String {
 
 /// `--iteration` as a WIQL condition, and the team whose URL the query must
 /// go to. `@current` is WIQL's own `@CurrentIteration` when one team is
-/// configured (the macro reads the team from the URL); with several, each
+/// named or configured (the macro reads the team from the URL); with several, each
 /// team's current sprint is read from its settings. `@next` and `@previous`
 /// have no macro, so the team's sprints say which path they are.
 fn iteration_condition(
     ctx: &Ctx,
     ado: &Ado,
+    team: Option<&str>,
     iteration: Option<&str>,
 ) -> Result<(Option<String>, Option<String>)> {
     let Some(iteration) = iteration.map(str::trim) else {
@@ -156,7 +172,7 @@ fn iteration_condition(
             .iter()
             .any(|m| m.eq_ignore_ascii_case(iteration))
         {
-            crate::iteration::resolve(ctx, ado, None, iteration)?.path
+            crate::iteration::resolve(ctx, ado, team, iteration)?.path
         } else {
             iteration.to_owned()
         };
@@ -165,7 +181,8 @@ fn iteration_condition(
             None,
         ));
     }
-    match ado.teams.as_slice() {
+    let teams = team.map_or_else(|| ado.teams.clone(), |team| vec![team.to_owned()]);
+    match teams.as_slice() {
         [] => Err(Failure::setup(
             "--iteration @current means your team's sprint, and [ado] team is not set",
         )
@@ -201,7 +218,8 @@ fn iteration_condition(
 
 fn workitem_list(ctx: &Ctx, args: ListArgs) -> Result<Vec<WorkItemRow>> {
     let ado = Ado::load(ctx)?;
-    let (iteration, team) = iteration_condition(ctx, &ado, args.iteration.as_deref())?;
+    let (iteration, team) =
+        iteration_condition(ctx, &ado, args.team.as_deref(), args.iteration.as_deref())?;
     let query = wiql(&args, iteration);
     let mut top = format!("$top={WIQL_TOP}");
     if args.since.is_some() || args.until.is_some() {
@@ -230,7 +248,7 @@ fn workitem_list(ctx: &Ctx, args: ListArgs) -> Result<Vec<WorkItemRow>> {
 command! {
     pub WORKITEM_LIST = ["ado", "workitem", "list"], Read,
     "List work items matching filters (live WIQL)",
-    keywords: ["query", "find", "search", "assigned", "my", "mine", "sprint", "active", "open", "resolved", "wiql", "high", "urgent", "filed", "opened", "created"],
+    keywords: ["query", "find", "search", "assigned", "my", "mine", "sprint", "active", "open", "resolved", "wiql", "high", "urgent", "filed", "opened", "created", "mentions", "follow", "followed", "watching"],
     example: "ado workitem list --assignee @me --state Active --fields id,title,state",
     run: workitem_list,
 }
@@ -500,5 +518,42 @@ mod tests {
 
         let (outcome, _) = ado(&["ado", "workitem", "list", "--priority", "high"], vec![]);
         assert_eq!(outcome.code, 2, "{outcome:?}");
+    }
+
+    #[test]
+    fn mentioned_and_following_are_wiql_macros_and_team_picks_whose_current_sprint() {
+        let config =
+            "[ado]\norg = \"contoso\"\nproject = \"Fabrikam\"\nteam = [\"Web\", \"Data\"]\n";
+        let (outcome, transport) = ado_with(
+            config,
+            &[
+                "ado",
+                "workitem",
+                "list",
+                "--mentioned",
+                "--following",
+                "--iteration",
+                "@current",
+                "--team",
+                "Data",
+            ],
+            vec![wiql(&[])],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            urls(&transport),
+            [format!(
+                "{BASE}/Fabrikam/Data/_apis/wit/wiql?$top=20000&api-version=7.1"
+            )],
+            "the named team's macro, not each configured team's sprint"
+        );
+        let query = query_of(&transport, 0);
+        assert!(
+            query.contains(
+                "[System.IterationPath] = @CurrentIteration AND [System.Id] IN (@RecentMentions) \
+                 AND [System.Id] IN (@Follows)"
+            ),
+            "{query}"
+        );
     }
 }

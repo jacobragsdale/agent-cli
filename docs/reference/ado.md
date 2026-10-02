@@ -1,4 +1,4 @@
-# ado — Azure DevOps (43 commands)
+# ado — Azure DevOps (47 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -10,6 +10,10 @@
 | [`ado workitem link`](#ado-workitem-link) | write | Link a work item to a branch, creating the branch when missing |
 | [`ado workitem-type list`](#ado-workitem-type-list) | read | List the project's work item types (Bug, User Story, Task …) and their states |
 | [`ado workitem-type get`](#ado-workitem-type-get) | read | Show a work item type's states, moves and fields (required, allowed values) |
+| [`ado sprint list`](#ado-sprint-list) | read | List a team's sprints (iterations) with their dates, oldest first |
+| [`ado sprint get`](#ado-sprint-get) | read | Show how a sprint is going: totals, each person's load and capacity left |
+| [`ado sprint complete`](#ado-sprint-complete) | destructive | Close a sprint: move its unfinished work items to the next sprint |
+| [`ado backlog list`](#ado-backlog-list) | read | List a team's ranked backlog (stories, features or epics) with points |
 | [`ado team list`](#ado-team-list) | read | List the project's teams (for [ado] team, which @current needs) |
 | [`ado person list`](#ado-person-list) | read | List a team's members with the address --assignee and @mentions take |
 | [`ado repo list`](#ado-repo-list) | read | List the project's Git repositories |
@@ -63,6 +67,9 @@ agent-cli ado workitem list — List work items matching filters (live WIQL)
   --date changed|created  Which date --since and --until compare, and the newest first (default changed)
   --parent int            Children of this work item
   --wiql str              Raw WIQL WHERE clause, ANDed with the rest
+  --mentioned             Only work items that @mention you (the last 30 days)
+  --following             Only work items you follow
+  --team str              The team whose sprint @current, @next and @previous mean (default: [ado] team)
   --limit int             Most rows to return (default 50)
 A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
 Returns: [{id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev}]
@@ -90,7 +97,7 @@ agent-cli ado workitem create — Create a work item (bug, task, story …), opt
   --parent int                  The work item it goes under
   --state str                   Active, Closed …
   --assignee str                Name, email or @me ("" unassigns)
-  --iteration str               Full iteration path
+  --iteration str               Full iteration path, or @current, @next or @previous for the team's sprint
   --area str                    Full area path
   --priority int                1 (highest) to 4
   --tags str                    Comma-separated; replaces the tags it has
@@ -98,6 +105,7 @@ agent-cli ado workitem create — Create a work item (bug, task, story …), opt
   --description-file path       The description from a Markdown file
   --acceptance-criteria str     Markdown, stored as HTML; - reads stdin
   --acceptance-criteria-file path  The acceptance criteria from a Markdown file
+  --team str                    The team whose sprints and backlog these are (default: [ado] team)
 Returns: {id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado workitem create --type Bug --title 'Login fails on Safari' --priority 2
@@ -111,7 +119,7 @@ agent-cli ado workitem update — Change a work item's state, assignee, title, i
   --title str                   A new title
   --state str                   Active, Closed …
   --assignee str                Name, email or @me ("" unassigns)
-  --iteration str               Full iteration path
+  --iteration str               Full iteration path, or @current, @next or @previous for the team's sprint
   --area str                    Full area path
   --priority int                1 (highest) to 4
   --tags str                    Comma-separated; replaces the tags it has
@@ -119,7 +127,10 @@ agent-cli ado workitem update — Change a work item's state, assignee, title, i
   --description-file path       The description from a Markdown file
   --acceptance-criteria str     Markdown, stored as HTML; - reads stdin
   --acceptance-criteria-file path  The acceptance criteria from a Markdown file
+  --team str                    The team whose sprints and backlog these are (default: [ado] team)
   --if-rev int                  Refuse unless it is still at this rev (from workitem get)
+  --above str                   Rank it just above this work item on the team's backlog
+  --below str                   Rank it just below this work item on the team's backlog
 Returns: {id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado workitem update 42 --state Active --assignee @me --if-rev 7
@@ -166,6 +177,52 @@ agent-cli ado workitem-type get — Show a work item type's states, moves and fi
 Returns: {name,description,states[{name,category}],transitions,fields[{name,ref,type,required,allowed_values[],default}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado workitem-type get Bug --fields states,transitions
+```
+
+### ado sprint list
+
+```text
+agent-cli ado sprint list — List a team's sprints (iterations) with their dates, oldest first
+  --team str   The team whose sprints to list (default: [ado] team)
+  --limit int  Most rows to return (the latest) (default 50)
+Returns: [{id,name,path,start,finish,timeframe}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado sprint list --fields id,start,finish,timeframe
+```
+
+### ado sprint get
+
+```text
+agent-cli ado sprint get — Show how a sprint is going: totals, each person's load and capacity left
+  <sprint> str  @current, @next, @previous, a sprint's path or its name (default @current)
+  --team str    The team whose sprint it is (default: [ado] team)
+Returns: {id,name,path,start,finish,timeframe,working_days_left,totals{items,by_state,points,points_done,remaining_work},people[{name,items,points,remaining_work,capacity_per_day,days_off,capacity_left}],team_days_off[{start,end}]}
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado sprint get @current --fields name,working_days_left,totals,people
+```
+
+### ado sprint complete
+
+```text
+agent-cli ado sprint complete — Close a sprint: move its unfinished work items to the next sprint
+ *<sprint> str   The sprint to close: @current, @previous, a sprint's path or its name
+  --move-to str  The sprint unfinished work moves to: @next (the default), a path or a name (default @next)
+  --team str     The team whose sprints they are (default: [ado] team)
+Returns: {sprint,to,moved[{id,type,title,state}],skipped[{id,reason}]}
+Destructive: needs --yes; --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado sprint complete @current --move-to @next --yes
+```
+
+### ado backlog list
+
+```text
+agent-cli ado backlog list — List a team's ranked backlog (stories, features or epics) with points
+  --level stories|features|epics  stories (the team's requirement backlog), features or epics (default stories)
+  --team str                    The team whose backlog it is (default: [ado] team)
+  --limit int                   Most rows to return (from the top) (default 50)
+Returns: [{id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev,rank,points}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado backlog list --level stories --limit 20 --fields rank,id,title,points
 ```
 
 ### ado team list

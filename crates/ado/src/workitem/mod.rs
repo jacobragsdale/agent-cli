@@ -30,7 +30,7 @@ struct Fields {
     /// Name, email or @me ("" unassigns)
     #[arg(long)]
     assignee: Option<String>,
-    /// Full iteration path
+    /// Full iteration path, or @current, @next or @previous for the team's sprint
     #[arg(long)]
     iteration: Option<String>,
     /// Full area path
@@ -54,6 +54,9 @@ struct Fields {
     /// The acceptance criteria from a Markdown file
     #[arg(long)]
     acceptance_criteria_file: Option<PathBuf>,
+    /// The team whose sprints and backlog these are (default: [ado] team)
+    #[arg(long)]
+    team: Option<String>,
 }
 
 /// One JSON Patch operation setting a field. Azure DevOps takes `add` for a
@@ -87,8 +90,13 @@ fn field_ops(ctx: &Ctx, ado: &Ado, title: Option<&str>, fields: &Fields) -> Resu
             set("System.AssignedTo", who)
         });
     }
-    if let Some(iteration) = &fields.iteration {
-        ops.push(set("System.IterationPath", iteration.trim()));
+    if let Some(iteration) = fields.iteration.as_deref().map(str::trim) {
+        let path = if iteration.starts_with('@') {
+            crate::iteration::resolve(ctx, ado, fields.team.as_deref(), iteration)?.path
+        } else {
+            iteration.to_owned()
+        };
+        ops.push(set("System.IterationPath", path));
     }
     if let Some(area) = &fields.area {
         ops.push(set("System.AreaPath", area.trim()));

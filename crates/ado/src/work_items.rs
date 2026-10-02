@@ -14,7 +14,7 @@ use crate::client::{Ado, list, stamp, text};
 
 /// The fields a list row carries. The batch endpoint returns only these, so
 /// fifty rows cost one small request.
-const ROW_FIELDS: [&str; 10] = [
+pub(crate) const ROW_FIELDS: [&str; 10] = [
     "System.WorkItemType",
     "System.Title",
     "System.State",
@@ -107,26 +107,51 @@ pub(crate) fn person(value: &Value) -> Option<String> {
         .or_else(|| text(value))
 }
 
-/// The rows for `ids`, in the order given: the batch endpoint does not
-/// promise the WIQL's order.
+/// The rows for `ids`, in the order given.
 pub(crate) fn rows(ctx: &Ctx, ado: &Ado, ids: &[i64]) -> Result<Vec<WorkItemRow>> {
-    let mut rows = Vec::with_capacity(ids.len());
+    Ok(read(ctx, ado, ids, &ROW_FIELDS)?.iter().map(row).collect())
+}
+
+/// The work items `ids` with `fields` (and each one's `rev`), in the order
+/// given: the batch endpoint does not promise the WIQL's order.
+pub(crate) fn read(ctx: &Ctx, ado: &Ado, ids: &[i64], fields: &[&str]) -> Result<Vec<Value>> {
+    let mut items = Vec::with_capacity(ids.len());
     for chunk in ids.chunks(BATCH) {
         let answer = ado.query(
             ctx,
             &ado.work("wit/workitemsbatch", ""),
-            json!({"ids": chunk, "fields": ROW_FIELDS, "errorPolicy": "omit"}),
+            json!({"ids": chunk, "fields": fields, "errorPolicy": "omit"}),
         )?;
-        rows.extend(
+        items.extend(
             list(&answer["value"])
                 .iter()
                 .filter(|item| !item.is_null())
-                .map(row),
+                .cloned(),
         );
     }
     let rank: HashMap<i64, usize> = ids.iter().enumerate().map(|(at, id)| (*id, at)).collect();
-    rows.sort_by_key(|row| rank.get(&row.id).copied().unwrap_or(usize::MAX));
-    Ok(rows)
+    items.sort_by_key(|item| {
+        item["id"]
+            .as_i64()
+            .and_then(|id| rank.get(&id).copied())
+            .unwrap_or(usize::MAX)
+    });
+    Ok(items)
+}
+
+/// Where each process keeps a work item's size: Story Points (Agile), Effort
+/// (Scrum), Size (CMMI).
+pub(crate) const POINTS: [&str; 3] = [
+    "Microsoft.VSTS.Scheduling.StoryPoints",
+    "Microsoft.VSTS.Scheduling.Effort",
+    "Microsoft.VSTS.Scheduling.Size",
+];
+
+/// A batch-read work item's points, whichever process field holds them.
+pub(crate) fn points(item: &Value) -> Option<f64> {
+    POINTS
+        .iter()
+        .find_map(|field| item["fields"][field].as_f64())
 }
 
 /// What a `vstfs:///` artifact link points at, when it is something this
