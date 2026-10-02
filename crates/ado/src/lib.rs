@@ -10,12 +10,14 @@ mod commit;
 mod diff;
 mod doctor;
 mod file;
+mod history;
 mod ids;
 mod iteration;
 mod markdown;
 mod person;
 mod pipeline;
 mod pr;
+mod relation;
 mod repo;
 mod run;
 mod team;
@@ -23,6 +25,7 @@ mod test;
 #[cfg(test)]
 mod testing;
 mod thread;
+mod tree;
 mod types;
 mod work_items;
 mod workitem;
@@ -40,6 +43,10 @@ pub const DOMAIN: Domain = Domain {
         workitem::update::WORKITEM_UPDATE,
         workitem::comment::WORKITEM_COMMENT,
         workitem::link::WORKITEM_LINK,
+        relation::create::RELATION_CREATE,
+        relation::delete::RELATION_DELETE,
+        tree::get::TREE_GET,
+        history::get::HISTORY_GET,
         workitem_type::list::WORKITEM_TYPE_LIST,
         workitem_type::get::WORKITEM_TYPE_GET,
         team::list::TEAM_LIST,
@@ -132,7 +139,7 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 43);
+        assert_eq!(DOMAIN.commands.len(), 47);
     }
 
     #[test]

@@ -110,23 +110,30 @@ pub(crate) fn person(value: &Value) -> Option<String> {
 /// The rows for `ids`, in the order given: the batch endpoint does not
 /// promise the WIQL's order.
 pub(crate) fn rows(ctx: &Ctx, ado: &Ado, ids: &[i64]) -> Result<Vec<WorkItemRow>> {
-    let mut rows = Vec::with_capacity(ids.len());
+    let mut rows: Vec<WorkItemRow> = batch(ctx, ado, ids, &ROW_FIELDS)?.iter().map(row).collect();
+    let rank: HashMap<i64, usize> = ids.iter().enumerate().map(|(at, id)| (*id, at)).collect();
+    rows.sort_by_key(|row| rank.get(&row.id).copied().unwrap_or(usize::MAX));
+    Ok(rows)
+}
+
+/// The work items `ids` with `fields`, in as few requests as the endpoint
+/// allows. A deleted or unreadable id is left out rather than failing the rest.
+pub(crate) fn batch(ctx: &Ctx, ado: &Ado, ids: &[i64], fields: &[&str]) -> Result<Vec<Value>> {
+    let mut items = Vec::with_capacity(ids.len());
     for chunk in ids.chunks(BATCH) {
         let answer = ado.query(
             ctx,
             &ado.work("wit/workitemsbatch", ""),
-            json!({"ids": chunk, "fields": ROW_FIELDS, "errorPolicy": "omit"}),
+            json!({"ids": chunk, "fields": fields, "errorPolicy": "omit"}),
         )?;
-        rows.extend(
+        items.extend(
             list(&answer["value"])
                 .iter()
                 .filter(|item| !item.is_null())
-                .map(row),
+                .cloned(),
         );
     }
-    let rank: HashMap<i64, usize> = ids.iter().enumerate().map(|(at, id)| (*id, at)).collect();
-    rows.sort_by_key(|row| rank.get(&row.id).copied().unwrap_or(usize::MAX));
-    Ok(rows)
+    Ok(items)
 }
 
 /// What a `vstfs:///` artifact link points at, when it is something this

@@ -1,4 +1,4 @@
-# ado — Azure DevOps (43 commands)
+# ado — Azure DevOps (47 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -8,6 +8,10 @@
 | [`ado workitem update`](#ado-workitem-update) | write | Change a work item's state, assignee, title, iteration, tags or description |
 | [`ado workitem comment`](#ado-workitem-comment) | write | Add a comment to a work item (Markdown, - for stdin, or --text-file) |
 | [`ado workitem link`](#ado-workitem-link) | write | Link a work item to a branch, creating the branch when missing |
+| [`ado relation create`](#ado-relation-create) | write | Link two work items: parent, child, related, blocks, blocked-by, duplicate-of |
+| [`ado relation delete`](#ado-relation-delete) | write | Unlink two work items: remove a parent, child, related or blocking link |
+| [`ado tree get`](#ado-tree-get) | read | Show a work item's hierarchy with progress rolled up: done, points, remaining |
+| [`ado history get`](#ado-history-get) | read | Show a work item's history: days spent in each state, who set which field |
 | [`ado workitem-type list`](#ado-workitem-type-list) | read | List the project's work item types (Bug, User Story, Task …) and their states |
 | [`ado workitem-type get`](#ado-workitem-type-get) | read | Show a work item type's states, moves and fields (required, allowed values) |
 | [`ado team list`](#ado-team-list) | read | List the project's teams (for [ado] team, which @current needs) |
@@ -76,7 +80,7 @@ e.g. agent-cli ado workitem list --assignee @me --state Active --fields id,title
 agent-cli ado workitem get — Show a work item: fields, description as Markdown, links, latest comments
  *<id> str        The work item's id: 1207, #1207, AB#1207 or its web URL
   --comments int  How many of the latest comments to include (default 5)
-Returns: {id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev,parent,children[],related[],pull_requests[{repo,id}],branches[{repo,name}],description,acceptance_criteria,comment_count,comments[{id,author,date,text}],url}
+Returns: {id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev,parent,children[],related[],blocks[],blocked_by[],pull_requests[{repo,id}],branches[{repo,name}],description,acceptance_criteria,comment_count,comments[{id,author,date,text}],url}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado workitem get 42 --fields id,title,state,description
 ```
@@ -147,6 +151,62 @@ agent-cli ado workitem link — Link a work item to a branch, creating the branc
 Returns: {work_item,repo,branch,branch_created,already_linked}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado workitem link 42 --repo web --branch 42-fix-login
+```
+
+### ado relation create
+
+```text
+agent-cli ado relation create — Link two work items: parent, child, related, blocks, blocked-by, duplicate-of
+ *<id> str            The work item's id: 1207, #1207, AB#1207 or its web URL
+  --parent int        The work item ID goes under
+  --child int         The work item that goes under ID
+  --related int       A work item related to ID
+  --blocks int        The work item ID blocks (ID must finish first)
+  --blocked-by int    The work item that blocks ID (it must finish first)
+  --duplicate-of int  The original that ID duplicates
+Returns: {work_item,link,other,already_linked,removed}
+Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado relation create 42 --blocked-by 41
+```
+
+### ado relation delete
+
+```text
+agent-cli ado relation delete — Unlink two work items: remove a parent, child, related or blocking link
+ *<id> str            The work item's id: 1207, #1207, AB#1207 or its web URL
+  --parent int        The work item ID goes under
+  --child int         The work item that goes under ID
+  --related int       A work item related to ID
+  --blocks int        The work item ID blocks (ID must finish first)
+  --blocked-by int    The work item that blocks ID (it must finish first)
+  --duplicate-of int  The original that ID duplicates
+Returns: {work_item,link,other,already_linked,removed}
+Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado relation delete 42 --parent 7
+```
+
+### ado tree get
+
+```text
+agent-cli ado tree get — Show a work item's hierarchy with progress rolled up: done, points, remaining
+ *<id> str     The work item's id: 1207, #1207, AB#1207 or its web URL
+  --depth int  Levels of children to print; deeper ones still count in the rollups (default 5)
+Returns: {id,type,title,state,assignee,points,remaining_work,rollup{items,done,by_state,points,points_done,remaining_work,percent_done},children[]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado tree get 42 --depth 2
+```
+
+### ado history get
+
+```text
+agent-cli ado history get — Show a work item's history: days spent in each state, who set which field
+ *<id> str      The work item's id: 1207, #1207, AB#1207 or its web URL
+  --field str   Only changes to this field, by reference or display name ("Story Points")
+  --since time  Only changes after this (states always cover the whole history)
+A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
+Returns: {id,title,states[{state,by,since,until,hours}],changes[{rev,by,date,fields[{field,old,new}],comment}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado history get 42 --field state --fields states
 ```
 
 ### ado workitem-type list
