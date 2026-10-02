@@ -250,6 +250,7 @@ fn sent_body(body: &Body) -> Option<Value> {
                 .map(|(name, value)| (name.clone(), Value::String(value.clone())))
                 .collect(),
         ))),
+        Body::Bytes(bytes) => Some(Value::String(String::from_utf8_lossy(bytes).into_owned())),
     }
 }
 
@@ -290,6 +291,7 @@ impl Transport for Replay {
                     status: 404,
                     headers: Vec::new(),
                     body: r#"{"message":"Not Found"}"#.to_owned(),
+                    bytes: None,
                     url: request.url.clone(),
                 });
             }
@@ -304,6 +306,7 @@ impl Transport for Replay {
             status: exchange.status,
             headers: exchange.headers.clone(),
             body: exchange.answer.clone(),
+            bytes: None,
             url: request.url.clone(),
         })
     }

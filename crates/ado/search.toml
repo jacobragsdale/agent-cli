@@ -535,3 +535,56 @@ expect = "ado person list"
 [[query]]
 text = "list team members"
 expect = "ado person list"
+
+[[query]]
+text = "what saved queries does the team have"
+expect = "ado query list"
+
+[[query]]
+text = "find the shared query for bug triage"
+expect = "ado query list"
+
+[[query]]
+text = "run the team triage query"
+expect = "ado query run"
+
+[[query]]
+text = "run the saved query Shared Queries/Active Bugs"
+expect = "ado query run"
+
+[[query]]
+text = "show the results of the shared work item query"
+expect = "ado query run"
+
+# The other reading of "run a query": SQL, not a saved work item query.
+[[query]]
+text = "run this SQL against the orders database"
+expect = "sql query run"
+
+[[query]]
+text = "execute a select statement on the database"
+expect = "sql query run"
+
+[[query]]
+text = "what files are attached to work item 1207"
+expect = "ado attachment list"
+
+[[query]]
+text = "list the attachments on the bug"
+expect = "ado attachment list"
+
+[[query]]
+text = "download the screenshot attached to the bug"
+expect = "ado attachment get"
+
+[[query]]
+text = "read the log file attached to ticket 1207"
+expect = "ado attachment get"
+
+[[query]]
+text = "attach the crash log to work item 1207"
+expect = "ado attachment create"
+
+[[query]]
+text = "upload a screenshot to the bug"
+expect = "ado attachment create"

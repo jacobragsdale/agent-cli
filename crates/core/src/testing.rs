@@ -30,6 +30,8 @@ pub struct Answer {
     pub status: u16,
     pub headers: Vec<(String, String)>,
     pub body: String,
+    /// An answer that is not UTF-8 text, as `Response::bytes` holds it.
+    pub bytes: Option<Vec<u8>>,
 }
 
 impl Answer {
@@ -49,6 +51,19 @@ impl Answer {
             status,
             headers: Vec::new(),
             body: body.into(),
+            bytes: None,
+        }
+    }
+
+    /// A 200 whose body is a file's bytes, text or not.
+    #[must_use]
+    pub fn bytes(bytes: &[u8]) -> Self {
+        match String::from_utf8(bytes.to_vec()) {
+            Ok(text) => Self::ok(text),
+            Err(binary) => Self {
+                bytes: Some(binary.into_bytes()),
+                ..Self::ok("")
+            },
         }
     }
 
@@ -116,6 +131,7 @@ impl Transport for FakeTransport {
                     .map(|(key, value)| (key.clone(), Value::String(value.clone())))
                     .collect(),
             )),
+            Body::Bytes(bytes) => Some(Value::String(String::from_utf8_lossy(bytes).into_owned())),
         };
         locked(&self.sent).push(Sent {
             method: request.method,
@@ -134,6 +150,7 @@ impl Transport for FakeTransport {
             status: answer.status,
             headers: answer.headers,
             body: answer.body,
+            bytes: answer.bytes,
             url: request.url.clone(),
         })
     }

@@ -127,6 +127,8 @@ pub struct Ctx {
     command_line: String,
     plans: Mutex<Vec<Value>>,
     notes: Mutex<Vec<String>>,
+    /// The handler wrote `--output` itself ([`Ctx::save`]).
+    saved: Mutex<bool>,
     pub(crate) tokens: Mutex<HashMap<String, Secret>>,
 }
 
@@ -147,6 +149,7 @@ impl Ctx {
             command_line: command_line.into(),
             plans: Mutex::new(Vec::new()),
             notes: Mutex::new(Vec::new()),
+            saved: Mutex::new(false),
             tokens: Mutex::new(HashMap::new()),
         }
     }
@@ -334,6 +337,29 @@ impl Ctx {
 
     pub(crate) fn take_plans(&self) -> Vec<Value> {
         std::mem::take(&mut *locked(&self.plans))
+    }
+
+    /// Writes `bytes` to `--output FILE` (mode 0600) and returns the path;
+    /// `None` without `--output`. For an answer that is a file rather than
+    /// JSON (an attachment): the command's row then prints to stdout instead
+    /// of being saved over the file.
+    pub fn save(&self, bytes: &[u8]) -> Result<Option<PathBuf>> {
+        let Some(path) = &self.globals.output else {
+            return Ok(None);
+        };
+        crate::output::write_private(path, bytes)?;
+        *locked(&self.saved) = true;
+        Ok(Some(path.clone()))
+    }
+
+    /// The globals output is printed under: `--output` is spent once
+    /// [`Ctx::save`] wrote it.
+    pub(crate) fn printing(&self) -> Globals {
+        let mut globals = self.globals.clone();
+        if *locked(&self.saved) {
+            globals.output = None;
+        }
+        globals
     }
 
     pub(crate) fn take_notes(&self) -> Vec<String> {

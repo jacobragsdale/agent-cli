@@ -31,9 +31,9 @@ const ROW_FIELDS: [&str; 10] = [
 const BATCH: usize = 200;
 
 /// One work item as a list shows it.
-#[derive(Debug, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Serialize, JsonSchema)]
 pub struct WorkItemRow {
-    id: i64,
+    pub(crate) id: i64,
     #[serde(rename = "type")]
     kind: Option<String>,
     title: Option<String>,

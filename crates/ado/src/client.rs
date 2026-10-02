@@ -218,6 +218,7 @@ impl Ado {
                     .json(body)
                     .header("Content-Type", "application/json-patch+json");
             }
+            Body::Bytes(bytes) => request = request.bytes(bytes),
         }
         let response = match effect {
             None => ctx.read(request),
@@ -583,6 +584,8 @@ pub(crate) enum Body {
     /// A JSON Patch document, which Azure DevOps only takes under its own
     /// media type.
     Patch(Value),
+    /// A file's bytes, sent as `application/octet-stream`.
+    Bytes(Vec<u8>),
 }
 
 /// Someone `--assignee`, a mention or a reviewer names, or who signed in.

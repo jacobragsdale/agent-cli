@@ -12,29 +12,17 @@ use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, bail};
 use serde_json::{Map, Value, json};
-use time::format_description::BorrowedFormatItem;
-use time::macros::format_description;
-use time::{OffsetDateTime, PrimitiveDateTime};
+use time::OffsetDateTime;
 
 use crate::ctx::{Ctx, Op};
 use crate::error::{Exit, Failure};
 use crate::secret::Secret;
+use crate::throttle::throttle_wait;
 
-/// When a throttled service does not say how long to wait. Key Vault never does.
-const DEFAULT_RETRY_AFTER: Duration = Duration::from_secs(30);
-/// A header that works out at nothing is still a refusal; asking again in the
-/// same breath is what makes it worse.
-const MIN_RETRY_AFTER: Duration = Duration::from_secs(1);
-/// So a date from a clock that disagrees with ours cannot ask for days.
-const MAX_RETRY_AFTER: Duration = Duration::from_secs(3600);
 /// The statuses services shed load with.
 const THROTTLED: [u16; 2] = [429, 503];
 /// A body larger than this is not an answer any command wants.
 const BODY_LIMIT: u64 = 32 * 1024 * 1024;
-/// `Retry-After` in its other form: an IMF-fixdate, always in GMT.
-const HTTP_DATE: &[BorrowedFormatItem<'static>] = format_description!(
-    "[weekday repr:short], [day] [month repr:short] [year] [hour]:[minute]:[second] GMT"
-);
 
 /// The verbs a request can use. [`Method::Query`] is a `POST` that only reads
 /// (WIQL, Resource Graph, a token exchange): it is the one POST
@@ -75,6 +63,9 @@ pub enum Body {
     /// `Content-Type` (Azure DevOps wants `application/json-patch+json`).
     Json(Value),
     Form(Vec<(String, String)>),
+    /// A file's bytes (an attachment), sent as `application/octet-stream`
+    /// unless the request sets its own `Content-Type`.
+    Bytes(Vec<u8>),
 }
 
 /// What mints the `Authorization` header value: asked with `fresh = false`
@@ -135,6 +126,12 @@ impl<'a> Request<'a> {
     }
 
     #[must_use]
+    pub fn bytes(mut self, bytes: Vec<u8>) -> Self {
+        self.body = Body::Bytes(bytes);
+        self
+    }
+
+    #[must_use]
     pub fn auth(mut self, mint: Mint<'a>) -> Self {
         self.auth = Some(mint);
         self
@@ -146,6 +143,9 @@ pub struct Response {
     pub status: u16,
     pub headers: Vec<(String, String)>,
     pub body: String,
+    /// The answer as sent when it is not UTF-8, which `body` cannot hold
+    /// (it is then empty): an attachment, an image.
+    pub bytes: Option<Vec<u8>>,
     /// Where it came from, filled in by core for error messages.
     pub url: String,
 }
@@ -157,6 +157,12 @@ impl Response {
             .iter()
             .find(|(key, _)| key.eq_ignore_ascii_case(name))
             .map(|(_, value)| value.as_str())
+    }
+
+    /// The answer as sent, text or not.
+    #[must_use]
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.bytes.unwrap_or_else(|| self.body.into_bytes())
     }
 
     /// The body as JSON. An empty body is an error, never "no rows": read that
@@ -224,6 +230,7 @@ impl Transport for Https {
             Body::Form(_) if !typed => {
                 headers.push(("Content-Type", "application/x-www-form-urlencoded"));
             }
+            Body::Bytes(_) if !typed => headers.push(("Content-Type", "application/octet-stream")),
             _ => {}
         }
         // `ureq` types its builders by whether a body follows, so the verb and
@@ -255,16 +262,21 @@ impl Transport for Https {
                 Some((name.as_str().to_owned(), value.to_str().ok()?.to_owned()))
             })
             .collect();
-        let body = response
+        let read = response
             .body_mut()
             .with_config()
             .limit(BODY_LIMIT)
-            .read_to_string()
+            .read_to_vec()
             .with_context(|| format!("failed to read the answer from {url}"))?;
+        let (body, bytes) = match String::from_utf8(read) {
+            Ok(body) => (body, None),
+            Err(binary) => (String::new(), Some(binary.into_bytes())),
+        };
         Ok(Response {
             status,
             headers,
             body,
+            bytes,
             url: url.to_owned(),
         })
     }
@@ -289,6 +301,7 @@ fn send_body(
         Body::None => builder.send_empty(),
         Body::Json(document) => builder.send(document.to_string()),
         Body::Form(fields) => builder.send(form_encode(fields)),
+        Body::Bytes(bytes) => builder.send(&bytes[..]),
     }
 }
 
@@ -315,6 +328,7 @@ impl Op for Request<'_> {
                     .collect();
                 plan["form"] = Value::Object(fields);
             }
+            Body::Bytes(bytes) => plan["bytes"] = json!(bytes.len()),
         }
         plan
     }
@@ -515,71 +529,6 @@ fn listed_failures(parsed: &Value) -> Option<String> {
     (!said.is_empty()).then(|| said.join("; "))
 }
 
-/// How long to leave a throttled answer alone: `Retry-After`, Resource
-/// Graph's `x-ms-user-quota-resets-after` clock, `X-RateLimit-Reset`
-/// (Datadog's seconds to wait, or an epoch second as some services write
-/// it), or the default. The caller caps it by the deadline.
-#[must_use]
-pub fn throttle_wait(response: &Response, now: OffsetDateTime) -> Duration {
-    if let Some(header) = response.header("Retry-After") {
-        return retry_after(Some(header), now);
-    }
-    if let Some(seconds) = response
-        .header("x-ms-user-quota-resets-after")
-        .and_then(hms_seconds)
-    {
-        return retry_after(Some(&seconds.to_string()), now);
-    }
-    if let Some(reset) = response
-        .header("X-RateLimit-Reset")
-        .and_then(|raw| raw.trim().parse::<f64>().ok())
-        .filter(|reset| reset.is_finite())
-    {
-        // No wait is a billion seconds long; a number that large is a clock.
-        let seconds = if reset > 1e9 {
-            reset - now.unix_timestamp() as f64
-        } else {
-            reset
-        };
-        return retry_after(Some(&seconds.to_string()), now);
-    }
-    DEFAULT_RETRY_AFTER
-}
-
-/// `hh:mm:ss` (or `mm:ss`) as whole seconds.
-fn hms_seconds(raw: &str) -> Option<u64> {
-    let parts: Vec<u64> = raw
-        .trim()
-        .split(':')
-        .map(|part| part.trim().parse::<u64>().ok())
-        .collect::<Option<_>>()?;
-    match parts[..] {
-        [hours, minutes, seconds] => Some(hours * 3600 + minutes * 60 + seconds),
-        [minutes, seconds] => Some(minutes * 60 + seconds),
-        _ => None,
-    }
-}
-
-/// `Retry-After` as seconds or as a date to count forward to, clamped to
-/// [`MIN_RETRY_AFTER`]..[`MAX_RETRY_AFTER`].
-#[must_use]
-pub fn retry_after(header: Option<&str>, now: OffsetDateTime) -> Duration {
-    let Some(raw) = header.map(str::trim).filter(|raw| !raw.is_empty()) else {
-        return DEFAULT_RETRY_AFTER;
-    };
-    // `nan` parses as a number and would take the clamp down with it.
-    let seconds = match raw.parse::<f64>() {
-        Ok(seconds) if seconds.is_finite() => seconds,
-        _ => match PrimitiveDateTime::parse(raw, HTTP_DATE) {
-            Ok(when) => (when.assume_utc() - now).as_seconds_f64(),
-            Err(_) => return DEFAULT_RETRY_AFTER,
-        },
-    };
-    Duration::from_secs_f64(
-        seconds.clamp(MIN_RETRY_AFTER.as_secs_f64(), MAX_RETRY_AFTER.as_secs_f64()),
-    )
-}
-
 /// `application/x-www-form-urlencoded`, which is also a query string.
 #[must_use]
 pub fn form_encode(pairs: &[(String, String)]) -> String {
@@ -662,37 +611,6 @@ mod tests {
                 "{url}"
             );
         }
-    }
-
-    #[test]
-    fn retry_after_reads_seconds_a_date_and_nothing_at_all() {
-        let now = OffsetDateTime::from_unix_timestamp(1_700_000_000).unwrap();
-        assert_eq!(retry_after(Some("7"), now), Duration::from_secs(7));
-        assert_eq!(retry_after(Some("0"), now), MIN_RETRY_AFTER);
-        assert_eq!(retry_after(Some("nan"), now), DEFAULT_RETRY_AFTER);
-        assert_eq!(retry_after(None, now), DEFAULT_RETRY_AFTER);
-        assert_eq!(retry_after(Some("99999"), now), MAX_RETRY_AFTER);
-        // 1_700_000_000 is Tue, 14 Nov 2023 22:13:20 GMT.
-        assert_eq!(
-            retry_after(Some("Tue, 14 Nov 2023 22:13:50 GMT"), now),
-            Duration::from_secs(30)
-        );
-        let quota = Response {
-            headers: vec![("x-ms-user-quota-resets-after".into(), "00:00:04".into())],
-            ..Response::default()
-        };
-        assert_eq!(throttle_wait(&quota, now), Duration::from_secs(4));
-        let reset = |value: &str| Response {
-            headers: vec![("X-RateLimit-Reset".into(), value.into())],
-            ..Response::default()
-        };
-        assert_eq!(throttle_wait(&reset("12"), now), Duration::from_secs(12));
-        assert_eq!(
-            throttle_wait(&reset("1700000009"), now),
-            Duration::from_secs(9),
-            "an epoch second counts forward from now"
-        );
-        assert_eq!(throttle_wait(&reset("soon"), now), DEFAULT_RETRY_AFTER);
     }
 
     #[test]
