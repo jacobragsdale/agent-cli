@@ -66,11 +66,11 @@ const IDENTITY_FLAGS: &[&str] = &[
 ];
 
 /// Words that are one domain's synonym and another's resource, each with
-/// labeled queries for both readings in `search.toml`. Anything else that
-/// collides is refused: search would weigh the two readings the same.
-/// `task`: ado's Task work item and airflow's task instance.
-/// `container`, `log`: k8s synonyms for pod and logs, and dd resources.
-pub const SHARED_WORDS: &[&str] = &["task", "container", "log"];
+/// labeled queries for both readings in `search.toml`; any other collision
+/// is refused. `task`: ado's Task and airflow's task instance. `container`,
+/// `log`: k8s synonyms for pod and logs, and dd resources. `history`: kv's
+/// synonym for a secret's versions, and ado's work item history.
+pub const SHARED_WORDS: &[&str] = &["task", "container", "log", "history"];
 
 /// The longest status line the overview shows for a domain; longer ones are
 /// cut. What keeps the overview under 1 KB with every domain configured.

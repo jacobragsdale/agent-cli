@@ -561,3 +561,46 @@ expect = "ado workitem create"
 [[query]]
 text = "mention Sam in a comment on work item 1207"
 expect = "ado workitem comment"
+[[query]]
+text = "how long has ticket 42 been in Active"
+expect = "ado history get"
+
+[[query]]
+text = "who changed the story points on work item 1207"
+expect = "ado history get"
+
+[[query]]
+text = "show the revision history of bug 88"
+expect = "ado history get"
+
+[[query]]
+text = "mark work item 42 as blocked by 41"
+expect = "ado relation create"
+
+[[query]]
+text = "make story 1207 a child of feature 1200"
+expect = "ado relation create"
+
+[[query]]
+text = "link two work items as related"
+expect = "ado relation create"
+
+[[query]]
+text = "remove the parent link from work item 42"
+expect = "ado relation delete"
+
+[[query]]
+text = "unlink the dependency between tickets 41 and 42"
+expect = "ado relation delete"
+
+[[query]]
+text = "how far along is the epic, percent done of its children"
+expect = "ado tree get"
+
+[[query]]
+text = "show the feature hierarchy with story points rolled up"
+expect = "ado tree get"
+
+[[query]]
+text = "breakdown of everything under epic 300"
+expect = "ado tree get"

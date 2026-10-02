@@ -13,6 +13,11 @@ const CHILD: &str = "System.LinkTypes.Hierarchy-Forward";
 
 const RELATED: &str = "System.LinkTypes.Related";
 
+/// On a predecessor, the item it blocks is its Successor.
+const BLOCKS: &str = "System.LinkTypes.Dependency-Forward";
+
+const BLOCKED_BY: &str = "System.LinkTypes.Dependency-Reverse";
+
 #[derive(clap::Args)]
 pub struct GetArgs {
     /// The work item's id: 1207, #1207, AB#1207 or its web URL
@@ -30,6 +35,10 @@ pub struct WorkItem {
     parent: Option<i64>,
     children: Vec<i64>,
     related: Vec<i64>,
+    /// Work items waiting on this one.
+    blocks: Vec<i64>,
+    /// Work items this one waits on.
+    blocked_by: Vec<i64>,
     pull_requests: Vec<PrLink>,
     branches: Vec<BranchLink>,
     /// Markdown.
@@ -84,6 +93,8 @@ fn workitem_get(ctx: &Ctx, args: GetArgs) -> Result<WorkItem> {
         parent: None,
         children: Vec::new(),
         related: Vec::new(),
+        blocks: Vec::new(),
+        blocked_by: Vec::new(),
         pull_requests: Vec::new(),
         branches: Vec::new(),
         description: text(&item["fields"]["System.Description"])
@@ -100,6 +111,8 @@ fn workitem_get(ctx: &Ctx, args: GetArgs) -> Result<WorkItem> {
             PARENT => work.parent = linked_id(url),
             CHILD => work.children.extend(linked_id(url)),
             RELATED => work.related.extend(linked_id(url)),
+            BLOCKS => work.blocks.extend(linked_id(url)),
+            BLOCKED_BY => work.blocked_by.extend(linked_id(url)),
             "ArtifactLink" => artifacts.extend(artifact(url)),
             _ => {}
         }
@@ -180,6 +193,8 @@ mod tests {
             {"rel": "System.LinkTypes.Hierarchy-Forward", "url": format!("{BASE}/_apis/wit/workItems/43")},
             {"rel": "System.LinkTypes.Hierarchy-Forward", "url": format!("{BASE}/_apis/wit/workItems/44")},
             {"rel": "System.LinkTypes.Related", "url": format!("{BASE}/_apis/wit/workItems/9")},
+            {"rel": "System.LinkTypes.Dependency-Forward", "url": format!("{BASE}/_apis/wit/workItems/50")},
+            {"rel": "System.LinkTypes.Dependency-Reverse", "url": format!("{BASE}/_apis/wit/workItems/41")},
             {"rel": "ArtifactLink", "url": "vstfs:///Git/PullRequestId/p-1%2Fr-1%2F17"},
             {"rel": "ArtifactLink", "url": "vstfs:///Git/Ref/p-1%2Fr-1%2FGB42-fix%2Fsafari"},
             {"rel": "ArtifactLink", "url": "vstfs:///Build/Build/991"}
@@ -204,6 +219,8 @@ mod tests {
         assert_eq!(got["parent"], 7);
         assert_eq!(got["children"], json!([43, 44]));
         assert_eq!(got["related"], json!([9]));
+        assert_eq!(got["blocks"], json!([50]));
+        assert_eq!(got["blocked_by"], json!([41]));
         assert_eq!(got["pull_requests"], json!([{"repo": "web", "id": 17}]));
         assert_eq!(
             got["branches"],
