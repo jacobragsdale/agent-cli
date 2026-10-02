@@ -5,7 +5,7 @@ use serde_json::json;
 use crate::client::{Ado, segment};
 use crate::work_items::{WorkItemRow, row};
 
-use super::{Fields, PARENT, field_ops};
+use super::{Fields, PARENT, broke_rules, field_ops};
 
 #[derive(clap::Args)]
 pub struct CreateArgs {
@@ -24,7 +24,10 @@ pub struct CreateArgs {
 
 fn workitem_create(ctx: &Ctx, args: CreateArgs) -> Result<WorkItemRow> {
     let ado = Ado::load(ctx)?;
-    let mut document = field_ops(ctx, &ado, Some(&args.title), &args.fields)?;
+    let kind = args.work_item_type.trim();
+    let mut document = field_ops(ctx, &ado, Some(&args.title), &args.fields, None, &|| {
+        Ok(kind.to_owned())
+    })?;
     if let Some(parent) = args.parent {
         // A parent is a link appended to the new work item, not a field.
         document.push(json!({
@@ -41,7 +44,9 @@ fn workitem_create(ctx: &Ctx, args: CreateArgs) -> Result<WorkItemRow> {
         &format!("wit/workitems/${}", segment(args.work_item_type.trim())),
         "",
     );
-    let created = ado.patch_work_item(ctx, Method::Post, &url, document)?;
+    let created = ado
+        .patch_work_item(ctx, Method::Post, &url, document)
+        .map_err(|error| broke_rules(error, || kind.to_owned()))?;
     Ok(row(&created))
 }
 
@@ -49,7 +54,7 @@ command! {
     pub WORKITEM_CREATE = ["ado", "workitem", "create"], Write,
     "Create a work item (bug, task, story …), optionally under a parent",
     keywords: ["new", "file", "open", "add", "ticket", "bug", "story"],
-    example: "ado workitem create --type Bug --title 'Login fails on Safari' --priority 2",
+    example: "ado workitem create --type 'User Story' --title 'Pay by card' --field 'Story Points=3'",
     run: workitem_create,
 }
 
@@ -61,7 +66,8 @@ mod tests {
     use crate::testing::{BASE, ado, dry_run, item};
 
     #[test]
-    fn create_plans_a_patch_document_with_markdown_as_html_and_the_parent_link() {
+    fn create_plans_a_patch_document_with_markdown_as_html_and_the_parent_link_and_a_broken_rule_names_the_type()
+     {
         let me = Answer::json(&json!({"authenticatedUser": {"id": "u-1",
             "providerDisplayName": "Jane Doe", "properties": {"Account": {"$value": "jane@contoso.com"}}}}));
         let plans = dry_run(
@@ -118,5 +124,26 @@ mod tests {
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(outcome.json()["id"], 77);
         assert!(!transport.sent()[0].method.is_read());
+
+        let (outcome, _) = ado(
+            &[
+                "ado", "workitem", "create", "--type", "Bug", "--title", "Crash",
+            ],
+            vec![Answer::status(
+                400,
+                r#"{"message":"TF401320: Rule Error for field Repro Steps. Error code: Required, InvalidEmpty."}"#,
+            )],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("TF401320: Rule Error for field Repro Steps")
+                && outcome
+                    .stderr
+                    .contains("hint: agent-cli ado workitem-type get Bug"),
+            "{}",
+            outcome.stderr
+        );
     }
 }

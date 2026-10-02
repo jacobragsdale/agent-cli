@@ -535,3 +535,29 @@ expect = "ado person list"
 [[query]]
 text = "list team members"
 expect = "ado person list"
+
+# ---------- --field, --comment and mentions ----------
+
+[[query]]
+text = "set story points on 1207"
+expect = "ado workitem update"
+
+[[query]]
+text = "take over Sam's ticket"
+expect = "ado workitem update"
+
+[[query]]
+text = "reassign 1207 to me and leave a comment saying why"
+expect = "ado workitem update"
+
+[[query]]
+text = "set a custom field on a work item"
+expect = "ado workitem update"
+
+[[query]]
+text = "create a story with 3 story points"
+expect = "ado workitem create"
+
+[[query]]
+text = "mention Sam in a comment on work item 1207"
+expect = "ado workitem comment"

@@ -9,14 +9,12 @@
 //! inline code, fenced blocks, headings, bold and rules. A table or an image
 //! reads as its plain text.
 //!
+//! A mention anchor reads back as `@<Display Name>`, which `compose`
+//! resolves again on the way out, so a round trip keeps it.
+//!
 //! Nothing here parses HTML strictly. Unknown tags are transparent (their
 //! text survives, their markup does not), and malformed input is rendered as
 //! the text it looks like rather than dropped.
-
-use std::path::Path;
-
-use agent_cli_core::{Ctx, Failure};
-use anyhow::Result;
 
 /// Longest entity body worth looking at: `&middot;` and `&#x1F600;` both fit.
 const MAX_ENTITY: usize = 12;
@@ -234,6 +232,10 @@ struct List {
     item: usize,
 }
 
+/// What [`MarkdownWriter::links`] holds for a mention anchor in place of a
+/// target: its text, not a link, is what reads back.
+const MENTION: &str = "\0mention";
+
 /// Writes Markdown as the walk hands it the document.
 #[derive(Default)]
 struct MarkdownWriter {
@@ -380,7 +382,11 @@ impl MarkdownWriter {
             return;
         }
         self.flush();
-        let href = tag.attribute("href").unwrap_or_default();
+        let href = if tag.attribute("data-vss-mention").is_some() {
+            MENTION.to_owned()
+        } else {
+            tag.attribute("href").unwrap_or_default()
+        };
         self.out.push('[');
         let mark = self.out.len();
         self.links.push((href, mark));
@@ -394,6 +400,11 @@ impl MarkdownWriter {
         };
         let mark = mark.min(self.out.len());
         let text = self.out[mark..].trim().to_owned();
+        if href == MENTION {
+            self.out.truncate(mark - 1);
+            self.push(&format!("@<{}>", text.trim_start_matches('@')));
+            return;
+        }
         if href.is_empty() {
             // The `[` was written in hope of a target that never came.
             self.out.remove(mark - 1);
@@ -550,7 +561,7 @@ struct HtmlBuilder {
 }
 
 /// The run of backticks a line starts with, after any indent.
-fn backticks(line: &str) -> usize {
+pub(crate) fn backticks(line: &str) -> usize {
     line.trim_start()
         .chars()
         .take_while(|held| *held == '`')
@@ -775,7 +786,7 @@ fn inline_bold(rest: &str, depth: usize, out: &mut String) -> Option<usize> {
 }
 
 /// The three characters that would otherwise be read as markup.
-fn escape(text: &str) -> String {
+pub(crate) fn escape(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for character in text.chars() {
         match character {
@@ -789,58 +800,8 @@ fn escape(text: &str) -> String {
 }
 
 /// The same, plus the quote that would end an attribute early.
-fn escape_attribute(text: &str) -> String {
+pub(crate) fn escape_attribute(text: &str) -> String {
     escape(text).replace('"', "&quot;")
-}
-
-/// The most one comment may carry. Past this it is a log, and the part worth
-/// reading is at one end of it rather than spread over the whole.
-const COMMENT_LIMIT: usize = 64 * 1024;
-
-/// What one comment says, and whether it came down a pipe.
-///
-/// Piped text is program output (a test tail, a log), so it is posted as a
-/// fenced block, which is what keeps its columns lined up. Text typed as the
-/// argument or read from `--text-file` is Markdown, as written.
-pub(crate) struct CommentBody {
-    text: String,
-    fenced: bool,
-}
-
-impl CommentBody {
-    /// The argument as typed, stdin when it is `-`, or `--text-file`.
-    pub(crate) fn read(ctx: &Ctx, text: Option<&str>, file: Option<&Path>) -> Result<Self> {
-        let body = ctx
-            .long_text("text", text, file, Some(COMMENT_LIMIT))?
-            .filter(|body| !body.text.trim().is_empty())
-            .ok_or_else(|| Failure::usage("a comment cannot be empty"))?;
-        Ok(Self {
-            text: body.text,
-            fenced: body.piped,
-        })
-    }
-
-    /// As Markdown, which is what a pull request thread stores. A fence is one
-    /// backtick longer than any run inside, so a log that quotes a code block
-    /// cannot close it early.
-    pub(crate) fn markdown(&self) -> String {
-        if !self.fenced {
-            return self.text.clone();
-        }
-        let longest = self
-            .text
-            .split(|held| held != '`')
-            .map(str::len)
-            .max()
-            .unwrap_or(0);
-        let fence = "`".repeat(longest.max(2) + 1);
-        format!("{fence}\n{}\n{fence}", self.text)
-    }
-
-    /// As HTML, which is what a work item comment stores.
-    pub(crate) fn html(&self) -> String {
-        markdown_to_html(&self.markdown())
-    }
 }
 
 #[cfg(test)]
@@ -981,19 +942,12 @@ mod tests {
     }
 
     #[test]
-    fn a_piped_comment_is_a_fence_longer_than_any_run_inside() {
-        let piped = |text: &str| CommentBody {
-            text: text.to_owned(),
-            fenced: true,
-        };
-        let body = piped("ok 1\n```inner```");
-        assert_eq!(body.markdown(), "````\nok 1\n```inner```\n````");
-        assert_eq!(body.html(), "<pre>ok 1\n```inner```</pre>");
-        let typed = CommentBody {
-            fenced: false,
-            ..piped("Fixed in **!17**")
-        };
-        assert_eq!(typed.markdown(), "Fixed in **!17**");
-        assert_eq!(typed.html(), "<p>Fixed in <b>!17</b></p>");
+    fn a_mention_anchor_reads_back_as_the_name_it_shows() {
+        assert_eq!(
+            html_to_markdown(
+                r##"<div><a href="#" data-vss-mention="version:2.0,u-2">@Sam Lee</a> please look</div>"##
+            ),
+            "@<Sam Lee> please look"
+        );
     }
 }
