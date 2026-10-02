@@ -44,8 +44,8 @@ A command is `<resource>/<verb>.rs`; `<resource>/mod.rs` is what they share.
 - A field's data type is only in `wit/fields`. Points are Story Points,
   Effort or Size by process (`POINTS`). A value outside a picklist is a
   RuleValidationException with no TF code.
-- `workitemsorder` needs the team. Backlog order is
-  `backlogs/{id}/workItems`, not WIQL; stories are the `requirement` level.
+- `workitemsorder` needs the team; a 0 `previousId` means the top, so leave
+  it out. Backlog order is `backlogs/{id}/workItems`, not WIQL.
 - `updates` pages by `$top` and `$skip`; a revision's time is its
   ChangedDate (revisedDate is when the next one replaced it).
 - Mentions are `data-vss-mention` anchors in work item HTML, `@<id>` in PR

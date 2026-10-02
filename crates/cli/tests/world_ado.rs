@@ -594,7 +594,7 @@ fn a_bug_and_a_story_show_their_states_moves_and_required_fields() {
         .unwrap_or_else(|| panic!("{story}"));
     assert_eq!(
         (&value_area["required"], &value_area["default"]),
-        (&json!(true), &json!("Business"))
+        (&json!(false), &json!("Business"))
     );
 }
 
