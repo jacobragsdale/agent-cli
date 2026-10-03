@@ -92,7 +92,7 @@ fn parse(ado: &Ado, raw: &str) -> Result<(String, Option<String>)> {
             .into()
     };
     let (_, query) = web(ado, raw)
-        .map_err(&wrong)?
+        .map_err(wrong)?
         .ok_or_else(|| wrong(format!("{raw:?} is not an attachment id")))?;
     let id = guid_in(raw).ok_or_else(|| wrong(format!("{raw} is not an attachment URL")))?;
     Ok((id, query_param(&query, "fileName")))

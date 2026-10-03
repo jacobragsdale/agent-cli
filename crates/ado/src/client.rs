@@ -325,7 +325,7 @@ impl Ado {
                 ))
                 .into()
         };
-        let Some((segments, query)) = crate::ids::web(self, raw).map_err(&wrong)? else {
+        let Some((segments, query)) = crate::ids::web(self, raw).map_err(wrong)? else {
             let number = raw
                 .strip_prefix("AB#")
                 .or_else(|| raw.strip_prefix('#'))
