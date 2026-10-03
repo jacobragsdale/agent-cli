@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
-use agent_cli_core::{Ctx, Effect, Method, command};
+use agent_cli_core::{Ctx, Effect, Failure, Method, command};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::json;
 
-use crate::client::{Ado, COMMENTS_API, Kind, stamp};
+use crate::client::{API, Ado, COMMENTS_API, Kind, stamp};
 use crate::compose::{CommentBody, rich_text};
 
 #[derive(clap::Args)]
@@ -40,13 +40,33 @@ fn workitem_comment(ctx: &Ctx, args: CommentArgs) -> Result<CommentPosted> {
         COMMENTS_API,
     );
     let html = rich_text(ctx, &ado, &body.markdown())?;
-    let posted = ado.change(
-        ctx,
-        Effect::Write,
-        Method::Post,
-        &url,
-        json!({"text": html}),
-    )?;
+    let posted = ado
+        .change(
+            ctx,
+            Effect::Write,
+            Method::Post,
+            &url,
+            json!({"text": html}),
+        )
+        .map_err(|error| {
+            // A deleted work item answers a comment with a 500 about area
+            // permissions (TF237135); reading it says what is wrong.
+            let area = |failure: &Failure| failure.message.contains("TF237135");
+            if error.downcast_ref::<Failure>().is_some_and(area) {
+                let read = ado.api(
+                    None,
+                    &format!("wit/workitems/{id}"),
+                    "fields=System.Id",
+                    API,
+                );
+                if let Err(missing) = ado.get(ctx, &read)
+                    && agent_cli_core::status_of(&missing) == Some(404)
+                {
+                    return missing;
+                }
+            }
+            error
+        })?;
     Ok(CommentPosted {
         work_item: id,
         id: posted["id"].as_i64(),
@@ -98,6 +118,60 @@ mod tests {
         );
         let (outcome, _) = ado(&["ado", "workitem", "comment", "42", " "], vec![]);
         assert_eq!(outcome.code, 2, "{outcome:?}");
+    }
+
+    #[test]
+    fn a_flag_typed_where_the_text_goes_is_refused_not_posted() {
+        for (argv, want) in [
+            (
+                &["ado", "workitem", "comment", "42", "--text=hello"][..],
+                "unknown flag --text \u{2014} did you mean --text-file?",
+            ),
+            (
+                &["ado", "workitem", "comment", "42", "--json"][..],
+                "unknown flag --json",
+            ),
+            (
+                &[
+                    "ado",
+                    "workitem",
+                    "update",
+                    "42",
+                    "--state",
+                    "Done",
+                    "--comment",
+                    "--if-rev=7",
+                ][..],
+                "--comment has no value of its own: --if-rev=7 came next",
+            ),
+            (
+                &[
+                    "ado",
+                    "workitem",
+                    "create",
+                    "--type",
+                    "Task",
+                    "--title",
+                    "t",
+                    "--description",
+                    "--parent=7",
+                ][..],
+                "--description has no value of its own: --parent=7 came next",
+            ),
+        ] {
+            let (outcome, transport) = ado(argv, vec![]);
+            assert_eq!(outcome.code, 2, "{outcome:?}");
+            assert!(outcome.stderr.contains(want), "{}", outcome.stderr);
+            assert!(transport.sent().is_empty(), "nothing is sent: {argv:?}");
+        }
+        let plans = dry_run(
+            &["ado", "workitem", "comment", "42", "-- a dash, not a flag"],
+            vec![],
+        );
+        assert_eq!(
+            plans[0]["body"],
+            json!({"text": "<p>-- a dash, not a flag</p>"})
+        );
     }
 
     #[test]
@@ -198,5 +272,30 @@ mod tests {
         );
         assert_eq!(outcome.code, 2, "{outcome:?}");
         assert!(transport.sent().iter().all(|sent| sent.method.is_read()));
+    }
+
+    #[test]
+    fn a_comment_on_a_deleted_work_item_is_not_found_not_a_permission_error() {
+        let area = agent_cli_core::testing::Answer::status(
+            500,
+            r#"{"message":"TF237135: The current user does not have permissions to save work item comments under the specified area path."}"#,
+        );
+        let gone = agent_cli_core::testing::Answer::status(
+            404,
+            r#"{"message":"TF401232: Work item 904 does not exist, or you do not have permissions to read it."}"#,
+        );
+        let (outcome, _) = crate::testing::ado(
+            &["ado", "workitem", "comment", "904", "x"],
+            vec![area, gone],
+        );
+        assert_eq!(outcome.code, 4, "{outcome:?}");
+        assert!(outcome.stderr.contains("TF401232"), "{}", outcome.stderr);
+        assert!(
+            outcome.stderr.contains(
+                "hint: agent-cli ado workitem list --text WORDS --fields id,title  (its id)"
+            ),
+            "{}",
+            outcome.stderr
+        );
     }
 }

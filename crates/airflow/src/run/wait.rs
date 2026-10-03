@@ -32,7 +32,29 @@ fn run_wait(ctx: &Ctx, args: RunIdArgs) -> Result<Waited> {
     let started = Instant::now();
     let mut pause = FIRST_POLL;
     loop {
-        let run = client.get(&id.run_path())?;
+        let left = ctx.deadline().saturating_duration_since(Instant::now());
+        let run = match client.get(&id.run_path()) {
+            Ok(run) => run,
+            // A restart or a dropped connection is not the run failing: ask
+            // again, and say so at the deadline.
+            Err(error)
+                if error.downcast_ref::<Failure>().is_none_or(|failure| {
+                    failure.status.is_none() && failure.exit == Exit::Failed
+                }) =>
+            {
+                if left <= MARGIN {
+                    return Err(Failure::timed_out(format!(
+                        "Airflow did not answer about run {} ({error:#})",
+                        id.run_id()
+                    ))
+                    .hint("agent-cli doctor airflow")
+                    .into());
+                }
+                std::thread::sleep(pause.min(left - MARGIN));
+                continue;
+            }
+            Err(error) => return Err(error),
+        };
         let state = text(&run["state"]);
         let mut waited = Waited {
             id: id.run_id(),
@@ -72,7 +94,15 @@ fn run_wait(ctx: &Ctx, args: RunIdArgs) -> Result<Waited> {
         if left <= MARGIN {
             let paused = state.as_deref() == Some("queued")
                 && client.get(&id.dag_path())?["is_paused"].as_bool() == Some(true);
-            let hint = if paused {
+            // With no scheduler, nothing moves the run however long one waits.
+            let stalled = !paused
+                && client
+                    .public("monitor/health")
+                    .is_ok_and(|health| health["scheduler"]["status"] != "healthy");
+            let hint = if stalled {
+                "the scheduler is not running, so the run cannot move: agent-cli doctor airflow"
+                    .to_owned()
+            } else if paused {
                 format!(
                     "the DAG is paused, so the run stays queued: agent-cli airflow dag update {} --paused false",
                     id.dag

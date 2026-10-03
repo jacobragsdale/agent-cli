@@ -16,13 +16,23 @@ use time::OffsetDateTime;
 
 use crate::ctx::{Ctx, Op};
 use crate::error::{Exit, Failure};
+use crate::said::failure_message;
 use crate::secret::Secret;
 use crate::throttle::throttle_wait;
 
 /// The statuses services shed load with.
 const THROTTLED: [u16; 2] = [429, 503];
-/// A body larger than this is not an answer any command wants.
-const BODY_LIMIT: u64 = 32 * 1024 * 1024;
+
+/// Long enough for a slow handshake, short enough that a host that never
+/// answers (a firewall that drops) does not look like a hang.
+const CONNECT: Duration = Duration::from_secs(10);
+/// For a write whose answer did not come: the read that tells is the domain's.
+pub const MAY_HAVE_LANDED: &str =
+    "the change may have been made before the deadline: read it back before running it again";
+
+/// A body larger than this is not an answer any command wants; Azure DevOps
+/// keeps attachments up to 60 MB.
+const BODY_LIMIT: u64 = 64 * 1024 * 1024;
 
 /// The verbs a request can use. [`Method::Query`] is a `POST` that only reads
 /// (WIQL, Resource Graph, a token exchange): it is the one POST
@@ -245,11 +255,29 @@ impl Transport for Https {
             Method::Patch => send_body(prepare(agent.patch(url), &headers, timeout), &request.body),
         };
         let mut response = sent.map_err(|error| match error {
-            ureq::Error::Timeout(_) => anyhow::Error::new(Failure::timed_out(format!(
-                "{} {url} did not answer before the deadline",
-                request.method.wire()
-            )))
-            .context(error),
+            ureq::Error::Timeout(ureq::Timeout::Connect) if timeout > CONNECT => {
+                anyhow::Error::new(Failure::new(
+                    Exit::Failed,
+                    format!(
+                        "{} {url} failed: no connection within {}s",
+                        request.method.wire(),
+                        CONNECT.as_secs()
+                    ),
+                ))
+            }
+            ureq::Error::Timeout(_) => {
+                let late = Failure::timed_out(format!(
+                    "{} {url} did not answer before the deadline",
+                    request.method.wire()
+                ));
+                // A write that was sent may have been made: unanswered is not undone.
+                let late = if request.method.is_read() {
+                    late
+                } else {
+                    late.hint(MAY_HAVE_LANDED)
+                };
+                anyhow::Error::new(late).context(error)
+            }
             other => {
                 anyhow::Error::new(other).context(format!("{} {url} failed", request.method.wire()))
             }
@@ -267,7 +295,20 @@ impl Transport for Https {
             .with_config()
             .limit(BODY_LIMIT)
             .read_to_vec()
-            .with_context(|| format!("failed to read the answer from {url}"))?;
+            .map_err(|error| match error {
+                ureq::Error::Timeout(_) => anyhow::Error::new(Failure::timed_out(format!(
+                    "{url} did not finish its answer before the deadline"
+                ))),
+                ureq::Error::BodyExceedsLimit(limit) => anyhow::Error::new(Failure::new(
+                    Exit::Failed,
+                    format!(
+                        "{url} answered more than {} MiB, the most agent-cli reads",
+                        limit / 1024 / 1024
+                    ),
+                )),
+                other => anyhow::Error::new(other)
+                    .context(format!("failed to read the answer from {url}")),
+            })?;
         let (body, bytes) = match String::from_utf8(read) {
             Ok(body) => (body, None),
             Err(binary) => (String::new(), Some(binary.into_bytes())),
@@ -290,7 +331,11 @@ fn prepare<B>(
     for (name, value) in headers {
         builder = builder.header(*name, *value);
     }
-    builder.config().timeout_global(Some(timeout)).build()
+    builder
+        .config()
+        .timeout_global(Some(timeout))
+        .timeout_connect(Some(timeout.min(CONNECT)))
+        .build()
 }
 
 fn send_body(
@@ -357,7 +402,10 @@ impl Op for Request<'_> {
                 token = Some(mint(true)?);
                 continue;
             }
-            if THROTTLED.contains(&response.status) && !waited {
+            // A 429 refused the call unread; a 503 may come after a write
+            // was made, so only a read is sent again after one.
+            let retry = response.status == 429 || self.method.is_read();
+            if THROTTLED.contains(&response.status) && retry && !waited {
                 waited = true;
                 let wait = throttle_wait(&response, OffsetDateTime::now_utc());
                 let left = ctx.remaining()?;
@@ -411,6 +459,9 @@ fn checked(method: Method, response: Response) -> Result<Response> {
     failure.status = Some(status);
     Err(match status {
         401 => failure.hint("the credential was refused: sign in again or check its scopes; `agent-cli doctor` shows what is set up"),
+        503 if !method.is_read() => failure.hint(
+            "the service may have made the change before it failed: check before running it again",
+        ),
         429 | 503 => failure.hint("the service is still throttling; run it again later"),
         _ => failure,
     }
@@ -442,91 +493,6 @@ pub fn host_under(url: &str, suffix: &str) -> bool {
         host == suffix || host.ends_with(&format!(".{suffix}"))
     };
     plain && under && !suffix.is_empty()
-}
-
-/// What a service says when it refuses. ARM and Key Vault write it under
-/// `error.message` (with the actionable part in `error.details`), a registry
-/// under `errors[0].message`, Azure DevOps under `message`, FastAPI (Airflow)
-/// under `detail` (a string, or a 422's list of `{loc, msg}`), Datadog as
-/// `errors: ["…"]`; anything else is worth the front of its body rather than
-/// nothing. Core redacts it on the way out, like every error.
-#[must_use]
-pub fn failure_message(text: &str) -> String {
-    let parsed = serde_json::from_str::<Value>(text).unwrap_or(Value::Null);
-    if let Some(said) = listed_failures(&parsed) {
-        return said;
-    }
-    let details: Vec<&str> = parsed["error"]["details"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|detail| detail["message"].as_str())
-        .collect();
-    for candidate in [
-        &parsed["error"]["message"],
-        &parsed["errors"][0]["message"],
-        &parsed["message"],
-    ] {
-        if let Some(said) = candidate.as_str() {
-            return if details.is_empty() {
-                said.to_owned()
-            } else {
-                format!("{said} \u{2014} {}", details.join("; "))
-            };
-        }
-    }
-    let front: String = text.trim().chars().take(300).collect();
-    if front.is_empty() {
-        "(no body)".to_owned()
-    } else {
-        front
-    }
-}
-
-/// FastAPI's `detail` and Datadog's `errors` of strings, joined; `None` when
-/// the body is in neither shape.
-fn listed_failures(parsed: &Value) -> Option<String> {
-    if let Some(detail) = parsed["detail"].as_str() {
-        return Some(detail.to_owned());
-    }
-    let said: Vec<String> = if let Some(details) = parsed["detail"].as_array() {
-        details
-            .iter()
-            .filter_map(|detail| {
-                let message = detail["msg"].as_str()?;
-                let at: Vec<String> = detail["loc"]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .map(|part| {
-                        part.as_str()
-                            .map_or_else(|| part.to_string(), str::to_owned)
-                    })
-                    .collect();
-                Some(if at.is_empty() {
-                    message.to_owned()
-                } else {
-                    format!("{}: {message}", at.join("."))
-                })
-            })
-            .collect()
-    } else {
-        // Datadog's v1 errors are strings; its v2 (JSON:API) ones objects
-        // with a `detail` or `title`.
-        parsed["errors"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(|error| {
-                error
-                    .as_str()
-                    .or_else(|| error["detail"].as_str())
-                    .or_else(|| error["title"].as_str())
-            })
-            .map(str::to_owned)
-            .collect()
-    };
-    (!said.is_empty()).then(|| said.join("; "))
 }
 
 /// `application/x-www-form-urlencoded`, which is also a query string.
@@ -614,42 +580,7 @@ mod tests {
     }
 
     #[test]
-    fn a_refusal_is_read_in_whichever_shape_the_service_wrote_it() {
-        assert_eq!(failure_message(r#"{"error":{"message":"nope"}}"#), "nope");
-        assert_eq!(
-            failure_message(r#"{"errors":[{"message":"denied"}]}"#),
-            "denied"
-        );
-        assert_eq!(
-            failure_message(r#"{"message":"TF401232: no such item"}"#),
-            "TF401232: no such item"
-        );
-        assert_eq!(
-            failure_message(r#"{"error":{"message":"bad","details":[{"message":"why"}]}}"#),
-            "bad \u{2014} why"
-        );
-        assert_eq!(
-            failure_message(r#"{"detail":"The DAG with dag_id: `x` was not found"}"#),
-            "The DAG with dag_id: `x` was not found"
-        );
-        assert_eq!(
-            failure_message(
-                r#"{"detail":[{"type":"missing","loc":["body","logical_date"],"msg":"Field required"},{"loc":["query",0],"msg":"bad"}]}"#
-            ),
-            "body.logical_date: Field required; query.0: bad"
-        );
-        assert_eq!(
-            failure_message(r#"{"errors":["Forbidden","Missing scope monitors_read"]}"#),
-            "Forbidden; Missing scope monitors_read"
-        );
-        assert_eq!(
-            failure_message(
-                r#"{"errors":[{"status":"404","title":"Not found","detail":"no monitor 4711"}]}"#
-            ),
-            "no monitor 4711"
-        );
-        assert_eq!(failure_message("  plain text  "), "plain text");
-        assert_eq!(failure_message(""), "(no body)");
+    fn a_form_is_encoded_as_a_query_string() {
         assert_eq!(
             form_encode(&[("a b".into(), "x/y&z".into())]),
             "a+b=x%2Fy%26z"
@@ -853,5 +784,19 @@ mod tests {
             .unwrap_err();
         assert!(started.elapsed() < Duration::from_secs(2));
         assert_eq!(describe(&error).0, Exit::TimedOut, "{error:#}");
+        assert_eq!(
+            describe(&error).2,
+            None,
+            "a read that timed out changed nothing"
+        );
+
+        // A write that went out unanswered may have been made.
+        let (url, _server) = serve_once("");
+        let request = Request::new(Method::Patch, &url).json(serde_json::json!({}));
+        let error = Https::default()
+            .send(&request, None, Duration::from_millis(300))
+            .unwrap_err();
+        assert_eq!(describe(&error).0, Exit::TimedOut, "{error:#}");
+        assert_eq!(describe(&error).2.as_deref(), Some(MAY_HAVE_LANDED));
     }
 }

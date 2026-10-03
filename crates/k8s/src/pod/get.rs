@@ -308,4 +308,15 @@ mod tests {
         let other = run(&["k8s", "pod", "get", "redis-0", "--fields", "secret_refs"]);
         assert_eq!(other.stdout.trim(), "{}", "{other:?}");
     }
+
+    #[test]
+    fn a_pod_that_is_not_there_is_exit_4_pointing_at_the_list() {
+        let outcome = run(&["k8s", "pod", "get", "gone-pod"]);
+        assert_eq!(outcome.code, 4, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("hint: agent-cli k8s pod list"),
+            "{}",
+            outcome.stderr
+        );
+    }
 }

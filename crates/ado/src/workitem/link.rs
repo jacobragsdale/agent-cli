@@ -72,28 +72,32 @@ fn workitem_link(ctx: &Ctx, args: LinkArgs) -> Result<BranchLinked> {
     let ado = Ado::load(ctx)?;
     let id = ado.id(Kind::WorkItem, &args.id)?;
     let repo = ado.repo(ctx, &args.repo)?;
+    // Read first, so a work item that is not there makes no branch.
+    let url = ado.api(
+        None,
+        &format!("wit/workitems/{id}"),
+        "fields=System.Title",
+        crate::client::API,
+    );
+    let item = ado.get(ctx, &url)?;
     let branch = match &args.branch {
         Some(branch) => short_branch(branch.trim()),
-        None => {
-            let url = ado.api(
-                None,
-                &format!("wit/workitems/{}", id),
-                "fields=System.Title",
-                crate::client::API,
-            );
-            let item = ado.get(ctx, &url)?;
-            branch_name(
-                id,
-                &text(&item["fields"]["System.Title"]).unwrap_or_default(),
-            )
-        }
+        None => branch_name(
+            id,
+            &text(&item["fields"]["System.Title"]).unwrap_or_default(),
+        ),
     };
     let mut branch_created = false;
     if branch_head(ctx, &ado, &repo, &branch)?.is_none() {
         let from = short_branch(repo.default_branch.as_deref().ok_or_else(|| {
+            // An empty repository: nothing to branch from until a first push.
             Failure::usage(format!(
                 "{} has no default branch to branch from",
                 repo.name
+            ))
+            .hint(format!(
+                "agent-cli ado repo get {} --fields default_branch,branches",
+                crate::ids::arg(&repo.name)
             ))
         })?);
         let sha = branch_head(ctx, &ado, &repo, &from)?.with_context(|| {
@@ -111,15 +115,15 @@ fn workitem_link(ctx: &Ctx, args: LinkArgs) -> Result<BranchLinked> {
                 "newObjectId": sha,
             }]),
         )?;
-        if made["value"][0]["updateStatus"].as_str() != Some("succeeded") {
-            anyhow::bail!(
+        match made["value"][0]["updateStatus"].as_str() {
+            Some("succeeded") => branch_created = true,
+            // Another run made it between the read and this write: link it.
+            Some("staleOldObjectId") if branch_head(ctx, &ado, &repo, &branch)?.is_some() => {}
+            status => anyhow::bail!(
                 "Azure DevOps did not create {branch}: {}",
-                made["value"][0]["updateStatus"]
-                    .as_str()
-                    .unwrap_or("no answer")
-            );
+                status.unwrap_or("no answer")
+            ),
         }
-        branch_created = true;
     }
     let project_id = repo
         .project_id
@@ -154,7 +158,7 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{BASE, ado, dry_run, item, repos};
+    use crate::testing::{BASE, ado, dry_run, item, repo};
 
     use super::branch_name;
 
@@ -170,7 +174,7 @@ mod tests {
         let plans = dry_run(
             &["ado", "workitem", "link", "42", "--repo", "WEB"],
             vec![
-                repos(),
+                repo(),
                 title,
                 // The prefix filter answers with a different branch only.
                 refs("refs/heads/42-fix-the-login-old", "aaa"),
@@ -204,7 +208,8 @@ mod tests {
                 "refs/heads/feature/login",
             ],
             vec![
-                repos(),
+                repo(),
+                Answer::json(&current),
                 refs("refs/heads/feature/login", "abc"),
                 Answer::json(&current),
                 Answer::json(&item(42, 4, "Fix")),
@@ -216,7 +221,7 @@ mod tests {
             json!({"work_item": 42, "repo": "web", "branch": "feature/login",
                 "branch_created": false, "already_linked": false})
         );
-        let patch = &transport.sent()[3];
+        let patch = &transport.sent()[4];
         assert_eq!(
             patch.url,
             format!("{BASE}/_apis/wit/workitems/42?api-version=7.1")
@@ -245,7 +250,8 @@ mod tests {
                 "feature/login",
             ],
             vec![
-                repos(),
+                repo(),
+                Answer::json(&current),
                 refs("refs/heads/feature/login", "abc"),
                 Answer::json(&current),
             ],
@@ -256,17 +262,84 @@ mod tests {
 
         let (outcome, _) = ado(
             &["ado", "workitem", "link", "42", "--repo", "api"],
-            vec![repos(), repos()],
+            vec![Answer::status(
+                404,
+                r#"{"message":"TF401019: The Git repository with name or identifier api does not exist."}"#,
+            )],
         );
-        assert_eq!(
-            outcome.code, 4,
-            "an unknown repo is looked up afresh, then not found: {outcome:?}"
-        );
+        assert_eq!(outcome.code, 4, "an unknown repo is not found: {outcome:?}");
         assert!(
             outcome.stderr.contains("hint: agent-cli ado repo list"),
             "{}",
             outcome.stderr
         );
+    }
+
+    #[test]
+    fn a_branch_another_run_made_first_is_linked_not_an_error() {
+        let current = item(42, 3, "Fix");
+        let none = Answer::json(&json!({"count": 0, "value": []}));
+        let stale = Answer::json(
+            &json!({"value": [{"updateStatus": "staleOldObjectId", "success": false}]}),
+        );
+        let (outcome, _) = ado(
+            &[
+                "ado",
+                "workitem",
+                "link",
+                "42",
+                "--repo",
+                "web",
+                "--branch",
+                "feature/login",
+            ],
+            vec![
+                repo(),
+                Answer::json(&current),
+                none,
+                refs("refs/heads/main", "c0ffee"),
+                stale,
+                refs("refs/heads/feature/login", "c0ffee"),
+                Answer::json(&current),
+                Answer::json(&item(42, 4, "Fix")),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()["branch_created"], false);
+    }
+
+    #[test]
+    fn a_link_another_run_added_while_this_one_wrote_is_already_linked() {
+        let current = item(42, 3, "Fix");
+        let mut linked = item(42, 4, "Fix");
+        linked["relations"] = json!([{"rel": "ArtifactLink",
+            "url": "vstfs:///Git/Ref/p-1%2Fr-1%2FGBfeature%2Flogin"}]);
+        let moved = Answer::status(
+            412,
+            r#"{"message":"VS403351: Test Operation for path /rev failed, value 4 was not equal to test value 3."}"#,
+        );
+        let (outcome, _) = ado(
+            &[
+                "ado",
+                "workitem",
+                "link",
+                "42",
+                "--repo",
+                "web",
+                "--branch",
+                "feature/login",
+            ],
+            vec![
+                repo(),
+                Answer::json(&current),
+                refs("refs/heads/feature/login", "abc"),
+                Answer::json(&current),
+                moved,
+                Answer::json(&linked),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()["already_linked"], true);
     }
 
     #[test]

@@ -17,6 +17,7 @@ mod doctor;
 mod import_error;
 mod instance;
 mod pool;
+mod refused;
 mod run;
 mod source;
 mod task;

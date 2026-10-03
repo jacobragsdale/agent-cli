@@ -31,7 +31,8 @@ pub struct RunLogs {
     text: String,
 }
 
-/// The logs to read: the named job or task, else every failed task, else
+/// The logs to read: the named job or task, else every failed task (or, in
+/// a run that partially succeeded, each that failed and let it go on), else
 /// the task running now or the last one that wrote anything.
 fn chosen_logs(
     id: i64,
@@ -70,10 +71,17 @@ fn chosen_logs(
                     .iter()
                     .filter(|record| is(record, "Task") && log_id(record).is_some())
             };
-            let failed: Vec<(String, i64)> = tasks()
-                .filter(|record| record["result"].as_str() == Some("failed"))
-                .filter_map(|record| pick(record, log_id(record)))
-                .collect();
+            let failed_as = |result: &str| -> Vec<(String, i64)> {
+                tasks()
+                    .filter(|record| record["result"].as_str() == Some(result))
+                    .filter(|record| result == "failed" || record["errorCount"].as_i64() > Some(0))
+                    .filter_map(|record| pick(record, log_id(record)))
+                    .collect()
+            };
+            let mut failed = failed_as("failed");
+            if failed.is_empty() {
+                failed = failed_as("succeededWithIssues");
+            }
             if failed.is_empty() {
                 tasks()
                     .max_by_key(|record| {
@@ -256,5 +264,41 @@ mod tests {
             ],
         );
         assert_eq!(outcome.json()["logs"], json!(["Build"]));
+    }
+
+    #[test]
+    fn a_partly_successful_run_shows_the_step_that_failed_and_went_on() {
+        let mut soft = record(
+            "t2",
+            "Task",
+            "soft failure",
+            None,
+            Some("succeededWithIssues"),
+            6,
+        );
+        soft["errorCount"] = json!(1);
+        let mut warned = record(
+            "t1",
+            "Task",
+            "Checkout",
+            None,
+            Some("succeededWithIssues"),
+            5,
+        );
+        warned["errorCount"] = json!(0);
+        let answer = json!({"records": [
+            warned,
+            soft,
+            record("t3", "Task", "Finalize Job", None, Some("succeeded"), 9),
+        ]});
+        let (outcome, _) = ado(
+            &["ado", "run", "logs", "991"],
+            vec![
+                Answer::json(&answer),
+                page(vec![]),
+                page(vec![json!("exit 1")]),
+            ],
+        );
+        assert_eq!(outcome.json()["logs"], json!(["soft failure"]));
     }
 }

@@ -21,7 +21,7 @@ A command is `<resource>/<verb>.rs`; `<resource>/mod.rs` is what they share.
 - `lib.rs`: `DOMAIN` (the listing's order). `doctor.rs`.
 - `client.rs`: `Ado::load`; `get`, `query` (a POST that reads), `change`,
   `patch_work_item`; URLs `api`, `work`, `code`, `team`; cached `me`,
-  `person` (`@me`, a name or an address), `identity`, `repo`, `pipeline_id`;
+  `person` (`@me`, a name or an address), `identity`; `repo` and `pipeline_id` (live);
   row helpers `text`, `stamp` (UTC), `list`, `segment`.
 - `iteration.rs`: `team`, `iterations` (cached an hour), `resolve`.
 - `types.rs`: a type's `states`, `fields` (a day), `done` (by category).

@@ -117,7 +117,7 @@ fn pr_list(ctx: &Ctx, args: PrListArgs) -> Result<Vec<PrRow>> {
         Some(repo) => format!("git/repositories/{}/pullrequests", segment(repo)),
         None => "git/pullrequests".to_owned(),
     };
-    let page = (args.limit + 1).min(PR_PAGE);
+    let page = (args.limit.saturating_add(1)).min(PR_PAGE);
     let mut rows = Vec::new();
     let mut skip = 0;
     loop {

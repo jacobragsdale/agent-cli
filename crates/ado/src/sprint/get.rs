@@ -30,8 +30,9 @@ pub struct SprintGetArgs {
 pub struct SprintDetail {
     #[serde(flatten)]
     sprint: SprintRow,
-    /// Weekdays from today (or the start) to the finish, less team days off.
-    working_days_left: usize,
+    /// Weekdays from today (or the start) to the finish, less team days off;
+    /// none for a sprint without dates.
+    working_days_left: Option<usize>,
     totals: Totals,
     people: Vec<Load>,
     team_days_off: Vec<DaysOff>,
@@ -123,8 +124,8 @@ fn sprint_get(ctx: &Ctx, args: SprintGetArgs) -> Result<SprintDetail> {
         sprint.start.as_deref().and_then(day),
         sprint.finish.as_deref().and_then(day),
     ) {
-        (Some(start), Some(finish)) => working_days(start.max(day_now()), finish, &team_off),
-        _ => Vec::new(),
+        (Some(start), Some(finish)) => Some(working_days(start.max(day_now()), finish, &team_off)),
+        _ => None,
     };
     for member in list(&capacities["teamMembers"]) {
         let identity = &member["teamMember"];
@@ -137,11 +138,14 @@ fn sprint_get(ctx: &Ctx, args: SprintGetArgs) -> Result<SprintDetail> {
             .filter_map(|activity| activity["capacityPerDay"].as_f64())
             .sum();
         let off = ranges(list(&member["daysOff"]));
-        let days_off = days_left.iter().filter(|d| off_on(&off, **d)).count();
         let load = &mut person(&mut people, &address, name).load;
         load.capacity_per_day = Some(per_day);
-        load.days_off = Some(days_off);
-        load.capacity_left = Some(per_day * (days_left.len() - days_off) as f64);
+        // Without dates there is no time left to measure, nor an overload.
+        if let Some(days) = &days_left {
+            let days_off = days.iter().filter(|d| off_on(&off, **d)).count();
+            load.days_off = Some(days_off);
+            load.capacity_left = Some(per_day * (days.len() - days_off) as f64);
+        }
     }
     people.sort_by(|a, b| a.load.name.cmp(&b.load.name));
 
@@ -168,7 +172,7 @@ fn sprint_get(ctx: &Ctx, args: SprintGetArgs) -> Result<SprintDetail> {
     }
 
     Ok(SprintDetail {
-        working_days_left: days_left.len(),
+        working_days_left: days_left.as_ref().map(Vec::len),
         totals,
         people: people.into_iter().map(|p| p.load).collect(),
         team_days_off: team_days_off
@@ -395,6 +399,36 @@ mod tests {
         assert_eq!(sprint["working_days_left"], 0);
         assert_eq!(sprint["totals"]["items"], 0);
         assert_eq!(sprint["people"][0]["capacity_left"], 0.0);
+        assert_eq!(outcome.stderr, "");
+    }
+
+    #[test]
+    fn a_sprint_without_dates_has_no_days_left_and_names_nobody_overloaded() {
+        let undated = Answer::json(&json!({"value": [{"id": "i-1", "name": "Sprint 1",
+            "path": "Fabrikam\\Sprint 1", "attributes": {"timeFrame": "future"}}]}));
+        let mut task = item(2, "Task", "Active", Some("Sam Lee"), None, Some(5.0));
+        task["fields"]["System.IterationPath"] = json!("Fabrikam\\Sprint 1");
+        let (outcome, _) = ado(
+            &["ado", "sprint", "get", "Sprint 1"],
+            vec![
+                undated,
+                relations(&[(2, None)]),
+                batch(vec![task]),
+                states(),
+                Answer::json(&json!({"teamMembers": [
+                    {"teamMember": {"displayName": "Sam Lee", "uniqueName": "sam@contoso.com"},
+                        "activities": [{"capacityPerDay": 6}], "daysOff": []}
+                ]})),
+                Answer::json(&json!({"daysOff": []})),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let sprint = outcome.json();
+        assert_eq!(sprint.get("working_days_left"), None);
+        assert_eq!(
+            sprint["people"],
+            json!([{"name": "Sam Lee", "items": 1, "points": 0.0, "remaining_work": 5.0, "capacity_per_day": 6.0}])
+        );
         assert_eq!(outcome.stderr, "");
     }
 }

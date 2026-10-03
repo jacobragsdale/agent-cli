@@ -235,6 +235,151 @@ fn mssql_a_failure_names_the_statement_and_what_already_ran() {
     );
 }
 
+/// `select count(*)` of a scratch table, read on a connection of its own.
+fn count(table: &str) -> Value {
+    rows(
+        &query("local-mssql", &format!("select count(*) from {table}"), &[]),
+        0,
+    )[0][0]
+        .clone()
+}
+
+#[test]
+fn mssql_a_transaction_survives_a_read_cut_at_max_rows_and_commits() {
+    if !wanted() {
+        return;
+    }
+    let table = "bench.agent_cli_tran_cut";
+    query(
+        "local-mssql",
+        &format!("drop table if exists {table}\ngo\ncreate table {table} (id int)"),
+        &["--yes"],
+    );
+    let result = query(
+        "local-mssql",
+        &format!(
+            "begin tran\ngo\ninsert {table} values (1)\ngo\n\
+             select top 100 id from bench.events\ngo\ncommit\ngo\n\
+             select top 1 id into #kept from bench.events\ngo\n\
+             select top 100 id from bench.events\ngo\nselect count(*) from #kept"
+        ),
+        &["--max-rows", "2", "--yes"],
+    );
+    assert_eq!(result["results"][2]["truncated"], true);
+    assert_eq!(
+        rows(&result, 6),
+        &json!([[1]]),
+        "the #temp table outlived the cut"
+    );
+    assert_eq!(count(table), json!(1), "the insert was committed");
+    query("local-mssql", &format!("drop table {table}"), &["--yes"]);
+}
+
+#[test]
+fn mssql_a_transaction_left_open_is_rolled_back_and_said() {
+    if !wanted() {
+        return;
+    }
+    let table = "bench.agent_cli_tran_open";
+    query(
+        "local-mssql",
+        &format!("drop table if exists {table}\ngo\ncreate table {table} (id int)"),
+        &["--yes"],
+    );
+    for script in [
+        format!("begin tran\ngo\ninsert {table} values (1)"),
+        format!("set implicit_transactions on\ngo\ninsert {table} values (1)"),
+    ] {
+        let outcome = sql(&[
+            "sql",
+            "query",
+            "run",
+            "--conn",
+            "local-mssql",
+            "--yes",
+            &script,
+        ]);
+        assert_eq!(outcome.code, 1, "{outcome:?}");
+        assert!(outcome.stdout.is_empty(), "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("left a transaction open")
+                && outcome.stderr.contains("hint: end the script with COMMIT"),
+            "{}",
+            outcome.stderr
+        );
+        assert_eq!(count(table), json!(0), "{script}");
+    }
+    query("local-mssql", &format!("drop table {table}"), &["--yes"]);
+}
+
+#[test]
+fn mssql_a_failure_inside_a_transaction_never_claims_a_commit() {
+    if !wanted() {
+        return;
+    }
+    let table = "bench.agent_cli_tran_fail";
+    query(
+        "local-mssql",
+        &format!("drop table if exists {table}\ngo\ncreate table {table} (id int)"),
+        &["--yes"],
+    );
+    let outcome = sql(&[
+        "sql",
+        "query",
+        "run",
+        "--conn",
+        "local-mssql",
+        "--yes",
+        &format!("begin tran\ngo\ninsert {table} values (1)\ngo\nselect 1/0\ngo\ncommit"),
+    ]);
+    assert_eq!(outcome.code, 1, "{outcome:?}");
+    assert!(
+        outcome.stderr.contains(
+            "statement 3 of 4 failed; statements 1-2 ran (1: 0 rows affected, 2: 1 row \
+             affected), but a transaction still open at the failure is rolled back"
+        ),
+        "{}",
+        outcome.stderr
+    );
+    assert_eq!(count(table), json!(0));
+    query("local-mssql", &format!("drop table {table}"), &["--yes"]);
+}
+
+#[test]
+fn mssql_a_write_cut_by_the_deadline_says_it_may_have_run() {
+    if !wanted() {
+        return;
+    }
+    let table = "bench.agent_cli_tran_deadline";
+    query(
+        "local-mssql",
+        &format!("drop table if exists {table}\ngo\ncreate table {table} (id int)"),
+        &["--yes"],
+    );
+    let outcome = sql(&[
+        "sql",
+        "query",
+        "run",
+        "--conn",
+        "local-mssql",
+        "--yes",
+        "--timeout",
+        "1",
+        &format!("insert {table} values (1); waitfor delay '00:00:05'; insert {table} values (2)"),
+    ]);
+    assert_eq!(outcome.code, 124, "{outcome:?}");
+    assert!(
+        outcome
+            .stderr
+            .contains("may already have done part or all of it")
+            && outcome.stderr.contains("hint: check what it changed"),
+        "{}",
+        outcome.stderr
+    );
+    assert_eq!(count(table), json!(1), "the first insert had committed");
+    query("local-mssql", &format!("drop table {table}"), &["--yes"]);
+}
+
 #[test]
 fn mssql_an_unknown_table_is_not_found_and_hints_the_search() {
     if !wanted() {

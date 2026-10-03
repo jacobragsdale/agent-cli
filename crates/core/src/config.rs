@@ -29,9 +29,16 @@ impl Config {
     #[must_use]
     pub fn load() -> Self {
         let path = default_path();
+        let named = std::env::var_os("AGENT_CLI_CONFIG").is_some_and(|path| !path.is_empty());
         let text = match std::fs::read_to_string(&path) {
             Ok(text) => Ok(Some(text)),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            // No default file is an empty config; a file AGENT_CLI_CONFIG
+            // names and that is not there is a typo.
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound && !named => Ok(None),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Err(format!(
+                "{} does not exist, and AGENT_CLI_CONFIG names it",
+                path.display()
+            )),
             Err(error) => Err(format!("cannot read {}: {error}", path.display())),
         };
         let env = std::env::vars()
@@ -103,10 +110,12 @@ impl Config {
     pub fn section<T: DeserializeOwned>(&self, name: &str) -> Result<T> {
         let path = self.path.display();
         let fix = format!("fix [{name}] in {path}; config.example.toml shows every key");
-        let table = self
-            .table
-            .as_ref()
-            .map_err(|error| Failure::setup(error.clone()).hint(fix.clone()))?;
+        // A file that cannot be read or parsed stops every section, not one.
+        let table = self.table.as_ref().map_err(|error| {
+            Failure::setup(error.clone()).hint(format!(
+                "fix the file {path} (no section can be read until it parses); config.example.toml shows every key"
+            ))
+        })?;
         let mut section = match table.get(name) {
             Some(Value::Table(section)) => section.clone(),
             None => Table::new(),

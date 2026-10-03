@@ -81,7 +81,11 @@ mod tests {
         let outcome =
             agent_cli_core::testing::run(&[KV], &["kv", "vault", "list", "--no-cache"], third);
         assert_eq!(outcome.stdout.trim(), "[]");
-        assert_eq!(transport.sent().len(), 1);
+        assert_eq!(
+            transport.sent().len(),
+            2,
+            "the inventory, then the subscriptions check"
+        );
         let cached = std::fs::read_to_string(dir.join("cache.json")).unwrap();
         assert!(!cached.contains("token"), "{cached}");
     }

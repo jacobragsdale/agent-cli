@@ -214,8 +214,11 @@ behind a refactor of three TUIs whose core code leaked their UI library. The
 TUIs keep their copies until they can depend on these crates (phase 5 in
 `TODO.md`).
 
-ado reads are live, through WIQL and REST, with only ids cached (who `@me`
-is, repository and pipeline ids). The TUI answered from a local SQLite copy,
+ado reads are live, through WIQL and REST. Only what changes about never is
+cached (who `@me` is, people's ids, a work item type's states and fields, a
+team's sprints), and a name the cache lacks, or a sprint macro, reads it
+again; a repository or pipeline named is read each time, since one made
+again under its name has a new id. The TUI answered from a local SQLite copy,
 which needed a sync first, went stale, and was wiped whenever its schema
 changed; an agent would rather have a correct answer than one 300 ms sooner.
 

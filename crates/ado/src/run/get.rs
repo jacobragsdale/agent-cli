@@ -10,7 +10,8 @@ use crate::test::{has_failures, test_runs};
 use crate::work_items::{self, WorkItemRef};
 
 use super::{
-    RunIdArgs, RunRow, build_url, built, built_tree, is, line_at, log_id, run_row, timeline,
+    Gate, RunIdArgs, RunRow, build_url, built, built_tree, gate, is, line_at, log_id, run_row,
+    timeline,
 };
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -76,11 +77,24 @@ fn errors(record: &Value) -> impl Iterator<Item = &Value> {
 }
 
 /// The command that answers what a run's reader asks next: what it waits
-/// on, or why it failed (a failing test, the line an error names, else the
-/// first failed task's log).
-fn next_step(ctx: &Ctx, ado: &Ado, id: i64, detail: &RunDetail) -> Option<String> {
+/// on (an approval, else the run), or why it failed (a failing test, the
+/// line an error names, else the first failed task's log).
+fn next_step(
+    ctx: &Ctx,
+    ado: &Ado,
+    id: i64,
+    detail: &RunDetail,
+    gate: Option<&Gate>,
+) -> Option<String> {
     match (detail.run.status.as_deref(), detail.run.result.as_deref()) {
+        (Some("notStarted" | "inProgress"), _) if gate.is_some() => {
+            return match gate {
+                Some(Gate::Approval(_)) => Some("ado approval list".to_owned()),
+                _ => None,
+            };
+        }
         (Some("notStarted" | "inProgress"), _) => return Some(format!("ado run wait {id}")),
+        (_, Some("partiallySucceeded")) => return Some(format!("ado run logs {id}")),
         (_, Some("failed")) => {}
         _ => return None,
     }
@@ -226,7 +240,14 @@ fn run_get(ctx: &Ctx, args: RunIdArgs) -> Result<RunDetail> {
             .collect(),
         failed,
     };
-    if let Some(next) = next_step(ctx, &ado, id, &detail) {
+    let gate = gate(&records);
+    if let Some(Gate::Permission) = gate {
+        ctx.note(format!(
+            "[run {id} waits for a person to permit a resource it uses (an agent pool, an environment or a repository), on its page: {}]",
+            detail.run.url.as_deref().unwrap_or("its web page")
+        ));
+    }
+    if let Some(next) = next_step(ctx, &ado, id, &detail, gate.as_ref()) {
         ctx.note(format!("[next: agent-cli {next}]"));
     }
     Ok(detail)
@@ -454,6 +475,55 @@ mod tests {
     }
 
     #[test]
+    fn a_run_parked_at_an_approval_names_the_approval_not_a_wait() {
+        let gate = json!({"records": [
+            {"type": "Stage", "name": "deploy", "state": "pending"},
+            {"type": "Checkpoint.Approval", "id": "fe353cd7-2b39-4ba4-ab3d-d82379827795",
+             "name": "Checkpoint.Approval", "state": "inProgress"}
+        ]});
+        let (outcome, _) = ado(
+            &["ado", "run", "get", "992"],
+            vec![
+                Answer::json(&build(992, "inProgress", None)),
+                Answer::json(&gate),
+                page(vec![]),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("[next: agent-cli ado approval list]"),
+            "{}",
+            outcome.stderr
+        );
+    }
+
+    #[test]
+    fn a_run_waiting_for_permission_says_who_moves_it_and_no_wait() {
+        let gate = json!({"records": [
+            {"type": "Checkpoint.Authorization", "name": "Checkpoint.Authorization", "state": "inProgress"}
+        ]});
+        let (outcome, _) = ado(
+            &["ado", "run", "get", "992"],
+            vec![
+                Answer::json(&build(992, "notStarted", None)),
+                Answer::json(&gate),
+                page(vec![]),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("[run 992 waits for a person to permit a resource it uses"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(!outcome.stderr.contains("run wait"), "{}", outcome.stderr);
+    }
+
+    #[test]
     fn run_get_of_a_queued_run_has_no_timeline_but_a_broken_one_is_an_error() {
         let (outcome, _) = ado(
             &["ado", "run", "get", "992"],
@@ -483,6 +553,32 @@ mod tests {
         assert_eq!(outcome.code, 1, "{outcome:?}");
         assert!(
             outcome.stderr.contains("timeline unavailable"),
+            "{}",
+            outcome.stderr
+        );
+    }
+
+    #[test]
+    fn a_run_or_repository_that_is_not_there_names_its_listing() {
+        let gone = Answer::status(
+            404,
+            r#"{"message":"The requested build 999 could not be found."}"#,
+        );
+        let (outcome, _) = ado(&["ado", "run", "get", "999"], vec![gone]);
+        assert_eq!(outcome.code, 4, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("hint: agent-cli ado run list"),
+            "{}",
+            outcome.stderr
+        );
+        let gone = Answer::status(
+            404,
+            r#"{"message":"TF401019: The Git repository with name or identifier x does not exist."}"#,
+        );
+        let (outcome, _) = ado(&["ado", "repo", "get", "x"], vec![gone]);
+        assert_eq!(outcome.code, 4, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("hint: agent-cli ado repo list"),
             "{}",
             outcome.stderr
         );

@@ -68,7 +68,7 @@ fn commit_list(ctx: &Ctx, args: CommitListArgs) -> Result<Vec<CommitRow>> {
     }
     let project = id.project(&ado).to_owned();
     let repo = segment(&id.repo);
-    let mut query = format!("searchCriteria.$top={}", args.limit + 1);
+    let mut query = format!("searchCriteria.$top={}", args.limit.saturating_add(1));
     if !id.path.is_empty() {
         query.push_str(&format!(
             "&searchCriteria.itemPath={}",

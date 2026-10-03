@@ -100,6 +100,12 @@ pub(crate) fn batch(items: Vec<Value>) -> Answer {
     Answer::json(&json!({"count": items.len(), "value": items}))
 }
 
+/// What `git/repositories/web` answers.
+pub(crate) fn repo() -> Answer {
+    Answer::json(&json!({"id": "r-1", "name": "web",
+        "defaultBranch": "refs/heads/main", "project": {"id": "p-1", "name": "Fabrikam"}}))
+}
+
 pub(crate) fn repos() -> Answer {
     Answer::json(&json!({"count": 1, "value": [{"id": "r-1", "name": "web",
         "defaultBranch": "refs/heads/main", "project": {"id": "p-1", "name": "Fabrikam"}}]}))

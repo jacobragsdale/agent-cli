@@ -69,15 +69,20 @@ pub struct ContainerRow {
     last_termination: Option<String>,
 }
 
+/// The containers, native sidecars first: an init container that restarts
+/// always runs beside them, and kubectl counts it as one.
 pub(crate) fn containers(item: &Value) -> Vec<ContainerRow> {
-    let statuses = item["status"]["containerStatuses"]
-        .as_array()
-        .cloned()
-        .unwrap_or_default();
-    item["spec"]["containers"]
+    let statuses: Vec<Value> = ["initContainerStatuses", "containerStatuses"]
+        .iter()
+        .flat_map(|key| item["status"][key].as_array().cloned().unwrap_or_default())
+        .collect();
+    let sidecars = item["spec"]["initContainers"]
         .as_array()
         .into_iter()
         .flatten()
+        .filter(|spec| is_sidecar(spec));
+    sidecars
+        .chain(item["spec"]["containers"].as_array().into_iter().flatten())
         .filter_map(|spec| {
             let name = spec["name"].as_str()?;
             let status = statuses
@@ -204,12 +209,16 @@ fn termination_word(terminated: &Value) -> String {
     )
 }
 
+fn is_sidecar(spec: &Value) -> bool {
+    spec["restartPolicy"].as_str() == Some("Always")
+}
+
 /// The STATUS word `kubectl get pods` prints, cut to the cases that come up:
 /// the pod's own reason or phase, overridden by the first init container
 /// still going, else by whatever the containers wait on or stopped for, and
 /// `Terminating` over all of it once a delete is in.
-// ponytail: skipped from kubectl's printPod — sidecar init containers,
-// Signal:N, NotReady, NodeLost→Unknown, and the "(N ago)" restart suffix.
+// ponytail: skipped from kubectl's printPod — Signal:N, NotReady,
+// NodeLost→Unknown, and the "(N ago)" restart suffix.
 fn status_word(item: &Value) -> String {
     let status = &item["status"];
     let phase = status["phase"].as_str().unwrap_or("Unknown");
@@ -226,6 +235,15 @@ fn status_word(item: &Value) -> String {
     {
         let state = &held["state"];
         let terminated = &state["terminated"];
+        let sidecar = item["spec"]["initContainers"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|spec| spec["name"] == held["name"] && is_sidecar(spec));
+        // A sidecar that started has done its part of the init.
+        if sidecar && !state["running"].is_null() {
+            continue;
+        }
         if !terminated.is_null() {
             if terminated["exitCode"].as_i64() == Some(0) {
                 continue;
@@ -277,6 +295,27 @@ mod tests {
 
     use super::*;
     use crate::testing::{k8s, run};
+
+    #[test]
+    fn a_native_sidecar_counts_as_a_container_once_it_runs() {
+        let pod = json!({
+            "metadata": {"name": "web-1"},
+            "spec": {
+                "initContainers": [{"name": "shipper", "restartPolicy": "Always"}],
+                "containers": [{"name": "main"}]
+            },
+            "status": {
+                "phase": "Running",
+                "initContainerStatuses": [{"name": "shipper", "ready": true, "restartCount": 0,
+                                           "state": {"running": {}}}],
+                "containerStatuses": [{"name": "main", "ready": true, "restartCount": 0,
+                                       "state": {"running": {}}}]
+            }
+        });
+        assert_eq!(status_word(&pod), "Running", "as kubectl prints it");
+        let names: Vec<String> = containers(&pod).into_iter().map(|held| held.name).collect();
+        assert_eq!(names, ["shipper", "main"]);
+    }
 
     #[test]
     fn a_status_word_follows_kubectl_for_terminating_completed_and_init() {

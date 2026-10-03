@@ -111,7 +111,7 @@ fn test_list(ctx: &Ctx, args: TestListArgs) -> Result<Vec<TestResult>> {
         }
         let url = ado.code(
             &format!("test/runs/{run}/results"),
-            &format!("{outcomes}$top={}", args.limit + 1),
+            &format!("{outcomes}$top={}", args.limit.saturating_add(1)),
         );
         results.extend(list(&ado.get(ctx, &url)?["value"]).iter().cloned());
     }

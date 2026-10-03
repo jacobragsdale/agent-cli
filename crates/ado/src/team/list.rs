@@ -24,7 +24,7 @@ fn team_list(ctx: &Ctx, args: TeamListArgs) -> Result<Vec<TeamRow>> {
     let url = ado.api(
         None,
         &format!("projects/{}/teams", segment(&ado.project)),
-        &format!("$top={}", args.limit + 1),
+        &format!("$top={}", args.limit.saturating_add(1)),
         crate::client::API,
     );
     let answer = ado.get(ctx, &url)?;

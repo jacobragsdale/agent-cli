@@ -48,6 +48,8 @@ without the variable they skip. Queries `crates/sql/search.toml`.
   the binary runs without it; doctor reports whether it loaded.
 - Stopping at `--max-rows` drops the SQL Server socket, which ends the
   session: the next statement reconnects, and `bench` names the reconnects.
+  So only a read with no write before it is cut, and a transaction a script
+  leaves open is rolled back and reported.
 - The only async code (a current-thread runtime for tiberius) is here.
 
 ## Never needed

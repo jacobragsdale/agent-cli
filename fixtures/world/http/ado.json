@@ -3239,7 +3239,7 @@
   }
  },
  {
-  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/diffs/commits?baseVersion=4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9&baseVersionType=commit&targetVersion=a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0&targetVersionType=commit&diffCommonCommit=false&$top=1000&api-version=7.1",
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/diffs/commits?baseVersion=4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9&baseVersionType=commit&targetVersion=a7e3c9f1d5b2e8a4c6f0d2b4e6a8c0e2f4a6b8d0&targetVersionType=commit&diffCommonCommit=false&$top=1000&$skip=0&api-version=7.1",
   "note": "PR 436: its merge base against its head",
   "answer": {
    "allChangesIncluded": true,
@@ -3296,7 +3296,7 @@
   }
  },
  {
-  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/diffs/commits?baseVersion=v1.4.1&baseVersionType=branch&targetVersion=v1.4.2&targetVersionType=branch&diffCommonCommit=false&$top=1000&api-version=7.1",
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/diffs/commits?baseVersion=v1.4.1&baseVersionType=branch&targetVersion=v1.4.2&targetVersionType=branch&diffCommonCommit=false&$top=1000&$skip=0&api-version=7.1",
   "note": "a bare v1.4.1 is tried as a branch first",
   "status": 404,
   "answer": {
@@ -3310,7 +3310,7 @@
   }
  },
  {
-  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/diffs/commits?baseVersion=v1.4.1&baseVersionType=tag&targetVersion=v1.4.2&targetVersionType=tag&diffCommonCommit=false&$top=1000&api-version=7.1",
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/diffs/commits?baseVersion=v1.4.1&baseVersionType=tag&targetVersion=v1.4.2&targetVersionType=tag&diffCommonCommit=false&$top=1000&$skip=0&api-version=7.1",
   "note": "v1.4.1..v1.4.2 is PR 431's change",
   "answer": {
    "allChangesIncluded": true,
@@ -4907,7 +4907,7 @@
 }
 ,
 {
- "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/diffs/commits?baseVersion=2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b&baseVersionType=commit&targetVersion=4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9&targetVersionType=commit&diffCommonCommit=false&$top=1000&api-version=7.1",
+ "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/git/repositories/api/diffs/commits?baseVersion=2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b&baseVersionType=commit&targetVersion=4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9&targetVersionType=commit&diffCommonCommit=false&$top=1000&$skip=0&api-version=7.1",
  "note": "commit list's diff for PR 431's merge: the same change as v1.4.1..v1.4.2",
  "answer": {
   "allChangesIncluded": true,
@@ -7855,6 +7855,29 @@
   "answer": {
    "totalCount": 0,
    "comments": []
+  }
+ },
+ {
+  "request": "GET https://vssps.dev.azure.com/contoso/_apis/identities?searchFilter=General&filterValue=jane%40contoso.com&queryMembership=None&api-version=7.1",
+  "note": "workitem list --assignee jane@contoso.com: one person",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "id": "00000000-0000-4000-8000-0000000000e1",
+     "providerDisplayName": "Jane Doe",
+     "properties": {
+      "Mail": {
+       "$type": "System.String",
+       "$value": "jane@contoso.com"
+      },
+      "Account": {
+       "$type": "System.String",
+       "$value": "jane@contoso.com"
+      }
+     }
+    }
+   ]
   }
  }
 ]

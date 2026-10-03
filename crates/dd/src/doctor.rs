@@ -1,6 +1,6 @@
 //! The overview's line for dd, and `agent-cli doctor dd`.
 
-use agent_cli_core::{Check, Config, Ctx, Method};
+use agent_cli_core::{Check, Config, Ctx, Method, status_of};
 
 use crate::client::{Dd, Section, site};
 
@@ -57,6 +57,12 @@ pub(crate) fn doctor(ctx: &Ctx) -> Vec<Check> {
     checks.push(
         match dd.send(ctx, None, Method::Get, dd.url(path, &query), None) {
             Ok(_) => Check::ok("connection", format!("api.{} answers", dd.site.name)),
+            // validate needs no scope, so its 403 is a key Datadog does not know.
+            Err(error) if dd.uses_keys() && status_of(&error) == Some(403) => Check::failed(
+                "connection",
+                format!("{error:#}"),
+                "Datadog does not know this API key: it is mistyped, revoked, or from another site's org (check [datadog] site)",
+            ),
             Err(error) => Check::failed(
                 "connection",
                 format!("{error:#}"),
@@ -99,6 +105,33 @@ mod tests {
         assert_eq!(
             status(&config("[datadog]\nsite = \"dd.contoso.example\"\n")),
             "dd config broken"
+        );
+    }
+
+    #[test]
+    fn a_key_pair_validate_refuses_is_a_key_datadog_does_not_know() {
+        let keys = "[datadog]\napi_key_env = \"DD_TEST_TOKEN\"\napp_key_env = \"DD_TEST_TOKEN\"\n";
+        let (outcome, transport) = crate::testing::dd_with(
+            keys,
+            &["doctor", "dd"],
+            vec![Answer::status(403, r#"{"errors":["Forbidden"]}"#)],
+        );
+        assert_eq!(outcome.code, 1, "{outcome:?}");
+        assert!(transport.sent()[0].url.contains("/api/v1/validate"));
+        let connection = outcome
+            .json()
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["check"] == "connection")
+            .cloned()
+            .unwrap();
+        assert!(
+            connection["hint"]
+                .as_str()
+                .unwrap()
+                .starts_with("Datadog does not know this API key"),
+            "{connection}"
         );
     }
 

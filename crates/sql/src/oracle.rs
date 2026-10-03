@@ -78,8 +78,10 @@ impl Session {
             Driver::connect(&user, password.expose(), &connect_string)
         })?
         .map_err(|why| {
+            // ORA-01017 is a refused login, which is setup (exit 3).
+            let refused = complaint(&why).contains("ORA-01017");
             Failure::new(
-                Exit::Failed,
+                if refused { Exit::Setup } else { Exit::Failed },
                 format!(
                     "cannot connect to {}:{}/{}: {}",
                     spec.host,
@@ -303,7 +305,20 @@ fn compile_error(driver: &Driver, sql: &str) -> Option<anyhow::Error> {
         1 => String::new(),
         n => format!(" (and {} more)", n - 1),
     };
-    Some(anyhow!("line {}: {}{more}", line + before, text.trim_end()))
+    // Oracle keeps the program, INVALID: say so, and what to do about it.
+    Some(
+        Failure::new(
+            Exit::Failed,
+            format!(
+                "line {}: {}{more}; {} {name} now exists INVALID",
+                line + before,
+                text.trim_end(),
+                kind.to_lowercase()
+            ),
+        )
+        .hint("fix it and run the CREATE OR REPLACE again, or drop it")
+        .into(),
+    )
 }
 
 /// One value, chosen by the column's declared type rather than by what the

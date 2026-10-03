@@ -41,7 +41,7 @@ fn pipeline_list(ctx: &Ctx, args: PipelineListArgs) -> Result<Vec<PipelineRow>> 
     let ado = Ado::load(ctx)?;
     let mut query = format!(
         "includeLatestBuilds=true&queryOrder=definitionNameAscending&$top={}",
-        args.limit + 1
+        args.limit.saturating_add(1)
     );
     if let Some(pattern) = &args.pattern {
         query.push_str(&format!(
@@ -94,6 +94,7 @@ command! {
 
 #[cfg(test)]
 mod tests {
+    use agent_cli_core::testing::Answer;
     use serde_json::json;
 
     use crate::testing::{CODE, ado, page, urls};
@@ -105,9 +106,7 @@ mod tests {
                 "ado", "pipeline", "list", "web", "--repo", "web", "--limit", "1",
             ],
             vec![
-                page(vec![
-                    json!({"id": "r-1", "name": "web", "project": {"id": "p-1"}}),
-                ]),
+                Answer::json(&json!({"id": "r-1", "name": "web", "project": {"id": "p-1"}})),
                 page(vec![
                     json!({"id": 12, "name": "web-ci", "path": "\\", "queueStatus": "enabled",
                         "latestBuild": {"id": 991, "status": "completed", "result": "failed",

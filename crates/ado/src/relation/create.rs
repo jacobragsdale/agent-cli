@@ -51,6 +51,24 @@ fn relation_create(ctx: &Ctx, args: RelationCreateArgs) -> Result<Linked> {
         ))
         .into());
     }
+    // A child's own parent is checked as --parent checks this one's.
+    if kind == "child" {
+        let (_, child, _) = read(ctx, &ado, &other.to_string())?;
+        let up = "System.LinkTypes.Hierarchy-Reverse";
+        if let Some(old) = list(&child["relations"])
+            .iter()
+            .find(|relation| relation["rel"] == up)
+            .and_then(|relation| linked_id(&relation["url"]))
+        {
+            return Err(Failure::conflict(format!(
+                "work item {other} already has parent {old}, and a work item has one parent"
+            ))
+            .hint(format!(
+                "agent-cli ado relation delete {other} --parent {old}, then run this again"
+            ))
+            .into());
+        }
+    }
     let document = vec![
         json!({"op": "test", "path": "/rev", "value": rev}),
         json!({"op": "add", "path": "/relations/-", "value": {
@@ -59,7 +77,19 @@ fn relation_create(ctx: &Ctx, args: RelationCreateArgs) -> Result<Linked> {
         }}),
     ];
     ado.patch_work_item(ctx, Method::Patch, &item_url(&ado, id), document)
-        .map_err(|error| moved_on(error, id))?;
+        .map_err(|error| moved_on(error, id))
+        .map_err(|error| {
+            // TF201035 is a cycle, TF201036 a second link of a one-only kind.
+            let said = format!("{error:#}");
+            if !said.contains("TF201035") && !said.contains("TF201036") {
+                return error;
+            }
+            Failure::conflict(said)
+                .hint(format!(
+                    "agent-cli ado workitem get {id} --fields parent,children,related,blocks,blocked_by  (the links in the way)"
+                ))
+                .into()
+        })?;
     Ok(linked(false))
 }
 

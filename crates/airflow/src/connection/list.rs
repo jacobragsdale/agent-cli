@@ -48,20 +48,44 @@ struct Sql {
 #[derive(Deserialize)]
 struct SqlConnection {
     name: String,
+    kind: Option<String>,
     host: Option<String>,
+    port: Option<i64>,
     database: Option<String>,
 }
 
+impl SqlConnection {
+    /// The port sql connects to: its own, else its server's default.
+    fn port(&self) -> Option<i64> {
+        self.port.or(match self.kind.as_deref() {
+            Some("mssql") => Some(1433),
+            Some("oracle") => Some(1521),
+            _ => None,
+        })
+    }
+}
+
 /// The sql connection on `host`, preferring one whose database is
-/// `database`; one naming another database never matches.
+/// `database`; one naming another database, or another port (two servers
+/// on one host), never matches.
 // ponytail: hosts compare as written; a port or instance suffix on one side
 // (`host,1433`, `host\inst`) misses, normalize both when that shows up.
-fn sql_conn(sql: &[SqlConnection], host: Option<&str>, database: Option<&str>) -> Option<String> {
+fn sql_conn(
+    sql: &[SqlConnection],
+    host: Option<&str>,
+    port: Option<i64>,
+    database: Option<&str>,
+) -> Option<String> {
     let same = |a: &str, b: &str| a.trim().eq_ignore_ascii_case(b.trim());
     let host = host?;
     let on_host: Vec<&SqlConnection> = sql
         .iter()
         .filter(|conn| conn.host.as_deref().is_some_and(|their| same(their, host)))
+        .filter(|conn| {
+            conn.port()
+                .zip(port)
+                .is_none_or(|(theirs, ours)| theirs == ours)
+        })
         .filter(|conn| match (conn.database.as_deref(), database) {
             (Some(theirs), Some(ours)) => same(theirs, ours),
             _ => true,
@@ -90,15 +114,16 @@ fn connection_list(ctx: &Ctx, args: ConnectionListArgs) -> Result<Vec<Connection
         .map(|connection| {
             let host = text(&connection["host"]);
             let schema = text(&connection["schema"]);
+            let port = connection["port"].as_i64();
             ConnectionRow {
                 id: connection["connection_id"]
                     .as_str()
                     .unwrap_or_default()
                     .to_owned(),
                 kind: text(&connection["conn_type"]),
-                sql_conn: sql_conn(&sql.connection, host.as_deref(), schema.as_deref()),
+                sql_conn: sql_conn(&sql.connection, host.as_deref(), port, schema.as_deref()),
                 host,
-                port: connection["port"].as_i64(),
+                port,
                 schema,
                 description: text(&connection["description"]),
             }
@@ -126,7 +151,9 @@ mod tests {
     fn sql_conn_matches_the_host_and_the_database_when_both_name_one() {
         let conn = |name: &str, host: &str, database: Option<&str>| SqlConnection {
             name: name.to_owned(),
+            kind: None,
             host: Some(host.to_owned()),
+            port: None,
             database: database.map(str::to_owned),
         };
         let sql = [
@@ -134,7 +161,7 @@ mod tests {
             conn("reporting", "SQL.contoso.example", Some("reporting")),
             conn("ledger", "ora.contoso.example", None),
         ];
-        let find = |host, database| sql_conn(&sql, host, database);
+        let find = |host, database| sql_conn(&sql, host, None, database);
         assert_eq!(
             find(Some("sql.contoso.example"), Some("Reporting")).as_deref(),
             Some("reporting"),
@@ -156,10 +183,31 @@ mod tests {
         assert_eq!(find(Some("api.contoso.example"), None), None);
         assert_eq!(find(None, None), None);
         assert_eq!(
-            sql_conn(&sql[1..2], Some("sql.contoso.example"), Some("staging")),
+            sql_conn(
+                &sql[1..2],
+                Some("sql.contoso.example"),
+                None,
+                Some("staging")
+            ),
             None,
             "another database never matches"
         );
+        let local = [
+            SqlConnection {
+                kind: Some("mssql".into()),
+                ..conn("ms", "localhost", Some("bench"))
+            },
+            SqlConnection {
+                kind: Some("oracle".into()),
+                ..conn("ora", "localhost", None)
+            },
+        ];
+        assert_eq!(
+            sql_conn(&local, Some("localhost"), Some(1521), None).as_deref(),
+            Some("ora"),
+            "two servers on one host are told apart by their ports"
+        );
+        assert_eq!(sql_conn(&local, Some("localhost"), Some(5432), None), None);
     }
 
     #[test]

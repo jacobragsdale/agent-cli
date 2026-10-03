@@ -4,7 +4,7 @@ pub(crate) mod approve;
 pub(crate) mod list;
 pub(crate) mod reject;
 
-use agent_cli_core::{Ctx, Effect, Method};
+use agent_cli_core::{Ctx, Effect, Failure, Method};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -41,7 +41,16 @@ fn answer(ctx: &Ctx, args: AnswerArgs, status: &str) -> Result<Answered> {
         "status": status,
         "comment": args.comment.unwrap_or_default(),
     }]);
-    let answered = ado.change(ctx, Effect::Destructive, Method::Patch, &url, body)?;
+    let answered = ado
+        .change(ctx, Effect::Destructive, Method::Patch, &url, body)
+        .map_err(|error| match error.downcast::<Failure>() {
+            // Answered already, by anyone: what is left to answer is listed.
+            Ok(failure) if failure.status == Some(409) => failure
+                .hint("agent-cli ado approval list  (the ones still pending)")
+                .into(),
+            Ok(failure) => failure.into(),
+            Err(error) => error,
+        })?;
     Ok(Answered {
         id: args.id,
         status: text(&answered["value"][0]["status"]),
@@ -101,5 +110,18 @@ mod tests {
         assert_eq!(outcome.json(), json!({"id": "a-1", "status": "rejected"}));
         let (outcome, _) = ado(&["ado", "approval", "approve", "a-1"], vec![]);
         assert_eq!(outcome.code, 2, "a gate needs --yes: {outcome:?}");
+        let done = agent_cli_core::testing::Answer::status(
+            409,
+            r#"{"message":"Approval update failed. Approval is already in completed state."}"#,
+        );
+        let (outcome, _) = ado(&["ado", "approval", "approve", "a-1", "--yes"], vec![done]);
+        assert_eq!(outcome.code, 5, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("hint: agent-cli ado approval list  (the ones still pending)"),
+            "{}",
+            outcome.stderr
+        );
     }
 }

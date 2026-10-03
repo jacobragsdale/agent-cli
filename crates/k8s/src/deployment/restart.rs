@@ -3,7 +3,7 @@ use anyhow::Result;
 
 use crate::kubectl::{At, Changed};
 
-use super::{deployment_at, workload};
+use super::{deployment_at, refuse_paused, workload};
 
 /// The kinds `kubectl rollout restart` takes.
 const ROLLABLE: &[&str] = &["deployment", "statefulset", "daemonset"];
@@ -19,6 +19,7 @@ pub struct RestartArgs {
 fn deployment_restart(ctx: &Ctx, args: RestartArgs) -> Result<Changed> {
     let (target, name) = deployment_at(ctx, &args.at, &args.name)?;
     let object = workload(&name, ROLLABLE, "restarted")?;
+    refuse_paused(ctx, &target, &object)?;
     let said = target.write(ctx, &["rollout", "restart", &object])?;
     Ok(Changed::new(&target, object, &said, None, None))
 }

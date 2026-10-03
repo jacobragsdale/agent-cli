@@ -216,7 +216,7 @@ pub(crate) fn moved_on(error: anyhow::Error, id: i64) -> anyhow::Error {
     match said {
         Some(message) => Failure::conflict(format!("work item {id} changed since it was read: {message}"))
             .hint(format!(
-                "re-read it (agent-cli ado workitem get {id} --fields rev,state,assignee), then run it again with the new --if-rev"
+                "re-read it (agent-cli ado workitem get {id} --fields rev,state,assignee), then run the command again (with the new rev as --if-rev, if it took one)"
             ))
             .into(),
         None => error,
@@ -225,7 +225,8 @@ pub(crate) fn moved_on(error: anyhow::Error, id: i64) -> anyhow::Error {
 
 /// Appends one artifact link to work item `id` behind a test of the revision
 /// it was read at, unless it already holds a link to the same thing (however
-/// Azure DevOps encoded it). Returns whether it wrote one.
+/// Azure DevOps encoded it). A revision that moved on is read once more: the
+/// other writer often added this same link. Returns whether it wrote one.
 pub(crate) fn add_artifact_link(
     ctx: &Ctx,
     ado: &Ado,
@@ -239,24 +240,35 @@ pub(crate) fn add_artifact_link(
         "$expand=relations",
         crate::client::API,
     );
-    let item = ado.get(ctx, &item_url)?;
-    let rev = item["rev"]
-        .as_i64()
-        .context("the work item came back without a revision to test")?;
     let wanted = artifact(url);
-    if relations(&item).any(|(rel, held)| rel == "ArtifactLink" && artifact(held) == wanted) {
-        return Ok(false);
+    let patch_url = ado.api(None, &format!("wit/workitems/{id}"), "", crate::client::API);
+    let mut again = true;
+    loop {
+        let item = ado.get(ctx, &item_url)?;
+        let rev = item["rev"]
+            .as_i64()
+            .context("the work item came back without a revision to test")?;
+        if relations(&item).any(|(rel, held)| rel == "ArtifactLink" && artifact(held) == wanted) {
+            return Ok(false);
+        }
+        let document = vec![
+            json!({"op": "test", "path": "/rev", "value": rev}),
+            json!({"op": "add", "path": "/relations/-", "value": {
+                "rel": "ArtifactLink", "url": url, "attributes": {"name": name},
+            }}),
+        ];
+        match ado.patch_work_item(ctx, Method::Patch, &patch_url, document) {
+            Ok(_) => return Ok(true),
+            Err(error) => {
+                let error = moved_on(error, id);
+                let moved = (error.downcast_ref::<Failure>())
+                    .is_some_and(|failure| failure.exit == Exit::Conflict);
+                if !(moved && std::mem::take(&mut again)) {
+                    return Err(error);
+                }
+            }
+        }
     }
-    let document = vec![
-        json!({"op": "test", "path": "/rev", "value": rev}),
-        json!({"op": "add", "path": "/relations/-", "value": {
-            "rel": "ArtifactLink", "url": url, "attributes": {"name": name},
-        }}),
-    ];
-    let url = ado.api(None, &format!("wit/workitems/{id}"), "", crate::client::API);
-    ado.patch_work_item(ctx, Method::Patch, &url, document)
-        .map_err(|error| moved_on(error, id))?;
-    Ok(true)
 }
 
 #[cfg(test)]

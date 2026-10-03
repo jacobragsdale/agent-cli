@@ -57,13 +57,7 @@ pub fn run_until(mut command: Command, deadline: Instant) -> Result<Output> {
             break status;
         }
         if Instant::now() >= deadline {
-            #[cfg(unix)]
-            let _ = Command::new("kill")
-                .args(["-KILL", "--", &format!("-{}", child.id())])
-                .stdin(Stdio::null())
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status();
+            kill_group(child.id());
             let _ = child.kill();
             let _ = child.wait();
             // The drains are not joined: a grandchild that left the group
@@ -81,11 +75,27 @@ pub fn run_until(mut command: Command, deadline: Instant) -> Result<Output> {
         }
         thread::sleep(Duration::from_millis(10));
     };
+    // What the child left running in its group (`cmd &`) holds the pipes
+    // open for as long as it runs; the child is done, so that goes too.
+    kill_group(child.id());
     Ok(Output {
         status,
         stdout: stdout.join().unwrap_or_default(),
         stderr: stderr.join().unwrap_or_default(),
     })
+}
+
+/// Kills the process group the child leads (it was started as its leader).
+fn kill_group(leader: u32) {
+    #[cfg(unix)]
+    let _ = Command::new("kill")
+        .args(["-KILL", "--", &format!("-{leader}")])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    #[cfg(not(unix))]
+    let _ = leader;
 }
 
 /// Reads one pipe to its end on a thread of its own.
@@ -132,6 +142,21 @@ mod tests {
         assert_eq!(
             (output.stdout.as_str(), output.stderr.as_str()),
             ("out\n", "err\n")
+        );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn a_child_that_leaves_a_process_behind_returns_when_it_does() {
+        let mut command = Command::new("sh");
+        command.args(["-c", "printf secret; (sleep 15 &)"]);
+        let started = Instant::now();
+        let output = run_until(command, Instant::now() + Duration::from_secs(10)).unwrap();
+        assert_eq!(output.stdout, "secret");
+        assert!(
+            started.elapsed() < Duration::from_secs(3),
+            "{:?}",
+            started.elapsed()
         );
     }
 

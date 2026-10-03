@@ -92,7 +92,7 @@ e.g. agent-cli ado workitem list --assignee @me --state Active --fields id,title
 ```text
 agent-cli ado workitem get — Show a work item: fields, description as Markdown, links, latest comments
  *<id> str        The work item's id: 1207, #1207, AB#1207 or its web URL
-  --comments int  How many of the latest comments to include (default 5)
+  --comments int  How many of the latest comments to include (at most 200) (default 5)
 Returns: {id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev,parent,children[],related[],blocks[],blocked_by[],pull_requests[{repo,id}],branches[{repo,name}],description,acceptance_criteria,comment_count,comments[{id,author,date,text}],url}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado workitem get 42 --fields id,title,state,description
@@ -544,7 +544,7 @@ e.g. agent-cli ado pr vote 42 approve
 ```text
 agent-cli ado pr update — Turn auto-complete on or off, mark draft or ready, or retitle a pull request
  *<id> str                 The pull request's id: 431, #431 or its web URL
-  --autocomplete on|off    Complete it by itself once policies pass
+  --autocomplete on|off    Complete it by itself once policies pass, as pr complete does by default: squash, delete the source branch, transition the work items
   --draft true|false       True to make it a draft, false to publish it
   --title str              A new title
   --description str        Markdown, replacing the description; - reads stdin

@@ -418,9 +418,56 @@ pub fn writes(sql: &str, kind: Kind) -> bool {
     false
 }
 
+/// Whether `sql` runs a transaction of its own (BEGIN TRAN, COMMIT,
+/// ROLLBACK, SAVE TRAN, SET IMPLICIT_TRANSACTIONS or XACT_ABORT): then what
+/// ran before a failure stays only if no open transaction held it.
+pub fn controls_transaction(sql: &str, kind: Kind) -> bool {
+    let words: Vec<String> = tokens(sql, kind)
+        .into_iter()
+        .filter_map(|token| match token {
+            Token::Word(range) => Some(sql[range].to_ascii_lowercase()),
+            _ => None,
+        })
+        .collect();
+    words.iter().enumerate().any(|(at, word)| {
+        let next = words.get(at + 1).map_or("", String::as_str);
+        match word.as_str() {
+            "commit" | "rollback" => true,
+            "begin" | "save" => next.starts_with("tran") || next == "distributed",
+            "set" => matches!(next, "implicit_transactions" | "xact_abort"),
+            _ => false,
+        }
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_statement_that_runs_its_own_transaction_is_told_apart() {
+        for sql in [
+            "begin tran",
+            "BEGIN TRANSACTION t1",
+            "update t set a = 1; commit",
+            "if @@error <> 0 rollback",
+            "save tran before_update",
+            "set implicit_transactions on",
+            "SET XACT_ABORT ON",
+            "begin distributed transaction",
+        ] {
+            assert!(controls_transaction(sql, Kind::Mssql), "{sql}");
+        }
+        for sql in [
+            "begin select 1 end",
+            "update t set commit_id = 1",
+            "select 'commit' as word",
+            "set nocount on",
+            "-- rollback\nselect 1",
+        ] {
+            assert!(!controls_transaction(sql, Kind::Mssql), "{sql}");
+        }
+    }
 
     fn mssql(text: &str) -> Vec<String> {
         split(text, Kind::Mssql)

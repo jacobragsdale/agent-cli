@@ -65,6 +65,15 @@ fn run_get(ctx: &Ctx, args: RunIdArgs) -> Result<RunDetail> {
     if let (Some("failed"), Some(first)) = (row.state.as_deref(), failed.first()) {
         ctx.note(format!("[next: agent-cli airflow task logs {first}]"));
     }
+    // A queued run of a paused DAG waits until someone unpauses it.
+    if row.state.as_deref() == Some("queued")
+        && client.get(&id.dag_path())?["is_paused"].as_bool() == Some(true)
+    {
+        ctx.note(format!(
+            "[next: agent-cli airflow dag update {} --paused false  ({} is paused, so its queued runs wait)]",
+            id.dag, id.dag
+        ));
+    }
     Ok(RunDetail {
         id: row.id,
         state: row.state,
@@ -162,5 +171,25 @@ mod tests {
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert!(!outcome.stderr.contains("[next:"), "{}", outcome.stderr);
+    }
+
+    #[test]
+    fn a_queued_run_of_a_paused_dag_names_the_unpause() {
+        let mut paused = crate::testing::dag("etl_nightly", true);
+        paused["is_paused"] = json!(true);
+        let (outcome, _) = airflow(
+            &["airflow", "run", "get", &format!("etl_nightly/{RUN}")],
+            vec![
+                Answer::json(&run("queued")),
+                tasks(vec![ti("load_orders", "none", 0)]),
+                Answer::json(&paused),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("[next: agent-cli airflow dag update etl_nightly --paused false  (etl_nightly is paused"),
+            "{}",
+            outcome.stderr
+        );
     }
 }

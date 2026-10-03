@@ -48,16 +48,16 @@ impl From<Iteration> for SprintRow {
     }
 }
 
-/// The work items in `sprint` with `fields`, and each child's parent. The
-/// iteration's list also names parents planned in other sprints, so only
-/// items whose iteration is this sprint's path are kept.
+/// The work items in `sprint` with `fields`, and every item read, by id.
+/// The iteration's list also names parents planned in other sprints, so
+/// only items whose iteration is this sprint's path are its work.
 fn items(
     ctx: &Ctx,
     ado: &Ado,
     team: &str,
     sprint: &Iteration,
     fields: &[&str],
-) -> Result<(Vec<Value>, HashMap<i64, i64>)> {
+) -> Result<(Vec<Value>, HashMap<i64, Value>)> {
     let url = ado.team(
         team,
         &format!(
@@ -68,28 +68,27 @@ fn items(
     );
     let answer = ado.get(ctx, &url)?;
     let mut ids: Vec<i64> = Vec::new();
-    let mut parents = HashMap::new();
     for relation in list(&answer["workItemRelations"]) {
-        let Some(id) = relation["target"]["id"].as_i64() else {
-            continue;
-        };
-        if let Some(parent) = relation["source"]["id"].as_i64() {
-            parents.insert(id, parent);
-        }
-        if !ids.contains(&id) {
+        if let Some(id) = relation["target"]["id"].as_i64()
+            && !ids.contains(&id)
+        {
             ids.push(id);
         }
     }
     let mut fields = fields.to_vec();
     fields.extend([TYPE, STATE, ITERATION]);
-    let items = read(ctx, ado, &ids, &fields)?
-        .into_iter()
+    let read = read(ctx, ado, &ids, &fields)?;
+    let items = (read.iter())
         .filter(|item| {
             text(&item["fields"][ITERATION])
                 .is_some_and(|path| path.eq_ignore_ascii_case(&sprint.path))
         })
+        .cloned()
         .collect();
-    Ok((items, parents))
+    let by_id = (read.into_iter())
+        .filter_map(|item| Some((item["id"].as_i64()?, item)))
+        .collect();
+    Ok((items, by_id))
 }
 
 /// Whether `item` is finished, by its type's state categories, asking once

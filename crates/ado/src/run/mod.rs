@@ -64,6 +64,19 @@ fn run_row(build: &Value) -> RunRow {
     }
 }
 
+/// The command that starts `run`'s pipeline again on its branch: what is
+/// left for a run that cannot be retried.
+fn new_run(run: &RunRow) -> String {
+    match (&run.pipeline, &run.branch) {
+        (Some(pipeline), Some(branch)) => format!(
+            "agent-cli ado run create --pipeline {} --branch {}",
+            crate::ids::arg(pipeline),
+            crate::ids::arg(branch)
+        ),
+        _ => format!("agent-cli ado run get {}", run.id),
+    }
+}
+
 pub(crate) fn build_url(ado: &Ado, id: i64) -> String {
     ado.code(&format!("build/builds/{id}"), "")
 }
@@ -137,6 +150,27 @@ fn timeline(ctx: &Ctx, ado: &Ado, id: i64) -> Result<Vec<Value>> {
     Ok(list(&response.json()?["records"]).to_vec())
 }
 
+/// What a run waits on that only a person gives; waiting moves neither.
+enum Gate {
+    /// A pending `Checkpoint.Approval`, whose id is the approval's.
+    Approval(String),
+    /// A pending `Checkpoint.Authorization`: the pipeline may not use a
+    /// resource yet (an agent pool, an environment, a repository), and a
+    /// person permits it on the run's page.
+    Permission,
+}
+
+fn gate(records: &[Value]) -> Option<Gate> {
+    let pending = |kind: &str| {
+        (records.iter())
+            .find(|record| is(record, kind) && record["state"].as_str() == Some("inProgress"))
+    };
+    match pending("Checkpoint.Approval") {
+        Some(approval) => text(&approval["id"]).map(Gate::Approval),
+        None => pending("Checkpoint.Authorization").map(|_| Gate::Permission),
+    }
+}
+
 fn is(record: &Value, kind: &str) -> bool {
     record["type"]
         .as_str()
@@ -168,15 +202,65 @@ mod tests {
         assert_eq!(outcome.code, 2, "{outcome:?}");
         assert!(transport.sent().is_empty());
 
-        let plans = dry_run(&["ado", "run", "retry", "991"], vec![]);
+        // Azure DevOps answers a finished run as it is: nothing was canceled.
+        let (outcome, _) = ado(
+            &["ado", "run", "cancel", "991", "--yes"],
+            vec![Answer::json(&build(991, "completed", Some("succeeded")))],
+        );
+        assert_eq!(outcome.code, 5, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("run 991 had already finished succeeded; nothing was canceled\nhint: agent-cli ado run get 991"),
+            "{}",
+            outcome.stderr
+        );
+        assert_eq!(outcome.json()["result"], "succeeded");
+
+        let failed = || Answer::json(&build(991, "completed", Some("failed")));
+        let plans = dry_run(&["ado", "run", "retry", "991"], vec![failed()]);
         assert_eq!(
             plans[0]["url"],
             format!("{CODE}/build/builds/991?retry=true&api-version=7.1")
         );
         let (outcome, _) = ado(
             &["ado", "run", "retry", "991"],
-            vec![Answer::json(&build(991, "inProgress", None))],
+            vec![failed(), Answer::json(&build(991, "inProgress", None))],
         );
         assert_eq!(outcome.json()["status"], "inProgress");
+    }
+
+    #[test]
+    fn retry_refuses_a_run_that_did_not_fail_or_has_not_finished_before_writing() {
+        for (status, result, said, hint) in [
+            (
+                "completed",
+                Some("succeeded"),
+                "run 991 finished succeeded",
+                "hint: agent-cli ado run create --pipeline web-ci --branch main  (a new run)",
+            ),
+            (
+                "completed",
+                Some("canceled"),
+                "run 991 finished canceled",
+                "hint: agent-cli ado run create --pipeline web-ci --branch main",
+            ),
+            (
+                "inProgress",
+                None,
+                "run 991 is still inProgress",
+                "hint: agent-cli ado run wait 991",
+            ),
+        ] {
+            let (outcome, transport) = ado(
+                &["ado", "run", "retry", "991"],
+                vec![Answer::json(&build(991, status, result))],
+            );
+            assert_eq!(outcome.code, 5, "{outcome:?}");
+            assert!(
+                outcome.stderr.contains(said) && outcome.stderr.contains(hint),
+                "{}",
+                outcome.stderr
+            );
+            assert!(transport.sent().iter().all(|sent| sent.method.is_read()));
+        }
     }
 }

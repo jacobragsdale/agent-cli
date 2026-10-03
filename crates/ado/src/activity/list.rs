@@ -179,7 +179,7 @@ fn pull_requests(
     let search = |criteria: String| -> Result<Vec<Value>> {
         let url = ado.code(
             "git/pullrequests",
-            &format!("{criteria}&$top={}", limit + 1),
+            &format!("{criteria}&$top={}", limit.saturating_add(1)),
         );
         Ok(list(&ado.get(ctx, &url)?["value"]).to_vec())
     };
@@ -269,7 +269,8 @@ fn pull_requests(
 }
 
 fn commits(ctx: &Ctx, ado: &Ado, who: &Person, since: When, limit: usize) -> Result<Vec<Activity>> {
-    let repos = ado.repos(ctx, false)?;
+    // Fresh: a cached list can name a repository deleted since.
+    let repos = ado.repos(ctx, true)?;
     if repos.len() > REPOS {
         let skipped: Vec<&str> = repos[REPOS..].iter().map(|r| r.name.as_str()).collect();
         ctx.note(format!(
@@ -279,6 +280,7 @@ fn commits(ctx: &Ctx, ado: &Ado, who: &Person, since: When, limit: usize) -> Res
         ));
     }
     let mut rows = Vec::new();
+    let mut unread = Vec::new();
     for repo in repos.iter().take(REPOS) {
         // The commits API matches the author's name as written.
         let url = ado.code(
@@ -287,10 +289,18 @@ fn commits(ctx: &Ctx, ado: &Ado, who: &Person, since: When, limit: usize) -> Res
                 "searchCriteria.author={}&searchCriteria.fromDate={}&searchCriteria.$top={}",
                 query_value(&who.name),
                 query_value(&since.utc()),
-                limit + 1
+                limit.saturating_add(1)
             ),
         );
-        for commit in list(&ado.get(ctx, &url)?["value"]) {
+        // A disabled repository answers 404, as a deleted one would.
+        let answer = match ado.get(ctx, &url) {
+            Err(error) if agent_cli_core::status_of(&error) == Some(404) => {
+                unread.push(repo.name.as_str());
+                continue;
+            }
+            answer => answer?,
+        };
+        for commit in list(&answer["value"]) {
             let (Some(at), Some(sha)) = (
                 after(&commit["committer"]["date"], since),
                 text(&commit["commitId"]),
@@ -307,6 +317,12 @@ fn commits(ctx: &Ctx, ado: &Ado, who: &Person, since: When, limit: usize) -> Res
             });
         }
     }
+    if !unread.is_empty() {
+        ctx.note(format!(
+            "[commits not read from {} (disabled or gone)]",
+            unread.join(", ")
+        ));
+    }
     Ok(rows)
 }
 
@@ -316,7 +332,7 @@ fn runs(ctx: &Ctx, ado: &Ado, who: &Person, since: When, limit: usize) -> Result
         "build/builds",
         &format!(
             "queryOrder=queueTimeDescending&$top={}&minTime={}&requestedFor={}",
-            limit + 1,
+            limit.saturating_add(1),
             query_value(&since.utc()),
             query_value(&who.name)
         ),
@@ -569,5 +585,44 @@ mod tests {
                 .unwrap()
                 .contains("EVER [System.ChangedBy] = 'Jane Doe'")
         );
+    }
+
+    #[test]
+    fn a_repository_whose_commits_answer_404_is_named_and_skipped() {
+        let disabled = Answer::status(
+            404,
+            r#"{"message":"TF401019: The Git repository with name or identifier r-1 does not exist."}"#,
+        );
+        let (outcome, _) = ado(
+            &[
+                "ado",
+                "activity",
+                "list",
+                "--person",
+                "sam",
+                "--since",
+                "2026-09-28",
+            ],
+            vec![
+                person("u-2", "Sam Lee", "sam@contoso.com"),
+                wiql(&[]),
+                page(vec![]),
+                page(vec![]),
+                page(vec![]),
+                page(vec![]),
+                repos(),
+                disabled,
+                page(vec![build(5, "completed", Some("failed"))]),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("[commits not read from web (disabled or gone)]"),
+            "{}",
+            outcome.stderr
+        );
+        assert_eq!(outcome.json()[0]["kind"], "run");
     }
 }

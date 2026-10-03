@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use agent_cli_core::{Ctx, Effect, Method, command};
+use agent_cli_core::{Ctx, Effect, Exit, Failure, Method, command};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -9,7 +9,7 @@ use serde_json::json;
 use crate::client::{Ado, text};
 use crate::compose::{CommentBody, with_mentions};
 
-use super::locate;
+use super::{locate, no_thread};
 
 #[derive(clap::Args)]
 pub struct ThreadCommentArgs {
@@ -45,24 +45,40 @@ fn thread_comment(ctx: &Ctx, args: ThreadCommentArgs) -> Result<ThreadReplied> {
     let content = with_mentions(ctx, &ado, &body.markdown())?;
     let reply = json!({"parentCommentId": 1, "content": content, "commentType": "text"});
     let url = ado.code(&format!("{path}/comments"), "");
-    let comment = ado.change(ctx, Effect::Write, Method::Post, &url, reply)?;
-    let mut status = None;
-    if args.resolve {
-        let url = ado.code(&path, "");
-        let thread = ado.change(
-            ctx,
-            Effect::Write,
-            Method::Patch,
-            &url,
-            json!({"status": "fixed"}),
-        )?;
-        status = text(&thread["status"]);
-    }
-    Ok(ThreadReplied {
+    let comment = ado
+        .change(ctx, Effect::Write, Method::Post, &url, reply)
+        .map_err(|error| match error.downcast_ref::<Failure>() {
+            Some(failure)
+                if failure.status == Some(500) && failure.message.contains("does not exist") =>
+            {
+                no_thread(&id)
+            }
+            _ => error,
+        })?;
+    let mut replied = ThreadReplied {
         id,
         comment_id: comment["id"].as_i64(),
-        status,
-    })
+        status: None,
+    };
+    if args.resolve {
+        let url = ado.code(&path, "");
+        let fixed = json!({"status": "fixed"});
+        // The reply is posted whatever the resolve does: say so, or a rerun
+        // would post it twice.
+        let thread = ado
+            .change(ctx, Effect::Write, Method::Patch, &url, fixed)
+            .map_err(|error| {
+                let exit = error.downcast_ref::<Failure>().map_or(Exit::Failed, |f| f.exit);
+                Failure::new(exit, format!("the reply is posted, but resolving failed: {error:#}"))
+                    .hint(format!(
+                        "agent-cli ado thread update {} --status fixed  (resolves it, without a second reply)",
+                        replied.id
+                    ))
+                    .with_data(&replied)
+            })?;
+        replied.status = text(&thread["status"]);
+    }
+    Ok(replied)
 }
 
 command! {
@@ -145,5 +161,40 @@ mod tests {
             ],
         );
         assert_eq!(plans[0]["body"]["content"], "@<u-2> capped it");
+    }
+
+    #[test]
+    fn a_resolve_that_fails_after_the_reply_says_the_reply_is_posted() {
+        let (outcome, _) = ado(
+            &[
+                "ado",
+                "thread",
+                "comment",
+                "17/7",
+                "Fixed in 9f1c2e4",
+                "--resolve",
+            ],
+            vec![
+                Answer::json(&pr(17, false)),
+                Answer::json(&json!({"id": 3, "content": "Fixed in 9f1c2e4"})),
+                Answer::status(500, r#"{"message":"injected"}"#),
+            ],
+        );
+        assert_eq!(outcome.code, 1, "{outcome:?}");
+        assert_eq!(outcome.json(), json!({"id": "17/7", "comment_id": 3}));
+        assert!(
+            outcome
+                .stderr
+                .contains("the reply is posted, but resolving failed"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(
+            outcome
+                .stderr
+                .contains("hint: agent-cli ado thread update 17/7 --status fixed  (resolves it"),
+            "{}",
+            outcome.stderr
+        );
     }
 }

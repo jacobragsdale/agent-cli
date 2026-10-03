@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use agent_cli_core::{Ctx, Effect, Failure, Method, When, command, redact_value, status_of};
+use agent_cli_core::{Ctx, Effect, Exit, Failure, Method, When, command, redact_value, status_of};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -109,6 +109,17 @@ fn run_create(ctx: &Ctx, args: RunCreateArgs) -> Result<RunCreated> {
                 .into(),
                 &format!("agent-cli airflow run list --dag {}", id.dag),
             ),
+            // Sent and unanswered: the run may exist. Its own read says.
+            _ if error_exit(&error) == Some(Exit::TimedOut) => {
+                let read = match &args.run_id {
+                    Some(run) => format!("agent-cli airflow run get {}/{run}", id.dag),
+                    None => format!("agent-cli airflow run list --dag {} --limit 3", id.dag),
+                };
+                refine(
+                    error,
+                    &format!("{read}  (whether the run was made, before triggering again)"),
+                )
+            }
             _ => error,
         })?;
     let row = run_row(&run);
@@ -120,6 +131,13 @@ fn run_create(ctx: &Ctx, args: RunCreateArgs) -> Result<RunCreated> {
         logical_date: row.logical_date,
         conf: redact_value(run["conf"].clone()),
     })
+}
+
+fn error_exit(error: &anyhow::Error) -> Option<Exit> {
+    error
+        .chain()
+        .find_map(|cause| cause.downcast_ref::<Failure>())
+        .map(|failure| failure.exit)
 }
 
 /// The same failure with a better next step.

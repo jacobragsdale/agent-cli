@@ -15,9 +15,11 @@ use clap::ArgMatches;
 use serde_json::{Value, json};
 
 use crate::config::Config;
+use crate::ctx::READ_ONLY_HINT;
 use crate::ctx::{Ctx, Globals, Setup};
 use crate::discover::{self, did_you_mean};
 use crate::error::{Exit, Failure, data_of, describe};
+pub(crate) use crate::leaf::parse_leaf;
 use crate::output::{self, dumps};
 use crate::registry::{Command, Domain, Effect};
 use crate::search;
@@ -122,7 +124,20 @@ fn dispatch(
             .chain(["search", "doctor"]);
         return Err(unknown("domain", first, "", names, domains, words, None));
     };
-    let Some(resource) = words.get(1).filter(|word| !word.starts_with('-')) else {
+    if let Some(flag) = words[1..words.len().min(3)]
+        .iter()
+        .find(|word| word.starts_with('-'))
+    {
+        return Err(
+            Failure::usage(format!("{flag} came before the verb; flags go after it"))
+                .hint(format!(
+                    "agent-cli {}  (lists the resources and their verbs)",
+                    domain.name
+                ))
+                .into(),
+        );
+    }
+    let Some(resource) = words.get(1) else {
         writeln!(out, "{}", discover::domain_listing(domain))?;
         return Ok(Exit::Ok);
     };
@@ -143,7 +158,7 @@ fn dispatch(
             "resource", resource, &scope, resources, domains, words, None,
         ));
     }
-    let Some(verb) = words.get(2).filter(|word| !word.starts_with('-')) else {
+    let Some(verb) = words.get(2) else {
         writeln!(out, "{}", discover::resource_listing(domain, resource))?;
         return Ok(Exit::Ok);
     };
@@ -165,6 +180,9 @@ fn dispatch(
     }
     let matches: ArgMatches = parse_leaf(command, &words[3..])?;
     precheck(command, &globals, setup.read_only, &command_line)?;
+    if let Some(path) = &globals.output {
+        output::check_output(path)?;
+    }
     globals.timeout = globals.timeout.or(command.timeout.map(Duration::from_secs));
     let ctx = Ctx::new(globals, setup, command_line);
     let result = (command.run)(&ctx, &matches);
@@ -177,9 +195,11 @@ fn dispatch(
             // A failure with an answer (a wait that ended badly) prints it
             // as a success would, then exits with its own code.
             Err(error) => match data_of(&error) {
-                Some(data) => {
-                    output::emit(data, &printing, keep_tail, out, err, tty).and(Err(error))
-                }
+                // The reader (`| true`) may be gone; the failure still stands.
+                Some(data) => match output::emit(data, &printing, keep_tail, out, err, tty) {
+                    Err(emitted) if !is_broken_pipe(&emitted) => Err(emitted),
+                    _ => Err(error),
+                },
                 None => Err(error),
             },
         }
@@ -193,6 +213,14 @@ fn dispatch(
         writeln!(err, "{note}")?;
     }
     emitted.map(|()| Exit::Ok)
+}
+
+/// `line` with `flag` added where it is still a flag: before any `--`.
+fn with_flag(line: &str, flag: &str) -> String {
+    match line.split_once(" -- ") {
+        Some((before, after)) => format!("{before} {flag} -- {after}"),
+        None => format!("{line} {flag}"),
+    }
 }
 
 /// Splits the globals out of `argv`, from anywhere on the line up to `--`.
@@ -224,12 +252,21 @@ pub(crate) fn split_globals(argv: &[String]) -> Result<(Globals, Vec<String>), F
                     .ok_or_else(|| Failure::usage(format!("{name} needs a value")))?;
                 match name {
                     "--fields" => globals.fields = Some(value),
+                    "--output" if value == "-" => {
+                        return Err(Failure::usage(
+                            "--output - would write a file named \"-\"; leave --output out to print the answer",
+                        ));
+                    }
                     "--output" => globals.output = Some(PathBuf::from(value)),
                     _ => {
-                        let seconds = value.parse::<u64>().ok().filter(|seconds| *seconds > 0);
+                        // A day bounds any one call, and keeps the deadline an Instant holds.
+                        let seconds = value
+                            .parse::<u64>()
+                            .ok()
+                            .filter(|seconds| (1..=86_400).contains(seconds));
                         let seconds = seconds.ok_or_else(|| {
                             Failure::usage(format!(
-                                "--timeout needs a whole number of seconds, not {value:?}"
+                                "--timeout needs a whole number of seconds from 1 to 86400 (a day), not {value:?}"
                             ))
                         })?;
                         globals.timeout = Some(Duration::from_secs(seconds));
@@ -252,87 +289,6 @@ pub(crate) fn split_globals(argv: &[String]) -> Result<(Globals, Vec<String>), F
     Ok((globals, rest))
 }
 
-/// The invoked command's own args, parsed by clap with its help off. A clap
-/// error becomes a usage error that shows the example.
-pub(crate) fn parse_leaf(command: &Command, args: &[String]) -> Result<ArgMatches, Failure> {
-    (command.args)()
-        .no_binary_name(true)
-        .disable_help_flag(true)
-        .disable_version_flag(true)
-        .color(clap::ColorChoice::Never)
-        .try_get_matches_from(args)
-        .map_err(|error| {
-            let message = unknown_flag(command, &error).unwrap_or_else(|| clap_message(&error));
-            Failure::usage(message).hint(format!(
-                "e.g. agent-cli {}\nall args: agent-cli {} --help",
-                command.example,
-                command.path.join(" ")
-            ))
-        })
-}
-
-/// A flag the command does not have: the close ones, and every one it has.
-/// clap's own tip ("to pass '--log-id' as a value, use '-- --log-id'")
-/// sends an agent the wrong way.
-fn unknown_flag(command: &Command, error: &clap::Error) -> Option<String> {
-    use clap::error::{ContextKind, ContextValue, ErrorKind};
-    if error.kind() != ErrorKind::UnknownArgument {
-        return None;
-    }
-    let Some(ContextValue::String(flag)) = error.get(ContextKind::InvalidArg) else {
-        return None;
-    };
-    if !flag.starts_with('-') {
-        return None;
-    }
-    let args = (command.args)();
-    let flags: Vec<&str> = args
-        .get_arguments()
-        .filter(|arg| !arg.is_positional() && !arg.is_hide_set())
-        .filter_map(clap::Arg::get_long)
-        .collect();
-    let wanted = flag.trim_start_matches('-');
-    let close: Vec<String> = did_you_mean(wanted, flags.iter().copied())
-        .into_iter()
-        .map(|name| format!("--{name}"))
-        .collect();
-    let mut message = format!("unknown flag {flag}");
-    if !close.is_empty() {
-        message.push_str(&format!(" \u{2014} did you mean {}?", close.join(", ")));
-    }
-    message.push_str(if close.is_empty() { "; " } else { " " });
-    let path = command.path.join(" ");
-    if flags.is_empty() {
-        message.push_str(&format!("{path} takes no flags"));
-    } else {
-        let all: Vec<String> = flags.iter().map(|name| format!("--{name}")).collect();
-        message.push_str(&format!("{path} takes {}", all.join(" ")));
-    }
-    Some(message)
-}
-
-/// clap's message without its usage block and tips, on one line.
-fn clap_message(error: &clap::Error) -> String {
-    let text = error.to_string();
-    let text = text.split("\nUsage:").next().unwrap_or_default();
-    let text = text
-        .split("\nFor more information")
-        .next()
-        .unwrap_or_default();
-    let mut message = String::new();
-    for line in text
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty() && !line.starts_with("tip:"))
-    {
-        if !message.is_empty() {
-            message.push_str(if message.ends_with(':') { " " } else { "; " });
-        }
-        message.push_str(line.strip_prefix("error: ").unwrap_or(line));
-    }
-    message
-}
-
 /// The effect checks that need no handler: read-only mode, `--yes` for a
 /// destructive command, `--reveal` or `--output` for a secret.
 fn precheck(
@@ -346,16 +302,16 @@ fn precheck(
         Effect::Write | Effect::Destructive | Effect::Reveal if read_only => Err(Failure::usage(
             format!("AGENT_CLI_READ_ONLY is set, so `{path}`{} was refused", command.effect.tag()),
         )
-        .hint("unset AGENT_CLI_READ_ONLY to allow it")),
+        .hint(READ_ONLY_HINT)),
         Effect::Destructive if !globals.yes && !globals.dry_run => {
             Err(Failure::usage(format!("`{path}` is destructive; confirm it with --yes"))
-                .hint(format!("{command_line} --yes   (or --dry-run to see it first)")))
+                .hint(format!("{}   (or --dry-run to see it first)", with_flag(command_line, "--yes"))))
         }
         Effect::Reveal if !globals.reveal && globals.output.is_none() => Err(Failure::usage(format!(
             "`{path}` prints a secret value, and whatever it prints lands in your transcript"
         ))
         .hint(format!(
-            "add --reveal to print it anyway, or --output FILE to write it to a 0600 file and print only the path: {command_line} --output FILE"
+            "add --reveal to print it anyway, or --output FILE to write it to a 0600 file and print only the path: {}", with_flag(command_line, "--output FILE")
         ))),
         _ => Ok(()),
     }
@@ -631,11 +587,15 @@ mod tests {
         for (argv, want) in [
             (
                 &["--timeout", "soon"][..],
-                "--timeout needs a whole number of seconds, not \"soon\"",
+                "--timeout needs a whole number of seconds from 1 to 86400 (a day), not \"soon\"",
             ),
             (
                 &["--timeout", "0"][..],
-                "--timeout needs a whole number of seconds, not \"0\"",
+                "--timeout needs a whole number of seconds from 1 to 86400 (a day), not \"0\"",
+            ),
+            (
+                &["--timeout", "18446744073709551615"][..],
+                "--timeout needs a whole number of seconds from 1 to 86400 (a day), not \"18446744073709551615\"",
             ),
             (&["--fields"][..], "--fields needs a value"),
             (&["--raw=yes"][..], "--raw is a switch and takes no value"),

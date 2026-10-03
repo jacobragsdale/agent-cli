@@ -89,15 +89,9 @@ enum DateField {
 
 /// The WHERE clause the flags spell, newest change (or creation) first. `iteration` is the
 /// iteration condition already worked out, since `@current` may need a read.
-fn wiql(args: &ListArgs, iteration: Option<String>) -> String {
+fn wiql(args: &ListArgs, iteration: Option<String>, assignee: Option<String>) -> String {
     let mut conditions = vec!["[System.TeamProject] = @project".to_owned()];
-    if let Some(who) = &args.assignee {
-        conditions.push(if who.trim().eq_ignore_ascii_case("@me") {
-            "[System.AssignedTo] = @Me".to_owned()
-        } else {
-            format!("[System.AssignedTo] = {}", quoted(who))
-        });
-    }
+    conditions.extend(assignee);
     if !args.state.is_empty() {
         conditions.push(one_of("System.State", &args.state));
     }
@@ -210,10 +204,35 @@ fn iteration_condition(
 }
 
 fn workitem_list(ctx: &Ctx, args: ListArgs) -> Result<Vec<WorkItemRow>> {
+    if args
+        .text
+        .as_deref()
+        .is_some_and(|text| text.trim().is_empty())
+    {
+        return Err(Failure::usage("--text needs a word to look for")
+            .hint("agent-cli ado workitem list --text login --fields id,title")
+            .into());
+    }
     let ado = Ado::load(ctx)?;
     let (iteration, team) =
         iteration_condition(ctx, &ado, args.team.as_deref(), args.iteration.as_deref())?;
-    let query = wiql(&args, iteration);
+    // A name is resolved to one person, as --author is on pull requests,
+    // so a part of one is not silently nobody; "" is the unassigned.
+    let assignee = match args.assignee.as_deref().map(str::trim) {
+        None => None,
+        Some(who) if who.eq_ignore_ascii_case("@me") => {
+            Some("[System.AssignedTo] = @Me".to_owned())
+        }
+        Some("") => Some("[System.AssignedTo] = ''".to_owned()),
+        Some(who) => {
+            let person = ado.person(ctx, who)?;
+            Some(format!(
+                "[System.AssignedTo] = {}",
+                quoted(&person.email.unwrap_or(person.name))
+            ))
+        }
+    };
+    let query = wiql(&args, iteration, assignee);
     let mut top = format!("$top={WIQL_TOP}");
     if args.since.is_some() || args.until.is_some() {
         top.push_str("&timePrecision=true");
@@ -222,11 +241,24 @@ fn workitem_list(ctx: &Ctx, args: ListArgs) -> Result<Vec<WorkItemRow>> {
         Some(team) => ado.team(&team, "wit/wiql", &top),
         None => ado.work("wit/wiql", &top),
     };
-    let found = ado.query(ctx, &url, json!({ "query": query }))?;
+    let found = ado
+        .query(ctx, &url, json!({ "query": query }))
+        .map_err(|error| match error.downcast::<Failure>() {
+            // TF51011: an iteration path the project does not have.
+            Ok(failure) if failure.message.contains("TF51011") => failure
+                .hint("agent-cli ado sprint list --fields id,timeframe")
+                .into(),
+            Ok(failure) => failure.into(),
+            Err(error) => error,
+        })?;
     let ids: Vec<i64> = list(&found["workItems"])
         .iter()
         .filter_map(|item| item["id"].as_i64())
         .collect();
+    // A state no type has matches nothing, which would read as no work.
+    if ids.is_empty() && !args.state.is_empty() {
+        known_states(ctx, &ado, &args.work_item_type, &args.state)?;
+    }
     if ids.len() > args.limit {
         let more = if ids.len() >= WIQL_TOP { "+" } else { "" };
         ctx.note(format!(
@@ -236,6 +268,46 @@ fn workitem_list(ctx: &Ctx, args: ListArgs) -> Result<Vec<WorkItemRow>> {
         ));
     }
     rows(ctx, &ado, &ids[..ids.len().min(args.limit)])
+}
+
+/// Exit 2 for a state none of `types` (else of the project's types) has.
+fn known_states(ctx: &Ctx, ado: &Ado, types: &[String], states: &[String]) -> Result<()> {
+    let answer = ado.get(ctx, &ado.work("wit/workitemtypes", ""))?;
+    let mut known: Vec<String> = Vec::new();
+    let wanted = |kind: &&serde_json::Value| {
+        types.is_empty()
+            || types
+                .iter()
+                .any(|t| text(&kind["name"]).is_some_and(|n| n.eq_ignore_ascii_case(t.trim())))
+    };
+    for kind in list(&answer["value"]).iter().filter(wanted) {
+        for name in list(&kind["states"])
+            .iter()
+            .filter_map(|state| text(&state["name"]))
+        {
+            if !known.contains(&name) {
+                known.push(name);
+            }
+        }
+    }
+    match states.iter().find(|state| {
+        !known
+            .iter()
+            .any(|name| name.eq_ignore_ascii_case(state.trim()))
+    }) {
+        Some(state) => Err(Failure::usage(format!(
+            "no work item {} the state {state:?}; the states are: {}",
+            if types.is_empty() {
+                "type has".to_owned()
+            } else {
+                format!("of type {} has", types.join(", "))
+            },
+            known.join(", ")
+        ))
+        .hint("agent-cli ado workitem-type list --fields name,states")
+        .into()),
+        None => Ok(()),
+    }
 }
 
 command! {
@@ -350,20 +422,21 @@ mod tests {
                 "--assignee",
                 "Sam O'Neil",
             ],
-            vec![wiql(&[])],
+            vec![
+                crate::testing::person("p-9", "Sam O'Neil", "sam.oneil@contoso.com"),
+                wiql(&[]),
+            ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(outcome.stdout.trim(), "[]");
         assert_eq!(
-            urls(&transport),
-            [format!(
-                "{BASE}/Fabrikam/Web%20Team/_apis/wit/wiql?$top=20000&api-version=7.1"
-            )],
-            "no batch for no ids"
+            urls(&transport)[1],
+            format!("{BASE}/Fabrikam/Web%20Team/_apis/wit/wiql?$top=20000&api-version=7.1"),
+            "the name resolved to a person, then the query; no batch for no ids"
         );
-        let query = query_of(&transport, 0);
+        let query = query_of(&transport, 1);
         assert!(
-            query.contains("[System.AssignedTo] = 'Sam O''Neil'"),
+            query.contains("[System.AssignedTo] = 'sam.oneil@contoso.com'"),
             "{query}"
         );
         assert!(
@@ -557,6 +630,46 @@ mod tests {
                  AND [System.Id] IN (@Follows)"
             ),
             "{query}"
+        );
+    }
+
+    #[test]
+    fn an_empty_answer_for_a_state_no_type_has_is_exit_2_naming_the_states() {
+        let types = || {
+            Answer::json(&json!({"value": [
+                {"name": "Task", "states": [{"name": "To Do"}, {"name": "Done"}]},
+                {"name": "Test Case", "states": [{"name": "Design"}, {"name": "Closed"}]}
+            ]}))
+        };
+        let (outcome, _) = ado(
+            &["ado", "workitem", "list", "--state", "all"],
+            vec![wiql(&[]), types()],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("no work item type has the state \"all\"; the states are: To Do, Done, Design, Closed"),
+            "{}",
+            outcome.stderr
+        );
+        let argv = [
+            "ado", "workitem", "list", "--type", "task", "--state", "Closed",
+        ];
+        let (outcome, _) = ado(&argv, vec![wiql(&[]), types()]);
+        assert!(
+            outcome
+                .stderr
+                .contains("of type task has the state \"Closed\""),
+            "{}",
+            outcome.stderr
+        );
+        let (outcome, _) = ado(
+            &["ado", "workitem", "list", "--state", "done"],
+            vec![wiql(&[]), types()],
+        );
+        assert_eq!(
+            (outcome.code, outcome.stdout.trim()),
+            (0, "[]"),
+            "{outcome:?}"
         );
     }
 }

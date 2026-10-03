@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 
 use crate::client::{Ado, Kind};
 
-use super::{PrRow, fetch_pr, pr_home, pr_row};
+use super::{PrRow, active_pr, pr_row};
 
 #[derive(Clone, Copy, clap::ValueEnum)]
 enum Toggle {
@@ -18,7 +18,8 @@ enum Toggle {
 pub struct PrUpdateArgs {
     /// The pull request's id: 431, #431 or its web URL
     id: String,
-    /// Complete it by itself once policies pass
+    /// Complete it by itself once policies pass, as pr complete does by
+    /// default: squash, delete the source branch, transition the work items
     #[arg(long, value_enum)]
     autocomplete: Option<Toggle>,
     /// True to make it a draft, false to publish it
@@ -58,11 +59,17 @@ fn pr_update(ctx: &Ctx, args: PrUpdateArgs) -> Result<PrRow> {
             .hint(format!("pass --autocomplete on|off, --draft true|false, --title, --description or --description-file, e.g. agent-cli ado pr update {} --autocomplete on", id))
             .into());
     }
-    let pr = fetch_pr(ctx, &ado, id)?;
-    let (repo_id, _) = pr_home(&pr)?;
+    // Azure DevOps refuses an edit to a closed pull request (TF401181).
+    let (_, repo_id) = active_pr(ctx, &ado, id)?;
     match args.autocomplete {
         Some(Toggle::On) => {
             body.insert("autoCompleteSetBy".into(), json!({"id": ado.me(ctx)?.id}));
+            // Without these Azure DevOps merges with a merge commit, keeps the
+            // branch and leaves the work items: not what pr complete does.
+            body.insert(
+                "completionOptions".into(),
+                json!({"mergeStrategy": "squash", "deleteSourceBranch": true, "transitionWorkItems": true}),
+            );
         }
         Some(Toggle::Off) => {
             // The empty GUID is how the API is told nobody set it.
@@ -118,7 +125,8 @@ mod tests {
         );
         assert_eq!(
             plans[0]["body"],
-            json!({"isDraft": false, "autoCompleteSetBy": {"id": "u-1"}})
+            json!({"isDraft": false, "autoCompleteSetBy": {"id": "u-1"}, "completionOptions":
+                {"mergeStrategy": "squash", "deleteSourceBranch": true, "transitionWorkItems": true}})
         );
 
         let plans = dry_run(

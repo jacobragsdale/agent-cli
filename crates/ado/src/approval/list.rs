@@ -35,7 +35,10 @@ fn approval_list(ctx: &Ctx, args: ApprovalListArgs) -> Result<Vec<ApprovalRow>> 
     let url = ado.api(
         Some(&ado.code_project),
         "pipelines/approvals",
-        &format!("state=pending&$expand=steps&top={}", args.limit + 1),
+        &format!(
+            "state=pending&$expand=steps&top={}",
+            args.limit.saturating_add(1)
+        ),
         PREVIEW_API,
     );
     let answer = ado.get(ctx, &url)?;

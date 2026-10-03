@@ -72,7 +72,10 @@ pub struct RunListArgs {
 
 fn run_list(ctx: &Ctx, args: RunListArgs) -> Result<Vec<RunRow>> {
     let ado = Ado::load(ctx)?;
-    let mut query = format!("queryOrder=queueTimeDescending&$top={}", args.limit + 1);
+    let mut query = format!(
+        "queryOrder=queueTimeDescending&$top={}",
+        args.limit.saturating_add(1)
+    );
     if let Some(pipeline) = &args.pipeline {
         query.push_str(&format!("&definitions={}", ado.pipeline_id(ctx, pipeline)?));
     }

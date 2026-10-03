@@ -1,4 +1,4 @@
-use agent_cli_core::{Ctx, When, command};
+use agent_cli_core::{Ctx, Failure, When, command};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -52,7 +52,28 @@ fn pod_logs(ctx: &Ctx, args: PodLogsArgs) -> Result<Logs> {
     if let Some(since) = &since {
         argv.push(since);
     }
-    let text = target.read(ctx, &argv)?;
+    let id = format!(
+        "{}/{}/{pod}",
+        target.scope,
+        target.namespace.as_deref().unwrap_or_default()
+    );
+    // Two ways a container has no log yet, each with its own next step.
+    let text = target.read(ctx, &argv).map_err(|error| {
+        let said = format!("{error:#}");
+        let hint = if said.contains("previous terminated container") {
+            format!(
+                "it has not restarted, so there is no previous run: agent-cli k8s pod logs {id}"
+            )
+        } else if said.contains("is waiting to start") {
+            format!("agent-cli k8s pod get {id}  (what it waits on)")
+        } else {
+            return error;
+        };
+        match error.downcast::<Failure>() {
+            Ok(failure) => failure.hint(hint).into(),
+            Err(error) => error,
+        }
+    })?;
     let namespace = target.namespace.unwrap_or_default();
     Ok(Logs {
         pod: format!("{}/{namespace}/{pod}", target.scope),

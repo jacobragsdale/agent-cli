@@ -416,7 +416,8 @@ if args[:1] == ["get"] and "/" in args[1] and "-o" in args and "json" in args:
     print(json.dumps(found[0] if found else {
         "apiVersion": "apps/v1", "kind": kind.capitalize(),
         "metadata": {"name": name, "namespace": ns},
-        "spec": {"replicas": 3},
+        # A deployment named paused-* is paused (kubectl rollout pause).
+        "spec": {"replicas": 3, **({"paused": True} if name.startswith("paused-") else {})},
         "status": {"readyReplicas": 3, "replicas": 3},
     }))
     sys.exit(0)

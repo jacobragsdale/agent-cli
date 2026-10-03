@@ -7,7 +7,7 @@ use serde_json::json;
 use crate::client::{Ado, text};
 use crate::ids::{Each, each};
 
-use super::{Status, locate, wire};
+use super::{Status, locate, no_thread, wire};
 
 #[derive(clap::Args)]
 pub struct ThreadUpdateArgs {
@@ -40,6 +40,9 @@ fn thread_update(ctx: &Ctx, args: ThreadUpdateArgs) -> Result<Each<ThreadUpdated
             &url,
             json!({"status": wire(args.status)}),
         )?;
+        if thread.is_null() {
+            return Err(no_thread(&id));
+        }
         Ok(ThreadUpdated {
             id,
             status: text(&thread["status"]),
@@ -133,5 +136,28 @@ mod tests {
             json!([{"id": "17/7", "status": "fixed"}, {"id": "17/8", "status": "fixed"}])
         );
         assert!(outcome.stderr.contains("17/9: "), "{}", outcome.stderr);
+    }
+
+    #[test]
+    fn a_thread_azure_devops_answers_null_for_is_not_found() {
+        let (outcome, _) = ado(
+            &[
+                "ado", "thread", "update", "17/7", "17/9999", "--status", "wontFix",
+            ],
+            vec![
+                Answer::json(&pr(17, false)),
+                Answer::json(&json!({"id": 7, "status": "wontFix"})),
+                Answer::json(&pr(17, false)),
+                Answer::ok("null"),
+            ],
+        );
+        assert_eq!(outcome.code, 4, "{outcome:?}");
+        assert_eq!(outcome.json(), json!([{"id": "17/7", "status": "wontFix"}]));
+        assert!(
+            outcome.stderr.contains("there is no thread 17/9999")
+                && outcome.stderr.contains("agent-cli ado thread list 17"),
+            "{}",
+            outcome.stderr
+        );
     }
 }

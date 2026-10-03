@@ -450,14 +450,14 @@ impl Op for Call<'_> {
     }
 }
 
-/// A `403` says which scope is missing in Datadog's words; the hint says
-/// where that is decided.
+/// A `403` names a missing scope in Datadog's words, or is bare for a key
+/// Datadog does not know: the hint names both, and doctor tells which.
 fn forbidden(error: anyhow::Error) -> anyhow::Error {
     if status_of(&error) != Some(403) {
         return error;
     }
     let mut failure = Failure::new(Exit::Failed, format!("{error:#}")).hint(
-        "the credential lacks a scope this call needs (a read-only token cannot mute); `agent-cli doctor dd` shows which credential is used",
+        "the credential lacks a scope this call needs (a read-only token cannot mute), or Datadog does not know the key; `agent-cli doctor dd` checks which",
     );
     failure.status = Some(403);
     failure.into()

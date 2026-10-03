@@ -16,11 +16,13 @@ mod discover;
 mod dispatch;
 mod error;
 mod http;
+mod leaf;
 mod output;
 mod process;
 mod registry;
 #[cfg(feature = "fixtures")]
 mod replay;
+mod said;
 mod search;
 mod secret;
 pub mod testing;
@@ -40,8 +42,8 @@ pub use discover::command_help;
 pub use dispatch::{run, run_with};
 pub use error::{Exit, Failure, status_of};
 pub use http::{
-    Body, Https, Method, Mint, Request, Response, Transport, failure_message, form_encode,
-    host_under, percent_encode,
+    Body, Https, Method, Mint, Request, Response, Transport, form_encode, host_under,
+    percent_encode,
 };
 pub use process::{Output, run_until};
 pub use registry::{
@@ -50,6 +52,7 @@ pub use registry::{
 };
 #[doc(hidden)]
 pub use registry::{args_of, invoke, returns_of};
+pub use said::failure_message;
 pub use search::{Quality, quality};
 pub use secret::{Secret, redact, redact_value};
 pub use when::{Span, When, now, utc, utc_time};

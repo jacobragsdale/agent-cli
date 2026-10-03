@@ -42,6 +42,17 @@ fn attachment_create(ctx: &Ctx, args: AttachmentCreateArgs) -> Result<Attachment
         .and_then(|name| name.to_str())
         .ok_or_else(|| Failure::usage(format!("{} names no file", args.file)))?;
     let bytes = std::fs::read(path).map_err(unreadable)?;
+    // Bytes uploaded for a work item that is not there would stay in the
+    // organization with nothing pointing at them, so it is read first.
+    ado.get(
+        ctx,
+        &ado.api(
+            None,
+            &format!("wit/workitems/{id}"),
+            "fields=System.Id",
+            API,
+        ),
+    )?;
     // The bytes go first: the relation needs the URL the upload answers with.
     // %20, not +: the name is what the work item shows.
     let upload = ado.work("wit/attachments", &format!("fileName={}", segment(name)));
@@ -112,7 +123,11 @@ mod tests {
                 "--comment",
                 "Spec for the work",
             ],
-            vec![uploaded, Answer::json(&work_item())],
+            vec![
+                Answer::json(&json!({"id": 299, "fields": {"System.Id": 299}})),
+                uploaded,
+                Answer::json(&work_item()),
+            ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(
@@ -124,15 +139,17 @@ mod tests {
         assert_eq!(
             urls(&transport),
             [
+                format!("{BASE}/_apis/wit/workitems/299?fields=System.Id&api-version=7.1"),
                 format!(
                     "{BASE}/Fabrikam/_apis/wit/attachments?fileName=Spec%20v2.txt&api-version=7.1"
                 ),
                 format!("{BASE}/_apis/wit/workitems/299?api-version=7.1"),
-            ]
+            ],
+            "the work item is read before any byte is uploaded"
         );
-        assert_eq!(sent[0].body, Some(json!("Spec for 299")));
+        assert_eq!(sent[1].body, Some(json!("Spec for 299")));
         assert_eq!(
-            sent[1].body,
+            sent[2].body,
             Some(json!([{"op": "add", "path": "/relations/-", "value": {
                 "rel": "AttachedFile",
                 "url": format!("https://dev.azure.com/contoso/_apis/wit/attachments/{SPEC}?fileName=Spec%20v2.txt"),
@@ -145,7 +162,9 @@ mod tests {
         let (_dir, path) = spec();
         let plans = dry_run(
             &["ado", "attachment", "create", "299", "--file", &path],
-            vec![],
+            vec![Answer::json(
+                &json!({"id": 299, "fields": {"System.Id": 299}}),
+            )],
         );
         assert_eq!(plans[0]["method"], "POST");
         assert_eq!(

@@ -79,7 +79,30 @@ fn task_retry(ctx: &Ctx, args: TaskRetryArgs) -> Result<TasksRetried> {
         })
     };
     let path = format!("{}/clearTaskInstances", ids[0].dag_path());
-    let cleared = cleared_ids(&client.preview(&path, body(true))?);
+    let preview = client.preview(&path, body(true))?;
+    // A task (or map index) the run lacks still clears its downstream, so
+    // each one asked for must be among what the preview clears.
+    let previewed = preview["task_instances"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    if let Some(missing) = ids.iter().find(|id| {
+        !previewed.iter().any(|ti| {
+            ti["task_id"].as_str() == Some(id.task.as_str())
+                && id
+                    .map
+                    .is_none_or(|map| ti["map_index"].as_i64() == Some(map))
+        })
+    }) {
+        return Err(Failure::not_found(format!(
+            "run {run_id} has no task instance {}{}",
+            missing.task,
+            missing.map.map(|map| format!(":{map}")).unwrap_or_default()
+        ))
+        .hint(format!("agent-cli airflow task list {run_id}"))
+        .into());
+    }
+    let cleared = cleared_ids(&preview);
     if cleared.is_empty() {
         ctx.note("[nothing to clear: no such task instances in that run]");
         return Ok(TasksRetried {
@@ -113,9 +136,38 @@ mod tests {
     use crate::testing::{RUN, airflow, dry_run, ti, tis};
 
     #[test]
+    fn a_task_or_map_index_the_run_lacks_clears_nothing_not_its_downstream() {
+        // Airflow's preview of load_orders:7 still clears what follows it.
+        let preview = tis(vec![ti("publish_report", "success", 1)]);
+        for task in ["load_ordrs", "load_orders:7"] {
+            let (outcome, transport) = airflow(
+                &[
+                    "airflow",
+                    "task",
+                    "retry",
+                    &format!("etl_nightly/{RUN}/{task}"),
+                    "--yes",
+                ],
+                vec![preview.clone()],
+            );
+            assert_eq!(outcome.code, 4, "{outcome:?}");
+            assert!(
+                outcome.stderr.contains("has no task instance")
+                    && outcome.stderr.contains("hint: agent-cli airflow task list"),
+                "{}",
+                outcome.stderr
+            );
+            assert_eq!(transport.sent().len(), 1, "only the preview went out");
+        }
+    }
+
+    #[test]
     fn task_retry_clears_the_tasks_and_downstream_after_a_server_preview() {
+        let mut mapped = ti("load_orders", "failed", 1);
+        mapped["map_index"] = json!(1);
         let preview = tis(vec![
             ti("load_orders", "failed", 2),
+            mapped,
             ti("publish_report", "upstream_failed", 0),
         ]);
         let (plans, stderr) = dry_run(
@@ -139,7 +191,7 @@ mod tests {
         );
         assert!(
             stderr.contains(&format!(
-                "[would clear: etl_nightly/{RUN}/load_orders, etl_nightly/{RUN}/publish_report]"
+                "[would clear: etl_nightly/{RUN}/load_orders, etl_nightly/{RUN}/load_orders:1, etl_nightly/{RUN}/publish_report]"
             )),
             "{stderr}"
         );

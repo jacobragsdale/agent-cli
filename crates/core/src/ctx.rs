@@ -61,11 +61,20 @@ pub struct Setup {
     pub stdin: Option<String>,
 }
 
+/// A guard set to an unfamiliar word (`on`, `enabled`) is still a guard:
+/// only an explicit off leaves `AGENT_CLI_READ_ONLY` off.
+fn read_only_on(value: &str) -> bool {
+    !matches!(
+        value.trim().to_ascii_lowercase().as_str(),
+        "" | "0" | "false" | "no" | "off"
+    )
+}
+
 impl Setup {
     #[must_use]
     pub fn from_env() -> Self {
-        let read_only = std::env::var("AGENT_CLI_READ_ONLY")
-            .is_ok_and(|value| matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes"));
+        let read_only =
+            std::env::var("AGENT_CLI_READ_ONLY").is_ok_and(|value| read_only_on(&value));
         let setup = Self {
             config: Config::load(),
             transport: Box::new(Https::default()),
@@ -205,6 +214,30 @@ impl Ctx {
     /// whitespace, must hold something, and is at most `limit` bytes when
     /// there is one: read one byte past it and no further, so a log of any
     /// size is refused without first being held in memory.
+    /// Reads on a thread of its own, given up at the deadline: a pipe that
+    /// never closes must not outlast the command.
+    fn read_bounded(
+        &self,
+        what: &str,
+        from: &str,
+        read: impl FnOnce() -> std::io::Result<Vec<u8>> + Send + 'static,
+    ) -> Result<Vec<u8>> {
+        let (done, answer) = std::sync::mpsc::channel();
+        std::thread::spawn(move || done.send(read()));
+        match answer.recv_timeout(self.remaining()?) {
+            Ok(read) => read.map_err(|error| {
+                Failure::usage(format!("cannot read the {what} from {from}: {error}")).into()
+            }),
+            Err(_) => Err(Failure::timed_out(format!(
+                "the {what} from {from} was still open at the --timeout deadline"
+            ))
+            .hint(format!(
+                "close the pipe, or pass the {what} as a value or a file"
+            ))
+            .into()),
+        }
+    }
+
     pub fn long_text(
         &self,
         name: &str,
@@ -214,7 +247,7 @@ impl Ctx {
     ) -> Result<Option<LongText>> {
         let cap = limit.map_or(u64::MAX, |limit| limit as u64 + 1);
         let what = name.replace('-', " ");
-        let mut raw = String::new();
+        let raw;
         let (from, piped) = match (value, file) {
             (Some(_), Some(path)) => {
                 return Err(Failure::usage(format!(
@@ -226,6 +259,9 @@ impl Ctx {
             }
             (None, None) => return Ok(None),
             (Some(text), None) if text != "-" => {
+                if let Some(limit) = limit.filter(|limit| text.len() > *limit) {
+                    return Err(too_long(&what, "the command line", limit));
+                }
                 return Ok(Some(LongText {
                     text: text.to_owned(),
                     piped: false,
@@ -233,7 +269,7 @@ impl Ctx {
             }
             (Some(_), None) => {
                 match locked(&self.stdin).take() {
-                    Some(given) => raw = given,
+                    Some(given) => raw = given.into_bytes(),
                     None => {
                         let stdin = std::io::stdin();
                         if stdin.is_terminal() {
@@ -243,41 +279,33 @@ impl Ctx {
                             .hint(format!("pipe it in, or pass --{name}-file PATH"))
                             .into());
                         }
-                        stdin
-                            .lock()
-                            .take(cap)
-                            .read_to_string(&mut raw)
-                            .map_err(|error| {
-                                Failure::usage(format!(
-                                    "cannot read the {what} from stdin: {error}"
-                                ))
-                            })?;
+                        raw = self.read_bounded(&what, "stdin", move || {
+                            let mut raw = Vec::new();
+                            stdin.take(cap).read_to_end(&mut raw).map(|_| raw)
+                        })?;
                     }
                 }
                 ("stdin".to_owned(), true)
             }
             (None, Some(path)) => {
-                std::fs::File::open(path)
-                    .and_then(|file| file.take(cap).read_to_string(&mut raw))
-                    .map_err(|error| {
-                        Failure::usage(format!(
-                            "cannot read the {what} from {}: {error}",
-                            path.display()
-                        ))
-                    })?;
+                let owned = path.to_owned();
+                // A FIFO with no writer blocks in open itself.
+                raw = self.read_bounded(&what, &path.display().to_string(), move || {
+                    let mut raw = Vec::new();
+                    std::fs::File::open(owned)?
+                        .take(cap)
+                        .read_to_end(&mut raw)
+                        .map(|_| raw)
+                })?;
                 (path.display().to_string(), false)
             }
         };
-        if let Some(limit) = limit
-            && raw.len() > limit
-        {
-            return Err(Failure::usage(format!(
-                "the {what} from {from} is more than {} KiB",
-                limit / 1024
-            ))
-            .hint("cut it to the part worth reading first, such as with `tail -200`")
-            .into());
+        // The size first: a cut at the cap can land inside a character.
+        if let Some(limit) = limit.filter(|limit| raw.len() > *limit) {
+            return Err(too_long(&what, &from, limit));
         }
+        let raw = String::from_utf8(raw)
+            .map_err(|_| Failure::usage(format!("the {what} from {from} is not UTF-8 text")))?;
         let text = raw.replace("\r\n", "\n").trim_end().to_owned();
         if text.trim().is_empty() {
             return Err(Failure::usage(format!("the {what} from {from} is empty")).into());
@@ -310,7 +338,7 @@ impl Ctx {
         if self.read_only {
             return Err(
                 Failure::usage("AGENT_CLI_READ_ONLY is set, so this change was refused")
-                    .hint("unset AGENT_CLI_READ_ONLY to allow changes")
+                    .hint(READ_ONLY_HINT)
                     .into(),
             );
         }
@@ -367,6 +395,20 @@ impl Ctx {
     }
 }
 
+/// The guard is set for the agent, not by it: the hint never says to lift it.
+pub(crate) const READ_ONLY_HINT: &str =
+    "read-only is the choice of whoever runs you: ask them for this change, or keep to reads";
+
+/// A long text past its limit, wherever it came from.
+fn too_long(what: &str, from: &str, limit: usize) -> anyhow::Error {
+    Failure::usage(format!(
+        "the {what} from {from} is more than {} KiB",
+        limit / 1024
+    ))
+    .hint("cut it to the part worth reading first, such as with `tail -200`")
+    .into()
+}
+
 /// What [`Ctx::long_text`] read.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LongText {
@@ -383,6 +425,35 @@ pub(crate) fn locked<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_read_that_never_ends_gives_up_at_the_deadline() {
+        let globals = crate::ctx::Globals {
+            timeout: Some(std::time::Duration::from_secs(1)),
+            ..Default::default()
+        };
+        let setup = crate::ctx::Setup::fake(crate::testing::FakeTransport::default());
+        let ctx = crate::ctx::Ctx::new(globals, setup, "agent-cli");
+        let started = std::time::Instant::now();
+        let error = ctx
+            .read_bounded("sql", "stdin", || {
+                std::thread::sleep(std::time::Duration::from_secs(10));
+                Ok(Vec::new())
+            })
+            .unwrap_err();
+        assert!(started.elapsed() < std::time::Duration::from_secs(3));
+        assert!(format!("{error:#}").contains("was still open at the --timeout deadline"));
+    }
+
+    #[test]
+    fn read_only_is_on_for_any_value_but_an_explicit_off() {
+        for value in ["1", "TRUE", "yes", "on", "y", " 1", "enabled"] {
+            assert!(super::read_only_on(value), "{value:?}");
+        }
+        for value in ["", "0", "false", "No", " off "] {
+            assert!(!super::read_only_on(value), "{value:?}");
+        }
+    }
+
     use std::path::Path;
 
     use crate::testing::{FakeTransport, ctx};
@@ -464,5 +535,34 @@ mod tests {
             assert_eq!(exit(&error), Exit::Usage, "{error:#}");
             assert!(error.to_string().contains(said), "{error:#}");
         }
+    }
+
+    #[test]
+    fn a_long_text_limit_holds_for_a_value_a_file_and_a_cut_inside_a_character() {
+        let setup = crate::ctx::Setup::fake(crate::testing::FakeTransport::default());
+        let ctx = crate::ctx::Ctx::new(crate::ctx::Globals::default(), setup, "agent-cli");
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("t.txt");
+        std::fs::write(&file, "a".repeat(10) + "\u{20ac}").unwrap();
+        let said = |result: anyhow::Result<Option<crate::ctx::LongText>>| {
+            format!("{:#}", result.unwrap_err())
+        };
+        let inline = "a".repeat(11);
+        assert!(
+            said(ctx.long_text("text", Some(&inline), None, Some(10)))
+                .contains("from the command line is more than 0 KiB")
+        );
+        assert!(
+            said(ctx.long_text("text", None, Some(&file), Some(11))).contains("is more than 0 KiB")
+        );
+        std::fs::write(&file, [b'a', 0xff]).unwrap();
+        assert!(
+            said(ctx.long_text("text", None, Some(&file), Some(10))).contains("is not UTF-8 text")
+        );
+        assert!(
+            ctx.long_text("text", Some("fits"), None, Some(10))
+                .unwrap()
+                .is_some()
+        );
     }
 }

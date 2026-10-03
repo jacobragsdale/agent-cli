@@ -6,12 +6,15 @@ pub(crate) mod list;
 
 use std::time::Duration;
 
-use agent_cli_core::{Ctx, Failure};
+use agent_cli_core::{Ctx, Failure, Method};
 use anyhow::Result;
 use serde_json::Value;
 
-use crate::client::{API, Ado, list, query_value};
+use crate::client::{API, Ado, Body, list, query_value};
 use crate::ids::{items_path, version_query};
+
+/// Azure DevOps cuts an item's JSON content at 5 MiB, without a word.
+const JSON_CONTENT: usize = 5 * 1024 * 1024;
 
 /// One file's item, content included, at `reading` (a `versionType` and
 /// version; `None` is the default branch).
@@ -23,12 +26,24 @@ pub(crate) fn fetch(
     path: &str,
     reading: Option<&(&str, String)>,
 ) -> Result<Value> {
-    let query = format!(
-        "path={}&{}includeContent=true&$format=json",
-        query_value(&format!("/{}", path.trim_start_matches('/'))),
-        version_query(reading)
-    );
-    ado.get(ctx, &ado.api(Some(project), &items_path(repo), &query, API))
+    let path = query_value(&format!("/{}", path.trim_start_matches('/')));
+    let version = version_query(reading);
+    let query = format!("path={path}&{version}includeContent=true&$format=json");
+    let mut item = ado.get(ctx, &ado.api(Some(project), &items_path(repo), &query, API))?;
+    // Content that long was cut: the stream is the whole file.
+    if item["content"]
+        .as_str()
+        .is_some_and(|content| content.len() >= JSON_CONTENT)
+    {
+        let query = format!("path={path}&{version}$format=octetStream");
+        let url = ado.api(Some(project), &items_path(repo), &query, API);
+        let whole = ado.send(ctx, Method::Get, &url, Body::None, None)?;
+        item["content"] = Value::String(match whole.bytes {
+            Some(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
+            None => whole.body,
+        });
+    }
+    Ok(item)
 }
 
 /// A commit's tree never changes.
@@ -36,10 +51,10 @@ const FOR_GOOD: Duration = Duration::from_secs(10 * 365 * 24 * 3600);
 
 /// The paths of a repository's files at `reading` (`None` is the default
 /// branch), without a leading `/`: what [`resolve`] matches. A commit's are
-/// cached for good; a branch's or a tag's are read each time.
-// ponytail: one read of the whole tree, megabytes on a large monorepo and
-// all of it in the one cache file every command reads; narrow it with
-// scopePath from the path's last segments if a live repository makes it slow.
+/// cached, one commit per repository: a tree can be megabytes, and every
+/// command reads the one cache file. A branch's or a tag's are read each time.
+// ponytail: one read of the whole tree; narrow it with scopePath from the
+// path's last segments if a live repository makes it slow.
 pub(crate) fn tree(
     ctx: &Ctx,
     ado: &Ado,
@@ -47,16 +62,18 @@ pub(crate) fn tree(
     repo: &str,
     reading: Option<&(&str, String)>,
 ) -> Result<Vec<String>> {
-    let key = reading
+    let commit = reading
         .filter(|(kind, _)| *kind == "commit")
-        .map(|(_, commit)| {
-            ado.cache_key(&format!(
-                "tree:{}/{}@{commit}",
-                project.to_lowercase(),
-                repo.to_lowercase()
-            ))
-        });
-    if let Some(files) = key.as_deref().and_then(|key| ctx.cache().get(key)) {
+        .map(|(_, commit)| commit.as_str());
+    let key = ado.cache_key(&format!(
+        "tree:{}/{}",
+        project.to_lowercase(),
+        repo.to_lowercase()
+    ));
+    if let Some(commit) = commit
+        && let Some((cached, files)) = ctx.cache().get::<(String, Vec<String>)>(&key)
+        && cached == commit
+    {
         return Ok(files);
     }
     let query = format!(
@@ -70,8 +87,8 @@ pub(crate) fn tree(
         .filter_map(|item| item["path"].as_str())
         .map(|path| path.trim_start_matches('/').to_owned())
         .collect();
-    if let Some(key) = key {
-        ctx.cache().put(&key, &files, FOR_GOOD);
+    if let Some(commit) = commit {
+        ctx.cache().put(&key, &(commit, &files), FOR_GOOD);
     }
     Ok(files)
 }
@@ -132,7 +149,13 @@ pub(crate) fn numbered(lines: &[&str], first: usize, last: usize) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::resolve;
+    use agent_cli_core::testing::{FakeTransport, ctx};
+    use agent_cli_core::{Config, Setup};
+    use serde_json::json;
+
+    use super::{resolve, tree};
+    use crate::client::Ado;
+    use crate::testing::page;
 
     #[test]
     fn a_path_resolves_to_the_one_file_it_ends_with_and_an_ambiguous_one_to_none() {
@@ -164,5 +187,30 @@ mod tests {
         );
         assert_eq!(resolve(&files, "/app/Program.cs"), None, "two Program.cs");
         assert_eq!(resolve(&files, "/usr/lib/dotnet/System.cs"), None);
+    }
+
+    #[test]
+    fn one_commit_tree_per_repository_is_cached() {
+        let dir = tempfile::tempdir().unwrap();
+        let answer = || page(vec![json!({"path": "/src/x.cs"})]);
+        let transport = FakeTransport::answering([answer(), answer(), answer()]);
+        let ctx = ctx(Setup {
+            cache_dir: Some(dir.path().to_owned()),
+            ..Setup::fake(transport.clone())
+        });
+        let config = "[ado]\norg = \"contoso\"\nproject = \"Fabrikam\"\n";
+        let ado = Ado::names(&Config::parse("c.toml", Some(config), Vec::new())).unwrap();
+        let read = |commit: &str| {
+            let reading = ("commit", commit.to_owned());
+            tree(&ctx, &ado, "Fabrikam", "web", Some(&reading)).unwrap()
+        };
+        assert_eq!(read("c0ffee1"), ["src/x.cs"]);
+        assert_eq!(read("c0ffee1"), ["src/x.cs"]);
+        assert_eq!(transport.sent().len(), 1);
+        read("beef002");
+        read("c0ffee1");
+        assert_eq!(transport.sent().len(), 3, "the newer commit took its place");
+        let stored = std::fs::read_to_string(dir.path().join("cache.json")).unwrap();
+        assert_eq!(stored.matches("tree:").count(), 1, "{stored}");
     }
 }

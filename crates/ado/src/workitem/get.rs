@@ -22,9 +22,9 @@ const BLOCKED_BY: &str = "System.LinkTypes.Dependency-Reverse";
 pub struct GetArgs {
     /// The work item's id: 1207, #1207, AB#1207 or its web URL
     id: String,
-    /// How many of the latest comments to include
-    #[arg(long, default_value_t = 5)]
-    comments: usize,
+    /// How many of the latest comments to include (at most 200)
+    #[arg(long, default_value_t = 5, value_parser = clap::value_parser!(u64).range(0..=200))]
+    comments: u64,
 }
 
 /// One work item, its text as Markdown, its links and its latest comments.
@@ -103,7 +103,7 @@ fn workitem_get(ctx: &Ctx, args: GetArgs) -> Result<WorkItem> {
             .map(|html| html_to_markdown(&html)),
         comment_count: None,
         comments: Vec::new(),
-        url: ado.work_item_url(id),
+        url: ado.work_item_url(text(&item["fields"]["System.TeamProject"]).as_deref(), id),
     };
     let mut artifacts = Vec::new();
     for (rel, url) in relations(&item) {
@@ -280,6 +280,30 @@ mod tests {
                 .contains("hint: run `az login`, or set AZURE_DEVOPS_EXT_PAT"),
             "{}",
             outcome.stderr
+        );
+    }
+
+    #[test]
+    fn an_item_in_another_project_links_to_that_project() {
+        let other = json!({"id": 837, "rev": 1, "fields": {"System.Title": "Elsewhere",
+            "System.TeamProject": "Contoso Mobile"}});
+        let (outcome, _) = ado(
+            &[
+                "ado",
+                "workitem",
+                "get",
+                "837",
+                "--comments",
+                "0",
+                "--fields",
+                "url",
+            ],
+            vec![Answer::json(&other)],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json()["url"],
+            format!("{BASE}/Contoso%20Mobile/_workitems/edit/837")
         );
     }
 }

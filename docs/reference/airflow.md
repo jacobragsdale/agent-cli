@@ -78,7 +78,7 @@ agent-cli airflow dag list — List DAGs with their schedule, next run and wheth
   --last-state queued|running|success|failed  Only DAGs whose last run ended in this state
   --instance str                The [[airflow.instance]] name; defaults to the only one
   --limit int                   (default 50)
-Returns: [{id,paused,schedule,next_run,tags[],owners[],file,import_errors}]
+Returns: [{id,paused,schedule,next_run,tags[],owners[],file,import_errors,stale}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow dag list --last-state failed --fields id,schedule,next_run
 ```
@@ -89,7 +89,7 @@ e.g. agent-cli airflow dag list --last-state failed --fields id,schedule,next_ru
 agent-cli airflow dag get — Show a DAG's status: paused, next run, params, schedule and its last five runs
  *<dag> str       The DAG: its id, or its Airflow UI URL
   --instance str  The [[airflow.instance]] name; defaults to the only one
-Returns: {id,paused,schedule,schedule_text,next_run,next_logical_date,catchup,max_active_runs,owners[],tags[],file,bundle,version,last_parsed,import_errors,description,params[{name,default,description}],recent_runs[{id,state,type,run_after,duration}]}
+Returns: {id,paused,schedule,schedule_text,next_run,next_logical_date,catchup,max_active_runs,owners[],tags[],file,bundle,version,last_parsed,import_errors,stale,description,params[{name,default,description}],recent_runs[{id,state,type,run_after,duration}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow dag get etl_nightly --fields paused,next_run,recent_runs
 ```

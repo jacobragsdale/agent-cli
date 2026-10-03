@@ -6,7 +6,7 @@ pub(crate) mod comment;
 pub(crate) mod list;
 pub(crate) mod update;
 
-use agent_cli_core::Ctx;
+use agent_cli_core::{Ctx, Failure};
 use anyhow::Result;
 use serde_json::Value;
 
@@ -109,6 +109,15 @@ pub(crate) fn locate(
         format!("{pr}/{thread}"),
         format!("git/repositories/{repo_id}/pullRequests/{pr}/threads/{thread}"),
     ))
+}
+
+/// Thread `id` (`PR/THREAD`) is not there. Azure DevOps says so with a 200
+/// and `null` to a PATCH, and a 500 to a reply.
+pub(crate) fn no_thread(id: &str) -> anyhow::Error {
+    let pr = id.split('/').next().unwrap_or(id);
+    Failure::not_found(format!("there is no thread {id}"))
+        .hint(format!("agent-cli ado thread list {pr}"))
+        .into()
 }
 
 /// A thread's status, as Azure DevOps writes it.

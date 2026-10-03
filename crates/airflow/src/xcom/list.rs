@@ -98,31 +98,30 @@ mod tests {
                 "list",
                 &format!("etl_nightly/{RUN}/extract_orders"),
             ],
-            vec![Answer::json(
-                &json!({"xcom_entries": [entry("return_value", -1),
-                entry("row_count", -1)], "total_entries": 3}),
-            )],
+            // A server capped at two a page: the total says a third is left.
+            vec![
+                Answer::json(&json!({"xcom_entries": [entry("return_value", -1),
+                    entry("row_count", -1)], "total_entries": 3})),
+                Answer::json(&json!({"xcom_entries": [entry("rejected", -1)], "total_entries": 3})),
+            ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
+        let id = |key: &str| format!("etl_nightly/{RUN}/extract_orders@{key}");
         assert_eq!(
             outcome.json(),
             json!([
-                {"id": format!("etl_nightly/{RUN}/extract_orders@return_value"), "key": "return_value",
-                 "time": "2026-09-29T00:12:31Z"},
-                {"id": format!("etl_nightly/{RUN}/extract_orders@row_count"), "key": "row_count",
-                 "time": "2026-09-29T00:12:31Z"}
+                {"id": id("return_value"), "key": "return_value", "time": "2026-09-29T00:12:31Z"},
+                {"id": id("row_count"), "key": "row_count", "time": "2026-09-29T00:12:31Z"},
+                {"id": id("rejected"), "key": "rejected", "time": "2026-09-29T00:12:31Z"}
             ])
         );
-        assert!(
-            outcome.stderr.contains("[2 of 3; --limit N]"),
-            "{}",
-            outcome.stderr
-        );
+        assert_eq!(outcome.stderr, "");
         assert_eq!(
             paths(&transport),
-            [format!(
-                "{RUN_PATH}/taskInstances/extract_orders/xcomEntries?limit=50&offset=0"
-            )]
+            [
+                format!("{RUN_PATH}/taskInstances/extract_orders/xcomEntries?limit=50&offset=0"),
+                format!("{RUN_PATH}/taskInstances/extract_orders/xcomEntries?limit=48&offset=2"),
+            ]
         );
         let (outcome, transport) = airflow(
             &[

@@ -22,6 +22,7 @@ use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
 use crate::instance::check_base_url;
+use crate::refused::refused;
 
 /// Airflow caps a page at `[api] maximum_page_limit`, 100 unless raised.
 const PAGE: usize = 100;
@@ -751,68 +752,23 @@ impl<'a> Client<'a> {
                 "{path}?{query}{joiner}limit={want}&offset={}",
                 items.len()
             ))?;
-            let got = page[key].as_array().cloned().unwrap_or_default();
+            let got = page[key]
+                .as_array()
+                .cloned()
+                .with_context(|| format!("no {key:?} in {path}"))?;
             total = page["total_entries"]
                 .as_u64()
                 .and_then(|total| usize::try_from(total).ok());
-            let short = got.len() < want;
+            // A server whose maximum_page_limit is under the page asked for
+            // answers short pages: the total, when given, says what is left.
+            let (short, empty) = (got.len() < want, got.is_empty());
             items.extend(got);
-            if short || total.is_some_and(|total| items.len() >= total) {
+            if empty || total.map_or(short, |total| items.len() >= total) {
                 break;
             }
         }
         Ok((items, total))
     }
-}
-
-/// Airflow's refusals as the next step: a 401 that a fresh token did not fix
-/// is the credential, a 403 the role, a redirect the `base_url`, and a 404
-/// names the list to look in.
-fn refused(error: anyhow::Error, path: &str) -> anyhow::Error {
-    let mut failure = match error.downcast::<Failure>() {
-        Ok(failure) => failure,
-        Err(error) => return error,
-    };
-    match failure.status {
-        Some(401) => {
-            failure.hint = Some(
-                "the Airflow credential was refused; `agent-cli doctor airflow` checks it"
-                    .to_owned(),
-            );
-        }
-        Some(403) => {
-            failure.hint =
-                Some("the Airflow role behind this credential lacks this permission".to_owned());
-        }
-        Some(300..=399) => {
-            failure.exit = Exit::Setup;
-            failure.hint = Some(
-                "base_url is wrong (its scheme or path prefix); fix it under [[airflow.instance]]"
-                    .to_owned(),
-            );
-        }
-        Some(404) if failure.message.contains("is mapped") => {
-            failure.exit = Exit::Usage;
-            failure.hint = Some(
-                "name the mapped task as TASK:N; its map indexes: agent-cli airflow task list DAG/RUN"
-                    .to_owned(),
-            );
-        }
-        Some(404) => {
-            let list = if path.contains("/taskInstances") {
-                "agent-cli airflow task list DAG/RUN"
-            } else if path.contains("/dagRuns") {
-                "agent-cli airflow run list --dag DAG"
-            } else if path.starts_with("importErrors") {
-                "agent-cli airflow import-error list"
-            } else {
-                "agent-cli airflow dag list"
-            };
-            failure.hint = Some(list.to_owned());
-        }
-        _ => {}
-    }
-    failure.into()
 }
 
 /// A non-empty string, owned.
@@ -851,6 +807,35 @@ mod tests {
     use agent_cli_core::testing::{Answer, FakeTransport, run};
     use serde_json::json;
 
+    #[test]
+    fn a_sign_in_under_a_wrong_prefix_or_a_list_less_answer_is_named_not_empty() {
+        let password = "[[airflow.instance]]\nname = \"dev\"\nbase_url = \"https://airflow.contoso.example/airflow\"\nusername = \"agent\"\npassword_env = \"AIRFLOW_TOKEN\"\n";
+        let (outcome, _) = crate::testing::airflow_with(
+            password,
+            &["airflow", "dag", "list"],
+            vec![Answer::status(405, "Method Not Allowed")],
+        );
+        assert_eq!(outcome.code, 3, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("base_url is wrong"),
+            "{}",
+            outcome.stderr
+        );
+        let (outcome, _) = crate::testing::airflow(
+            &["airflow", "dag", "list"],
+            vec![Answer::json(&serde_json::json!({}))],
+        );
+        assert_eq!(outcome.code, 1, "{outcome:?}");
+        assert!(
+            outcome.stdout.is_empty(),
+            "never a confident []: {outcome:?}"
+        );
+        assert!(
+            outcome.stderr.contains("no \"dags\" in dags"),
+            "{}",
+            outcome.stderr
+        );
+    }
     #[test]
     fn a_token_goes_only_under_the_configured_base_url() {
         for (base, url) in [

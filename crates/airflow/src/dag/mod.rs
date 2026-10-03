@@ -34,6 +34,9 @@ pub struct DagRow {
     file: Option<String>,
     /// The file failed to parse: see import-error list.
     import_errors: bool,
+    /// True when the DAG's file is gone from its bundle: Airflow keeps the
+    /// DAG and its runs, and starts none.
+    stale: Option<bool>,
 }
 
 fn dag_row(dag: &Value) -> DagRow {
@@ -46,5 +49,6 @@ fn dag_row(dag: &Value) -> DagRow {
         owners: strings(&dag["owners"]),
         file: text(&dag["relative_fileloc"]).or_else(|| text(&dag["fileloc"])),
         import_errors: dag["has_import_errors"].as_bool().unwrap_or_default(),
+        stale: dag["is_stale"].as_bool().filter(|stale| *stale),
     }
 }

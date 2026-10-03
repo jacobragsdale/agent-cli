@@ -167,12 +167,14 @@ fn from_text(raw: &str) -> Option<FileId> {
         Some((project, repo)) => (Some(project), repo),
         None => (None, left),
     };
-    let (path, lines) = match rest
-        .rsplit_once(':')
-        .and_then(|(path, lines)| Some((path, line_range(lines)?)))
-    {
-        Some((path, lines)) => (path, Some(lines)),
-        None => (rest, None),
+    // `:0` or `:5-3` reads as lines, wrongly given: not part of the path.
+    let (path, lines) = match rest.rsplit_once(':') {
+        Some((path, tail))
+            if !tail.is_empty() && tail.bytes().all(|b| b.is_ascii_digit() || b == b'-') =>
+        {
+            (path, Some(line_range(tail)?))
+        }
+        _ => (rest, None),
     };
     if repo.is_empty() || reference == Some("") || project == Some("") {
         return None;
@@ -212,6 +214,28 @@ fn from_url(segments: &[String], query: &str) -> Option<FileId> {
     })
 }
 
+/// The organization `[ado] org` names: its name, or a `dev.azure.com` or
+/// `visualstudio.com` URL of it (any path after). Anything else is exit 3.
+pub(crate) fn org(raw: &str) -> Result<String> {
+    let trimmed = raw.trim().trim_end_matches('/');
+    let slug = match trimmed.strip_prefix("https://") {
+        Some(rest) => match rest.split_once('/') {
+            Some(("dev.azure.com", path)) => path.split('/').next().unwrap_or(path),
+            Some((host, _)) => host.strip_suffix(".visualstudio.com").unwrap_or(rest),
+            None => rest.strip_suffix(".visualstudio.com").unwrap_or(rest),
+        },
+        None => trimmed,
+    };
+    if slug.is_empty() || !slug.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+        return Err(Failure::setup(format!(
+            "[ado] org {raw:?} is neither an organization's name nor its URL"
+        ))
+        .hint("org = \"contoso\", or \"https://dev.azure.com/contoso\"")
+        .into());
+    }
+    Ok(slug.to_owned())
+}
+
 /// `42` or `40-60`, counted from 1.
 pub(crate) fn line_range(raw: &str) -> Option<(usize, usize)> {
     let (first, last) = raw
@@ -234,7 +258,8 @@ pub(crate) struct Range {
 impl Range {
     pub(crate) fn parse(ado: &Ado, raw: &str) -> Result<Self> {
         let parsed = raw.trim().split_once('@').and_then(|(left, refs)| {
-            let (base, head) = refs.split_once("..")?;
+            // `...` is git's merge-base diff, which `..` already is here.
+            let (base, head) = refs.split_once("...").or_else(|| refs.split_once(".."))?;
             let (project, repo) = match left.split_once('/') {
                 Some((project, repo)) => (Some(project.to_owned()), repo),
                 None => (None, left),
@@ -300,7 +325,8 @@ pub(crate) fn thread_id(ado: &Ado, raw: &str, pr: Option<&str>) -> Result<(i64, 
 }
 
 /// The readings of a ref as typed, as Azure DevOps `versionType`s, in the
-/// order to try them: 7 to 40 hex digits is a commit, `refs/heads/` and
+/// order to try them: 7 to 40 hex digits is a commit (and fewer than 40 is
+/// refused, since Azure DevOps takes no short id), `refs/heads/` and
 /// `refs/tags/` say which, and anything else is a branch, else a tag.
 fn readings(reference: &str) -> Vec<(&'static str, String)> {
     let reference = reference.trim();
@@ -327,6 +353,15 @@ pub(crate) fn resolving<T>(
     mut fetch: impl FnMut(&[(&'static str, String)]) -> Result<T>,
 ) -> Result<T> {
     let each: Vec<Vec<(&'static str, String)>> = refs.iter().map(|r| readings(r)).collect();
+    if let Some((_, short)) =
+        (each.iter().flatten()).find(|(kind, sha)| *kind == "commit" && sha.len() < 40)
+    {
+        return Err(Failure::usage(format!(
+            "{short} reads as a short commit id, and Azure DevOps takes a commit only as all 40 hex digits (a branch or tag named so: refs/heads/{short} or refs/tags/{short})"
+        ))
+        .hint("agent-cli ado commit list REPO --fields commit")
+        .into());
+    }
     let tries = each.iter().map(Vec::len).max().unwrap_or(1);
     let (mut at, mut first) = (0, None);
     loop {
@@ -534,6 +569,8 @@ pub(crate) fn each<T: Serialize>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use agent_cli_core::Exit;
+
     use crate::testing::CONFIG;
 
     fn ado() -> Ado {
@@ -543,6 +580,45 @@ mod tests {
 
     fn file(raw: &str) -> FileId {
         FileId::parse(&ado(), raw, None, None).unwrap()
+    }
+
+    #[test]
+    fn an_org_is_its_name_or_its_url_and_nothing_else() {
+        for raw in [
+            "contoso",
+            " contoso ",
+            "https://dev.azure.com/contoso/",
+            "https://dev.azure.com/contoso/Fabrikam",
+            "https://contoso.visualstudio.com",
+            "https://contoso.visualstudio.com/DefaultCollection",
+        ] {
+            assert_eq!(org(raw).unwrap(), "contoso", "{raw}");
+        }
+        for raw in [
+            "dev.azure.com/contoso",
+            "http://dev.azure.com/contoso",
+            "https://dev.azure.com",
+            "contoso@evil.example",
+            "",
+        ] {
+            assert!(org(raw).is_err(), "{raw}");
+        }
+    }
+
+    #[test]
+    fn a_line_part_that_is_no_range_is_refused_not_read_as_the_path() {
+        for raw in [
+            "etl@main:dags/a.py:0",
+            "etl@main:dags/a.py:5-3",
+            "etl@main:a.py:99999999999999999999999",
+        ] {
+            assert_eq!(from_text(raw), None, "{raw}");
+        }
+        assert_eq!(
+            from_text("etl:docs/time 10:30.md").map(|id| id.path),
+            Some("docs/time 10:30.md".to_owned()),
+            "a colon that is no line part stays in the path"
+        );
     }
 
     #[test]
@@ -621,6 +697,12 @@ mod tests {
 
     #[test]
     fn a_range_and_a_thread_id_parse_with_their_urls() {
+        let three = Range::parse(&ado(), "api@main...feature/x").unwrap();
+        assert_eq!(
+            (three.base.as_str(), three.head.as_str()),
+            ("main", "feature/x"),
+            "git's three dots name the same merge-base diff"
+        );
         let range = Range::parse(&ado(), "api@v1.4.1..v1.4.2").unwrap();
         assert_eq!(
             (
@@ -656,17 +738,27 @@ mod tests {
         assert_eq!(readings("refs/tags/v1"), [("tag", "v1".to_owned())]);
         assert_eq!(readings("main").len(), 2);
         let mut tried = Vec::new();
-        let found = resolving(&["v1", "abc1234"], |pick| {
-            tried.push(pick.to_vec());
-            match pick[0].0 {
-                "branch" => {
-                    let mut missing = Failure::not_found("no branch");
-                    missing.status = Some(404);
-                    Err(missing.into())
+        let short = resolving(&["abc1234"], |_| -> Result<()> { unreachable!() }).unwrap_err();
+        let short = short.downcast_ref::<Failure>().unwrap();
+        assert_eq!(short.exit, Exit::Usage);
+        assert_eq!(
+            short.hint.as_deref(),
+            Some("agent-cli ado commit list REPO --fields commit")
+        );
+        let found = resolving(
+            &["v1", "c0ffee1c0ffee1c0ffee1c0ffee1c0ffee1c0ffe"],
+            |pick| {
+                tried.push(pick.to_vec());
+                match pick[0].0 {
+                    "branch" => {
+                        let mut missing = Failure::not_found("no branch");
+                        missing.status = Some(404);
+                        Err(missing.into())
+                    }
+                    _ => Ok(pick[1].0),
                 }
-                _ => Ok(pick[1].0),
-            }
-        });
+            },
+        );
         assert_eq!(found.unwrap(), "commit");
         assert_eq!(tried.len(), 2);
         assert_eq!(tried[1][0], ("tag", "v1".to_owned()));

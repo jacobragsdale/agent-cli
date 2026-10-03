@@ -13,6 +13,7 @@ use anyhow::{Context, Result};
 use serde_json::{Map, Value, json};
 
 use crate::ctx::Globals;
+use crate::error::Failure;
 
 pub(crate) const GUARD: usize = 12_000;
 /// Fields worth suggesting first for `--fields`.
@@ -50,7 +51,11 @@ pub(crate) fn emit(
         } else {
             Vec::new()
         };
-        if !available.is_empty() {
+        let asked: Vec<String> = paths.iter().map(|path| path.join(".")).collect();
+        if !available.is_empty() && asked.iter().all(|path| available.contains(path)) {
+            // Fields the answer has, all empty here: not a misspelling.
+            writeln!(err, "[--fields {}: empty]", asked.join(","))?;
+        } else if !available.is_empty() {
             writeln!(
                 err,
                 "[--fields matched nothing. Available: {}]",
@@ -66,7 +71,8 @@ pub(crate) fn emit(
         return save(&value, path, out);
     }
     let text = dumps(&value, tty);
-    if globals.raw || globals.fields.is_some() || tty || text.len() <= GUARD {
+    // --reveal asked for the value on stdout; a spill file would leave it on disk.
+    if globals.raw || globals.reveal || globals.fields.is_some() || tty || text.len() <= GUARD {
         writeln!(out, "{text}")?;
         return Ok(());
     }
@@ -169,20 +175,49 @@ fn leaf_paths(value: &Value, prefix: &str, depth: usize) -> Vec<String> {
     }
 }
 
-/// The largest list in the top two levels: an envelope's payload.
-fn biggest_list<'a>(value: &'a Value, path: &[String]) -> Option<(Vec<String>, &'a Vec<Value>)> {
+/// One step down a JSON value: a key, or an index into a list.
+#[derive(Clone)]
+enum Step {
+    Key(String),
+    Index(usize),
+}
+
+/// The largest list a few levels down, through objects and into a list's
+/// items, so `results[0].rows` is found and not only `results`.
+fn biggest_list<'a>(value: &'a Value, path: &[Step]) -> Option<(Vec<Step>, &'a Vec<Value>)> {
+    let deeper = |step: Step, child: &'a Value| {
+        let mut path = path.to_vec();
+        path.push(step);
+        biggest_list(child, &path)
+    };
+    let mut found: Vec<(Vec<Step>, &Vec<Value>)> = Vec::new();
     match value {
-        Value::Array(items) => Some((path.to_vec(), items)),
-        Value::Object(map) if path.len() < 2 => map
-            .iter()
-            .filter_map(|(key, child)| {
-                let mut deeper = path.to_vec();
-                deeper.push(key.clone());
-                biggest_list(child, &deeper)
-            })
-            .max_by_key(|(_, items)| Value::Array((*items).clone()).to_string().len()),
-        _ => None,
+        Value::Array(items) => {
+            // One item cannot be cut short; what it holds can.
+            if items.len() != 1 {
+                found.push((path.to_vec(), items));
+            }
+            // An envelope (results[0]) holds the payload; a long list is it.
+            if path.len() < 4 && items.len() <= 10 {
+                found.extend(
+                    items
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(at, item)| deeper(Step::Index(at), item)),
+                );
+            }
+        }
+        Value::Object(map) if path.len() < 4 => {
+            found.extend(
+                map.iter()
+                    .filter_map(|(key, child)| deeper(Step::Key(key.clone()), child)),
+            );
+        }
+        _ => {}
     }
+    found
+        .into_iter()
+        .max_by_key(|(_, items)| serde_json::to_string(items).map_or(0, |text| text.len()))
 }
 
 fn save_temp(content: &str, suffix: &str) -> Result<String> {
@@ -199,9 +234,22 @@ fn save_temp(content: &str, suffix: &str) -> Result<String> {
 /// Keeps a prefix of the largest list, prints valid JSON, and says where the
 /// rest is.
 fn guard_list(value: &Value, text: &str, out: &mut dyn Write, err: &mut dyn Write) -> Result<()> {
-    let saved = save_temp(text, ".json")?;
+    // The answer is worth more than the copy: print it cut either way.
+    let saved = save_temp(text, ".json").unwrap_or_else(|error| format!("not saved ({error:#})"));
     let found = biggest_list(value, &[]).filter(|(_, items)| !items.is_empty());
     let Some((at, items)) = found else {
+        let mut shown = value.clone();
+        let cut = cut_strings(&mut shown);
+        if !cut.is_empty() && shown.to_string().len() <= GUARD {
+            writeln!(out, "{shown}")?;
+            writeln!(
+                err,
+                "[cut short: {}. Full JSON ({} KB): {saved}\n --raw prints everything]",
+                cut.join(", "),
+                text.len() / 1024
+            )?;
+            return Ok(());
+        }
         let fields = value
             .as_object()
             .map(|map| map.keys().cloned().collect::<Vec<_>>().join(","))
@@ -218,7 +266,7 @@ fn guard_list(value: &Value, text: &str, out: &mut dyn Write, err: &mut dyn Writ
         )?;
         return Ok(());
     };
-    let mut size = text.len() - Value::Array(items.clone()).to_string().len();
+    let mut size = text.len() - serde_json::to_string(items).map_or(0, |list| list.len());
     let mut kept = Vec::new();
     for item in items {
         size += item.to_string().len() + 1;
@@ -227,22 +275,30 @@ fn guard_list(value: &Value, text: &str, out: &mut dyn Write, err: &mut dyn Writ
         }
         kept.push(item.clone());
     }
-    let shown = if at.is_empty() {
-        Value::Array(kept.clone())
-    } else {
-        let mut shown = value.clone();
-        let mut node = &mut shown;
-        for key in &at[..at.len() - 1] {
-            node = &mut node[key.as_str()];
-        }
-        node[at[at.len() - 1].as_str()] = Value::Array(kept.clone());
-        shown
-    };
+    let mut shown = value.clone();
+    let mut node = &mut shown;
+    for step in &at {
+        node = match step {
+            Step::Key(key) => &mut node[key.as_str()],
+            Step::Index(index) => &mut node[*index],
+        };
+    }
+    *node = Value::Array(kept.clone());
+    // A long text beside the list (a description) can hold the answer over.
+    let cut = cut_strings(&mut shown);
     writeln!(out, "{shown}")?;
-    let prefix = if at.is_empty() {
+    // A --fields path maps through lists, so only the keys name it.
+    let keys: Vec<&str> = at
+        .iter()
+        .filter_map(|step| match step {
+            Step::Key(key) => Some(key.as_str()),
+            Step::Index(_) => None,
+        })
+        .collect();
+    let prefix = if keys.is_empty() {
         String::new()
     } else {
-        format!("{}.", at.join("."))
+        format!("{}.", keys.join("."))
     };
     let paths: Vec<String> = leaf_paths(&items[0], "", 0)
         .into_iter()
@@ -264,21 +320,101 @@ fn guard_list(value: &Value, text: &str, out: &mut dyn Write, err: &mut dyn Writ
         best
     };
     let suggested: Vec<&str> = suggested.iter().take(3).map(|path| path.as_str()).collect();
+    // Rows that are plain lists (SQL's) have no field paths to narrow by.
+    let narrow = if paths.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "\n narrow with --fields, e.g. --fields {}\n available: {}",
+            suggested.join(","),
+            paths.join(",")
+        )
+    };
+    let also = if cut.is_empty() {
+        String::new()
+    } else {
+        format!(", and cut short: {}", cut.join(", "))
+    };
     writeln!(
         err,
-        "[truncated {}: showing {} of {} items. Full JSON ({} KB): {saved}\n narrow with --fields, e.g. --fields {}\n available: {}\n --raw prints everything]",
-        if at.is_empty() {
+        "[truncated {}: showing {} of {} items{also}. Full JSON ({} KB): {saved}{narrow}\n --raw prints everything]",
+        if keys.is_empty() {
             "the list".to_owned()
         } else {
-            at.join(".")
+            keys.join(".")
         },
         kept.len(),
         items.len(),
         text.len() / 1024,
-        suggested.join(","),
-        paths.join(","),
     )?;
     Ok(())
+}
+
+/// Cuts the longest strings in `value`, each to what still fits and an
+/// ellipsis, until it prints within [`GUARD`]; the dotted names of those cut.
+fn cut_strings(value: &mut Value) -> Vec<String> {
+    fn longest(value: &Value, at: &mut Vec<Step>, best: &mut Option<(Vec<Step>, usize)>) {
+        match value {
+            Value::String(text) if best.as_ref().is_none_or(|(_, len)| text.len() > *len) => {
+                *best = Some((at.clone(), text.len()));
+            }
+            Value::Object(map) => {
+                for (key, child) in map {
+                    at.push(Step::Key(key.clone()));
+                    longest(child, at, best);
+                    at.pop();
+                }
+            }
+            Value::Array(items) => {
+                for (index, child) in items.iter().enumerate() {
+                    at.push(Step::Index(index));
+                    longest(child, at, best);
+                    at.pop();
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut cut = Vec::new();
+    loop {
+        let size = value.to_string().len();
+        let mut best = None;
+        longest(value, &mut Vec::new(), &mut best);
+        // A short string is not where the bytes are.
+        let Some((at, len)) = best.filter(|(_, len)| size > GUARD && *len > 200) else {
+            return cut;
+        };
+        let mut node = &mut *value;
+        for step in &at {
+            node = match step {
+                Step::Key(key) => &mut node[key.as_str()],
+                Step::Index(index) => &mut node[*index],
+            };
+        }
+        let Value::String(text) = node else {
+            return cut;
+        };
+        let mut end = len.saturating_sub(size - GUARD + 64).max(200).min(len - 1);
+        while !text.is_char_boundary(end) {
+            end -= 1;
+        }
+        // The ellipsis is three bytes: a cut that saves none ends the cutting.
+        if end + 3 >= len {
+            return cut;
+        }
+        text.truncate(end);
+        text.push('…');
+        let name: Vec<&str> = (at.iter())
+            .filter_map(|step| match step {
+                Step::Key(key) => Some(key.as_str()),
+                Step::Index(_) => None,
+            })
+            .collect();
+        let name = name.join(".");
+        if !cut.contains(&name) {
+            cut.push(name);
+        }
+    }
 }
 
 /// Cuts a `{"text": …}` payload to fit, from the back for logs (the tail is
@@ -291,7 +427,7 @@ fn guard_text(
     err: &mut dyn Write,
 ) -> Result<()> {
     let full = value["text"].as_str().unwrap_or_default().to_owned();
-    let saved = save_temp(&full, ".txt")?;
+    let saved = save_temp(&full, ".txt").unwrap_or_else(|error| format!("not saved ({error:#})"));
     let overhead =
         text.len() - Value::String(full.clone()).to_string().len() + r#","truncated":true"#.len();
     let mut budget = GUARD.saturating_sub(overhead);
@@ -347,6 +483,27 @@ fn cut_text(text: &str, budget: usize, tail: bool) -> &str {
 }
 
 /// `--output FILE`: the payload goes to a 0600 file and stdout says where.
+/// `--output` must name a file in a directory that exists, checked before
+/// the command runs: a change whose answer cannot be saved is still made,
+/// and its answer (the new id) would be lost.
+pub(crate) fn check_output(path: &Path) -> Result<(), Failure> {
+    let parent = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let problem = if path.is_dir() {
+        "is a directory"
+    } else if !parent.is_dir() {
+        "is in a directory that does not exist"
+    } else {
+        return Ok(());
+    };
+    Err(
+        Failure::usage(format!("--output {} {problem}", path.display()))
+            .hint("give --output a file path in a directory that exists"),
+    )
+}
+
 /// A lone string (or an object holding only one) is written as itself, so
 /// `--fields value --output FILE` leaves exactly the secret in the file.
 fn save(value: &Value, path: &Path, out: &mut dyn Write) -> Result<()> {
@@ -366,6 +523,19 @@ fn save(value: &Value, path: &Path, out: &mut dyn Write) -> Result<()> {
 }
 
 pub(crate) fn write_private(path: &Path, bytes: &[u8]) -> Result<()> {
+    // A file is replaced whole, so an interrupted write leaves the old one;
+    // a device, a pipe or a link is written in place. ponytail: a kill
+    // during the write leaves its .tmp file beside the target.
+    let in_place = std::fs::symlink_metadata(path).is_ok_and(|meta| !meta.is_file());
+    if !in_place {
+        let dir = path.parent().filter(|dir| !dir.as_os_str().is_empty());
+        let mut file = tempfile::NamedTempFile::new_in(dir.unwrap_or(Path::new(".")))
+            .with_context(|| format!("cannot write {}", path.display()))?;
+        file.write_all(bytes)?;
+        file.persist(path)
+            .with_context(|| format!("cannot write {}", path.display()))?;
+        return Ok(());
+    }
     let mut options = std::fs::OpenOptions::new();
     options.write(true).create(true).truncate(true);
     #[cfg(unix)]
@@ -374,11 +544,12 @@ pub(crate) fn write_private(path: &Path, bytes: &[u8]) -> Result<()> {
         .open(path)
         .with_context(|| format!("cannot write {}", path.display()))?;
     // An existing file keeps its old mode through `open`; tighten it before
-    // anything is written into it.
+    // anything is written into it. Only a file: /dev/null is everyone's.
     #[cfg(unix)]
-    {
+    if file.metadata().is_ok_and(|meta| meta.is_file()) {
         use std::os::unix::fs::PermissionsExt;
-        file.set_permissions(std::fs::Permissions::from_mode(0o600))?;
+        file.set_permissions(std::fs::Permissions::from_mode(0o600))
+            .with_context(|| format!("cannot make {} private", path.display()))?;
     }
     file.write_all(bytes)?;
     Ok(())
@@ -387,6 +558,49 @@ pub(crate) fn write_private(path: &Path, bytes: &[u8]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn output_must_be_a_file_in_a_directory_that_exists() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(check_output(&dir.path().join("row.json")).is_ok());
+        assert!(
+            check_output(Path::new("row.json")).is_ok(),
+            "the working directory"
+        );
+        for (path, why) in [
+            (dir.path().to_path_buf(), "is a directory"),
+            (dir.path().join("nodir/row.json"), "does not exist"),
+        ] {
+            let failure = check_output(&path).unwrap_err();
+            assert_eq!(failure.exit, crate::error::Exit::Usage);
+            assert!(failure.message.contains(why), "{}", failure.message);
+        }
+    }
+
+    #[test]
+    fn a_list_nested_in_an_envelope_is_the_one_cut() {
+        let rows: Vec<Value> = (0..2000).map(|n| json!([n, "x".repeat(20)])).collect();
+        let value =
+            json!({"results": [{"columns": ["id", "name"], "rows": rows}], "elapsed_ms": 7});
+        let (out, err) = run(value, &Globals::default(), false);
+        assert!(out.len() <= GUARD + 1, "{}", out.len());
+        let shown: Value = serde_json::from_str(&out).unwrap();
+        let kept = shown["results"][0]["rows"].as_array().unwrap().len();
+        assert!(kept > 100 && kept < 2000, "{kept}");
+        assert!(err.contains("[truncated results.rows: showing"), "{err}");
+    }
+
+    #[test]
+    fn a_revealed_value_prints_whole_and_never_lands_in_a_spill_file() {
+        let value = json!({"secret": "big", "key": "v", "value": "x".repeat(20_000)});
+        let globals = Globals {
+            reveal: true,
+            ..Globals::default()
+        };
+        let (out, err) = run(value, &globals, false);
+        assert!(out.len() > 20_000, "{}", out.len());
+        assert!(err.is_empty(), "no spill note: {err}");
+    }
 
     fn run(value: Value, globals: &Globals, keep_tail: bool) -> (String, String) {
         let (mut out, mut err) = (Vec::new(), Vec::new());
@@ -440,6 +654,17 @@ mod tests {
             err.trim(),
             "[--fields matched nothing. Available: id,author.name]"
         );
+    }
+
+    #[test]
+    fn fields_the_answer_has_but_empty_say_so() {
+        let (out, err) = run(
+            json!({"name": "web", "default_branch": null, "branches": []}),
+            &fields("default_branch,branches"),
+            false,
+        );
+        assert_eq!(out.trim(), "{}");
+        assert_eq!(err.trim(), "[--fields default_branch,branches: empty]");
     }
 
     #[test]
@@ -562,6 +787,60 @@ mod tests {
         assert_eq!(
             std::fs::read_to_string(&path).unwrap(),
             r#"{"a":1,"b":"x"}"#
+        );
+    }
+
+    #[test]
+    fn a_long_text_beside_the_list_is_cut_short_too() {
+        let value = json!({"id": 903, "title": "big", "description": "word ".repeat(6000),
+            "comments": [{"id": 1, "text": "a"}, {"id": 2, "text": "b"}]});
+        let (out, err) = run(value, &Globals::default(), false);
+        assert!(out.len() <= GUARD + 1, "{} bytes", out.len());
+        let shown: Value = serde_json::from_str(out.trim()).unwrap();
+        assert_eq!(
+            (shown["id"].clone(), shown["title"].clone()),
+            (json!(903), json!("big"))
+        );
+        assert!(shown["description"].as_str().unwrap().ends_with('…'));
+        assert!(err.contains("cut short: description"), "{err}");
+
+        let (out, err) = run(
+            json!({"id": 1, "description": "é".repeat(20000)}),
+            &Globals::default(),
+            false,
+        );
+        assert!(out.len() <= GUARD + 1, "{} bytes", out.len());
+        assert!(err.starts_with("[cut short: description."), "{err}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn output_to_a_device_writes_without_touching_its_mode() {
+        use std::os::unix::fs::PermissionsExt;
+        let null = Path::new("/dev/null");
+        let mode = std::fs::metadata(null).unwrap().permissions().mode();
+        write_private(null, b"discarded").unwrap();
+        assert_eq!(std::fs::metadata(null).unwrap().permissions().mode(), mode);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_existing_output_file_is_replaced_whole_and_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("out.bin");
+        std::fs::write(&path, "old").unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+        write_private(&path, b"new bytes").unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"new bytes");
+        assert_eq!(
+            std::fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert_eq!(
+            std::fs::read_dir(dir.path()).unwrap().count(),
+            1,
+            "no temp file left"
         );
     }
 }

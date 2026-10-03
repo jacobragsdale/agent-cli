@@ -7,6 +7,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use crate::client::{API, Ado, Body};
+use crate::ids::arg;
 use crate::iteration::{resolve, team};
 use crate::work_items::{WorkItemRef, moved_on, row};
 
@@ -53,12 +54,28 @@ fn sprint_complete(ctx: &Ctx, args: SprintCompleteArgs) -> Result<Completed> {
         .hint("agent-cli ado sprint list --fields id,timeframe")
         .into());
     }
-    let (work, parents) = items(ctx, &ado, team, &sprint, &["System.Title"])?;
+    let (work, mut read) = items(ctx, &ado, team, &sprint, &["System.Title", PARENT])?;
+    // One rule for every parent: one planned elsewhere is in the sprint's
+    // list, and a removed one, which the list leaves out, is read here.
+    let mut missing: Vec<i64> = (work.iter())
+        .filter_map(|item| item["fields"][PARENT].as_i64())
+        .filter(|parent| !read.contains_key(parent))
+        .collect();
+    missing.sort_unstable();
+    missing.dedup();
+    if !missing.is_empty() {
+        let fields = ["System.WorkItemType", "System.State"];
+        for parent in crate::work_items::read(ctx, &ado, &missing, &fields)? {
+            read.extend(parent["id"].as_i64().map(|id| (id, parent)));
+        }
+    }
     let mut seen = HashMap::new();
-    let mut finished: Vec<i64> = Vec::new();
-    for item in &work {
+    // Every finished item read, with its state.
+    let mut finished: HashMap<i64, String> = HashMap::new();
+    for (id, item) in &read {
         if done(ctx, &ado, &mut seen, item)? {
-            finished.extend(item["id"].as_i64());
+            let state = item["fields"]["System.State"].as_str().unwrap_or_default();
+            finished.insert(*id, state.to_owned());
         }
     }
     let mut moved = Vec::new();
@@ -66,17 +83,21 @@ fn sprint_complete(ctx: &Ctx, args: SprintCompleteArgs) -> Result<Completed> {
     // Like `each`: every item has its turn, so a dry run plans every move and
     // one refused item does not strand the rest.
     let mut stopped: Option<anyhow::Error> = None;
+    // The deadline ends the turns: the move under way may or may not have
+    // been made, and every later one would time out too.
+    let mut cut: Option<i64> = None;
     for item in &work {
         let Some(id) = item["id"].as_i64() else {
             continue;
         };
-        if finished.contains(&id) {
+        if finished.contains_key(&id) {
             continue;
         }
-        if let Some(parent) = parents.get(&id).filter(|p| finished.contains(p)) {
+        let parent = item["fields"][PARENT].as_i64();
+        if let Some((parent, state)) = parent.and_then(|p| Some((p, finished.get(&p)?))) {
             skipped.push(Skipped {
                 id,
-                reason: format!("its parent {parent} is done"),
+                reason: format!("its parent {parent} is {state}"),
             });
             continue;
         }
@@ -100,8 +121,12 @@ fn sprint_complete(ctx: &Ctx, args: SprintCompleteArgs) -> Result<Completed> {
             Err(error) => match error.downcast_ref::<Failure>() {
                 Some(failure) if failure.exit == Exit::Conflict => skipped.push(Skipped {
                     id,
-                    reason: "it changed since it was read".to_owned(),
+                    reason: CHANGED.to_owned(),
                 }),
+                Some(failure) if failure.exit == Exit::TimedOut => {
+                    cut = Some(id);
+                    break;
+                }
                 Some(failure) => skipped.push(Skipped {
                     id,
                     reason: failure.message.clone(),
@@ -112,16 +137,41 @@ fn sprint_complete(ctx: &Ctx, args: SprintCompleteArgs) -> Result<Completed> {
             },
         }
     }
-    if let Some(error) = stopped {
-        return Err(error);
-    }
-    Ok(Completed {
+    // Run again, it moves what is still unfinished in the sprint.
+    let again = format!(
+        "agent-cli ado sprint complete {} --move-to {} --yes{}",
+        arg(&sprint.path),
+        arg(&to.path),
+        (args.team.as_deref()).map_or_else(String::new, |team| format!(" --team {}", arg(team)))
+    );
+    let completed = Completed {
         sprint: sprint.path,
         to: to.path,
         moved,
         skipped,
-    })
+    };
+    if let Some(id) = cut {
+        return Err(Failure::timed_out(format!(
+            "the deadline came while moving {id}, which may or may not have moved; the items after it were not tried"
+        ))
+        .hint(again)
+        .with_data(&completed)
+        .into());
+    }
+    if let Some(error) = stopped {
+        return Err(Failure::new(Exit::Failed, format!("{error:#}"))
+            .hint(again)
+            .with_data(&completed)
+            .into());
+    }
+    if completed.skipped.iter().any(|skip| skip.reason == CHANGED) {
+        ctx.note(format!("[next: {again}]"));
+    }
+    Ok(completed)
 }
+
+const CHANGED: &str = "it changed since it was read";
+const PARENT: &str = "System.Parent";
 
 command! {
     pub SPRINT_COMPLETE = ["ado", "sprint", "complete"], Destructive,
@@ -133,7 +183,8 @@ command! {
 
 #[cfg(test)]
 mod tests {
-    use agent_cli_core::testing::Answer;
+    use agent_cli_core::testing::{Answer, FakeTransport};
+    use agent_cli_core::{Failure, Method, Setup};
     use serde_json::{Value, json};
 
     use crate::sprint::tests::{relations, sprints, states};
@@ -142,6 +193,12 @@ mod tests {
     fn item(id: i64, kind: &str, state: &str, rev: i64) -> Value {
         json!({"id": id, "rev": rev, "fields": {"System.WorkItemType": kind, "System.State": state,
             "System.Title": format!("Item {id}"), "System.IterationPath": "Fabrikam\\Sprint 12"}})
+    }
+
+    fn child(id: i64, state: &str, rev: i64, parent: i64) -> Value {
+        let mut task = item(id, "Task", state, rev);
+        task["fields"]["System.Parent"] = json!(parent);
+        task
     }
 
     /// The reads before the first move: the sprints (once for each sprint named), the sprint's items
@@ -154,9 +211,9 @@ mod tests {
             relations(&[(1, None), (2, Some(1)), (3, None), (4, Some(3)), (5, None)]),
             batch(vec![
                 item(1, "User Story", "Active", 4),
-                item(2, "Task", "New", 2),
+                child(2, "New", 2, 1),
                 item(3, "User Story", "Closed", 9),
-                item(4, "Task", "Active", 3),
+                child(4, "Active", 3, 3),
                 item(5, "Task", "Active", 7),
             ]),
             states(),
@@ -221,11 +278,15 @@ mod tests {
                 ],
                 "skipped": [
                     {"id": 2, "reason": "it changed since it was read"},
-                    {"id": 4, "reason": "its parent 3 is done"}
+                    {"id": 4, "reason": "its parent 3 is Closed"}
                 ]
             })
         );
         assert_eq!(transport.remaining(), 0);
+        assert_eq!(
+            outcome.stderr,
+            "[next: agent-cli ado sprint complete 'Fabrikam\\Sprint 12' --move-to 'Fabrikam\\Sprint 13' --yes]\n"
+        );
 
         let (outcome, transport) = ado(&["ado", "sprint", "complete", "@current"], vec![]);
         assert_eq!(outcome.code, 2, "a bulk move needs --yes: {outcome:?}");
@@ -249,5 +310,91 @@ mod tests {
             "{}",
             outcome.stderr
         );
+    }
+
+    /// The fake, but the second PATCH outlives the deadline.
+    struct Late(FakeTransport);
+
+    impl agent_cli_core::Transport for Late {
+        fn send(
+            &self,
+            request: &agent_cli_core::Request<'_>,
+            authorization: Option<&agent_cli_core::Secret>,
+            timeout: std::time::Duration,
+        ) -> anyhow::Result<agent_cli_core::Response> {
+            let patches = self
+                .0
+                .sent()
+                .iter()
+                .filter(|sent| sent.method == Method::Patch)
+                .count();
+            if request.method == Method::Patch && patches == 1 {
+                return Err(Failure::timed_out("PATCH did not answer before the deadline").into());
+            }
+            self.0.send(request, authorization, timeout)
+        }
+    }
+
+    #[test]
+    fn the_deadline_stops_the_moves_and_exits_124_with_what_moved() {
+        let mut answers = reads();
+        answers.push(Answer::json(&item(1, "User Story", "Active", 5)));
+        let fake = FakeTransport::answering(answers);
+        let setup = Setup::fake(Late(fake.clone())).with_config(crate::testing::CONFIG);
+        let argv = ["ado", "sprint", "complete", "@current", "--yes"];
+        let outcome = agent_cli_core::testing::run(&[crate::DOMAIN], &argv, setup);
+        assert_eq!(outcome.code, 124, "{outcome:?}");
+        assert_eq!(
+            outcome.json()["moved"],
+            json!([{"id": 1, "type": "User Story", "title": "Item 1", "state": "Active"}])
+        );
+        assert!(
+            outcome.stderr.contains("the deadline came while moving 2, which may or may not have moved; the items after it were not tried"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(
+            outcome.stderr.contains("hint: agent-cli ado sprint complete 'Fabrikam\\Sprint 12' --move-to 'Fabrikam\\Sprint 13' --yes"),
+            "{}",
+            outcome.stderr
+        );
+        let patches = fake
+            .sent()
+            .iter()
+            .filter(|sent| sent.method == Method::Patch)
+            .count();
+        assert_eq!(patches, 1, "item 5 was not tried");
+    }
+
+    #[test]
+    fn a_child_of_a_parent_finished_elsewhere_or_removed_is_skipped_too() {
+        // Task 6's story 7 is closed in another sprint (the list names it);
+        // task 8's story 9 was removed, which the list leaves out.
+        let mut elsewhere = item(7, "User Story", "Closed", 3);
+        elsewhere["fields"]["System.IterationPath"] = json!("Fabrikam\\Sprint 11");
+        let answers = vec![
+            sprints(),
+            sprints(),
+            relations(&[(7, None), (6, Some(7)), (8, None)]),
+            batch(vec![
+                elsewhere,
+                child(6, "New", 2, 7),
+                child(8, "New", 2, 9),
+            ]),
+            batch(vec![
+                json!({"id": 9, "fields": {"System.WorkItemType": "User Story", "System.State": "Removed"}}),
+            ]),
+            states(),
+            states(),
+            states(),
+        ];
+        let (outcome, transport) =
+            ado(&["ado", "sprint", "complete", "@current", "--yes"], answers);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json()["skipped"],
+            json!([{"id": 6, "reason": "its parent 7 is Closed"}, {"id": 8, "reason": "its parent 9 is Removed"}])
+        );
+        assert_eq!(transport.remaining(), 0, "nothing moved");
     }
 }

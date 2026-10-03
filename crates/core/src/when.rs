@@ -13,7 +13,7 @@ use std::time::Duration;
 
 use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
-use time::{Date, OffsetDateTime, UtcOffset};
+use time::{Date, OffsetDateTime, PrimitiveDateTime, UtcOffset};
 
 /// What a time flag accepts, for help and errors.
 pub(crate) const TIME_FORMS: &str = "15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339";
@@ -53,7 +53,8 @@ impl FromStr for When {
     fn from_str(raw: &str) -> Result<Self, String> {
         let raw = raw.trim();
         let wrong = || format!("expected a time: {TIME_FORMS}; not {raw:?}");
-        let ago = |text: &str| relative(text, false).map(|span| Self(now() - span));
+        let ago =
+            |text: &str| relative(text, false).and_then(|span| now().checked_sub(span).map(Self));
         if raw.eq_ignore_ascii_case("now") {
             return Ok(Self::now());
         }
@@ -65,6 +66,11 @@ impl FromStr for When {
         }
         if let Ok(instant) = OffsetDateTime::parse(raw, &Rfc3339) {
             return Ok(Self(instant.to_offset(UtcOffset::UTC)));
+        }
+        // The overview's `Now:` line, to the minute.
+        let minute = format_description!("[year]-[month]-[day]T[hour]:[minute]Z");
+        if let Ok(instant) = PrimitiveDateTime::parse(raw, minute) {
+            return Ok(Self(instant.assume_utc()));
         }
         Date::parse(raw, format_description!("[year]-[month]-[day]"))
             .map(|day| Self(day.midnight().assume_utc()))
@@ -144,6 +150,17 @@ mod tests {
 
     fn when(raw: &str) -> OffsetDateTime {
         raw.parse::<When>().unwrap().0
+    }
+
+    #[test]
+    fn the_overviews_minute_and_an_absurd_span_parse_or_refuse_without_a_panic() {
+        assert_eq!(
+            when("2026-10-02T20:43Z"),
+            OffsetDateTime::parse("2026-10-02T20:43:00Z", &Rfc3339).unwrap()
+        );
+        for raw in ["10000000d", "now-9999999999999w"] {
+            assert!(raw.parse::<When>().is_err(), "{raw}");
+        }
     }
 
     #[test]

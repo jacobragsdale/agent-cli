@@ -77,9 +77,14 @@ fn cache_key(ado: &Ado, what: &str, kind: &str) -> String {
 
 /// The type's states in workflow order.
 pub(crate) fn states(ctx: &Ctx, ado: &Ado, kind: &str) -> Result<Vec<State>> {
+    Ok(read_states(ctx, ado, kind, false)?.0)
+}
+
+/// The states, and whether they came from the cache (`fresh` skips it).
+fn read_states(ctx: &Ctx, ado: &Ado, kind: &str, fresh: bool) -> Result<(Vec<State>, bool)> {
     let key = cache_key(ado, "states", kind);
-    if let Some(states) = ctx.cache().get(&key) {
-        return Ok(states);
+    if !fresh && let Some(states) = ctx.cache().get(&key) {
+        return Ok((states, true));
     }
     let answer = read_type(ctx, ado, kind, "/states", "")?;
     let states: Vec<State> = list(&answer["value"])
@@ -92,13 +97,21 @@ pub(crate) fn states(ctx: &Ctx, ado: &Ado, kind: &str) -> Result<Vec<State>> {
         })
         .collect();
     ctx.cache().put(&key, &states, CACHE_TTL);
-    Ok(states)
+    Ok((states, false))
 }
 
 /// Whether `state` is finished work for `kind`: its category is Completed or
 /// Removed.
 pub(crate) fn done(ctx: &Ctx, ado: &Ado, kind: &str, state: &str) -> Result<bool> {
-    let states = states(ctx, ado, kind)?;
+    let (mut states, cached) = read_states(ctx, ado, kind, false)?;
+    // A state the cached list lacks may be newer than the cache: read again.
+    if cached
+        && !states
+            .iter()
+            .any(|s| s.name.eq_ignore_ascii_case(state.trim()))
+    {
+        states = read_states(ctx, ado, kind, true)?.0;
+    }
     let Some(found) = states
         .iter()
         .find(|s| s.name.eq_ignore_ascii_case(state.trim()))
@@ -120,9 +133,33 @@ pub(crate) fn done(ctx: &Ctx, ado: &Ado, kind: &str, state: &str) -> Result<bool
 /// The type's fields with their rules, and each field's data type from the
 /// project's field list (the type's own list does not say it).
 pub(crate) fn fields(ctx: &Ctx, ado: &Ado, kind: &str) -> Result<Vec<Field>> {
+    Ok(read_fields(ctx, ado, kind, false)?.0)
+}
+
+/// The type's fields, read again when the cached list lacks one of `names`
+/// (by reference or display name): it may be newer than the cache.
+pub(crate) fn fields_naming(
+    ctx: &Ctx,
+    ado: &Ado,
+    kind: &str,
+    names: &[&str],
+) -> Result<Vec<Field>> {
+    let (fields, cached) = read_fields(ctx, ado, kind, false)?;
+    let named = |name: &&str| {
+        (fields.iter())
+            .any(|f| f.reference.eq_ignore_ascii_case(name) || f.name.eq_ignore_ascii_case(name))
+    };
+    if cached && !names.iter().all(named) {
+        return Ok(read_fields(ctx, ado, kind, true)?.0);
+    }
+    Ok(fields)
+}
+
+/// The fields, and whether they came from the cache (`fresh` skips it).
+fn read_fields(ctx: &Ctx, ado: &Ado, kind: &str, fresh: bool) -> Result<(Vec<Field>, bool)> {
     let key = cache_key(ado, "fields", kind);
-    if let Some(fields) = ctx.cache().get(&key) {
-        return Ok(fields);
+    if !fresh && let Some(fields) = ctx.cache().get(&key) {
+        return Ok((fields, true));
     }
     let answer = read_type(ctx, ado, kind, "/fields", "$expand=allowedValues")?;
     let project = ado.get(ctx, &ado.work("wit/fields", ""))?;
@@ -151,7 +188,7 @@ pub(crate) fn fields(ctx: &Ctx, ado: &Ado, kind: &str) -> Result<Vec<Field>> {
         })
         .collect();
     ctx.cache().put(&key, &fields, CACHE_TTL);
-    Ok(fields)
+    Ok((fields, false))
 }
 
 /// A value as text: allowed values and defaults come as strings or numbers.
@@ -173,14 +210,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn done_goes_by_category_and_the_states_are_read_once_a_day() {
+    fn done_goes_by_category_and_the_states_are_read_once_a_day_or_on_a_miss() {
         let dir = tempfile::tempdir().unwrap();
-        let transport = FakeTransport::answering([Answer::json(&json!({"count": 4, "value": [
-            {"name": "New", "color": "b2b2b2", "category": "Proposed"},
-            {"name": "Active", "color": "007acc", "category": "InProgress"},
-            {"name": "Shipped", "color": "339933", "category": "Completed"},
-            {"name": "Cut", "color": "ffffff", "category": "Removed"}
-        ]}))]);
+        let mut states = vec![
+            json!({"name": "New", "color": "b2b2b2", "category": "Proposed"}),
+            json!({"name": "Active", "color": "007acc", "category": "InProgress"}),
+            json!({"name": "Shipped", "color": "339933", "category": "Completed"}),
+            json!({"name": "Cut", "color": "ffffff", "category": "Removed"}),
+        ];
+        let before = Answer::json(&json!({"value": states}));
+        states.push(json!({"name": "Closed", "category": "Completed"}));
+        let after = Answer::json(&json!({"value": states}));
+        let transport = FakeTransport::answering([before, after.clone(), after]);
         let setup = Setup {
             cache_dir: Some(dir.path().to_owned()),
             ..Setup::fake(transport.clone())
@@ -191,17 +232,55 @@ mod tests {
         let done = |state: &str| done(&ctx, &ado, "User Story", state).unwrap();
         assert!(done("Shipped") && done("cut"));
         assert!(!done("New") && !done("Active"));
-        let error = super::done(&ctx, &ado, "User Story", "Closed").unwrap_err();
+        assert_eq!(transport.sent().len(), 1);
+        // A state added since the list was cached is read again, not refused.
+        assert!(done("Closed"));
+        let error = super::done(&ctx, &ado, "User Story", "Nope").unwrap_err();
         let failure = error.downcast_ref::<Failure>().unwrap();
         assert_eq!(failure.exit, Exit::Usage);
         assert_eq!(
             failure.hint.as_deref(),
             Some("agent-cli ado workitem-type get \"User Story\"")
         );
-        assert_eq!(transport.sent().len(), 1);
+        assert_eq!(transport.sent().len(), 3);
         assert_eq!(
             transport.sent()[0].url,
             "https://dev.azure.com/contoso/Fabrikam/_apis/wit/workitemtypes/User%20Story/states?api-version=7.1"
         );
+    }
+
+    #[test]
+    fn a_field_the_cached_list_lacks_reads_the_fields_again() {
+        let dir = tempfile::tempdir().unwrap();
+        let types = || {
+            crate::testing::page(vec![
+                json!({"referenceName": "System.Title", "type": "string"}),
+            ])
+        };
+        let title = json!({"name": "Title", "referenceName": "System.Title"});
+        let effort = json!({"name": "Effort", "referenceName": "Microsoft.VSTS.Scheduling.Effort"});
+        let transport = FakeTransport::answering([
+            crate::testing::page(vec![title.clone()]),
+            types(),
+            crate::testing::page(vec![title, effort]),
+            types(),
+        ]);
+        let ctx = ctx(Setup {
+            cache_dir: Some(dir.path().to_owned()),
+            ..Setup::fake(transport.clone())
+        });
+        let config = "[ado]\norg = \"contoso\"\nproject = \"Fabrikam\"\n";
+        let ado = Ado::names(&Config::parse("c.toml", Some(config), Vec::new())).unwrap();
+        let names = |names: &[&str]| -> Vec<String> {
+            let fields = fields_naming(&ctx, &ado, "Task", names).unwrap();
+            fields.into_iter().map(|field| field.name).collect()
+        };
+        // Read fresh, the list is what the type has: no second read.
+        assert_eq!(names(&["Effort"]), ["Title"]);
+        assert_eq!(transport.sent().len(), 2);
+        assert_eq!(names(&["title"]), ["Title"]);
+        assert_eq!(transport.sent().len(), 2);
+        assert_eq!(names(&["effort"]), ["Title", "Effort"]);
+        assert_eq!(transport.sent().len(), 4);
     }
 }

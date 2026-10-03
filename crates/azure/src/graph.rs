@@ -82,8 +82,28 @@ pub fn inventory(ctx: &Ctx, azure: &Azure) -> Result<Inventory> {
         return Ok(held);
     }
     let read = query(ctx, azure).map_err(explain)?;
+    // A login with no subscription (a tenant-level one) gets an empty answer,
+    // not a refusal: say so rather than report an empty Azure.
+    let empty = read.vaults.is_empty() && read.registries.is_empty() && read.clusters.is_empty();
+    // The check is advice: if it cannot be made, the empty answer stands.
+    if empty && azure.subscriptions.is_empty() && no_subscriptions(ctx).unwrap_or(false) {
+        return Err(Failure::setup("the login can see no Azure subscriptions")
+            .hint(
+                "az account list shows what it sees; az login to an account or tenant that has one",
+            )
+            .into());
+    }
     ctx.cache().put(&key, &read, azure.refresh());
     Ok(read)
+}
+
+/// Whether the login sees no subscription at all (ARM `GET /subscriptions`).
+fn no_subscriptions(ctx: &Ctx) -> Result<bool> {
+    let url = "https://management.azure.com/subscriptions?api-version=2022-12-01";
+    let answer = ctx
+        .read(Request::get(url).auth(&bearer(ctx, ARM)))?
+        .json()?;
+    Ok(answer["value"].as_array().is_none_or(Vec::is_empty))
 }
 
 fn query(ctx: &Ctx, azure: &Azure) -> Result<Inventory> {
@@ -269,7 +289,25 @@ mod tests {
         let page = Answer::json(&json!({"data": [], "$skipToken": "same"}));
         let (inventory, transport) = read(vec![page.clone(), page], "");
         inventory.unwrap();
-        assert_eq!(transport.sent().len(), 2);
+        // Two pages, then the check an empty answer makes for subscriptions.
+        assert_eq!(transport.sent().len(), 3);
+        assert!(transport.sent()[2].url.contains("/subscriptions?"));
+    }
+
+    #[test]
+    fn a_login_that_sees_no_subscription_is_told_so_not_handed_an_empty_azure() {
+        let none = Answer::json(&json!({"value": []}));
+        let (inventory, _) = read(vec![testing::inventory(vec![]), none], "");
+        let error = inventory.unwrap_err();
+        assert!(format!("{error:#}").contains("the login can see no Azure subscriptions"));
+        let some = Answer::json(
+            &json!({"value": [{"subscriptionId": "00000000-0000-0000-0000-000000000001"}]}),
+        );
+        let (inventory, _) = read(vec![testing::inventory(vec![]), some], "");
+        assert!(
+            inventory.unwrap().vaults.is_empty(),
+            "one with subscriptions and no vaults is empty"
+        );
     }
 
     #[test]

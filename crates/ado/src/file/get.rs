@@ -100,8 +100,11 @@ fn file_one(ctx: &Ctx, ado: &Ado, args: &FileGetArgs, file: &str) -> Result<File
     let total = lines.len();
     let (first, last) = match id.lines {
         None => (1, total.min(MAX_LINES)),
-        Some((line, same)) if line == same => (line.saturating_sub(AROUND).max(1), line + AROUND),
-        Some((first, last)) => (first, last.min(first + MAX_LINES - 1)),
+        Some((line, same)) if line == same => (
+            line.saturating_sub(AROUND).max(1),
+            line.saturating_add(AROUND),
+        ),
+        Some((first, last)) => (first, last.min(first.saturating_add(MAX_LINES - 1))),
     };
     if first > total.max(1) {
         return Err(Failure::usage(format!(
@@ -150,7 +153,7 @@ mod tests {
     fn file(lines: usize) -> Answer {
         let content: Vec<String> = (1..=lines).map(|n| format!("line {n}")).collect();
         Answer::json(
-            &json!({"path": "/src/x.cs", "commitId": "c0ffee1", "content": content.join("\n")}),
+            &json!({"path": "/src/x.cs", "commitId": "c0ffee1c0ffee1c0ffee1c0ffee1c0ffee1c0ffe", "content": content.join("\n")}),
         )
     }
 
@@ -164,7 +167,7 @@ mod tests {
         let got = outcome.json();
         assert_eq!(got["id"], "web@main:src/x.cs:22-62");
         assert_eq!(got["ref"], "main");
-        assert_eq!(got["commit"], "c0ffee1");
+        assert_eq!(got["commit"], "c0ffee1c0ffee1c0ffee1c0ffee1c0ffee1c0ffe");
         assert_eq!(got["lines"], "22-62");
         assert_eq!(got["total"], 100);
         let text = got["text"].as_str().unwrap();
@@ -220,10 +223,13 @@ mod tests {
 
     #[test]
     fn a_web_url_reads_like_the_id_and_a_disagreeing_flag_is_exit_2() {
-        let url = "https://dev.azure.com/contoso/Fabrikam/_git/web?path=/src/x.cs&version=GCc0ffee1&line=3&lineEnd=4";
+        let url = "https://dev.azure.com/contoso/Fabrikam/_git/web?path=/src/x.cs&version=GCc0ffee1c0ffee1c0ffee1c0ffee1c0ffee1c0ffe&line=3&lineEnd=4";
         let (outcome, transport) = ado(&["ado", "file", "get", url], vec![file(5)]);
         assert_eq!(outcome.code, 0, "{outcome:?}");
-        assert_eq!(outcome.json()["id"], "web@c0ffee1:src/x.cs:3-4");
+        assert_eq!(
+            outcome.json()["id"],
+            "web@c0ffee1c0ffee1c0ffee1c0ffee1c0ffee1c0ffe:src/x.cs:3-4"
+        );
         assert!(urls(&transport)[0].contains("versionDescriptor.versionType=commit"));
 
         let (outcome, transport) = ado(
@@ -276,11 +282,19 @@ mod tests {
             ])
         };
         let (outcome, transport) = ado(
-            &["ado", "file", "get", "Fabrikam/web@c0ffee1:/app/src/x.cs:2"],
+            &[
+                "ado",
+                "file",
+                "get",
+                "Fabrikam/web@c0ffee1c0ffee1c0ffee1c0ffee1c0ffee1c0ffe:/app/src/x.cs:2",
+            ],
             vec![missing(), tree(), file(3)],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
-        assert_eq!(outcome.json()["id"], "web@c0ffee1:src/x.cs");
+        assert_eq!(
+            outcome.json()["id"],
+            "web@c0ffee1c0ffee1c0ffee1c0ffee1c0ffee1c0ffe:src/x.cs"
+        );
         assert!(
             outcome.stderr.contains("[app/src/x.cs is src/x.cs]"),
             "{}",
@@ -289,12 +303,17 @@ mod tests {
         assert_eq!(
             urls(&transport)[1],
             format!(
-                "{CODE}/git/repositories/web/items?scopePath=%2F&versionDescriptor.version=c0ffee1&versionDescriptor.versionType=commit&recursionLevel=Full&api-version=7.1"
+                "{CODE}/git/repositories/web/items?scopePath=%2F&versionDescriptor.version=c0ffee1c0ffee1c0ffee1c0ffee1c0ffee1c0ffe&versionDescriptor.versionType=commit&recursionLevel=Full&api-version=7.1"
             )
         );
 
         let (outcome, _) = ado(
-            &["ado", "file", "get", "web@c0ffee1:/app/x.cs"],
+            &[
+                "ado",
+                "file",
+                "get",
+                "web@c0ffee1c0ffee1c0ffee1c0ffee1c0ffee1c0ffe:/app/x.cs",
+            ],
             vec![missing(), tree()],
         );
         assert_eq!(outcome.code, 4, "two files end in x.cs: {outcome:?}");
@@ -328,5 +347,22 @@ mod tests {
             "{}",
             outcome.stderr
         );
+    }
+
+    #[test]
+    fn a_file_past_the_5_mib_azure_devops_puts_in_json_is_read_whole() {
+        let line = "x".repeat(99) + "\n";
+        let cut = line.repeat(5 * 1024 * 1024 / 100 + 1)[..5 * 1024 * 1024].to_owned();
+        let whole = line.repeat(60_000);
+        let (outcome, transport) = ado(
+            &["ado", "file", "get", "web:big.txt:59999-60000"],
+            vec![
+                Answer::json(&json!({"path": "/big.txt", "content": cut})),
+                Answer::ok(whole),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()["total"], 60_000);
+        assert!(urls(&transport)[1].contains("$format=octetStream"));
     }
 }

@@ -161,7 +161,7 @@ fn thread_list(ctx: &Ctx, args: ThreadListArgs) -> Result<Vec<ThreadRow>> {
                 Entry::Vacant(_) if !cut => {
                     cut = true;
                     ctx.note(format!(
-                        "[code for the first {FILES} files; agent-cli ado file get AT for the rest]"
+                        "[code for the first {FILES} files; the rest: agent-cli ado file get AT]"
                     ));
                 }
                 _ => {}

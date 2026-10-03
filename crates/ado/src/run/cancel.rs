@@ -1,4 +1,4 @@
-use agent_cli_core::{Ctx, Effect, Method, command};
+use agent_cli_core::{Ctx, Effect, Failure, Method, command};
 use anyhow::Result;
 use serde_json::json;
 
@@ -17,7 +17,18 @@ fn run_cancel(ctx: &Ctx, args: RunIdArgs) -> Result<RunRow> {
         &build_url(&ado, id),
         body,
     )?;
-    Ok(run_row(&run))
+    let run = run_row(&run);
+    // Azure DevOps answers a finished run as it is, with a 200.
+    if run.status.as_deref() == Some("completed") {
+        return Err(Failure::conflict(format!(
+            "run {id} had already finished {}; nothing was canceled",
+            run.result.as_deref().unwrap_or("without a result")
+        ))
+        .hint(format!("agent-cli ado run get {id}"))
+        .with_data(run)
+        .into());
+    }
+    Ok(run)
 }
 
 command! {

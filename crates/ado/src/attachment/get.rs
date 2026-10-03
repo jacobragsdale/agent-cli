@@ -37,9 +37,9 @@ fn attachment_get(ctx: &Ctx, args: AttachmentGetArgs) -> Result<AttachmentFile> 
     // Content-Disposition says just `attachment`.
     let (id, name) = parse(&ado, &args.attachment)?;
     let url = ado.api(None, &format!("wit/attachments/{id}"), "", API);
-    // The bytes come back whatever Accept asks for. ponytail: core reads at
-    // most 32 MiB of an answer and Azure DevOps keeps up to 60 MB; stream
-    // the answer to --output when a larger one matters.
+    // The bytes come back whatever Accept asks for. ponytail: the whole
+    // file is held in memory (core reads up to 64 MiB, above Azure DevOps's
+    // 60 MB); stream it to --output if memory matters.
     let bytes = ado
         .send(ctx, Method::Get, &url, Body::None, None)?
         .into_bytes();

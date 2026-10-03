@@ -180,7 +180,7 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{ado_piped, dry_run, page, pr, repos};
+    use crate::testing::{ado_piped, dry_run, page, pr, repo};
 
     #[test]
     fn a_description_or_comment_comes_piped_with_a_dash_or_from_a_file() {
@@ -202,7 +202,7 @@ mod tests {
                 "--description-file",
                 why,
             ],
-            vec![repos(), page(vec![])],
+            vec![repo(), page(vec![])],
         );
         assert_eq!(
             plans[0]["body"]["description"],

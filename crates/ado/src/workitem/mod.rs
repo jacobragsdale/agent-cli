@@ -144,17 +144,35 @@ fn field_ops(
         });
     }
     if let Some(iteration) = &fields.iteration {
+        if iteration.trim().is_empty() {
+            return Err(
+                Failure::usage("--iteration needs a sprint: a name, a path or @current")
+                    .hint("agent-cli ado sprint list --fields id,timeframe")
+                    .into(),
+            );
+        }
         let path = crate::iteration::path(ctx, ado, fields.team.as_deref(), iteration)?;
         ops.push(set("System.IterationPath", path));
     }
     if let Some(area) = &fields.area {
+        if area.trim().is_empty() {
+            return Err(
+                Failure::usage("--area needs an area path; a work item always has one").into(),
+            );
+        }
         ops.push(set("System.AreaPath", area.trim()));
     }
     if let Some(priority) = fields.priority {
         ops.push(set("Microsoft.VSTS.Common.Priority", priority));
     }
     if let Some(tags) = &fields.tags {
-        ops.push(set("System.Tags", tag_list(tags)));
+        let tags = tag_list(tags);
+        // As for the assignee, none is written by removing the field.
+        ops.push(if tags.is_empty() {
+            json!({"op": "remove", "path": "/fields/System.Tags"})
+        } else {
+            set("System.Tags", tags)
+        });
     }
     let mut long = vec![
         (
@@ -220,7 +238,10 @@ fn custom_ops(
     pairs: &[String],
     typed: &[Value],
 ) -> Result<Vec<Value>> {
-    let fields = types::fields(ctx, ado, kind)?;
+    let names: Vec<&str> = (pairs.iter())
+        .filter_map(|pair| Some(pair.split_once('=')?.0.trim()))
+        .collect();
+    let fields = types::fields_naming(ctx, ado, kind, &names)?;
     let mut ops: Vec<Value> = Vec::new();
     for pair in pairs {
         let Some((name, value)) = pair.split_once('=') else {

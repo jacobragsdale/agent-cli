@@ -176,7 +176,7 @@ fn diff_get(ctx: &Ctx, args: DiffGetArgs) -> Result<Vec<FileDiff>> {
                     shown += hunk.text.lines().count();
                     if shown > MAX_LINES {
                         ctx.note(format!(
-                            "[{path}: the first {} of {} hunks; agent-cli ado file get {} for the file]",
+                            "[{path}: the first {} of {} hunks; the file: agent-cli ado file get {}]",
                             row.hunks.len(),
                             lines.hunks.len(),
                             row.at
@@ -210,17 +210,38 @@ fn commits(
     base: &(&str, String),
     head: &(&str, String),
 ) -> Result<Value> {
-    // ponytail: one page of up to 1000 changes; allChangesIncluded says
-    // when there were more, and paging with $skip is unconfirmed.
-    let query = format!(
-        "baseVersion={}&baseVersionType={}&targetVersion={}&targetVersionType={}&diffCommonCommit=false&$top=1000",
-        query_value(&base.1),
-        base.0,
-        query_value(&head.1),
-        head.0
-    );
+    // A page holds at most 1000 changes, and a full page may not say there
+    // are more (allChangesIncluded is left out), so pages are read until one
+    // comes back short.
+    const PAGE: usize = 1000;
+    // ponytail: at most 50 pages (50,000 changes); the note says so past it.
+    const PAGES: usize = 50;
     let path = format!("git/repositories/{}/diffs/commits", segment(repo));
-    ado.get(ctx, &ado.api(Some(project), &path, &query, API))
+    let mut first: Option<Value> = None;
+    let mut changes: Vec<Value> = Vec::new();
+    for _ in 0..PAGES {
+        let query = format!(
+            "baseVersion={}&baseVersionType={}&targetVersion={}&targetVersionType={}&diffCommonCommit=false&$top={PAGE}&$skip={}",
+            query_value(&base.1),
+            base.0,
+            query_value(&head.1),
+            head.0,
+            changes.len()
+        );
+        let page = ado.get(ctx, &ado.api(Some(project), &path, &query, API))?;
+        let got = list(&page["changes"]).to_vec();
+        let full = got.len() == PAGE;
+        changes.extend(got);
+        let answer = first.get_or_insert(page);
+        if !full {
+            answer["allChangesIncluded"] = Value::Bool(true);
+            break;
+        }
+        answer["allChangesIncluded"] = Value::Bool(false);
+    }
+    let mut answer = first.unwrap_or_default();
+    answer["changes"] = Value::Array(changes);
+    Ok(answer)
 }
 
 command! {
@@ -288,7 +309,7 @@ mod tests {
         assert_eq!(
             sent[2],
             format!(
-                "{CODE}/git/repositories/web/diffs/commits?baseVersion=base3&baseVersionType=commit&targetVersion=head3&targetVersionType=commit&diffCommonCommit=false&$top=1000&api-version=7.1"
+                "{CODE}/git/repositories/web/diffs/commits?baseVersion=base3&baseVersionType=commit&targetVersion=head3&targetVersionType=commit&diffCommonCommit=false&$top=1000&$skip=0&api-version=7.1"
             )
         );
         assert!(sent[3].contains("path=%2Fsrc%2Fx.cs&versionDescriptor.version=base3&versionDescriptor.versionType=commit"));

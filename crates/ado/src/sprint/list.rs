@@ -20,15 +20,21 @@ fn sprint_list(ctx: &Ctx, args: SprintListArgs) -> Result<Vec<SprintRow>> {
     let ado = Ado::load(ctx)?;
     let team = team(&ado, args.team.as_deref())?;
     let mut sprints = iterations(ctx, &ado, team)?;
-    // The oldest are the ones to drop: an agent asks about this sprint and
-    // the next, not last year's.
+    // The undated and then the oldest are the ones to drop: an agent asks
+    // about this sprint and the next, not last year's.
     if sprints.len() > args.limit {
         ctx.note(format!(
             "[the latest {} of {}; --limit N for more]",
             args.limit,
             sprints.len()
         ));
-        sprints.drain(..sprints.len() - args.limit);
+        let mut drop = sprints.len() - args.limit;
+        sprints.retain(|sprint| {
+            let keep = drop == 0 || sprint.start.is_some();
+            drop -= usize::from(!keep);
+            keep
+        });
+        sprints.drain(..drop);
     }
     Ok(sprints.into_iter().map(SprintRow::from).collect())
 }
@@ -43,6 +49,7 @@ command! {
 
 #[cfg(test)]
 mod tests {
+    use agent_cli_core::testing::Answer;
     use serde_json::json;
 
     use crate::sprint::tests::sprints;
@@ -68,5 +75,26 @@ mod tests {
                 "{BASE}/Fabrikam/Web%20Team/_apis/work/teamsettings/iterations?api-version=7.1"
             )]
         );
+    }
+
+    #[test]
+    fn an_undated_iteration_is_dropped_before_the_current_sprint() {
+        let dated = |n: u32, start: &str, timeframe: &str| {
+            json!({"id": format!("i-{n}"), "name": format!("Sprint {n}"),
+                "path": format!("Fabrikam\\Sprint {n}"),
+                "attributes": {"startDate": format!("{start}T00:00:00Z"), "timeFrame": timeframe}})
+        };
+        let answer = Answer::json(&json!({"value": [
+            dated(11, "2026-09-08", "past"),
+            dated(12, "2026-09-22", "current"),
+            {"id": "i-x", "name": "Someday", "path": "Fabrikam\\Someday",
+                "attributes": {"timeFrame": "future"}},
+        ]}));
+        let (outcome, _) = ado(
+            &["ado", "sprint", "list", "--limit", "1", "--fields", "name"],
+            vec![answer],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json(), json!([{"name": "Sprint 12"}]));
     }
 }

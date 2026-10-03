@@ -141,7 +141,7 @@ impl At {
         let scopes = scopes(ctx.config())?;
         if scopes.is_empty() {
             return Err(Failure::setup(format!("no [[k8s.scope]] in {}", ctx.config().path().display()))
-                .hint("agent-cli aks cluster connect NAME prints one to paste; config.example.toml shows the keys")
+                .hint("agent-cli aks cluster connect NAME  (it prints one to paste; config.example.toml shows the keys)")
                 .into());
         }
         // A kube context names its scope too: an AKS cluster's is its name,
@@ -279,7 +279,18 @@ pub(crate) fn finished(output: Output) -> Result<String> {
     let message = kubectl_error(&output.stderr);
     let lower = message.to_ascii_lowercase();
     let failure = if message.contains("(NotFound)") || lower.ends_with(" not found") {
-        Failure::not_found(message)
+        // `pods "x" not found`, `deployments.apps "x" not found`: the listing
+        // that shows what is there.
+        let listed = ["pod", "deployment", "configmap", "secret"]
+            .into_iter()
+            .find(|kind| {
+                message.contains(&format!("{kind}s \""))
+                    || message.contains(&format!("{kind}s.apps \""))
+            });
+        match listed {
+            Some(kind) => Failure::not_found(message).hint(format!("agent-cli k8s {kind} list")),
+            None => Failure::not_found(message),
+        }
     } else if message.contains("context \"") && message.contains("does not exist") {
         Failure::setup(message).hint(
             "the kubeconfig has no such context: agent-cli aks cluster connect NAME, or fix [[k8s.scope]] context",
@@ -289,6 +300,9 @@ pub(crate) fn finished(output: Output) -> Result<String> {
         || lower.contains("unauthorized")
     {
         Failure::setup(message).hint("az login, then kubelogin convert-kubeconfig -l azurecli")
+    } else if lower.contains("unable to connect to the server") {
+        Failure::new(Exit::Failed, message)
+            .hint("agent-cli doctor k8s  (the cluster's API server did not answer)")
     } else if lower.contains("must be specified") || lower.contains("unknown flag") {
         Failure::usage(message)
     } else {

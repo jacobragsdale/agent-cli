@@ -6,7 +6,7 @@ use serde_json::json;
 
 use crate::client::{Ado, Kind};
 
-use super::{fetch_pr, pr_home, vote_word};
+use super::{active_pr, vote_word};
 
 #[derive(Clone, Copy, clap::ValueEnum)]
 enum Vote {
@@ -43,8 +43,8 @@ fn pr_vote(ctx: &Ctx, args: VoteArgs) -> Result<Voted> {
         Vote::Reject => -10,
         Vote::None => 0,
     };
-    let pr = fetch_pr(ctx, &ado, id)?;
-    let (repo_id, _) = pr_home(&pr)?;
+    // Azure DevOps refuses an edit to a closed pull request (TF401181).
+    let (_, repo_id) = active_pr(ctx, &ado, id)?;
     let me = ado.me(ctx)?;
     // Voting on a pull request you do not review adds you as a reviewer.
     let url = ado.code(
@@ -107,5 +107,26 @@ mod tests {
         assert_eq!(outcome.json(), json!({"id": 17, "vote": "approved"}));
         let (outcome, _) = ado(&["ado", "pr", "vote", "17", "lgtm"], vec![]);
         assert_eq!(outcome.code, 2, "{outcome:?}");
+    }
+
+    #[test]
+    fn a_closed_pull_request_takes_no_vote_or_update() {
+        let mut closed = pr(17, false);
+        closed["status"] = json!("abandoned");
+        for argv in [
+            &["ado", "pr", "vote", "17", "approve"][..],
+            &["ado", "pr", "update", "17", "--title", "New"][..],
+        ] {
+            let (outcome, transport) = ado(argv, vec![Answer::json(&closed)]);
+            assert_eq!(outcome.code, 5, "{outcome:?}");
+            assert!(
+                outcome
+                    .stderr
+                    .contains("pull request 17 is already abandoned"),
+                "{}",
+                outcome.stderr
+            );
+            assert!(transport.sent().iter().all(|sent| sent.method.is_read()));
+        }
     }
 }

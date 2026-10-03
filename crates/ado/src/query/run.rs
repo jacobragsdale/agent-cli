@@ -36,13 +36,22 @@ fn query_run(ctx: &Ctx, args: QueryRunArgs) -> Result<Vec<QueryResultRow>> {
     let ado = Ado::load(ctx)?;
     let id = resolve(ctx, &ado, &args.query)?;
     let path = format!("wit/wiql/{id}");
-    let top = format!("$top={}", args.limit + 1);
+    let top = format!("$top={}", args.limit.saturating_add(1));
     // A team's query can say @CurrentIteration, which only a team answers.
     let url = match ado.teams.as_slice() {
         [team] => ado.team(team, &path, &top),
         _ => ado.work(&path, &top),
     };
-    let answer = ado.get(ctx, &url)?;
+    let answer = ado
+        .get(ctx, &url)
+        .map_err(|error| match error.downcast::<Failure>() {
+            // TF401243: a query deleted since its id was printed.
+            Ok(failure) if failure.status == Some(404) => failure
+                .hint("agent-cli ado query list --fields id,path")
+                .into(),
+            Ok(failure) => failure.into(),
+            Err(error) => error,
+        })?;
     // (work item, the one it hangs off): a link query answers links, whose
     // roots have no source; a flat one answers work items.
     let mut found: Vec<(i64, Option<i64>)> = if answer["workItemRelations"].is_array() {
@@ -281,5 +290,22 @@ mod tests {
 
         let (outcome, _) = ado(&["ado", "query", "run", "Nightly"], vec![tree(), folder()]);
         assert_eq!(outcome.code, 4, "{outcome:?}");
+    }
+
+    #[test]
+    fn a_query_deleted_since_its_id_was_printed_is_exit_4_with_the_list() {
+        let gone = Answer::status(
+            404,
+            r#"{"message":"TF401243: The query does not exist, or you do not have permission to read it."}"#,
+        );
+        let (outcome, _) = ado(&["ado", "query", "run", STORIES], vec![gone]);
+        assert_eq!(outcome.code, 4, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("hint: agent-cli ado query list --fields id,path"),
+            "{}",
+            outcome.stderr
+        );
     }
 }

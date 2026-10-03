@@ -1,4 +1,4 @@
-use agent_cli_core::{Ctx, Effect, Failure, Method, command};
+use agent_cli_core::{Ctx, Effect, Exit, Failure, Method, command};
 use anyhow::Result;
 use serde_json::{Value, json};
 
@@ -49,13 +49,37 @@ fn workitem_update(ctx: &Ctx, args: UpdateArgs) -> Result<WorkItemRow> {
             ))
             .into());
     }
+    // The team is checked before any write, so a wrong one changes nothing.
+    let team = match rank {
+        Some(_) => {
+            let team = crate::iteration::team(&ado, args.fields.team.as_deref())?;
+            crate::iteration::iterations(ctx, &ado, team)?;
+            Some(team)
+        }
+        None => None,
+    };
+    // A rank alone sends no fields to test the rev against: test it here.
+    if changes.is_empty()
+        && let Some(rev) = args.if_rev
+    {
+        let url = ado.api(
+            None,
+            &format!("wit/workitems/{id}"),
+            "fields=System.Rev",
+            crate::client::API,
+        );
+        let now = ado.get(ctx, &url)?["rev"].as_i64();
+        if now != Some(rev) {
+            let said = format!("it is at rev {}, not {rev}", now.unwrap_or_default());
+            return Err(moved_on(Failure::conflict(said).into(), id));
+        }
+    }
     let mut updated = None;
     if !changes.is_empty() {
         updated = Some(patch(ctx, &ado, id, args.if_rev, changes, &kind)?);
     }
     // After the fields, so a refused --if-rev leaves the rank alone.
-    if let Some(order) = rank {
-        let team = crate::iteration::team(&ado, args.fields.team.as_deref())?;
+    if let (Some(order), Some(team)) = (rank, team) {
         let url = ado.team(team, "work/workitemsorder", "");
         ado.change(ctx, Effect::Write, Method::Patch, &url, order)?;
     }
@@ -85,7 +109,17 @@ fn patch(
     let updated = ado
         .patch_work_item(ctx, Method::Patch, &url, document)
         .map_err(|error| moved_on(error, id))
-        .map_err(|error| broke_rules(error, || kind().unwrap_or_else(|_| "TYPE".to_owned())))?;
+        .map_err(|error| broke_rules(error, || kind().unwrap_or_else(|_| "TYPE".to_owned())))
+        .map_err(|error| match error.downcast::<Failure>() {
+            // Sent and unanswered: the change may be there. The item says.
+            Ok(failure) if failure.exit == Exit::TimedOut => failure
+                .hint(format!(
+                    "agent-cli ado workitem get {id} --fields rev,changed  (whether the change landed, before running it again)"
+                ))
+                .into(),
+            Ok(failure) => failure.into(),
+            Err(error) => error,
+        })?;
     Ok(row(&updated))
 }
 
@@ -231,9 +265,10 @@ mod tests {
     #[test]
     fn above_and_below_rank_it_on_the_teams_backlog_after_any_field_change() {
         let order = format!("{BASE}/Fabrikam/Web%20Team/_apis/work/workitemsorder?api-version=7.1");
+        let sprints = || Answer::json(&json!({"count": 0, "value": []}));
         let plans = dry_run(
             &["ado", "workitem", "update", "42", "--above", "#7"],
-            vec![],
+            vec![sprints()],
         );
         assert_eq!(plans[0]["method"], "PATCH");
         assert_eq!(plans[0]["url"], order);
@@ -247,6 +282,7 @@ mod tests {
                 "ado", "workitem", "update", "42", "--state", "Active", "--below", "7",
             ],
             vec![
+                sprints(),
                 Answer::json(&item(42, 8, "Crash")),
                 Answer::json(&json!({"count": 1, "value": [{"id": 42, "order": 1000102770.0}]})),
             ],
@@ -254,13 +290,17 @@ mod tests {
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(outcome.json()["rev"], 8);
         let sent = transport.sent();
+        assert!(
+            sent[0].url.contains("teamsettings/iterations"),
+            "the team is checked before any write"
+        );
         assert_eq!(
-            sent[0].url,
+            sent[1].url,
             format!("{BASE}/_apis/wit/workitems/42?api-version=7.1")
         );
-        assert_eq!(sent[1].url, order);
+        assert_eq!(sent[2].url, order);
         assert_eq!(
-            sent[1].body.as_ref().unwrap(),
+            sent[2].body.as_ref().unwrap(),
             &json!({"ids": [42], "parentId": 0, "previousId": 7})
         );
 

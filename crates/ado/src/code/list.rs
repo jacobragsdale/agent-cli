@@ -68,7 +68,7 @@ fn code_list(ctx: &Ctx, args: CodeListArgs) -> Result<Vec<CodeRow>> {
     let mut body = json!({
         "searchText": args.text,
         "$skip": 0,
-        "$top": args.limit + 1,
+        "$top": args.limit.saturating_add(1),
         "includeSnippet": true,
     });
     if !filters.is_empty() {
@@ -81,6 +81,22 @@ fn code_list(ctx: &Ctx, args: CodeListArgs) -> Result<Vec<CodeRow>> {
     let answer = ado
         .query(ctx, &url, body)
         .map_err(|error| without_code_search(&ado, error))?;
+    // Code Search that cannot search answers 200, no results and an infoCode.
+    let unready = match answer["infoCode"].as_u64() {
+        Some(1) => Some("it is reindexing the organization"),
+        Some(2) => Some("it has not started indexing"),
+        Some(6 | 7) => Some("it is onboarding the organization, or is not installed"),
+        Some(9) => Some("it is indexing the branches"),
+        _ => None,
+    };
+    if let Some(why) = unready.filter(|_| list(&answer["results"]).is_empty()) {
+        return Err(Failure::setup(format!(
+            "Code Search cannot search {} yet: {why} (infoCode {})",
+            ado.org, answer["infoCode"]
+        ))
+        .hint(NOT_INSTALLED)
+        .into());
+    }
     let mut rows: Vec<CodeRow> = list(&answer["results"])
         .iter()
         .filter_map(|result| {
@@ -133,9 +149,11 @@ fn without_code_search(ado: &Ado, error: anyhow::Error) -> anyhow::Error {
         "{error:#} (Code Search may not be installed in {})",
         ado.org
     ))
-    .hint("an organization admin installs the Code Search extension from the Marketplace; until then, agent-cli ado file list REPO --recursive")
+    .hint(NOT_INSTALLED)
     .into()
 }
+
+const NOT_INSTALLED: &str = "an organization admin installs the Code Search extension from the Marketplace; until then, agent-cli ado file list REPO --recursive";
 
 command! {
     pub CODE_LIST = ["ado", "code", "list"], Read,
@@ -216,5 +234,24 @@ mod tests {
         );
         assert_eq!(outcome.code, 3, "{outcome:?}");
         assert!(outcome.stderr.contains("Code Search"), "{}", outcome.stderr);
+    }
+
+    #[test]
+    fn a_code_search_that_cannot_search_yet_is_setup_not_an_empty_answer() {
+        let (outcome, _) = ado(
+            &["ado", "code", "list", "check_rows"],
+            vec![Answer::json(
+                &json!({"count": 0, "results": [], "infoCode": 6}),
+            )],
+        );
+        assert_eq!(outcome.code, 3, "{outcome:?}");
+        assert!(outcome.stderr.contains("infoCode 6"), "{}", outcome.stderr);
+        assert!(
+            outcome
+                .stderr
+                .contains("hint: an organization admin installs"),
+            "{}",
+            outcome.stderr
+        );
     }
 }

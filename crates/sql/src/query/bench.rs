@@ -62,6 +62,9 @@ fn query_bench(ctx: &Ctx, args: BenchArgs) -> Result<Bench> {
         .max_rows
         .map(|rows| usize::try_from(rows).unwrap_or(usize::MAX));
     let mut cut = false;
+    // A run the deadline cut off after a write: what it wrote stays.
+    let mut cut_after_write = false;
+    let writes = statements.iter().any(|statement| statement.writes);
     let op = OnConnection {
         spec,
         client_dir: sql.client_dir.as_deref(),
@@ -74,7 +77,7 @@ fn query_bench(ctx: &Ctx, args: BenchArgs) -> Result<Bench> {
             let mut rows = 0;
             'runs: for _ in 0..args.runs {
                 let started = Instant::now();
-                let (mut first, mut read) = (None, 0);
+                let (mut first, mut read, mut wrote) = (None, 0, false);
                 for statement in &statements {
                     // Nothing kept, everything read: what is timed is the
                     // server and the wire. Under --max-rows a read keeps
@@ -86,7 +89,7 @@ fn query_bench(ctx: &Ctx, args: BenchArgs) -> Result<Bench> {
                         },
                         Some(keep) => Fetch {
                             keep,
-                            stop: !statement.writes,
+                            stop: !statement.writes && !wrote,
                         },
                     };
                     match session.run(&statement.sql, fetch, deadline) {
@@ -103,9 +106,21 @@ fn query_bench(ctx: &Ctx, args: BenchArgs) -> Result<Bench> {
                             first = first.or(ran.first_row);
                             read += ran.rows;
                         }
-                        Err(error) if db::is_timeout(&error) && !total.is_empty() => break 'runs,
+                        Err(error) if db::is_timeout(&error) && !total.is_empty() => {
+                            cut_after_write = wrote;
+                            break 'runs;
+                        }
+                        Err(error) if writes && !total.is_empty() => {
+                            return Err(error.context(format!(
+                                "run {} of {} failed; the {} before it ran and stay committed",
+                                total.len() + 1,
+                                args.runs,
+                                total.len()
+                            )));
+                        }
                         Err(error) => return Err(error),
                     }
+                    wrote |= statement.writes;
                 }
                 let elapsed = started.elapsed();
                 total.push(elapsed);
@@ -121,6 +136,12 @@ fn query_bench(ctx: &Ctx, args: BenchArgs) -> Result<Bench> {
         ctx.note(format!(
             "[stopped after {runs} of {} runs at the --timeout deadline]",
             args.runs
+        ));
+    }
+    if cut_after_write {
+        ctx.note(format!(
+            "[run {} was cut off after statements that wrote, and what they did stays]",
+            runs + 1
         ));
     }
     if cut && matches!(spec.kind, Kind::Mssql) {

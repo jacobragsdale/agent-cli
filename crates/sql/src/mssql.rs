@@ -8,8 +8,9 @@
 //! Stopping at `--max-rows` drops the socket too, which ends the session:
 //! the server abandons the rest of the batch and rolls back an open
 //! transaction. So a batch that may write is read to its end instead (rows
-//! past the cap counted, not kept), and only a read is cut short. A read
-//! batch changes no session state, so the next batch simply reconnects.
+//! past the cap counted, not kept), and only a read that no write came
+//! before is cut short: nothing before it left session state to lose, so
+//! the next batch simply reconnects.
 
 use std::panic::AssertUnwindSafe;
 use std::sync::Once;
@@ -132,9 +133,15 @@ impl Session {
                 self.client = Some(driver?);
                 Ok(())
             }
-            Err(_) if limit == deadline => Err(db::timed_out()),
+            // No statement ran yet: the deadline came during the login.
+            Err(_) if limit == deadline => Err(cannot_connect(
+                &self.config,
+                Exit::TimedOut,
+                "no answer before the --timeout deadline",
+            )),
             Err(_) => Err(cannot_connect(
                 &self.config,
+                Exit::Failed,
                 &format!("no answer within {}s", CONNECT_TIMEOUT.as_secs()),
             )),
         }
@@ -168,9 +175,9 @@ fn quiet_driver_panics() {
     });
 }
 
-fn cannot_connect(config: &tiberius::Config, why: &str) -> anyhow::Error {
+fn cannot_connect(config: &tiberius::Config, exit: Exit, why: &str) -> anyhow::Error {
     Failure::new(
-        Exit::Failed,
+        exit,
         format!("cannot connect to {}: {why}", config.get_addr()),
     )
     .hint("check the connection in [sql]; `agent-cli doctor sql` tries every one")
@@ -180,22 +187,29 @@ fn cannot_connect(config: &tiberius::Config, why: &str) -> anyhow::Error {
 async fn open_driver(config: &tiberius::Config) -> Result<Driver> {
     let tcp = TcpStream::connect(config.get_addr())
         .await
-        .map_err(|why| cannot_connect(config, &why.to_string()))?;
+        .map_err(|why| cannot_connect(config, Exit::Failed, &why.to_string()))?;
     // Row batches are small and frequent; Nagle would sit on them.
     tcp.set_nodelay(true)?;
     Client::connect(config.clone(), tcp.compat_write())
         .await
         .map_err(|why| match why {
-            // The server's own sentence and number, not the driver's wrapping.
+            // The server's own sentence and number, not the driver's wrapping;
+            // 18456 is a refused login, which is setup (exit 3).
             TiberiusError::Server(token) => cannot_connect(
                 config,
+                if token.code() == 18456 {
+                    Exit::Setup
+                } else {
+                    Exit::Failed
+                },
                 &format!("{} (error {})", token.message(), token.code()),
             ),
             why @ TiberiusError::Tls(_) => cannot_connect(
                 config,
+                Exit::Failed,
                 &format!("{why}; a server with a self-signed certificate wants trust_cert = true"),
             ),
-            why => cannot_connect(config, &why.to_string()),
+            why => cannot_connect(config, Exit::Failed, &why.to_string()),
         })
 }
 
@@ -627,5 +641,30 @@ mod tests {
             "JSON_F52E2B61-18A1-11d1-B105-00805F49916B".to_owned()
         ]));
         assert!(!in_pieces(&["JSON".to_owned()]));
+    }
+
+    #[test]
+    fn a_login_the_deadline_cuts_off_is_a_connect_failure_not_a_statement() {
+        // Accepts the connection and never speaks: a paused server.
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let config = format!(
+            "[[sql.connection]]\nname = \"ms\"\nkind = \"mssql\"\nhost = \"127.0.0.1\"\nport = {port}\ndatabase = \"bench\"\nuser = \"sa\"\npassword = \"x\"\n"
+        );
+        let setup = agent_cli_core::Setup::fake(agent_cli_core::testing::FakeTransport::default())
+            .with_config(&config);
+        let outcome = crate::testing::sql(
+            &["sql", "query", "run", "select 1", "--timeout", "2"],
+            setup,
+        );
+        drop(listener);
+        assert_eq!(outcome.code, 124, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("cannot connect to 127.0.0.1")
+                && outcome.stderr.contains("before the --timeout deadline"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(!outcome.stderr.contains("narrow it"), "{}", outcome.stderr);
     }
 }

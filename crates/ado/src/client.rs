@@ -127,7 +127,7 @@ impl Ado {
         })?;
         let project = project.ok_or_else(|| missing("project", "Fabrikam", "project=Fabrikam"))?;
         Ok(Self {
-            org: org_slug(&org),
+            org: crate::ids::org(&org)?,
             code_project: blank(section.code_project).unwrap_or_else(|| project.clone()),
             project,
             teams: section.team,
@@ -289,11 +289,13 @@ impl Ado {
         self.api(Some(&self.code_project), path, query, API)
     }
 
-    pub(crate) fn work_item_url(&self, id: i64) -> String {
+    /// Under the project the item is in (ids are the organization's), else
+    /// the configured one.
+    pub(crate) fn work_item_url(&self, project: Option<&str>, id: i64) -> String {
         format!(
             "{}/{}/_workitems/edit/{id}",
             self.base(),
-            segment(&self.project)
+            segment(project.unwrap_or(&self.project))
         )
     }
 
@@ -331,7 +333,7 @@ impl Ado {
             return number
                 .parse::<i64>()
                 .ok()
-                .filter(|id| *id > 0)
+                .filter(|id| (1..=i64::from(i32::MAX)).contains(id))
                 .ok_or_else(|| wrong(format!("{raw:?} is not a {} id", kind.noun())));
         };
         let after = |marker: &str| {
@@ -476,38 +478,29 @@ impl Ado {
         Ok(repos)
     }
 
-    /// One repository by name or id; a miss in the cache asks again before it
-    /// says there is no such repository, since the cache can predate it.
+    /// One repository by name or id, read live: its id changes when it is
+    /// made again, and its default branch with a first push or a setting.
     pub(crate) fn repo(&self, ctx: &Ctx, name: &str) -> Result<RepoRef> {
-        let find = |repos: Vec<RepoRef>| {
-            repos.into_iter().find(|repo| {
-                repo.name.eq_ignore_ascii_case(name) || repo.id.eq_ignore_ascii_case(name)
-            })
-        };
-        if let Some(repo) = find(self.repos(ctx, false)?) {
-            return Ok(repo);
-        }
-        find(self.repos(ctx, true)?).ok_or_else(|| {
-            Failure::not_found(format!(
-                "there is no repository {name:?} in {}",
-                self.code_project
-            ))
-            .hint("agent-cli ado repo list --fields name")
-            .into()
-        })
+        let url = self.code(&format!("git/repositories/{}", segment(name.trim())), "");
+        let answer = self.get(ctx, &url).map_err(|error| {
+            if agent_cli_core::status_of(&error) == Some(404) {
+                Failure::not_found(format!(
+                    "there is no repository {name:?} in {}",
+                    self.code_project
+                ))
+                .hint("agent-cli ado repo list --fields name")
+                .into()
+            } else {
+                error
+            }
+        })?;
+        RepoRef::parse(&answer).context("the repository came back without its id and name")
     }
 
-    /// A pipeline's id: as given when it is a number, else looked up by name.
+    /// A pipeline's id: as given when it is a number, else looked up by name,
+    /// live: a pipeline made again under its name has a new id.
     pub(crate) fn pipeline_id(&self, ctx: &Ctx, name: &str) -> Result<i64> {
         if let Ok(id) = name.trim().parse() {
-            return Ok(id);
-        }
-        let key = self.cache_key(&format!(
-            "pipeline:{}:{}",
-            self.code_project.to_lowercase(),
-            name.to_lowercase()
-        ));
-        if let Some(id) = ctx.cache().get(&key) {
             return Ok(id);
         }
         let answer = self.get(
@@ -536,7 +529,8 @@ impl Ado {
                     self.code_project
                 ))
                 .hint(format!(
-                    "agent-cli ado pipeline list {name} --fields id,name"
+                    "agent-cli ado pipeline list {} --fields id,name",
+                    crate::ids::arg(name)
                 ))
                 .into());
             }
@@ -554,7 +548,6 @@ impl Ado {
                 .into());
             }
         };
-        ctx.cache().put(&key, &id, CACHE_TTL);
         Ok(id)
     }
 }
@@ -638,6 +631,23 @@ fn signed_out(error: anyhow::Error) -> anyhow::Error {
         {
             Failure::setup(failure.message).hint(SIGN_IN_HINT).into()
         }
+        // What is not there (deleted, a wrong id, another project's) names
+        // the listing that shows what is.
+        Ok(failure) if failure.hint.is_none() && failure.status == Some(404) => {
+            let listing = if failure.message.contains("TF401232") {
+                Some("agent-cli ado workitem list --text WORDS --fields id,title  (its id)")
+            } else if failure.message.contains("TF401019") {
+                Some("agent-cli ado repo list --fields name  (this project's repositories)")
+            } else if failure.message.contains("requested build") {
+                Some("agent-cli ado run list --fields id,pipeline,status")
+            } else {
+                None
+            };
+            match listing {
+                Some(listing) => failure.hint(listing).into(),
+                None => failure.into(),
+            }
+        }
         Ok(failure) => failure.into(),
         Err(error) => error,
     }
@@ -668,21 +678,6 @@ fn base64(bytes: &[u8]) -> String {
         }
     }
     output
-}
-
-/// `https://dev.azure.com/contoso`, `https://contoso.visualstudio.com` or `contoso`.
-fn org_slug(raw: &str) -> String {
-    let trimmed = raw.trim().trim_end_matches('/');
-    if let Some(rest) = trimmed.strip_prefix("https://dev.azure.com/") {
-        return rest.split('/').next().unwrap_or(rest).to_owned();
-    }
-    if let Some(slug) = trimmed
-        .strip_prefix("https://")
-        .and_then(|rest| rest.strip_suffix(".visualstudio.com"))
-    {
-        return slug.to_owned();
-    }
-    trimmed.to_owned()
 }
 
 /// The organization and project `az devops configure --defaults` saved.

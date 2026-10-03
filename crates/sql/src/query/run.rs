@@ -3,13 +3,14 @@
 use std::path::PathBuf;
 use std::time::Instant;
 
-use agent_cli_core::{Ctx, command};
+use agent_cli_core::{Ctx, Exit, Failure, command};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::config::Sql;
-use crate::db::{Fetch, OnConnection, ResultSet, Session};
+use crate::config::{Kind, Sql};
+use crate::db::{Fetch, OnConnection, ResultSet, Session, is_timeout, write_timed_out};
+use crate::split;
 
 use super::{door, failed_at, millis, plan, statements, summary};
 
@@ -53,21 +54,48 @@ fn query_run(ctx: &Ctx, args: RunArgs) -> Result<QueryResult> {
         work: |session: &mut Session| {
             let mut results = Vec::new();
             let mut done: Vec<String> = Vec::new();
+            let mut wrote = false;
             for (index, statement) in statements.iter().enumerate() {
-                // A read is cut at the cap; a write is read to its end, so
-                // a SQL Server batch it is part of runs whole.
+                // A read is cut at the cap only while nothing before it
+                // wrote: the cut ends a SQL Server session, and with it any
+                // transaction, #temp table or SET an earlier statement left.
+                // A write is read to its end, so its batch runs whole.
                 let fetch = Fetch {
                     keep,
-                    stop: !statement.writes,
+                    stop: !statement.writes && !wrote,
                 };
                 let ran = session
                     .run(&statement.sql, fetch, deadline)
-                    .map_err(|error| match statements.len() {
-                        1 => error,
-                        count => error.context(failed_at(index, count, &done)),
+                    .map_err(|error| {
+                        let error = if statement.writes && is_timeout(&error) {
+                            write_timed_out()
+                        } else {
+                            error
+                        };
+                        match statements.len() {
+                            1 => error,
+                            count => {
+                                let own = matches!(spec.kind, Kind::Mssql)
+                                    && statements[..=index]
+                                        .iter()
+                                        .any(|it| split::controls_transaction(&it.sql, spec.kind));
+                                error.context(failed_at(index, count, &done, own))
+                            }
+                        }
                     })?;
+                wrote |= statement.writes;
                 done.push(summary(&ran.sets));
                 results.extend(ran.sets);
+            }
+            if wrote && matches!(spec.kind, Kind::Mssql) && rolled_back(session, deadline)? {
+                return Err(Failure::new(
+                    Exit::Failed,
+                    "the script left a transaction open (a BEGIN TRAN with no COMMIT, or SET \
+                     IMPLICIT_TRANSACTIONS ON), so it was rolled back: nothing that ran inside \
+                     it was kept",
+                )
+                .hint("end the script with COMMIT, then run it again")
+                .into());
             }
             Ok(results)
         },
@@ -83,6 +111,24 @@ fn query_run(ctx: &Ctx, args: RunArgs) -> Result<QueryResult> {
         results,
         elapsed_ms: millis(started.elapsed()),
     })
+}
+
+/// Whether SQL Server still holds a transaction the script began and never
+/// committed. The session's end would roll it back unseen; this rolls it
+/// back now, so the command can say so instead of reporting it done.
+fn rolled_back(session: &mut Session, deadline: Instant) -> Result<bool> {
+    let ran = session.run("select @@trancount", Fetch::ALL, deadline)?;
+    let open = ran
+        .sets
+        .first()
+        .and_then(|set| set.rows.first())
+        .and_then(|row| row.first())
+        .and_then(serde_json::Value::as_i64)
+        .is_some_and(|count| count > 0);
+    if open {
+        session.run("rollback", Fetch::ALL, deadline)?;
+    }
+    Ok(open)
 }
 
 command! {

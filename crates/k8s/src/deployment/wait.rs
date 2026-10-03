@@ -9,7 +9,7 @@ use serde_json::Value;
 use crate::kubectl::{At, finished, items, non_empty};
 use crate::pod::{containers, previous_logs};
 
-use super::{DeploymentRow, deployment_at, own_pods, rolled_out, row, workload};
+use super::{DeploymentRow, deployment_at, own_pods, refuse_paused, rolled_out, row, workload};
 
 /// What the wait leaves of the deadline for the read after it.
 const MARGIN: Duration = Duration::from_secs(5);
@@ -35,11 +35,27 @@ fn deployment_wait(ctx: &Ctx, args: DeploymentWaitArgs) -> Result<Waited> {
     let (target, raw) = deployment_at(ctx, &args.at, &args.name)?;
     let object = workload(&raw, &["deployment"], "waited for")?;
     let name = object.trim_start_matches("deployment/");
+    refuse_paused(ctx, &target, &object)?;
     // kubectl gives up before the deadline does, so the answer can still say
-    // how far the rollout got.
-    let seconds = ctx.remaining()?.saturating_sub(MARGIN).as_secs().max(1);
-    let timeout = format!("--timeout={seconds}s");
-    let output = ctx.read(target.kubectl(&["rollout", "status", &object, &timeout]))?;
+    // how far the rollout got. A control plane that stops answering is not
+    // the rollout failing: ask again until the deadline.
+    let (output, seconds) = loop {
+        let seconds = ctx.remaining()?.saturating_sub(MARGIN).as_secs().max(1);
+        let timeout = format!("--timeout={seconds}s");
+        let output = ctx.read(target.kubectl(&["rollout", "status", &object, &timeout]))?;
+        if !output.stderr.contains("Unable to connect to the server") {
+            break (output, seconds);
+        }
+        if ctx.remaining()? <= MARGIN {
+            return Err(Failure::timed_out(format!(
+                "the cluster did not answer about {name}: {}",
+                output.stderr.lines().last().unwrap_or_default()
+            ))
+            .hint("agent-cli doctor k8s")
+            .into());
+        }
+        std::thread::sleep(Duration::from_secs(2));
+    };
     let gave_up = output.stderr.contains("exceeded its progress deadline");
     let late = output.stderr.contains("timed out waiting");
     if !gave_up && !late {
@@ -72,26 +88,38 @@ fn deployment_wait(ctx: &Ctx, args: DeploymentWaitArgs) -> Result<Waited> {
         row,
         rolled_out: None,
     };
+    let own = own_pods(item, &pods);
+    // A pod that keeps crashing never lets the rollout finish: waiting more
+    // will not help, its previous run's log will.
+    let crashing = own
+        .iter()
+        .find_map(|pod| previous_logs(&target.id(pod), &containers(pod)));
     if late {
-        return Err(Failure::timed_out(format!(
-            "{id} is still rolling out after {seconds}s"
-        ))
-        .hint(format!(
-            "the rollout keeps going; run the same command again: agent-cli k8s deployment wait {id}"
-        ))
-        .with_data(waited)
-        .into());
+        let (message, hint) = match &crashing {
+            Some(logs) => (
+                format!(
+                    "{id} is still rolling out after {seconds}s, and a pod of it keeps crashing"
+                ),
+                logs.clone(),
+            ),
+            None => (
+                format!("{id} is still rolling out after {seconds}s"),
+                format!(
+                    "the rollout keeps going; run the same command again: agent-cli k8s deployment wait {id}"
+                ),
+            ),
+        };
+        return Err(Failure::timed_out(message)
+            .hint(hint)
+            .with_data(waited)
+            .into());
     }
     // The pod that says why: one whose container restarted, else one not ready.
-    let own = own_pods(item, &pods);
-    let next = own
-        .iter()
-        .find_map(|pod| previous_logs(&target.id(pod), &containers(pod)))
-        .or_else(|| {
-            own.iter()
-                .find(|pod| containers(pod).iter().any(|held| !held.ready))
-                .map(|pod| format!("agent-cli k8s pod get {}", target.id(pod)))
-        });
+    let next = crashing.or_else(|| {
+        own.iter()
+            .find(|pod| containers(pod).iter().any(|held| !held.ready))
+            .map(|pod| format!("agent-cli k8s pod get {}", target.id(pod)))
+    });
     let failure = Failure::new(
         Exit::Failed,
         format!("{id} exceeded its progress deadline: Kubernetes gave up on the rollout"),
@@ -184,5 +212,28 @@ mod tests {
         let outcome = run(&["k8s", "deployment", "wait", "nope"]);
         assert_eq!(outcome.code, 4, "{outcome:?}");
         assert_eq!(json!(outcome.stdout.trim()), json!(""));
+    }
+
+    #[test]
+    fn a_paused_deployment_is_exit_5_at_once_for_a_wait_or_a_restart() {
+        for argv in [
+            &["k8s", "deployment", "wait", "paused-api"][..],
+            &["k8s", "deployment", "restart", "paused-api", "--yes"][..],
+        ] {
+            let outcome = run(argv);
+            assert_eq!(outcome.code, 5, "{outcome:?}");
+            assert!(
+                outcome.stderr.contains("paused-api is paused"),
+                "{}",
+                outcome.stderr
+            );
+            assert!(
+                outcome
+                    .stderr
+                    .contains("hint: kubectl rollout resume deployment/paused-api"),
+                "{}",
+                outcome.stderr
+            );
+        }
     }
 }

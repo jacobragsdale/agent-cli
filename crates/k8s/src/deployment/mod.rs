@@ -135,11 +135,53 @@ fn rolled_out(item: &Value) -> Option<OffsetDateTime> {
 
 /// A deployment's id (`cluster/namespace/name`) picks the scope and
 /// namespace; `KIND/NAME` or a bare name keeps the flags'.
+/// An id as rows print it (`CLUSTER/NAMESPACE/NAME`, `NAMESPACE/NAME`), or
+/// `KIND/NAME` for another workload when KIND is one (`statefulset/db`).
 fn deployment_at(ctx: &Ctx, at: &At, raw: &str) -> Result<(Target, String)> {
-    if raw.matches('/').count() == 2 {
-        return at.named(ctx, raw);
+    let kind = raw
+        .split_once('/')
+        .map(|(kind, _)| kind.to_ascii_lowercase());
+    let workload = kind.as_deref().is_some_and(|kind| KINDS.contains(&kind));
+    match raw.matches('/').count() {
+        2 => at.named(ctx, raw),
+        1 if !workload => at.named(ctx, raw),
+        _ => Ok((at.one(ctx)?, raw.to_owned())),
     }
-    Ok((at.one(ctx)?, raw.to_owned()))
+}
+
+/// The kinds a `KIND/NAME` may name; `workload` refuses those a verb cannot act on.
+const KINDS: &[&str] = &[
+    "deployment",
+    "statefulset",
+    "daemonset",
+    "replicaset",
+    "job",
+    "cronjob",
+    "pod",
+    "service",
+];
+
+/// A paused deployment's rollout does not move until someone resumes it,
+/// which agent-cli leaves to kubectl: waiting or restarting would only wait.
+fn refuse_paused(ctx: &Ctx, target: &Target, object: &str) -> Result<()> {
+    if !object.starts_with("deployment/") {
+        return Ok(());
+    }
+    let current = target.json(ctx, &["get", object, "-o", "json"])?;
+    if current["spec"]["paused"].as_bool() != Some(true) {
+        return Ok(());
+    }
+    let namespace = current["metadata"]["namespace"]
+        .as_str()
+        .unwrap_or_default();
+    Err(Failure::conflict(format!(
+        "{} is paused: its rollout does not move until it is resumed",
+        target.id(&current)
+    ))
+    .hint(format!(
+        "kubectl rollout resume {object} --namespace {namespace}, then run this again"
+    ))
+    .into())
 }
 
 /// `NAME` is a deployment; `KIND/NAME` names another workload, refused
@@ -200,6 +242,23 @@ mod tests {
             assert_eq!(outcome.code, 2, "{outcome:?}");
             assert!(outcome.stderr.contains(want), "{}", outcome.stderr);
         }
+    }
+
+    #[test]
+    fn a_namespace_and_name_id_works_where_a_kind_and_name_does() {
+        let outcome = run(&[
+            "k8s",
+            "deployment",
+            "restart",
+            "dev/orders-api",
+            "--dry-run",
+        ]);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let planned = outcome.json()["would"][0]["run"].to_string();
+        assert!(
+            planned.contains(r#""-n","dev""#) && planned.contains("deployment/orders-api"),
+            "{planned}"
+        );
     }
 
     #[test]

@@ -36,6 +36,8 @@ pub struct DagDetail {
     version: Option<i64>,
     last_parsed: Option<String>,
     import_errors: bool,
+    /// True when the DAG's file is gone: Airflow starts no runs of it.
+    stale: Option<bool>,
     description: Option<String>,
     /// What run create --conf may set.
     params: Vec<Param>,
@@ -95,6 +97,12 @@ fn dag_get(ctx: &Ctx, args: DagGetArgs) -> Result<DagDetail> {
         })
         .collect();
     let row = dag_row(&dag);
+    if row.stale.is_some() {
+        ctx.note(format!(
+            "[{} is stale: its file is gone from the dags folder, so Airflow starts no runs of it]",
+            row.id
+        ));
+    }
     Ok(DagDetail {
         id: row.id,
         paused: row.paused,
@@ -111,6 +119,7 @@ fn dag_get(ctx: &Ctx, args: DagGetArgs) -> Result<DagDetail> {
         version: dag["latest_dag_version"]["version_number"].as_i64(),
         last_parsed: stamp(&dag["last_parsed_time"]),
         import_errors: row.import_errors,
+        stale: row.stale,
         description: text(&dag["description"]),
         params,
         recent_runs: runs["dag_runs"]
@@ -241,5 +250,27 @@ mod tests {
             outcome.stderr
         );
         assert!(transport.sent().is_empty());
+    }
+
+    #[test]
+    fn a_dag_whose_file_is_gone_says_it_is_stale() {
+        let mut details = dag("e2e_wide", false);
+        details["is_stale"] = json!(true);
+        let (outcome, _) = airflow(
+            &["airflow", "dag", "get", "e2e_wide", "--fields", "id,stale"],
+            vec![
+                Answer::json(&details),
+                Answer::json(&json!({"dag_runs": [], "total_entries": 0})),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json(), json!({"id": "e2e_wide", "stale": true}));
+        assert!(
+            outcome
+                .stderr
+                .contains("[e2e_wide is stale: its file is gone"),
+            "{}",
+            outcome.stderr
+        );
     }
 }

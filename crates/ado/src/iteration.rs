@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::client::{Ado, list, stamp, text};
 
-/// Sprints change at their boundaries, so an hour keeps `@current` close.
+/// Names and paths: `@current` and the other macros read past the cache.
 const CACHE_TTL: Duration = Duration::from_secs(3600);
 
 /// A sprint as the team's settings describe it.
@@ -46,13 +46,23 @@ pub(crate) fn no_team() -> anyhow::Error {
 /// The team's iterations in its settings' order (by start date), cached for
 /// an hour.
 pub(crate) fn iterations(ctx: &Ctx, ado: &Ado, team: &str) -> Result<Vec<Iteration>> {
+    Ok(read_iterations(ctx, ado, team, false)?.0)
+}
+
+/// The iterations, and whether they came from the cache (`fresh` skips it).
+fn read_iterations(
+    ctx: &Ctx,
+    ado: &Ado,
+    team: &str,
+    fresh: bool,
+) -> Result<(Vec<Iteration>, bool)> {
     let key = ado.cache_key(&format!(
         "iterations:{}:{}",
         ado.project.to_lowercase(),
         team.to_lowercase()
     ));
-    if let Some(iterations) = ctx.cache().get(&key) {
-        return Ok(iterations);
+    if !fresh && let Some(iterations) = ctx.cache().get(&key) {
+        return Ok((iterations, true));
     }
     let answer = ado.get(ctx, &ado.team(team, "work/teamsettings/iterations", ""))?;
     let iterations: Vec<Iteration> = list(&answer["value"])
@@ -70,7 +80,7 @@ pub(crate) fn iterations(ctx: &Ctx, ado: &Ado, team: &str) -> Result<Vec<Iterati
         })
         .collect();
     ctx.cache().put(&key, &iterations, CACHE_TTL);
-    Ok(iterations)
+    Ok((iterations, false))
 }
 
 /// The sprint `raw` names for `team` (else `[ado] team`): `@current`,
@@ -78,7 +88,15 @@ pub(crate) fn iterations(ctx: &Ctx, ado: &Ado, team: &str) -> Result<Vec<Iterati
 pub(crate) fn resolve(ctx: &Ctx, ado: &Ado, team: Option<&str>, raw: &str) -> Result<Iteration> {
     let team = self::team(ado, team)?;
     let raw = raw.trim();
-    let all = iterations(ctx, ado, team)?;
+    // A macro is the server's judgement today, as `workitem list`'s
+    // @CurrentIteration is: a cached list may predate a sprint boundary.
+    let (mut all, cached) = read_iterations(ctx, ado, team, raw.starts_with('@'))?;
+    let named =
+        |i: &Iteration| i.path.eq_ignore_ascii_case(raw) || i.name.eq_ignore_ascii_case(raw);
+    // A name the cached list lacks may be a sprint made since: read again.
+    if cached && !all.iter().any(named) {
+        all = read_iterations(ctx, ado, team, true)?.0;
+    }
     let timeframe =
         |iteration: &&Iteration, wanted: &str| iteration.timeframe.as_deref() == Some(wanted);
     let found = match raw.to_ascii_lowercase().as_str() {
@@ -88,10 +106,7 @@ pub(crate) fn resolve(ctx: &Ctx, ado: &Ado, team: Option<&str>, raw: &str) -> Re
         "@next" => all.iter().find(|i| timeframe(i, "future")),
         "@previous" => all.iter().rev().find(|i| timeframe(i, "past")),
         _ => {
-            let matching: Vec<&Iteration> = all
-                .iter()
-                .filter(|i| i.path.eq_ignore_ascii_case(raw) || i.name.eq_ignore_ascii_case(raw))
-                .collect();
+            let matching: Vec<&Iteration> = all.iter().filter(|i| named(i)).collect();
             if let [_, _, ..] = matching.as_slice() {
                 let paths: Vec<&str> = matching.iter().map(|i| i.path.as_str()).collect();
                 return Err(Failure::usage(format!(
@@ -115,6 +130,10 @@ pub(crate) fn resolve(ctx: &Ctx, ado: &Ado, team: Option<&str>, raw: &str) -> Re
                 names.join(", ")
             }
         ))
+        .hint(format!(
+            "agent-cli ado sprint list --team {} --fields id,start,finish,timeframe",
+            crate::ids::arg(team)
+        ))
         .into()
     })
 }
@@ -123,7 +142,14 @@ pub(crate) fn resolve(ctx: &Ctx, ado: &Ado, team: Option<&str>, raw: &str) -> Re
 /// not only the team's sprints), else the team's sprint by macro or by name,
 /// which Azure DevOps would refuse as a path.
 pub(crate) fn path(ctx: &Ctx, ado: &Ado, team: Option<&str>, raw: &str) -> Result<String> {
-    let raw = raw.trim();
+    // Azure DevOps writes paths with `\`; `project/Sprint 1`, or a leading
+    // `\`, means the same path.
+    let raw = raw.trim().trim_start_matches('\\');
+    let slashed = raw
+        .split_once('/')
+        .filter(|(root, _)| root.eq_ignore_ascii_case(&ado.project))
+        .map(|_| raw.replace('/', "\\"));
+    let raw = slashed.as_deref().unwrap_or(raw);
     if raw.starts_with('@') || !(raw.contains('\\') || raw.eq_ignore_ascii_case(&ado.project)) {
         return Ok(resolve(ctx, ado, team, raw)?.path);
     }
@@ -175,9 +201,9 @@ mod tests {
         "[ado]\norg = \"contoso\"\nproject = \"Fabrikam\"\nteam = \"Web Team\"\n";
 
     #[test]
-    fn macros_paths_and_names_resolve_against_the_teams_sprints_read_once() {
+    fn macros_read_the_teams_sprints_each_time_and_paths_and_names_the_cached_list() {
         let dir = tempfile::tempdir().unwrap();
-        let transport = FakeTransport::answering([sprints()]);
+        let transport = FakeTransport::answering([sprints(), sprints(), sprints(), sprints()]);
         let setup = Setup {
             cache_dir: Some(dir.path().to_owned()),
             ..Setup::fake(transport.clone())
@@ -192,7 +218,14 @@ mod tests {
         let named = resolve(&ctx, &ado, None, "Sprint 13").unwrap();
         assert_eq!(named.id, "i-13");
         assert_eq!(named.start.as_deref(), Some("2026-10-06T00:00:00Z"));
-        assert_eq!(transport.sent().len(), 1, "cached for the hour");
+        assert_eq!(transport.sent().len(), 3, "a macro reads past the cache");
+        // A name the cached list lacks reads it again: a sprint made since.
+        let error = resolve(&ctx, &ado, None, "Sprint 15").unwrap_err();
+        assert_eq!(
+            error.downcast_ref::<Failure>().unwrap().exit,
+            Exit::NotFound
+        );
+        assert_eq!(transport.sent().len(), 4);
         assert_eq!(
             transport.sent()[0].url,
             "https://dev.azure.com/contoso/Fabrikam/Web%20Team/_apis/work/teamsettings/iterations?api-version=7.1"
@@ -226,6 +259,10 @@ mod tests {
             failure.message.contains("Sprint 12, Sprint 13"),
             "{}",
             failure.message
+        );
+        assert_eq!(
+            failure.hint.as_deref(),
+            Some("agent-cli ado sprint list --team 'Web Team' --fields id,start,finish,timeframe")
         );
     }
 

@@ -367,6 +367,10 @@ pub fn assert_read_only_refuses(domains: &[Domain]) {
             outcome.stderr.contains("AGENT_CLI_READ_ONLY"),
             "{outcome:?}"
         );
+        assert!(
+            !outcome.stderr.contains("unset"),
+            "the guard is the operator's, never lifted by a hint: {outcome:?}"
+        );
         assert!(transport.sent().is_empty(), "{}", command.path.join(" "));
     }
 }

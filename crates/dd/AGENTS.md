@@ -51,8 +51,8 @@ and the alert trace in `crates/cli/tests/world_cross.rs`; queries
   `Call::perform`, after the host check; plans show them as `***`, and
   `--dry-run` never resolves a `token_cmd`.
 - A downtime (`--for`) lasts at most 7 days, and needs `--yes`.
-- A 403 names the missing scope in Datadog's words; the hint says where
-  scopes are granted.
+- A 403 names the missing scope in Datadog's words, or is bare for a key
+  Datadog does not know; doctor's validate tells them apart.
 - Throttles wait out `X-RateLimit-Reset` (core).
 
 ## Never needed

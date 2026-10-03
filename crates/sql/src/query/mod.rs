@@ -9,7 +9,9 @@
 //! Every statement commits as it runs, on both servers. When one fails the
 //! command stops there: stdout stays empty, as for any failure, and the
 //! error names the statement and what the ones before it already did, which
-//! stays done.
+//! stays done. A SQL Server script may run its own transaction instead
+//! (BEGIN TRAN … COMMIT): one still open at a failure, or at the end, is
+//! rolled back, and the error says so rather than claim a commit.
 
 pub(crate) mod bench;
 pub(crate) mod run;
@@ -96,28 +98,32 @@ fn door<T, F: FnOnce(&mut Session) -> Result<T>>(
 }
 
 /// "statement 3 of 3 failed; statements 1-2 already ran and stay committed
-/// (1: 3 rows affected, 2: 5 rows returned)".
-fn failed_at(index: usize, count: usize, done: &[String]) -> String {
-    let mut message = format!("statement {} of {count} failed", index + 1);
-    match done {
-        [] => {}
-        [only] => message.push_str(&format!(
-            "; statement 1 already ran and stays committed ({only})"
-        )),
-        _ => {
-            let ran: Vec<String> = done
-                .iter()
+/// (1: 3 rows affected, 2: 5 rows returned)". With `own_transaction` (the
+/// script runs one), what ran inside a transaction still open at the
+/// failure is rolled back with the session, so it says that instead.
+fn failed_at(index: usize, count: usize, done: &[String], own_transaction: bool) -> String {
+    let message = format!("statement {} of {count} failed", index + 1);
+    let (ran, what) = match done {
+        [] => return message,
+        [only] => ("statement 1".to_owned(), only.clone()),
+        _ => (
+            format!("statements 1-{}", done.len()),
+            done.iter()
                 .enumerate()
                 .map(|(number, what)| format!("{}: {what}", number + 1))
-                .collect();
-            message.push_str(&format!(
-                "; statements 1-{} already ran and stay committed ({})",
-                done.len(),
-                ran.join(", ")
-            ));
-        }
+                .collect::<Vec<_>>()
+                .join(", "),
+        ),
+    };
+    if own_transaction {
+        format!(
+            "{message}; {ran} ran ({what}), but a transaction still open at the failure is \
+             rolled back, so what ran inside it was not kept"
+        )
+    } else {
+        let stay = if done.len() == 1 { "stays" } else { "stay" };
+        format!("{message}; {ran} already ran and {stay} committed ({what})")
     }
-    message
 }
 
 fn summary(sets: &[ResultSet]) -> String {
@@ -147,15 +153,32 @@ mod tests {
 
     #[test]
     fn a_failure_says_which_statement_and_what_ran_before_it() {
-        assert_eq!(failed_at(0, 3, &[]), "statement 1 of 3 failed");
+        assert_eq!(failed_at(0, 3, &[], false), "statement 1 of 3 failed");
         assert_eq!(
-            failed_at(1, 2, &["1 row returned".into()]),
+            failed_at(1, 2, &["1 row returned".into()], false),
             "statement 2 of 2 failed; statement 1 already ran and stays committed (1 row returned)"
         );
         assert_eq!(
-            failed_at(2, 3, &["3 rows affected".into(), "5 rows returned".into()]),
+            failed_at(
+                2,
+                3,
+                &["3 rows affected".into(), "5 rows returned".into()],
+                false
+            ),
             "statement 3 of 3 failed; statements 1-2 already ran and stay committed (1: 3 rows \
              affected, 2: 5 rows returned)"
+        );
+        assert_eq!(
+            failed_at(
+                2,
+                4,
+                &["0 rows affected".into(), "1 row affected".into()],
+                true
+            ),
+            "statement 3 of 4 failed; statements 1-2 ran (1: 0 rows affected, 2: 1 row \
+             affected), but a transaction still open at the failure is rolled back, so what \
+             ran inside it was not kept",
+            "a script running its own transaction never hears that its work stays"
         );
         let affected = ResultSet {
             rows_affected: 1,

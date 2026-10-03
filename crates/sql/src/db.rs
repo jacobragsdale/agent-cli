@@ -193,6 +193,21 @@ pub fn timed_out() -> anyhow::Error {
     .into()
 }
 
+/// Exit 124 for a write still running at the deadline. The cancel can come
+/// too late: SQL Server commits each statement of a batch as it ends, and
+/// Oracle finishes PL/SQL that ignores the break. So look before rerunning.
+pub fn write_timed_out() -> anyhow::Error {
+    Failure::timed_out(
+        "the write was still running at the --timeout deadline: it was told to stop, but the \
+         server may already have done part or all of it",
+    )
+    .hint(
+        "check what it changed (a select on the rows it writes) before running any of it again \
+         with a larger --timeout",
+    )
+    .into()
+}
+
 /// True when `error` is the deadline running out.
 pub fn is_timeout(error: &anyhow::Error) -> bool {
     error.chain().any(|cause| {

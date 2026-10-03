@@ -57,7 +57,17 @@ fn task_logs(ctx: &Ctx, args: TaskLogsArgs) -> Result<TaskLogs> {
     };
     let attempt = id.attempt.or(ti["try_number"].as_i64()).unwrap_or_default();
     let state = text(&ti["state"]);
-    let done = finished(state.as_deref());
+    // A cleared task waits for its next try, but the try whose log this is
+    // ended, and the task keeps that try's end_date.
+    let cleared = id.attempt.is_none()
+        && matches!(state.as_deref(), None | Some("up_for_retry" | "restarting"))
+        && !ti["end_date"].is_null();
+    if cleared {
+        ctx.note(format!(
+            "[the task was cleared and its next try has not started; this is try {attempt}]"
+        ));
+    }
+    let done = cleared || finished(state.as_deref());
     let path = format!(
         "{}/taskInstances/{}/logs/{attempt}",
         id.run_path(),
@@ -456,6 +466,34 @@ mod tests {
         assert_eq!(
             paths(&transport)[1],
             format!("{RUN_PATH}/taskInstances/load_orders/logs/2?full_content=true&map_index=-1")
+        );
+    }
+
+    #[test]
+    fn a_cleared_task_shows_its_last_try_as_finished_not_as_running() {
+        let mut cleared = ti("load_orders", "failed", 2);
+        cleared["state"] = Value::Null;
+        let (outcome, _) = airflow(
+            &[
+                "airflow",
+                "task",
+                "logs",
+                &format!("etl_nightly/{RUN}/load_orders"),
+            ],
+            vec![
+                Answer::json(&cleared),
+                Answer::json(&json!({"content": ["ValueError: boom"]})),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()["complete"], true);
+        assert!(
+            outcome
+                .stderr
+                .contains("[the task was cleared and its next try has not started; this is try 2]")
+                && !outcome.stderr.contains("this is the log so far"),
+            "{}",
+            outcome.stderr
         );
     }
 
