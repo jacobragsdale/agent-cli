@@ -29,7 +29,7 @@ pub(crate) fn doctor(ctx: &Ctx) -> Vec<Check> {
             return vec![Check::failed(
                 "config",
                 format!("{error:#}"),
-                "fix [[airflow.instance]]; config.example.toml shows the keys",
+                "fix [[airflow.instance]]; `agent-cli config example airflow` shows the keys",
             )];
         }
     };

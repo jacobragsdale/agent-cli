@@ -28,7 +28,7 @@ pub(crate) fn doctor(ctx: &Ctx) -> Vec<Check> {
             return vec![Check::failed(
                 "config",
                 format!("{error:#}"),
-                "set org and project under [ado]; config.example.toml shows every key",
+                "set org and project under [ado]; `agent-cli config example ado` shows every key",
             )];
         }
     };

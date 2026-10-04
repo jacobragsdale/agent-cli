@@ -154,7 +154,7 @@ impl Airflow {
             };
             let instance = problem.map_err(|why| {
                 Failure::setup(format!("[[airflow.instance]] {name:?} in {path}: {why}"))
-                    .hint("fix it; config.example.toml shows every key")
+                    .hint("fix it; `agent-cli config example airflow` shows every key")
             })?;
             instances.push(instance);
         }
@@ -173,7 +173,7 @@ impl Airflow {
         .map_err(|failure| match failure.exit {
             Exit::Usage => failure.hint("agent-cli airflow instance list").into(),
             _ => failure
-                .hint("add an [[airflow.instance]]; config.example.toml shows the keys")
+                .hint("add an [[airflow.instance]]; `agent-cli config example airflow` shows the keys")
                 .into(),
         })
     }

@@ -26,6 +26,18 @@ Open work only. What is built is in the code, the crate cards and
 - [ ] The k8s tests use `scripts/fake/kubectl`'s built-in cluster, so a k8s flag edits the fake: move those objects into a file under `crates/k8s/` that the fake reads
 - [ ] The skill's `paths` hide it until a matching file is touched, so agents found it through `AGENTS.md` and read it with `cat`; drop `paths` if it should be offered from the first turn
 
+## ADO query efficiency (after the work rollout)
+
+Projects of thousands of work items and hundreds of people. Measure first, then cut.
+
+- [ ] Count the requests and bytes each command sends (a stderr note under a debug env var through `ctx.env`), then run the pm skill's sweep and the trial tasks against the work org to find the expensive commands
+- [ ] `workitem list` asks WIQL for `$top=20000` ids only to print `[50 of N]`: a broad query returns thousands of ids every call. Try `$top=limit+1` with `[50 of 51+]`, or keep the exact count only when it is cheap
+- [ ] `workitemsbatch` asks for only the fields the row prints (check `fields` against `--fields`), 200 ids a call
+- [ ] Cache identity lookups (`@me`, `--assignee` names) like types and sprints, so a sweep doesn't search identities on every call
+- [ ] The fan-outs in `activity list` (updates for 50 work items, commits from 20 repositories) and `person list`: batch them, or give them a `--since` cut-off
+- [ ] Rate limits: ADO meters TSTUs (200 per user per sliding 5 minutes); record `X-RateLimit-Remaining` and `X-RateLimit-Delay` in the debug note so a sweep that comes near the limit shows up before it is throttled
+- [ ] Incremental reads for the pm sweep: `[System.ChangedDate] > last sweep` plus the cached rows, if sweeps get repeated within a day
+
 ## Built only when asked
 
 - [ ] `ado pr list --build succeeded|failed|running|none`: the PR search carries no build status, so it costs one policy-evaluations read per PR (what `pr get` does); cap it

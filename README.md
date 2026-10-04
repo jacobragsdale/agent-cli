@@ -88,13 +88,13 @@ can only read.
 
 | Domain | Service | Commands |
 |---|---|---|
-| ado | Azure DevOps: work items, pull requests, pipelines, runs, approvals | 29 |
+| ado | Azure DevOps: work items, pull requests, pipelines, runs, approvals | 57 |
 | kv | Key Vault secrets and versions (metadata; values only with `--reveal`) | 4 |
 | acr | Container Registry repositories, tags, manifests | 4 |
 | aks | AKS clusters and their credentials | 2 |
-| k8s | Kubernetes pods, logs, events, deployments, config maps, secrets | 13 |
+| k8s | Kubernetes pods, logs, events, deployments, config maps, secrets | 14 |
 | sql | SQL Server and Oracle queries and catalog | 6 |
-| airflow | Apache Airflow 3 DAGs, runs, task instances, logs, import errors | 15 |
+| airflow | Apache Airflow 2.9+ and 3 DAGs, runs, task instances, logs, import errors | 21 |
 | dd | Datadog logs, metrics, monitors, downtimes, events, APM, incidents, SLOs | 20 |
 
 ## Documentation

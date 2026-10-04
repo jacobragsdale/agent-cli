@@ -62,9 +62,9 @@ set from the environment as `AGENT_CLI_<SECTION>_<KEY>`, for example
 ### Where secrets come from
 
 No password or token needs to be in the file. Each credential is three keys:
-`KEY` (the value itself; throwaway setups only), `KEY_env` (the variable that
-holds it) or `KEY_cmd` (a shell command that prints it, run only when a
-request needs it). Good commands are `pass show contoso/db` or
+`KEY` (the value itself; throwaway setups only, and refused for the ado PAT
+and Datadog keys), `KEY_env` (the variable that holds it) or `KEY_cmd` (a
+shell command that prints it, run only when a request needs it). Good commands are `pass show contoso/db` or
 `secret-tool lookup service contoso-db`. A file only you can read works too:
 `cat ~/.config/agent-cli/ado.pat` after `chmod 600` on it.
 
@@ -77,20 +77,33 @@ agent-cli config example ado
 ```toml
 [ado]
 org = "contoso"
-project = ["web", "mobile"]   # the first is the default for creating items and sprints; --project narrows
+project = ["web", "mobile"]        # the first is the default
+team = ["web team", "mobile/mobile team"]   # PROJECT/TEAM for a project other than the first
 pat_cmd = "cat ~/.config/agent-cli/ado.pat"
 ```
 
-The personal access token can also come from `pat_env`, or from
-`AZURE_DEVOPS_EXT_PAT` as before; with none, ado uses your `az login`. Give
-the token Work Items, Code and Build scopes (read only for the first week).
+With several projects, `workitem list` and `activity list` search all of them
+in one query, and `--project NAME` narrows to one. Commands bound to one
+project (`workitem create`, `sprint`, `backlog`, `team`, `query`,
+`workitem-type`, `person`) take `--project` and default to the first. A
+command on one work item uses that item's own project, whatever the default.
+`--iteration @current` reads each listed team's current sprint, so list a team
+per project. `code_project` (repositories, pull requests, pipelines) stays one
+project.
+
+The personal access token comes from `pat_env` or `pat_cmd`, else
+`AZURE_DEVOPS_EXT_PAT`, else your `az login`; a literal `pat = "..."` is
+refused, since a PAT opens the whole organization. Give it Work Items, Code,
+Build, Test Management, and Project and Team scopes (read only for the first
+week).
 
 ```sh
 agent-cli doctor ado
 ```
 
-A 401 means the token is wrong or expired; a project check that fails means a
-name under `project` is misspelled or the token's organization is another.
+The credential row names where the token came from. A 401 means the token is
+wrong or expired; a project check that fails means a name under `project` is
+misspelled or belongs to another organization.
 
 ## 4. Azure: Key Vault, Container Registry and AKS (kv, acr, aks)
 
@@ -214,16 +227,22 @@ read_only = true
 ```
 
 One block per environment; `--instance` takes its `name`. Airflow 2.9
-(`/api/v1`) and Airflow 3 (`/api/v2`) are both supported, detected per
-instance.
+(`/api/v1`) and Airflow 3 (`/api/v2`) are both supported: each instance's
+version is asked of the server once an hour (`api = "v1"` or `"v2"` skips the
+question).
 
 ```sh
 agent-cli doctor airflow
 ```
 
-If the server refuses the sign-in, doctor names the fix: an Airflow 2 admin
-must enable `airflow.api.auth.backend.basic_auth` (or the session backend) in
-`[api] auth_backends`.
+The sign-in row says how it got in. On Airflow 2 the password goes as HTTP
+Basic, which needs `airflow.api.auth.backend.basic_auth` in the server's
+`[api] auth_backends`; when Basic is refused, agent-cli signs in through the
+web login form instead. The form works, but it signs in again on every
+command, and the webserver allows about five sign-ins in 40 seconds, so a busy
+agent gets throttled: ask the admins to add `basic_auth`. A wrong password
+exits 3. A login page with no password field means single sign-on, where your
+own login has no password: ask for a service account.
 
 ## 8. Datadog (dd)
 

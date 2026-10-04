@@ -56,9 +56,13 @@ EOF
 fi
 rm -f /opt/airflow/dags/e2e_stale.py
 
-# Airflow 3 takes the DAG as an argument, 2 as -d.
+# Airflow 3 takes the DAG as an argument, 2 as -d; a refused form prints its
+# usage to stdout, so only the form that worked is kept.
 runs() {
-    airflow dags list-runs "$1" -o plain 2>/dev/null || airflow dags list-runs -d "$1" -o plain
+    local out
+    out=$(airflow dags list-runs -d "$1" -o plain 2>/dev/null) ||
+        out=$(airflow dags list-runs "$1" -o plain)
+    printf '%s\n' "$out"
 }
 trigger() {
     local dag=$1
