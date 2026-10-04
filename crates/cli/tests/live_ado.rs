@@ -1,18 +1,25 @@
 //! The ado work item commands against a live Azure DevOps project, through
-//! the built binary. Off unless `AGENT_CLI_TEST_ADO=1`; the credential is
-//! the usual one (`AZURE_DEVOPS_EXT_PAT`, else `az login`). It runs on the
-//! configured project, and on `AGENT_CLI_TEST_ADO_CONFIG` (a second
-//! config.toml) when that is set. It writes: point it at a sandbox seeded
-//! by `scripts/ado-sandbox.py`, never at a team's real project.
+//! the built binary. Off unless `AGENT_CLI_TEST_ADO=1`, and skipped while
+//! `AGENT_CLI_READ_ONLY` is on; the credential is the usual one
+//! (`AZURE_DEVOPS_EXT_PAT`, else `az login`). It writes, so it runs only on
+//! the config.toml `AGENT_CLI_TEST_ADO_CONFIG` names, never the user's own
+//! (which may name a team's real organization): one path, or two joined as
+//! PATH is (`basic.toml:agile.toml`), the second a project of another
+//! process. Point them at sandboxes seeded by `scripts/ado-sandbox.py`.
 //!
 //! Every work item it makes is tagged `agent-cli-e2e-run` and ends in its
-//! type's Removed state (else a Completed one). A check whose precondition
-//! the project lacks (no team, no next sprint, no saved query) prints why it
-//! skipped instead of failing.
+//! type's Removed state (else a Completed one); a run ends what an earlier,
+//! interrupted one left open. It holds a lock per config for the run, so a
+//! second suite on the same sandbox waits instead of closing its sprints. A
+//! check whose precondition the project lacks (no team, no next sprint, no
+//! saved query) prints why it skipped instead of failing.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::net::TcpListener;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde_json::Value;
@@ -26,6 +33,99 @@ const STORY_TYPES: [&str; 4] = ["User Story", "Product Backlog Item", "Requireme
 fn skip(what: &str, why: &str) {
     let test = std::thread::current().name().unwrap_or("").to_owned();
     eprintln!("skipped {what} in {test}: {why}");
+}
+
+/// The `n`th config `AGENT_CLI_TEST_ADO_CONFIG` names, when the suite may
+/// write at all.
+fn config(n: usize) -> Option<PathBuf> {
+    if std::env::var("AGENT_CLI_TEST_ADO").as_deref() != Ok("1") {
+        skip(
+            "live ado",
+            "set AGENT_CLI_TEST_ADO=1 on a sandbox project (scripts/ado-sandbox.py)",
+        );
+        return None;
+    }
+    // Core's rule: only an explicit off leaves the guard off.
+    if std::env::var("AGENT_CLI_READ_ONLY").is_ok_and(|value| {
+        !["", "0", "false", "no", "off"].contains(&value.trim().to_ascii_lowercase().as_str())
+    }) {
+        skip(
+            "live ado",
+            "AGENT_CLI_READ_ONLY is on, and the suite writes",
+        );
+        return None;
+    }
+    let Some(paths) = std::env::var_os("AGENT_CLI_TEST_ADO_CONFIG") else {
+        skip(
+            "live ado",
+            "set AGENT_CLI_TEST_ADO_CONFIG to the sandbox's config.toml (a second after a colon); the suite never writes through your own config",
+        );
+        return None;
+    };
+    let path = std::env::split_paths(&paths)
+        .filter(|path| !path.as_os_str().is_empty())
+        .nth(n);
+    if path.is_none() {
+        skip(
+            "the second config",
+            "AGENT_CLI_TEST_ADO_CONFIG names one config; add a second after a colon",
+        );
+    }
+    path
+}
+
+/// One stamp for the process: its items' titles carry it, so the sweep
+/// leaves the other test's alone.
+fn stamp() -> u64 {
+    static STAMP: OnceLock<u64> = OnceLock::new();
+    *STAMP.get_or_init(|| {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    })
+}
+
+/// The run's lock on `config`: two suites on one sandbox closed each other's
+/// sprints. A second suite waits for the first. The lock is a port listened
+/// on, which the kernel frees when a run dies by a signal (`File::lock` is
+/// past the MSRV).
+// ponytail: a port from the path's hash, so a stranger on it reads as another
+// suite; the wait names the port.
+fn lock(config: &Path) -> TcpListener {
+    let config = config.canonicalize().unwrap_or_else(|_| config.to_owned());
+    let hash = (config.to_string_lossy().bytes()).fold(0u32, |hash, byte| {
+        hash.wrapping_mul(31).wrapping_add(byte.into())
+    });
+    let port = 20_000 + u16::try_from(hash % 10_000).unwrap();
+    let mut said = false;
+    loop {
+        if let Ok(listener) = TcpListener::bind(("127.0.0.1", port)) {
+            return listener;
+        }
+        if !said {
+            eprintln!(
+                "waiting for another live ado suite on {} (port {port})",
+                config.display()
+            );
+            said = true;
+        }
+        std::thread::sleep(Duration::from_secs(2));
+    }
+}
+
+/// The state a type's work ends in: its Removed category, else Completed.
+fn end_of(states: &[Value]) -> String {
+    let named = |category: &str| {
+        states
+            .iter()
+            .find(|s| s["category"] == category)
+            .and_then(|s| s["name"].as_str())
+    };
+    named("Removed")
+        .or_else(|| named("Completed"))
+        .unwrap()
+        .to_owned()
 }
 
 /// One run of the binary.
@@ -43,8 +143,9 @@ impl Ran {
 }
 
 struct Live {
-    /// None: the environment's own config.
-    config: Option<String>,
+    config: PathBuf,
+    /// Held for the run when this is the config's own test.
+    _lock: Option<TcpListener>,
     /// A fresh cache, so a day-old field list cannot hide a change.
     cache: tempfile::TempDir,
     /// Every work item made, with its type.
@@ -55,36 +156,33 @@ struct Live {
 }
 
 impl Live {
-    fn new(config: Option<String>) -> Option<Self> {
-        if std::env::var("AGENT_CLI_TEST_ADO").as_deref() != Ok("1") {
-            skip(
-                "live ado",
-                "set AGENT_CLI_TEST_ADO=1 on a sandbox project (scripts/ado-sandbox.py)",
-            );
-            return None;
-        }
-        Some(Self {
+    fn new(config: PathBuf) -> Self {
+        Self {
             config,
+            _lock: None,
             cache: tempfile::tempdir().unwrap(),
             made: RefCell::new(Vec::new()),
             end: RefCell::new(HashMap::new()),
-            stamp: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
-        })
+            stamp: stamp(),
+        }
+    }
+
+    /// The config's own test: it holds the lock, then ends what an earlier
+    /// run left open.
+    fn start(config: PathBuf) -> Self {
+        let mut live = Self::new(config);
+        live._lock = Some(lock(&live.config));
+        live.sweep();
+        live
     }
 
     fn run(&self, args: &[&str]) -> Ran {
-        let mut command = Command::new(env!("CARGO_BIN_EXE_agent-cli"));
-        command
+        let output = Command::new(env!("CARGO_BIN_EXE_agent-cli"))
             .args(args)
             .env("XDG_CACHE_HOME", self.cache.path())
-            .env_remove("AGENT_CLI_READ_ONLY");
-        if let Some(config) = &self.config {
-            command.env("AGENT_CLI_CONFIG", config);
-        }
-        let output = command.output().unwrap();
+            .env("AGENT_CLI_CONFIG", &self.config)
+            .output()
+            .unwrap();
         Ran {
             code: output.status.code().unwrap_or(-1),
             stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
@@ -118,20 +216,54 @@ impl Live {
         id
     }
 
-    /// The state `kind`'s work ends in: its Removed category, else Completed.
-    fn end_state(&self, kind: &str) -> String {
+    /// `kind`'s states, each with its category.
+    fn states(&self, kind: &str) -> Vec<Value> {
         let got = self.ok(&["ado", "workitem-type", "get", kind, "--fields", "states"]);
-        let states = got["states"].as_array().unwrap();
-        let named = |category: &str| {
-            states
-                .iter()
-                .find(|s| s["category"] == category)
-                .and_then(|s| s["name"].as_str())
-        };
-        named("Removed")
-            .or_else(|| named("Completed"))
-            .unwrap()
-            .to_owned()
+        got["states"].as_array().unwrap().clone()
+    }
+
+    /// Ends the tagged items an earlier run left open: a signal skips Drop.
+    fn sweep(&self) {
+        let rows = self.ok(&[
+            "ado",
+            "workitem",
+            "list",
+            "--tag",
+            TAG,
+            "--limit",
+            "1000",
+            "--fields",
+            "id,type,title,state",
+        ]);
+        let ours = format!("e2e {} ", self.stamp);
+        let mut kinds: HashMap<String, (Vec<Value>, String)> = HashMap::new();
+        for row in rows.as_array().unwrap() {
+            let (Some(kind), Some(state)) = (row["type"].as_str(), row["state"].as_str()) else {
+                continue;
+            };
+            if row["title"].as_str().is_some_and(|t| t.starts_with(&ours)) {
+                continue;
+            }
+            let (states, end) = kinds.entry(kind.to_owned()).or_insert_with(|| {
+                let states = self.states(kind);
+                let end = end_of(&states);
+                (states, end)
+            });
+            let finished = states.iter().any(|s| {
+                s["name"] == state && (s["category"] == "Completed" || s["category"] == "Removed")
+            });
+            if finished {
+                continue;
+            }
+            let id = row["id"].to_string();
+            eprintln!("ending {id}, which an earlier run left {state}");
+            self.ok(&["ado", "workitem", "update", &id, "--state", end]);
+        }
+    }
+
+    /// The state `kind`'s work ends in.
+    fn end_state(&self, kind: &str) -> String {
+        end_of(&self.states(kind))
     }
 
     /// Every check; answers the requirement-level type.
@@ -157,7 +289,9 @@ impl Live {
     fn seen_from_the_first_config(&self, story: &str) {
         let id = self.make(story, "seen from the first config", &[]);
         let id = id.to_string();
-        let Some(first) = Live::new(None) else { return };
+        let Some(first) = config(0).map(Live::new) else {
+            return;
+        };
         first.ok(&["ado", "history", "get", &id, "--field", "State"]);
         first.ok(&["ado", "tree", "get", &id]);
         first.ok(&[
@@ -466,33 +600,40 @@ impl Live {
     }
 
     /// A real `sprint complete`: an item made in a sprint whose other work is
-    /// all finished (a dry run moves nothing) moves to the sprint before it,
-    /// and nothing else does.
+    /// all finished (a dry run moves nothing) moves to the sprint after it,
+    /// which the default `@next` names, and nothing else does. A sprint that
+    /// starts before the closed one is refused as the target.
     fn sprint_complete(&self) {
-        let sprints = self.ok(&["ado", "sprint", "list", "--fields", "path"]);
-        let paths: Vec<&str> = sprints
-            .as_array()
-            .unwrap()
-            .iter()
+        let sprints = self.ok(&["ado", "sprint", "list", "--fields", "path,start"]);
+        // @next goes by start date, so the undated sprints are left out.
+        let paths: Vec<&str> = (sprints.as_array().unwrap().iter())
+            .filter(|s| s["start"].is_string())
             .filter_map(|s| s["path"].as_str())
             .collect();
-        let complete = |from: &str, to: &str, how: &str| {
-            self.ok(&["ado", "sprint", "complete", from, "--move-to", to, how])
+        let complete = |sprint: &str, more: &[&str]| {
+            let mut argv = vec!["ado", "sprint", "complete", sprint];
+            argv.extend(more);
+            self.run(&argv)
         };
         let mut pairs = paths.windows(2).rev().map(|w| (w[0], w[1]));
-        let Some(&(last_to, last_from)) = pairs.clone().next().as_ref() else {
-            skip("sprint complete", "the team has fewer than two sprints");
+        let Some((last_from, last_to)) = pairs.clone().next() else {
+            skip(
+                "sprint complete",
+                "the team has fewer than two dated sprints",
+            );
             return;
         };
-        let free = pairs.find(|(to, from)| {
-            complete(from, to, "--dry-run")["would"]
+        let backward = complete(last_to, &["--move-to", last_from, "--dry-run"]);
+        assert_eq!(backward.code, 2, "{}{}", backward.stdout, backward.stderr);
+        let free = pairs.find(|(from, _)| {
+            complete(from, &["--dry-run"]).json()["would"]
                 .as_array()
                 .is_none_or(Vec::is_empty)
         });
-        let (to, from) = free.unwrap_or((last_to, last_from));
+        let (from, to) = free.unwrap_or((last_from, last_to));
         let id = self.make("Task", "rollover", &["--iteration", from]);
         if free.is_none() {
-            let plan = complete(from, to, "--dry-run");
+            let plan = complete(from, &["--dry-run"]).json();
             let planned = plan["would"].as_array().unwrap().iter().any(|w| {
                 w["url"]
                     .as_str()
@@ -505,7 +646,8 @@ impl Live {
             );
             return;
         }
-        let done = complete(from, to, "--yes");
+        let done = self.ok(&["ado", "sprint", "complete", from, "--yes"]);
+        assert_eq!(done["to"], to, "{done}");
         let moved: Vec<&Value> = done["moved"]
             .as_array()
             .unwrap()
@@ -562,21 +704,15 @@ impl Drop for Live {
 
 #[test]
 fn the_work_item_commands_hold_on_the_configured_project() {
-    if let Some(live) = Live::new(None) {
-        live.check_all();
+    if let Some(config) = config(0) {
+        Live::start(config).check_all();
     }
 }
 
 #[test]
 fn the_work_item_commands_hold_on_the_second_config() {
-    let Ok(config) = std::env::var("AGENT_CLI_TEST_ADO_CONFIG") else {
-        skip(
-            "the second config",
-            "set AGENT_CLI_TEST_ADO_CONFIG to a config.toml",
-        );
-        return;
-    };
-    if let Some(live) = Live::new(Some(config)) {
+    if let Some(config) = config(1) {
+        let live = Live::start(config);
         let story = live.check_all();
         live.seen_from_the_first_config(&story);
     }

@@ -632,6 +632,19 @@ expect = "ado sprint get"
 text = "remaining capacity and story points done in the sprint"
 expect = "ado sprint get"
 
+# The audit's bare words (IFC-36): `agent-cli status` and its kin.
+[[query]]
+text = "status"
+expect = "ado sprint get"
+
+[[query]]
+text = "sprint current"
+expect = "ado sprint get"
+
+[[query]]
+text = "bug list"
+expect = "ado workitem list"
+
 [[query]]
 text = "roll over unfinished work to the next sprint"
 expect = "ado sprint complete"

@@ -222,21 +222,25 @@ Use a personal organization, never an employer's, and read only: set
      `codeSnippet`; a repository filter needing a project; the
      `*.visualstudio.com` host; an organization without the extension.
 4. **The work item suite** writes, so it runs on a sandbox project instead,
-   without `AGENT_CLI_READ_ONLY`. Seed the project once with
+   and skips while `AGENT_CLI_READ_ONLY` is on. Seed the project once with
    `scripts/ado-sandbox.py` (sprints around today with capacity, a tagged
-   tree, a shared query), then:
+   tree, a shared query), give it a config file of its own, then:
 
    ```sh
-   AGENT_CLI_TEST_ADO=1 AGENT_CLI_TEST_ADO_CONFIG=~/.config/agent-cli/agile.toml \
+   AGENT_CLI_TEST_ADO=1 \
+   AGENT_CLI_TEST_ADO_CONFIG=~/.config/agent-cli/sandbox.toml:~/.config/agent-cli/agile.toml \
      cargo test -p agent-cli --test live_ado -- --nocapture
    ```
 
-   It runs the binary on the configured project, and on the second config
-   when one is named (a project of another process, so Basic and Agile are
-   both covered). Each run tags what it makes `agent-cli-e2e-run` and ends
-   it in a Removed (else Completed) state. A check the project cannot hold
-   prints `skipped …: why`; `sprint complete --yes` needs a sprint holding
-   no one else's unfinished work.
+   It runs the binary only on the configs `AGENT_CLI_TEST_ADO_CONFIG`
+   names, never on your own: the first, and the second after a colon when
+   there is one (a project of another process, so Basic and Agile are both
+   covered). Each run tags what it makes `agent-cli-e2e-run` and ends it in
+   a Removed (else Completed) state, first ending what an interrupted run
+   left open; a second suite on the same config waits for the first. A
+   check the project cannot hold prints `skipped …: why`;
+   `sprint complete --yes` needs a sprint holding no one else's unfinished
+   work.
 
 ## Airflow
 

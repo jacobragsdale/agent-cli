@@ -8,7 +8,7 @@ use serde_json::json;
 
 use crate::client::{API, Ado, Body};
 use crate::ids::arg;
-use crate::iteration::{resolve, team};
+use crate::iteration::{Iteration, read_iterations, resolve, team};
 use crate::work_items::{WorkItemRef, moved_on, row};
 
 use super::{done, items};
@@ -17,7 +17,7 @@ use super::{done, items};
 pub struct SprintCompleteArgs {
     /// The sprint to close: @current, @previous, a sprint's path or its name
     sprint: String,
-    /// The sprint unfinished work moves to: @next (the default), a path or a name
+    /// The sprint unfinished work moves to: @next (the default: the sprint after the one closed), a path or a name; never one that starts before it
     #[arg(long, default_value = "@next")]
     move_to: String,
     /// The team whose sprints they are (default: [ado] team)
@@ -48,13 +48,33 @@ fn sprint_complete(ctx: &Ctx, args: SprintCompleteArgs) -> Result<Completed> {
     let ado = Ado::load_in(ctx, args.project.as_deref())?;
     let team = team(&ado, args.team.as_deref())?;
     let sprint = resolve(ctx, &ado, Some(team), &args.sprint)?;
-    let to = resolve(ctx, &ado, Some(team), &args.move_to)?;
+    let to = if args.move_to.trim().eq_ignore_ascii_case("@next") {
+        following(ctx, &ado, team, &sprint)?
+    } else {
+        resolve(ctx, &ado, Some(team), &args.move_to)?
+    };
+    let list = format!(
+        "agent-cli ado sprint list --team {} --fields id,start,finish,timeframe",
+        arg(team)
+    );
     if to.path.eq_ignore_ascii_case(&sprint.path) {
         return Err(Failure::usage(format!(
             "--move-to names {}, the sprint being closed",
             sprint.path
         ))
-        .hint("agent-cli ado sprint list --fields id,timeframe")
+        .hint(list)
+        .into());
+    }
+    // Unfinished work moving into an earlier sprint is a mistake, a past one
+    // above all: it would be late before anyone saw it.
+    if let (Some(start), Some(closed)) = (&to.start, &sprint.start)
+        && start < closed
+    {
+        return Err(Failure::usage(format!(
+            "--move-to names {}, which starts before {}, the sprint being closed",
+            to.path, sprint.path
+        ))
+        .hint(list)
         .into());
     }
     let (work, mut read) = items(ctx, &ado, team, &sprint, &["System.Title", PARENT])?;
@@ -171,6 +191,35 @@ fn sprint_complete(ctx: &Ctx, args: SprintCompleteArgs) -> Result<Completed> {
         ctx.note(format!("[next: {again}]"));
     }
     Ok(completed)
+}
+
+/// The sprint after `sprint`, which `@next` means here rather than the
+/// team's next: closing a past sprint would skip the current one, and closing
+/// a future one would move its work back. Read past the cache, as `@next` is.
+fn following(ctx: &Ctx, ado: &Ado, team: &str, sprint: &Iteration) -> Result<Iteration> {
+    let all = read_iterations(ctx, ado, team, true)?.0;
+    let next = match &sprint.start {
+        // The earliest that starts after it; an undated sprint is in no calendar.
+        Some(closed) => all
+            .iter()
+            .filter(|i| i.start.as_ref().is_some_and(|start| start > closed))
+            .min_by(|a, b| a.start.cmp(&b.start)),
+        None => all
+            .iter()
+            .skip_while(|i| !i.path.eq_ignore_ascii_case(&sprint.path))
+            .nth(1),
+    };
+    next.cloned().ok_or_else(|| {
+        Failure::usage(format!(
+            "no sprint of {team} follows {}, so @next names none",
+            sprint.path
+        ))
+        .hint(format!(
+            "agent-cli ado sprint list --team {} --fields id,start,finish,timeframe, then pass --move-to with a later sprint, or add one",
+            arg(team)
+        ))
+        .into()
+    })
 }
 
 const CHANGED: &str = "it changed since it was read";
@@ -313,6 +362,64 @@ mod tests {
             "{}",
             outcome.stderr
         );
+    }
+
+    #[test]
+    fn next_is_the_sprint_after_the_one_closed_and_an_earlier_target_is_refused() {
+        // Closing past Sprint 11 moves to Sprint 12, not the team's next, 13.
+        let mut open = item(5, "Task", "Active", 7);
+        open["fields"]["System.IterationPath"] = json!("Fabrikam\\Sprint 11");
+        let answers = vec![
+            sprints(),
+            sprints(),
+            relations(&[(5, None)]),
+            batch(vec![open]),
+            states(),
+        ];
+        let plans = dry_run(&["ado", "sprint", "complete", "Sprint 11"], answers);
+        assert_eq!(plans[0]["body"][1]["value"], "Fabrikam\\Sprint 12");
+
+        let (outcome, _) = ado(
+            &["ado", "sprint", "complete", "Sprint 13", "--yes"],
+            vec![sprints(), sprints()],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("no sprint of Web Team follows Fabrikam\\Sprint 13"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(
+            outcome
+                .stderr
+                .contains("hint: agent-cli ado sprint list --team 'Web Team'"),
+            "{}",
+            outcome.stderr
+        );
+
+        let (outcome, transport) = ado(
+            &[
+                "ado",
+                "sprint",
+                "complete",
+                "@current",
+                "--move-to",
+                "Sprint 11",
+                "--yes",
+            ],
+            vec![sprints(), sprints()],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains(
+                "--move-to names Fabrikam\\Sprint 11, which starts before Fabrikam\\Sprint 12"
+            ),
+            "{}",
+            outcome.stderr
+        );
+        assert_eq!(transport.sent().len(), 2, "only the sprints were read");
     }
 
     /// The fake, but the second PATCH outlives the deadline.
