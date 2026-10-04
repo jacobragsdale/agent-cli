@@ -1,9 +1,9 @@
 //! Every airflow command against a live Airflow, through the built binary.
 //! Off unless `AGENT_CLI_TEST_AIRFLOW=1`; start the server with
 //! `scripts/airflow-up.sh` (Airflow 2.9, Basic or, with `AIRFLOW_AUTH=session`,
-//! session-only sign-in). `AGENT_CLI_TEST_AIRFLOW_URL` (default
-//! `http://127.0.0.1:18080`), `_USER` and `_PASSWORD` (default admin, admin)
-//! point it elsewhere. It writes (triggers, clears, pauses): point it only
+//! session-only sign-in; `AIRFLOW_VERSION=3` for Airflow 3 on port 18081).
+//! `AGENT_CLI_TEST_AIRFLOW_URL` (default `http://127.0.0.1:18080`), `_USER`
+//! and `_PASSWORD` (default admin, admin) point it elsewhere. It writes (triggers, clears, pauses): point it only
 //! at a throwaway server seeded by `scripts/airflow/seed.sh`.
 //!
 //! The config holds two instances on the one server, `dev` and a
@@ -27,6 +27,12 @@ impl Ran {
         serde_json::from_str(&self.stdout)
             .unwrap_or_else(|e| panic!("{e}: not JSON: {}\n{}", self.stdout, self.stderr))
     }
+}
+
+/// A log's exception: Airflow 3 adds where in the DAG's code it was raised.
+fn failed_with(logs: &Value, exception: &str) {
+    let error = logs["error"].as_str().unwrap_or_default();
+    assert!(error.starts_with(exception), "{logs}");
 }
 
 struct Live {
@@ -345,10 +351,7 @@ impl Live {
             "logs",
             &format!("{failing}/load_orders/1"),
         ]);
-        assert_eq!(
-            logs["error"], "ValueError: order 88123 has no customer_id",
-            "{logs}"
-        );
+        failed_with(&logs, "ValueError: order 88123 has no customer_id");
         assert_eq!(logs["at"], "e2e_failing:9", "{logs}");
         assert_eq!(logs["complete"], true);
 
@@ -364,7 +367,7 @@ impl Live {
         let (_, unmapped) = self.exits(2, &["airflow", "task", "get", &format!("{mapped}/double")]);
         assert!(unmapped.contains("TASK:N"), "{unmapped}");
         let one = self.ok(&["airflow", "task", "logs", &format!("{mapped}/double:1/1")]);
-        assert_eq!(one["error"], "ValueError: cannot double 2", "{one}");
+        failed_with(&one, "ValueError: cannot double 2");
         let xcoms = self.ok(&["airflow", "xcom", "list", &format!("{mapped}/double")]);
         assert_eq!(
             xcoms.as_array().unwrap().len(),
@@ -407,10 +410,7 @@ impl Live {
 
         let retry = self.latest("e2e_retry");
         let flaky = self.ok(&["airflow", "task", "logs", &format!("{retry}/flaky/1")]);
-        assert_eq!(
-            flaky["error"], "ConnectionError: warehouse refused the connection",
-            "{flaky}"
-        );
+        failed_with(&flaky, "ConnectionError: warehouse refused the connection");
         assert_eq!(flaky["complete"], true, "try 1 ended: {flaky}");
 
         let branch = self.latest("e2e_branch");

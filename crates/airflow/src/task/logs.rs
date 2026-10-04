@@ -66,16 +66,16 @@ fn task_logs(ctx: &Ctx, args: TaskLogsArgs) -> Result<TaskLogs> {
     }
     let earlier = v1 && attempt < latest;
     let state = if earlier { None } else { text(&ti["state"]) };
-    // A cleared task waits for its next try, but the try whose log this is
-    // ended, and the task keeps that try's end_date. (On Airflow 2 the
-    // record is the latest try's even when the id names it.)
-    let cleared = (id.attempt.is_none() || v1)
-        && !earlier
+    // A cleared or up_for_retry task waits for its next try, but the try
+    // whose log this is ended, and the task keeps that try's end_date. The
+    // latest try's record says so too: Airflow 3's tries/N answers it with
+    // the task's state, and Airflow 2 has only the latest try's record.
+    let cleared = !earlier
         && matches!(state.as_deref(), None | Some("up_for_retry" | "restarting"))
         && !ti["end_date"].is_null();
     if cleared {
         ctx.note(format!(
-            "[the task was cleared and its next try has not started; this is try {attempt}]"
+            "[try {attempt} ended; the task waits for its next try]"
         ));
     }
     let done = cleared || earlier || finished(state.as_deref());
@@ -516,7 +516,7 @@ mod tests {
         assert!(
             outcome
                 .stderr
-                .contains("[the task was cleared and its next try has not started; this is try 2]")
+                .contains("[try 2 ended; the task waits for its next try]")
                 && !outcome.stderr.contains("this is the log so far"),
             "{}",
             outcome.stderr

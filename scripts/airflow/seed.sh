@@ -26,24 +26,45 @@ conn e2e_oracle '{"conn_type": "oracle", "host": "oracle.contoso.example", "port
     "schema": "FREEPDB1", "login": "etl", "password": "not-a-real-password"}'
 conn e2e_http '{"conn_type": "http", "host": "api.contoso.example"}'
 
+# Until DAG $1 is parsed (Airflow 3's dag processor parses on its own time).
+parsed() {
+    for _ in $(seq 40); do
+        airflow dags list -o plain 2>/dev/null | grep -q "^$1\b" && return
+        sleep 3
+    done
+    echo "seed: DAG $1 was never parsed" >&3
+    return 1
+}
+
 # A DAG Airflow parsed whose file is then gone: it turns stale.
 if ! airflow dags list -o plain 2>/dev/null | grep -q '^e2e_stale\b'; then
     cat >/opt/airflow/dags/e2e_stale.py <<'EOF'
 import pendulum
 from airflow import DAG
-from airflow.operators.empty import EmptyOperator
+from airflow.decorators import task
 
 with DAG("e2e_stale", start_date=pendulum.datetime(2026, 1, 1), schedule=None, tags=["e2e"]):
-    EmptyOperator(task_id="noop")
+
+    @task
+    def noop():
+        pass
+
+    noop()
 EOF
+    airflow dags reserialize >/dev/null 2>&1 || true
+    parsed e2e_stale
 fi
-airflow dags reserialize >/dev/null 2>&1
 rm -f /opt/airflow/dags/e2e_stale.py
 
+# Airflow 3 takes the DAG as an argument, 2 as -d.
+runs() {
+    airflow dags list-runs "$1" -o plain 2>/dev/null || airflow dags list-runs -d "$1" -o plain
+}
 trigger() {
     local dag=$1
     shift
-    if [ -z "$(airflow dags list-runs -d "$dag" -o plain 2>/dev/null | tail -n +2)" ]; then
+    parsed "$dag"
+    if [ -z "$(runs "$dag" | tail -n +2)" ]; then
         airflow dags trigger "$dag" "$@" >/dev/null
     fi
 }
