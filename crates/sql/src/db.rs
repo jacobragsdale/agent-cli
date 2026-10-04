@@ -42,6 +42,48 @@ pub struct Ran {
     /// Every row the server sent, kept or not.
     pub rows: u64,
     pub first_row: Option<Instant>,
+    /// What the kept rows hold, near enough ([`weight`]).
+    bytes: usize,
+}
+
+/// How much of a statement's rows to hold, whatever `--max-rows` says: a
+/// million wide rows would take gigabytes, and printing them would run far
+/// past the deadline (only 12 KB of it is shown anyway, the rest spilled).
+// ponytail: per statement, so a script of many big selects holds this
+// much for each; one budget for the command if that bites.
+pub const KEEP_BYTES: usize = 64 << 20;
+
+/// A row's size in memory, near enough: each value's own size, and its text.
+fn weight(row: &[Value]) -> usize {
+    row.iter()
+        .map(|cell| {
+            size_of::<Value>()
+                + match cell {
+                    Value::String(text) => text.len(),
+                    _ => 0,
+                }
+        })
+        .sum()
+}
+
+impl Ran {
+    /// Counts a row and keeps it in the last set while there is room, under
+    /// `fetch.keep` rows and [`KEEP_BYTES`]. False when the read should stop.
+    pub fn keep(&mut self, fetch: Fetch, row: impl FnOnce() -> Result<Vec<Value>>) -> Result<bool> {
+        self.rows += 1;
+        self.first_row.get_or_insert_with(Instant::now);
+        let Some(set) = self.sets.last_mut() else {
+            return Ok(true);
+        };
+        if set.rows.len() >= fetch.keep || self.bytes >= KEEP_BYTES {
+            set.truncated = true;
+            return Ok(!fetch.stop);
+        }
+        let row = row()?;
+        self.bytes += weight(&row);
+        set.rows.push(row);
+        Ok(true)
+    }
 }
 
 /// How much of a result to keep. `stop` ends the read at the first row past

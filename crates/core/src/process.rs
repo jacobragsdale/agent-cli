@@ -4,7 +4,8 @@
 //! prompt; both pipes are drained on their own threads, so a child that fills
 //! one never blocks; and the child leads its own process group, so the kill at
 //! the deadline also takes down a credential plugin it started, such as a
-//! kubelogin sitting on a device-code prompt.
+//! kubelogin sitting on a device-code prompt. The terminal's SIGINT does not
+//! reach that group, so a signal to agent-cli kills it too ([`crate::on_stop`]).
 
 use std::io::Read;
 use std::process::{Command, ExitStatus, Stdio};
@@ -47,6 +48,10 @@ pub fn run_until(mut command: Command, deadline: Instant) -> Result<Output> {
                 anyhow::Error::new(error).context(format!("{program} could not be started"))
             }
         })?;
+    let leader = child.id();
+    let _stop = crate::stop::on_stop(format!("{program} (pid {leader})"), move || {
+        kill_group(leader);
+    });
     let stdout = drain(child.stdout.take());
     let stderr = drain(child.stderr.take());
     let status = loop {

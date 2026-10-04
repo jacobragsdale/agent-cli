@@ -1,7 +1,7 @@
 # agent-cli-core: the API a domain uses
 
 `src/lib.rs` re-exports all of it; each name below is one `pub use`. Jump to
-a definition for details rather than reading whole files.
+definitions, not whole files.
 
 ## Registry
 - `command!` makes a `Command` from `fn(&Ctx, Args) -> Result<Row>` (Args:
@@ -34,6 +34,7 @@ a definition for details rather than reading whole files.
   `form_encode`, `base64`; `failure_message`: a refusal in the service's
   own words.
 - `run_until`, `Output`: a child process under the deadline.
+- `on_stop`, `OnStop`: what a signal must stop (a DB call) until dropped.
 
 ## Errors and secrets
 - `Failure`: `usage` 2, `setup` 3, `not_found` 4, `conflict` 5, `timed_out`

@@ -3,7 +3,10 @@
 //! The only async code in agent-cli: a current-thread runtime made when a
 //! SQL Server connection opens, and blocked on. Every call races the
 //! deadline, and losing that race drops the socket, which is the only cancel
-//! TDS gives tiberius.
+//! TDS gives tiberius (it sends no Attention). It is enough: SQL Server ends
+//! the request at once when its connection closes, whether it was sending
+//! rows, computing, in a `WAITFOR` or waiting on a lock, and rolls back the
+//! open transaction. A signal shuts the socket from its own thread.
 //!
 //! Stopping at `--max-rows` drops the socket too, which ends the session:
 //! the server abandons the rest of the batch and rolls back an open
@@ -12,11 +15,12 @@
 //! before is cut short: nothing before it left session state to lose, so
 //! the next batch simply reconnects.
 
+use std::net::Shutdown;
 use std::panic::AssertUnwindSafe;
-use std::sync::Once;
+use std::sync::{Arc, Mutex, Once, PoisonError};
 use std::time::{Duration, Instant};
 
-use agent_cli_core::{Exit, Failure, Secret};
+use agent_cli_core::{Exit, Failure, OnStop, Secret, on_stop};
 use anyhow::{Result, anyhow};
 use futures_util::TryStreamExt as _;
 use serde_json::Value;
@@ -43,6 +47,10 @@ pub struct Session {
     runtime: Option<Runtime>,
     /// `None` after a read was cut short: the next statement reconnects.
     client: Option<Driver>,
+    /// The client's socket again, for a signal to shut while the client
+    /// waits on it.
+    socket: Arc<Mutex<Option<std::net::TcpStream>>>,
+    _stop: OnStop,
 }
 
 impl Session {
@@ -65,10 +73,19 @@ impl Session {
         }
         config.application_name("agent-cli");
         let runtime = Builder::new_current_thread().enable_all().build()?;
+        let socket: Arc<Mutex<Option<std::net::TcpStream>>> = Arc::default();
+        let shut = Arc::clone(&socket);
+        let stop = on_stop(format!("the session on {}", spec.name), move || {
+            if let Some(socket) = shut.lock().unwrap_or_else(PoisonError::into_inner).take() {
+                let _ = socket.shutdown(Shutdown::Both);
+            }
+        });
         let mut session = Self {
             config,
             runtime: Some(runtime),
             client: None,
+            socket,
+            _stop: stop,
         };
         session.connect(deadline)?;
         Ok(session)
@@ -91,22 +108,22 @@ impl Session {
         match raced {
             Ok(Ok(Ok((ran, stopped)))) => {
                 if stopped {
-                    self.client = None;
+                    self.disconnect();
                 }
                 Ok(ran)
             }
             // The command stops at the first failure, so the session is not
             // worth keeping whatever the failure was.
             Ok(Ok(Err(error))) => {
-                self.client = None;
+                self.disconnect();
                 Err(error)
             }
             Ok(Err(_elapsed)) => {
-                self.client = None;
+                self.disconnect();
                 Err(db::timed_out())
             }
             Err(panic) => {
-                self.client = None;
+                self.disconnect();
                 let why = panic
                     .downcast_ref::<&str>()
                     .copied()
@@ -129,8 +146,10 @@ impl Session {
             tokio::time::timeout_at(limit.into(), open_driver(&self.config)).await
         });
         match opened {
-            Ok(driver) => {
-                self.client = Some(driver?);
+            Ok(opened) => {
+                let (driver, socket) = opened?;
+                self.client = Some(driver);
+                *self.socket.lock().unwrap_or_else(PoisonError::into_inner) = Some(socket);
                 Ok(())
             }
             // No statement ran yet: the deadline came during the login.
@@ -146,11 +165,21 @@ impl Session {
             )),
         }
     }
+
+    /// Closes the connection, both handles on its socket, which ends the
+    /// session and whatever it was running.
+    fn disconnect(&mut self) {
+        self.client = None;
+        self.socket
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
+    }
 }
 
 impl Drop for Session {
     fn drop(&mut self) {
-        self.client = None;
+        self.disconnect();
         if let Some(runtime) = self.runtime.take() {
             runtime.shutdown_background();
         }
@@ -184,13 +213,17 @@ fn cannot_connect(config: &tiberius::Config, exit: Exit, why: &str) -> anyhow::E
     .into()
 }
 
-async fn open_driver(config: &tiberius::Config) -> Result<Driver> {
+/// A logged-in client, and a second handle on its socket.
+async fn open_driver(config: &tiberius::Config) -> Result<(Driver, std::net::TcpStream)> {
     let tcp = TcpStream::connect(config.get_addr())
         .await
         .map_err(|why| cannot_connect(config, Exit::Failed, &why.to_string()))?;
     // Row batches are small and frequent; Nagle would sit on them.
     tcp.set_nodelay(true)?;
-    Client::connect(config.clone(), tcp.compat_write())
+    let tcp = tcp.into_std()?;
+    let socket = tcp.try_clone()?;
+    let tcp = TcpStream::from_std(tcp)?;
+    let driver = Client::connect(config.clone(), tcp.compat_write())
         .await
         .map_err(|why| match why {
             // The server's own sentence and number, not the driver's wrapping;
@@ -210,7 +243,8 @@ async fn open_driver(config: &tiberius::Config) -> Result<Driver> {
                 &format!("{why}; a server with a self-signed certificate wants trust_cert = true"),
             ),
             why => cannot_connect(config, Exit::Failed, &why.to_string()),
-        })
+        })?;
+    Ok((driver, socket))
 }
 
 /// Runs one batch with `simple_query`, which takes several statements and
@@ -287,20 +321,9 @@ async fn stream(driver: &mut Driver, sql: &str, fetch: Fetch) -> Result<(Ran, bo
     Ok((ran, false))
 }
 
-/// Counts a row and keeps it while there is room. False when the read
-/// should stop.
+/// [`Ran::keep`] for a row that cannot fail to convert.
 fn keep(ran: &mut Ran, fetch: Fetch, row: impl FnOnce() -> Vec<Value>) -> bool {
-    ran.rows += 1;
-    ran.first_row.get_or_insert_with(Instant::now);
-    let Some(set) = ran.sets.last_mut() else {
-        return true;
-    };
-    if set.rows.len() >= fetch.keep {
-        set.truncated = true;
-        return !fetch.stop;
-    }
-    set.rows.push(row());
-    true
+    ran.keep(fetch, || Ok(row())).unwrap_or(true)
 }
 
 /// Whether a set is the one column SQL Server answers `for json` and `for

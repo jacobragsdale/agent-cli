@@ -32,6 +32,7 @@ pub fn run(domains: &[Domain]) -> ExitCode {
         .skip(1)
         .map(|arg| arg.to_string_lossy().into_owned())
         .collect();
+    crate::stop::handle_signals();
     let stdout = std::io::stdout();
     let tty = stdout.is_terminal();
     let code = run_with(
@@ -39,10 +40,34 @@ pub fn run(domains: &[Domain]) -> ExitCode {
         &argv,
         Setup::from_env(),
         &mut stdout.lock(),
-        &mut std::io::stderr().lock(),
+        &mut Stderr,
         tty,
     );
+    if crate::stop::stopping() {
+        // The signal's thread is stopping what still runs, and exits.
+        loop {
+            std::thread::park();
+        }
+    }
     ExitCode::from(code)
+}
+
+/// stderr, unlocked so the signal's line can get through, and silent once a
+/// signal is being handled: what a cancelled call says (ORA-01013, a lost
+/// connection) is not news then.
+struct Stderr;
+
+impl Write for Stderr {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        if crate::stop::stopping() {
+            return Ok(bytes.len());
+        }
+        std::io::stderr().write(bytes)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        std::io::stderr().flush()
+    }
 }
 
 /// [`run`] with its surroundings passed in, so tests run the real thing in

@@ -18,8 +18,9 @@ pub struct BenchArgs {
     /// Connection name from `sql connection list`; defaults to the only one
     #[arg(long)]
     conn: Option<String>,
-    /// How many times to run it on one connection
-    #[arg(long, default_value_t = 20, value_parser = clap::value_parser!(u32).range(1..))]
+    /// How many times to run it on one connection (a busy server pays for
+    /// each one)
+    #[arg(long, default_value_t = 5, value_parser = clap::value_parser!(u32).range(1..))]
     runs: u32,
     /// Keep at most this many rows of each result set, ending the read there
     /// (default: read every row each run)

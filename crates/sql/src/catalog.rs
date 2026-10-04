@@ -83,7 +83,8 @@ pub struct ObjectRow {
     pub(crate) schema: String,
     pub(crate) kind: ObjectKind,
     pub(crate) name: String,
-    /// When it last changed, RFC 3339.
+    /// When it last changed, RFC 3339 UTC (the servers keep local time).
+    // ponytail: converted at the server's offset today, so an hour out across DST.
     pub(crate) modified: Option<String>,
 }
 
@@ -172,8 +173,9 @@ pub(crate) fn objects_sql(backend: Kind, filter: &Filter) -> String {
                 None => {}
             }
             format!(
-                "select {top}s.name, o.name, rtrim(o.type), \
-                        convert(varchar(19), o.modify_date, 126), count(*) over () \
+                "select {top}s.name, o.name, rtrim(o.type), convert(varchar(19), dateadd(minute, \
+                        -datepart(tzoffset, sysdatetimeoffset()), o.modify_date), 126) + 'Z', \
+                        count(*) over () \
                  from sys.objects o join sys.schemas s on s.schema_id = o.schema_id \
                  where {} order by {order}",
                 clauses.join(" and "),
@@ -203,8 +205,9 @@ pub(crate) fn objects_sql(backend: Kind, filter: &Filter) -> String {
                 (None, _) => {}
             }
             format!(
-                "select o.owner, o.object_name, o.object_type, \
-                        to_char(o.last_ddl_time, 'YYYY-MM-DD\"T\"HH24:MI:SS'), count(*) over () \
+                "select o.owner, o.object_name, o.object_type, to_char(sys_extract_utc(from_tz( \
+                        cast(o.last_ddl_time as timestamp), to_char(systimestamp, 'TZH:TZM'))), \
+                        'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), count(*) over () \
                  from all_objects o where {} \
                  order by o.owner, o.object_type, o.object_name{}",
                 clauses.join(" and "),
@@ -250,13 +253,11 @@ pub(crate) fn columns_sql(backend: Kind, schema: &str, table: &str) -> String {
             "select c.name, t.name, c.max_length, c.precision, c.scale, \
                     case when c.is_nullable = 1 then 'Y' else 'N' end, \
                     case when pk.column_id is null then 'N' else 'Y' end \
-             from sys.columns c \
-             join sys.objects o on o.object_id = c.object_id \
+             from sys.columns c join sys.objects o on o.object_id = c.object_id \
              join sys.schemas s on s.schema_id = o.schema_id \
              join sys.types t on t.user_type_id = c.user_type_id \
              left join (select ic.object_id, ic.column_id \
-                        from sys.index_columns ic \
-                        join sys.key_constraints kc \
+                        from sys.index_columns ic join sys.key_constraints kc \
                           on kc.parent_object_id = ic.object_id \
                          and kc.unique_index_id = ic.index_id \
                         where kc.type = 'PK') pk \
@@ -278,8 +279,7 @@ pub(crate) fn columns_sql(backend: Kind, schema: &str, table: &str) -> String {
                         where k.constraint_type = 'P') pk \
                     on pk.owner = c.owner and pk.table_name = c.table_name \
                    and pk.column_name = c.column_name \
-             where c.owner = {} and c.table_name = {} \
-             order by c.column_id",
+             where c.owner = {} and c.table_name = {} order by c.column_id",
             quoted(schema),
             quoted(table),
         ),

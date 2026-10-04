@@ -20,6 +20,9 @@ time.workspace = true
 toml.workspace = true
 ureq.workspace = true
 
+[target.'cfg(unix)'.dependencies]
+signal-hook.workspace = true
+
 [features]
 # Recorded HTTP for agent trials (AGENT_CLI_FIXTURES) and a frozen clock
 # (AGENT_CLI_NOW). Never in a release install.
