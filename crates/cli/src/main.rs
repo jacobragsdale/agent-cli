@@ -465,6 +465,24 @@ mod tests {
         assert_read_only_refuses(DOMAINS);
     }
 
+    /// Doctor names `agent-cli config example DOMAIN` for a domain that is
+    /// not set up, so every domain has a section in `config.example.toml`.
+    #[test]
+    fn every_domain_has_a_config_example() {
+        let missing: Vec<&str> = DOMAINS
+            .iter()
+            .map(|domain| domain.name)
+            .filter(|name| {
+                let setup = Setup::fake(FakeTransport::default());
+                run(DOMAINS, &["config", "example", name], setup).code != 0
+            })
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "config.example.toml has no section for {missing:?}"
+        );
+    }
+
     /// Every section set, with names as long as real ones get: the overview
     /// still fits in 1 KB (check_registry also holds it at the cap for every
     /// domain), and each domain's status line says something.

@@ -29,7 +29,7 @@ pub const VERBS: &[&str] = &[
 ];
 
 /// Words core owns; no domain may take one.
-pub const BUILTINS: &[&str] = &["search", "doctor", "help"];
+pub const BUILTINS: &[&str] = &["search", "doctor", "config", "help"];
 
 /// Flags core strips from anywhere on the line; no command may declare one.
 pub const GLOBAL_FLAGS: &[&str] = &[

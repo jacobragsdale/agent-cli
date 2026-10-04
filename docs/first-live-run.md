@@ -6,7 +6,8 @@ Datadog, and `scripts/fake/kubectl` for kubectl. The TUI the Azure code came
 from never had a live run either. This list is that run, one section per
 domain. Work through a section in order on a machine that reaches the
 service. The sql domain is left out: its tests already run against real
-databases (`scripts/db-up.sh`).
+databases (`scripts/db-up.sh`). [Set up your services](how-to/set-up-your-services.md)
+configures each domain first.
 
 **Before you paste anything into an issue or a commit, scrub it.**
 Organization, project, vault, registry, cluster, subscription, tenant and

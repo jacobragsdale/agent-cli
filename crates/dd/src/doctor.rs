@@ -32,7 +32,7 @@ pub(crate) fn doctor(ctx: &Ctx) -> Vec<Check> {
             return vec![Check::failed(
                 "config",
                 format!("{error:#}"),
-                "fix [datadog]; config.example.toml shows every key",
+                "fix [datadog]; `agent-cli config example dd` shows every key",
             )];
         }
     };

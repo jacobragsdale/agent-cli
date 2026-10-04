@@ -113,7 +113,7 @@ fn render_overview(domains: &[Domain], mut statuses: Vec<String>) -> String {
         "Browse:      agent-cli <domain> [<resource>]    Details: agent-cli <domain> <resource> <verb> --help".to_owned(),
         "Flags:       --fields a,b.c  --raw  --dry-run  --yes  --reveal  --timeout S (60)  --output FILE  --no-cache".to_owned(),
         "Exit:        0 ok \u{b7} 1 failed \u{b7} 2 fix the call \u{b7} 3 needs setup (run doctor) \u{b7} 4 not found \u{b7} 5 conflict \u{b7} 124 timed out".to_owned(),
-        format!("Config:      {}    Live check: agent-cli doctor", config_line(&statuses)),
+        format!("Config:      {}    Check: agent-cli doctor \u{b7} agent-cli config", config_line(&statuses)),
         format!("Now:         {now}"),
     ];
     if counts.is_empty() {

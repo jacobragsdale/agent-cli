@@ -22,6 +22,8 @@ a definition for details rather than reading whole files.
   to `--output`; the row then prints). `Op`: what read and write perform.
 - `Globals`, `Setup`, `DEFAULT_TIMEOUT`: the run's surroundings.
 - `Config`; `pick`: the one rule for scope flags; `Cache`: keyed, with a TTL.
+  The binary embeds `config.example.toml`: a domain's doctor that returns no
+  checks makes doctor name `agent-cli config example DOMAIN`.
 
 ## HTTP and processes
 - `Request` (`get`, `query` = a POST that only reads, `.json`, `.form`,

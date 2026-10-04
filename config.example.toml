@@ -1,12 +1,13 @@
 # agent-cli configuration: copy to ~/.config/agent-cli/config.toml
 # ($XDG_CONFIG_HOME/agent-cli/config.toml, or the path in $AGENT_CLI_CONFIG).
+# The binary carries this file: `agent-cli config example [DOMAIN]` prints it
+# or one domain's section, and `agent-cli config` shows what was read.
 #
 # Each domain reads only its own section, so a mistake in one section breaks
 # only that domain. AGENT_CLI_<SECTION>_<KEY> overrides any scalar key, for
 # example AGENT_CLI_ADO_PROJECT=web. Run `agent-cli doctor` to check it all.
 #
-# The sections below are placeholders; each domain settles its keys when it
-# lands.
+# Every key below is commented out: uncomment the ones you need.
 
 # [ado]
 # Sign-in: AZURE_DEVOPS_EXT_PAT (a personal access token) if set, else the

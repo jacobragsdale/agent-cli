@@ -28,7 +28,7 @@ pub(crate) fn doctor(ctx: &Ctx) -> Vec<Check> {
             return vec![Check::failed(
                 "config",
                 format!("{error:#}"),
-                "fix [[k8s.scope]]; config.example.toml shows the keys",
+                "fix [[k8s.scope]]; `agent-cli config example k8s` shows the keys",
             )];
         }
     };

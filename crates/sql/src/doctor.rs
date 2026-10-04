@@ -35,7 +35,7 @@ pub(crate) fn doctor(ctx: &Ctx) -> Vec<Check> {
             return vec![Check::failed(
                 "config",
                 format!("{error:#}"),
-                "fix [sql]; config.example.toml shows every key",
+                "fix [sql]; `agent-cli config example sql` shows every key",
             )];
         }
     };

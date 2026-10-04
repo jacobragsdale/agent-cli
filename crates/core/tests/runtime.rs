@@ -45,7 +45,7 @@ fn the_overview_is_small_and_counts_domains_not_resources() {
     );
     assert_eq!(
         lines[5],
-        "Config:      tracker not set up \u{b7} db 1 connection    Live check: agent-cli doctor"
+        "Config:      tracker not set up \u{b7} db 1 connection    Check: agent-cli doctor \u{b7} agent-cli config"
     );
     assert!(lines[6].starts_with("Now:         20") && lines[6].ends_with('Z'));
     assert_eq!(
@@ -302,6 +302,51 @@ fn search_ranks_by_intent_and_says_when_the_best_hit_misses_most_words() {
 }
 
 #[test]
+fn a_search_about_setting_up_leads_with_the_config_example_for_its_domain() {
+    let first = |argv: &[&str]| {
+        go(argv)
+            .stdout
+            .lines()
+            .next()
+            .unwrap_or_default()
+            .to_owned()
+    };
+    assert!(
+        first(&["search", "configure", "db", "connection"])
+            .starts_with("agent-cli config example db  # "),
+    );
+    assert!(
+        first(&["search", "set", "up", "the", "vault"])
+            .starts_with("agent-cli config example vault  # ")
+    );
+    assert!(first(&["search", "config"]).starts_with("agent-cli config example DOMAIN  # "));
+    assert!(!first(&["search", "list", "db", "connections"]).contains("config example"));
+}
+
+#[test]
+fn config_shows_what_was_read_and_its_example_prints_toml() {
+    let setup = fake(Vec::new())
+        .0
+        .with_config("[tracker]\norg = \"contoso\"\ntoken = \"literal-token\"\n");
+    let outcome = run(DOMAINS, &["config"], setup);
+    assert_eq!(outcome.code, 0, "{outcome:?}");
+    assert_eq!(
+        outcome.json()["sections"]["tracker"],
+        json!({"org": "contoso", "token": "***"})
+    );
+    let sql = go(&["config", "example", "sql"]);
+    assert_eq!(sql.code, 0);
+    assert!(sql.stdout.starts_with("# [sql]\n"), "{}", sql.stdout);
+    assert_eq!(go(&["config", "example", "tracker"]).code, 2);
+    assert_eq!(go(&["config", "nope"]).code, 2);
+    assert!(
+        go(&["config", "--help"])
+            .stdout
+            .contains("agent-cli config example [DOMAIN]")
+    );
+}
+
+#[test]
 fn search_meets_the_gates_on_labeled_queries() {
     assert_search_quality(DOMAINS, LABELED);
 }
@@ -512,7 +557,15 @@ fn doctor_reports_every_check_as_json_and_a_broken_section_stays_local() {
         rows[1],
         json!({"domain": "tracker", "check": "org", "ok": false, "detail": "no org configured", "hint": "set [tracker] org in the config file"})
     );
-    assert_eq!(rows.as_array().unwrap().len(), 3);
+    assert_eq!(rows.as_array().unwrap().len(), 5);
+    assert_eq!(
+        rows[2],
+        json!({"domain": "vault", "check": "config", "ok": true, "detail": "not set up", "hint": "agent-cli config example vault"}),
+        "a domain with nothing to check says so, without failing doctor"
+    );
+    let named = go(&["doctor", "vault"]);
+    assert_eq!(named.code, 1, "asked for by name, not set up fails");
+    assert_eq!(named.json()[1]["ok"], false);
 
     let configured = fake(Vec::new())
         .0

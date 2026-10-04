@@ -25,7 +25,10 @@ SQL, Airflow and Datadog; start with `agent-cli`."
 
 Copy [config.example.toml](config.example.toml) to
 `~/.config/agent-cli/config.toml` (or point `AGENT_CLI_CONFIG` at a file) and
-uncomment the sections you need. Each domain reads only its own section, so a
+uncomment the sections you need. The binary carries it: `agent-cli config
+example sql` prints one domain's section, and `agent-cli config` shows what
+was read. [Set up your services](docs/how-to/set-up-your-services.md) walks
+through each domain, WSL included. Each domain reads only its own section, so a
 mistake in one breaks only that domain. `AGENT_CLI_<SECTION>_<KEY>` overrides
 any key, for example `AGENT_CLI_ADO_PROJECT=web`.
 
@@ -98,7 +101,8 @@ can only read.
 
 - [Tutorial: trace a deploy and a failed DAG](docs/tutorial.md), against a
   recorded world with no cloud access.
-- How-to guides: [add a command](docs/how-to/add-a-command.md),
+- How-to guides: [set up your services](docs/how-to/set-up-your-services.md),
+  [add a command](docs/how-to/add-a-command.md),
   [add a domain](docs/how-to/add-a-domain.md),
   [run agent trials](docs/how-to/run-agent-trials.md),
   [the first live run against each service](docs/first-live-run.md).

@@ -4,13 +4,30 @@
 //! parsed to a TOML table up front, and a domain deserializes its `[section]`
 //! only when a command asks for it, so a broken `[sql]` cannot stop `ado`.
 
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use serde::de::DeserializeOwned;
+use serde_json::json;
 use toml::{Table, Value};
 
-use crate::error::Failure;
+use crate::ctx::Ctx;
+use crate::error::{Exit, Failure};
+use crate::output;
+use crate::secret::{redact, sensitive_key};
+
+/// `config.example.toml`, built in: an installed binary has no checkout to
+/// point at, so `agent-cli config example` prints it.
+const EXAMPLE: &str = include_str!("../../../config.example.toml");
+
+/// Domains whose keys live in another domain's section of the example.
+const EXAMPLE_ALIASES: &[(&str, &str)] = &[
+    ("kv", "azure"),
+    ("acr", "azure"),
+    ("aks", "azure"),
+    ("dd", "datadog"),
+];
 
 pub struct Config {
     path: PathBuf,
@@ -109,11 +126,12 @@ impl Config {
     /// exit 3, naming the section and the file.
     pub fn section<T: DeserializeOwned>(&self, name: &str) -> Result<T> {
         let path = self.path.display();
-        let fix = format!("fix [{name}] in {path}; config.example.toml shows every key");
+        let fix =
+            format!("fix [{name}] in {path}; `agent-cli config example {name}` shows every key");
         // A file that cannot be read or parsed stops every section, not one.
         let table = self.table.as_ref().map_err(|error| {
             Failure::setup(error.clone()).hint(format!(
-                "fix the file {path} (no section can be read until it parses); config.example.toml shows every key"
+                "fix the file {path} (no section can be read until it parses); `agent-cli config example` shows every key"
             ))
         })?;
         let mut section = match table.get(name) {
@@ -151,6 +169,174 @@ impl Config {
     }
 }
 
+impl Config {
+    /// What `agent-cli config` prints: the file, each section as the domains
+    /// read it (variables applied, credentials masked), and every
+    /// `AGENT_CLI_*` variable by name with the key it sets. Never the value a
+    /// variable holds, which may be a secret.
+    pub(crate) fn describe(&self) -> serde_json::Value {
+        let mut names: Vec<String> = match &self.table {
+            Ok(table) => table.keys().cloned().collect(),
+            Err(_) => Vec::new(),
+        };
+        let known: Vec<String> = example_sections()
+            .into_iter()
+            .chain(["dd"])
+            .map(str::to_owned)
+            .chain(names.clone())
+            .collect();
+        let mut variables = Vec::new();
+        for (variable, _) in &self.env {
+            let section = known
+                .iter()
+                .find(|section| variable.starts_with(&env_prefix(section)));
+            let Some(section) = section else {
+                variables.push(json!({"variable": variable}));
+                continue;
+            };
+            let key = variable[env_prefix(section).len()..].to_ascii_lowercase();
+            variables.push(json!({"variable": variable, "section": section, "key": key}));
+            if !names.contains(section) {
+                names.push(section.clone());
+            }
+        }
+        let sections: serde_json::Map<String, serde_json::Value> = names
+            .into_iter()
+            .map(|name| {
+                let value = match self.section::<Table>(&name) {
+                    Ok(table) => mask(serde_json::to_value(table).unwrap_or_default()),
+                    Err(error) => json!({"problem": format!("{error:#}")}),
+                };
+                (name, value)
+            })
+            .collect();
+        json!({
+            "path": self.path.display().to_string(),
+            "exists": self.path.is_file(),
+            "problem": self.problem(),
+            "sections": sections,
+            "variables": variables,
+        })
+    }
+}
+
+/// A section with every literal credential masked. `*_env` keys name a
+/// variable and stay; `*_cmd` keys are masked, as `Credential::source` does,
+/// since a command line can carry the secret itself.
+fn mask(value: serde_json::Value) -> serde_json::Value {
+    use serde_json::Value as Json;
+    match value {
+        Json::String(text) => Json::String(redact(&text)),
+        Json::Array(items) => Json::Array(items.into_iter().map(mask).collect()),
+        Json::Object(map) => Json::Object(
+            map.into_iter()
+                .map(|(key, value)| {
+                    let secret = !key.ends_with("_env")
+                        && (sensitive_key(&key) || key == "pat" || key.ends_with("_cmd"));
+                    let value = if secret && !value.is_object() && !value.is_array() {
+                        Json::String("***".to_owned())
+                    } else {
+                        mask(value)
+                    };
+                    (key, value)
+                })
+                .collect(),
+        ),
+        other => other,
+    }
+}
+
+/// The sections `config.example.toml` has, in its order.
+fn example_sections() -> Vec<&'static str> {
+    let mut names: Vec<&str> = Vec::new();
+    for name in EXAMPLE.lines().filter_map(header) {
+        if !names.contains(&name) {
+            names.push(name);
+        }
+    }
+    names
+}
+
+/// The section a `# [name]` or `# [[name.item]]` line of the example opens.
+fn header(line: &str) -> Option<&str> {
+    let name = line.strip_prefix("# [")?.trim_start_matches('[');
+    let end = name.find(['.', ']'])?;
+    Some(&name[..end])
+}
+
+/// `config.example.toml`, or the block for one section or for a domain that
+/// reads another's (`kv`). An unknown name is exit 2 naming the known ones.
+pub(crate) fn example(name: Option<&str>) -> Result<String, Failure> {
+    let Some(name) = name else {
+        return Ok(EXAMPLE.trim_end().to_owned());
+    };
+    let section = EXAMPLE_ALIASES
+        .iter()
+        .find(|(alias, _)| *alias == name)
+        .map_or(name, |(_, section)| section);
+    let mut block = Vec::new();
+    for line in EXAMPLE.lines() {
+        match header(line) {
+            Some(opened) if opened == section => block.push(line),
+            Some(_) if !block.is_empty() => break,
+            _ if !block.is_empty() => block.push(line),
+            _ => {}
+        }
+    }
+    if block.is_empty() {
+        let known: Vec<&str> = example_sections()
+            .into_iter()
+            .chain(EXAMPLE_ALIASES.iter().map(|(alias, _)| *alias))
+            .collect();
+        return Err(
+            Failure::usage(format!("no config example for {name:?}")).hint(format!(
+                "agent-cli config example takes one of: {}",
+                known.join(", ")
+            )),
+        );
+    }
+    Ok(block.join("\n").trim_end().to_owned())
+}
+
+/// `agent-cli config`: what was read, as JSON. `config example`: the TOML to
+/// paste, as text, since TOML is what the config file takes.
+pub(crate) fn builtin(
+    args: &[String],
+    ctx: &Ctx,
+    out: &mut dyn Write,
+    err: &mut dyn Write,
+    tty: bool,
+) -> Result<Exit> {
+    let usage = "usage: agent-cli config                    the config file, its sections as read (credentials masked) and the AGENT_CLI_* variables set, as JSON\n       agent-cli config example [DOMAIN]  the TOML to paste into the config file: every section, or one domain's";
+    if ctx.globals().help {
+        writeln!(out, "{usage}")?;
+        return Ok(Exit::Ok);
+    }
+    match args {
+        [] => {
+            let config = ctx.config();
+            output::emit(config.describe(), ctx.globals(), false, out, err, tty)?;
+            if config.problem().is_none() && !config.found() {
+                writeln!(
+                    err,
+                    "[no config file; agent-cli config example DOMAIN prints a section to paste into {}, then agent-cli doctor DOMAIN checks it]",
+                    config.path().display()
+                )?;
+            }
+        }
+        [example] if example == "example" => writeln!(out, "{}", self::example(None)?)?,
+        [example, name] if example == "example" => {
+            writeln!(out, "{}", self::example(Some(name))?)?;
+        }
+        _ => {
+            return Err(Failure::usage("unknown arguments to agent-cli config")
+                .hint(usage)
+                .into());
+        }
+    }
+    Ok(Exit::Ok)
+}
+
 /// The configured item `wanted` names, or the only one when nothing is
 /// named: the one rule for every scope flag (`--cluster`, `--conn`, an
 /// instance or site). An unknown name, or a choice left open among several,
@@ -165,7 +351,7 @@ pub fn pick<'a, T>(
     let names = || items.iter().map(&name).collect::<Vec<_>>().join(", ");
     match (wanted, items) {
         (_, []) => Err(Failure::setup(format!("no {noun} is configured"))
-            .hint("config.example.toml shows the keys; `agent-cli doctor` checks them")),
+            .hint("`agent-cli config example DOMAIN` prints the block to add; `agent-cli doctor` checks it")),
         (Some(wanted), _) => items
             .iter()
             .find(|item| name(item) == wanted)
@@ -344,6 +530,66 @@ mod tests {
             "{message}"
         );
         assert!(broken.problem().is_some());
+    }
+
+    #[test]
+    fn the_example_prints_whole_or_one_domains_section_and_names_the_rest() {
+        assert!(
+            example(None)
+                .unwrap()
+                .starts_with("# agent-cli configuration")
+        );
+        let sql = example(Some("sql")).unwrap();
+        assert!(sql.starts_with("# [sql]") && sql.contains("# [[sql.connection]]"));
+        assert!(!sql.contains("airflow.instance"), "{sql}");
+        assert_eq!(
+            example(Some("kv")).unwrap(),
+            example(Some("azure")).unwrap()
+        );
+        assert!(example(Some("dd")).unwrap().starts_with("# [datadog]"));
+        let unknown = example(Some("jira")).unwrap_err();
+        assert_eq!(unknown.exit, Exit::Usage);
+        assert!(
+            unknown
+                .hint
+                .unwrap()
+                .contains("ado, azure, k8s, sql, airflow, datadog, kv"),
+            "every section and alias is named"
+        );
+    }
+
+    #[test]
+    fn describe_masks_literal_credentials_and_never_prints_a_variables_value() {
+        let config = Config::parse(
+            "c.toml",
+            Some(
+                "[ado]\norg = \"contoso\"\npat = \"pat-literal\"\n\n[[sql.connection]]\n\
+                 name = \"r\"\npassword = \"pw-literal\"\npassword_env = \"R_PASSWORD\"\n\
+                 password_cmd = \"echo cmd-literal\"\n",
+            ),
+            env(&[
+                ("AGENT_CLI_ADO_PROJECT", "web-from-env"),
+                ("AGENT_CLI_DD_API_KEY", "key-from-env"),
+                ("AGENT_CLI_READ_ONLY", "1"),
+            ]),
+        );
+        let described = config.describe();
+        let text = described.to_string();
+        for secret in ["pat-literal", "pw-literal", "cmd-literal", "key-from-env"] {
+            assert!(!text.contains(secret), "{secret} printed: {text}");
+        }
+        let sql = &described["sections"]["sql"]["connection"][0];
+        assert_eq!(sql["password_env"], "R_PASSWORD");
+        assert_eq!(described["sections"]["ado"]["project"], "web-from-env");
+        assert_eq!(described["sections"]["dd"]["api_key"], "***");
+        assert_eq!(
+            described["variables"],
+            json!([
+                {"variable": "AGENT_CLI_ADO_PROJECT", "section": "ado", "key": "project"},
+                {"variable": "AGENT_CLI_DD_API_KEY", "section": "dd", "key": "api_key"},
+                {"variable": "AGENT_CLI_READ_ONLY"},
+            ])
+        );
     }
 
     #[test]

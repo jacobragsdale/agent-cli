@@ -141,7 +141,7 @@ impl At {
         let scopes = scopes(ctx.config())?;
         if scopes.is_empty() {
             return Err(Failure::setup(format!("no [[k8s.scope]] in {}", ctx.config().path().display()))
-                .hint("agent-cli aks cluster connect NAME  (it prints one to paste; config.example.toml shows the keys)")
+                .hint("agent-cli aks cluster connect NAME  (it prints one to paste; `agent-cli config example k8s` shows the keys)")
                 .into());
         }
         // A kube context names its scope too: an AKS cluster's is its name,

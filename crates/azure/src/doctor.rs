@@ -37,7 +37,7 @@ pub(crate) fn doctor_login(
             checks.push(Check::failed(
                 "config",
                 format!("{error:#}"),
-                "fix [azure]; config.example.toml shows every key",
+                "fix [azure]; `agent-cli config example azure` shows every key",
             ));
             return None;
         }

@@ -325,7 +325,7 @@ fn doc(command: &Command) -> Doc<'_> {
 /// half the words, a first line says the hits are guesses.
 pub(crate) fn search_lines(domains: &[Domain], query: &str, limit: usize) -> Vec<String> {
     let hits = rank(domains, query);
-    let mut lines = Vec::new();
+    let mut lines: Vec<String> = setup_line(domains, query, &hits).into_iter().collect();
     if hits.first().is_some_and(|hit| hit.coverage < 0.5) {
         lines.push("(no command matches most of these words; closest:)".to_owned());
     }
@@ -337,6 +337,52 @@ pub(crate) fn search_lines(domains: &[Domain], query: &str, limit: usize) -> Vec
         ));
     }
     lines
+}
+
+/// Words that ask how to set a domain up. No command answers that; the
+/// `config` built-in does, for the domain the query names or the rest of
+/// its words find.
+const SETUP_WORDS: &[&str] = &[
+    "config",
+    "configure",
+    "configuring",
+    "configuration",
+    "setup",
+];
+
+fn setup_line(domains: &[Domain], query: &str, hits: &[Hit<'_>]) -> Option<String> {
+    let words: Vec<String> = query
+        .split_whitespace()
+        .map(str::to_ascii_lowercase)
+        .collect();
+    let set_up = words
+        .windows(2)
+        .any(|pair| pair[0] == "set" && pair[1] == "up");
+    if !set_up
+        && !words
+            .iter()
+            .any(|word| SETUP_WORDS.contains(&word.as_str()))
+    {
+        return None;
+    }
+    let rest: Vec<&str> = words
+        .iter()
+        .map(String::as_str)
+        .filter(|word| !SETUP_WORDS.contains(word) && !["set", "up"].contains(word))
+        .collect();
+    let domain = rest
+        .iter()
+        .find_map(|word| domains.iter().find(|domain| domain.name == *word))
+        .map(|domain| domain.name)
+        .or_else(|| {
+            hits.first()
+                .filter(|_| !rest.is_empty())
+                .map(|hit| hit.command.path[0])
+        })
+        .unwrap_or("DOMAIN");
+    Some(format!(
+        "agent-cli config example {domain}  # Print the config section that sets up {domain}; then agent-cli doctor {domain}"
+    ))
 }
 
 pub(crate) fn hit_line(command: &Command) -> String {

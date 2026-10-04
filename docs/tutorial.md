@@ -48,7 +48,7 @@ Start here:  agent-cli search <what you want to do>    e.g. agent-cli search "li
 Browse:      agent-cli <domain> [<resource>]    Details: agent-cli <domain> <resource> <verb> --help
 Flags:       --fields a,b.c  --raw  --dry-run  --yes  --reveal  --timeout S (60)  --output FILE  --no-cache
 Exit:        0 ok · 1 failed · 2 fix the call · 3 needs setup (run doctor) · 4 not found · 5 conflict · 124 timed out
-Config:      ado contoso/Fabrikam · kv 1 vault · acr 1 registry · k8s 1 scope · sql not set up · airflow 1 instance · dd eu    Live check: agent-cli doctor
+Config:      ado contoso/Fabrikam · kv 1 vault · acr 1 registry · k8s 1 scope · sql not set up · airflow 1 instance · dd eu    Check: agent-cli doctor · agent-cli config
 Now:         2026-09-29T12:00Z
 Domains:     ado(29)  kv(4)  acr(4)  aks(2)  k8s(13)  sql(6)  airflow(15)  dd(20)
 ```

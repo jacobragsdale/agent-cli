@@ -14,7 +14,7 @@ use anyhow::Result;
 use clap::ArgMatches;
 use serde_json::{Value, json};
 
-use crate::config::Config;
+use crate::config::{self, Config};
 use crate::ctx::READ_ONLY_HINT;
 use crate::ctx::{Ctx, Globals, Setup};
 use crate::discover::{self, did_you_mean};
@@ -110,6 +110,10 @@ fn dispatch(
             let ctx = Ctx::new(globals, setup, command_line);
             return doctor_builtin(domains, &words[1..], &ctx, out, err, tty);
         }
+        "config" => {
+            let ctx = Ctx::new(globals, setup, command_line);
+            return config::builtin(&words[1..], &ctx, out, err, tty);
+        }
         flag if flag.starts_with('-') => {
             return Err(Failure::usage(format!("unknown flag {flag} before the command"))
                 .hint("flags go after the command: agent-cli <domain> <resource> <verb> --flag value; `agent-cli` lists the domains")
@@ -121,7 +125,7 @@ fn dispatch(
         let names = domains
             .iter()
             .map(|domain| domain.name)
-            .chain(["search", "doctor"]);
+            .chain(["search", "doctor", "config"]);
         return Err(unknown("domain", first, "", names, domains, words, None));
     };
     if let Some(flag) = words[1..words.len().min(3)]
@@ -460,8 +464,21 @@ fn doctor_builtin(
         _ => return Err(Failure::usage("usage: agent-cli doctor [domain]").into()),
     };
     let mut rows = vec![config_row(ctx.config())];
+    let named = !args.is_empty();
     for domain in selected {
-        for check in (domain.doctor)(ctx) {
+        let checks = (domain.doctor)(ctx);
+        // A domain's doctor checks nothing until its section is there. Not
+        // set up fails only a doctor that was asked for that domain.
+        if checks.is_empty() {
+            rows.push(json!({
+                "domain": domain.name,
+                "check": "config",
+                "ok": !named,
+                "detail": "not set up",
+                "hint": format!("agent-cli config example {}", domain.name),
+            }));
+        }
+        for check in checks {
             rows.push(json!({
                 "domain": domain.name,
                 "check": check.check,
@@ -488,7 +505,7 @@ fn config_row(config: &Config) -> Value {
     match config.problem() {
         Some(problem) => json!({
             "domain": "core", "check": "config", "ok": false, "detail": problem,
-            "hint": format!("fix {path}; config.example.toml shows every key"),
+            "hint": format!("fix {path}; `agent-cli config example` shows every key"),
         }),
         None if config.found() => {
             json!({"domain": "core", "check": "config", "ok": true, "detail": path})

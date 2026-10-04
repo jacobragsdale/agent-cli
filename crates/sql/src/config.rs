@@ -120,7 +120,7 @@ impl Sql {
         let path = config.path().to_path_buf();
         let fix = |message: String| -> anyhow::Error {
             Failure::setup(format!("[sql] in {}: {message}", path.display()))
-                .hint("fix it; config.example.toml shows every key")
+                .hint("fix it; `agent-cli config example sql` shows every key")
                 .into()
         };
         let mut connections: Vec<Connection> = Vec::with_capacity(section.connection.len());
@@ -153,7 +153,7 @@ impl Sql {
                 "no [[sql.connection]] in {}",
                 self.path.display()
             ))
-            .hint("add one; config.example.toml shows the keys")
+            .hint("agent-cli config example sql  (prints one to paste)")
             .into());
         }
         pick("connection", "--conn", name, &self.connections, |spec| {

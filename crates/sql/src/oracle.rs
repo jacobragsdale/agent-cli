@@ -123,7 +123,7 @@ pub fn init(dir: Option<&Path>) -> Result<()> {
             .hint(
                 "set [sql] oracle_client_dir or AGENT_CLI_SQL_ORACLE_CLIENT_DIR to the \
                      Instant Client directory (on Linux it also needs libaio); \
-                     config.example.toml says more",
+                     `agent-cli config example sql` says more",
             )
             .into()
     })
