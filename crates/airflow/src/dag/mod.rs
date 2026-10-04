@@ -8,7 +8,10 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::client::{stamp, text};
+use agent_cli_core::status_of;
+use anyhow::Result;
+
+use crate::client::{Client, Ref, stamp, text};
 
 fn strings(value: &Value) -> Vec<String> {
     value
@@ -43,12 +46,35 @@ fn dag_row(dag: &Value) -> DagRow {
     DagRow {
         id: dag["dag_id"].as_str().unwrap_or_default().to_owned(),
         paused: dag["is_paused"].as_bool().unwrap_or_default(),
-        schedule: text(&dag["timetable_summary"]),
-        next_run: stamp(&dag["next_dagrun_run_after"]),
+        // Airflow 2 names the schedule `schedule_interval` and the next
+        // run's due time `next_dagrun_create_after`.
+        schedule: text(&dag["timetable_summary"])
+            .or_else(|| text(&dag["schedule_interval"]["value"])),
+        next_run: next_run(dag),
         tags: strings(&dag["tags"]),
         owners: strings(&dag["owners"]),
-        file: text(&dag["relative_fileloc"]).or_else(|| text(&dag["fileloc"])),
+        file: crate::source::dag_file(dag),
         import_errors: dag["has_import_errors"].as_bool().unwrap_or_default(),
-        stale: dag["is_stale"].as_bool().filter(|stale| *stale),
+        // Airflow 2 says the opposite: `is_active` false.
+        stale: dag["is_stale"]
+            .as_bool()
+            .or_else(|| dag["is_active"].as_bool().map(|active| !active))
+            .filter(|stale| *stale),
     }
+}
+
+/// A DAG's details. Airflow 2 reads them from the parsed DAG, so a stale
+/// one (its file gone) is a 404 there: its own record says it is stale.
+fn details(client: &Client, id: &Ref) -> Result<Value> {
+    match client.get(&format!("{}/details", id.dag_path())) {
+        Err(error) if status_of(&error) == Some(404) && client.v1()? => {
+            client.get(&id.dag_path()).map_err(|_| error)
+        }
+        other => other,
+    }
+}
+
+/// When the next scheduled run is due.
+fn next_run(dag: &Value) -> Option<String> {
+    stamp(&dag["next_dagrun_run_after"]).or_else(|| stamp(&dag["next_dagrun_create_after"]))
 }

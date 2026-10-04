@@ -1,0 +1,103 @@
+# The same throwaway as compose.yaml on Airflow 3.3.2, trimmed from its
+# official docker-compose.yaml: LocalExecutor and postgres, the FAB auth
+# manager, the API server on 127.0.0.1 only. Start it with
+# AIRFLOW_VERSION=3 scripts/airflow-up.sh.
+name: agent-cli-airflow3
+
+x-airflow: &airflow
+  image: apache/airflow:3.3.2
+  environment: &env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__FERNET_KEY: 'Xq8V1H0b3oQ0bX5xQx6a8m9y0C8d2V3l5t7n9p1r3s4='
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
+    AIRFLOW__API_AUTH__JWT_SECRET: agent-cli-live-airflow
+    AIRFLOW__API_AUTH__JWT_ISSUER: airflow
+    AIRFLOW__DAG_PROCESSOR__REFRESH_INTERVAL: '10'
+    AIRFLOW__DAG_PROCESSOR__MIN_FILE_PROCESS_INTERVAL: '10'
+    AIRFLOW__DAG_PROCESSOR__STALE_DAG_THRESHOLD: '10'
+  volumes:
+    - .:/opt/airflow/e2e:ro
+    - dags:/opt/airflow/dags
+    - logs:/opt/airflow/logs
+  user: "50000:0"
+  depends_on: &depends
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 20
+
+  airflow-init:
+    <<: *airflow
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        chown -R 50000:0 /opt/airflow/dags /opt/airflow/logs
+        cp /opt/airflow/e2e/dags/*.py /opt/airflow/dags/
+        exec /entrypoint airflow version
+    environment:
+      <<: *env
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+    user: "0:0"
+
+  airflow-apiserver:
+    <<: *airflow
+    command: api-server
+    ports:
+      - "127.0.0.1:${AIRFLOW_PORT:-18081}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
+      interval: 5s
+      retries: 60
+    depends_on:
+      <<: *depends
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow
+    command: scheduler
+    depends_on:
+      <<: *depends
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-dag-processor:
+    <<: *airflow
+    command: dag-processor
+    depends_on:
+      <<: *depends
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-triggerer:
+    <<: *airflow
+    command: triggerer
+    depends_on:
+      <<: *depends
+      airflow-init:
+        condition: service_completed_successfully
+
+volumes:
+  db:
+  dags:
+  logs:

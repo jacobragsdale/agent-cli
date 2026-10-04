@@ -51,23 +51,34 @@ fn task_logs(ctx: &Ctx, args: TaskLogsArgs) -> Result<TaskLogs> {
     let airflow = Airflow::load(ctx.config())?;
     let (client, id) = args.id.locate(&airflow, ctx)?;
     // The try the id names, or the latest; either way its state and host.
+    // Airflow 2 has no tries endpoint: its record is the latest try's.
+    let v1 = client.v1()?;
     let ti = match id.attempt {
-        Some(attempt) => client.get(&format!("{}/tries/{attempt}", id.ti_path()))?,
-        None => client.get(&id.ti_path())?,
+        Some(attempt) if !v1 => client.get(&format!("{}/tries/{attempt}", id.ti_path()))?,
+        _ => client.get(&id.ti_path())?,
     };
-    let attempt = id.attempt.or(ti["try_number"].as_i64()).unwrap_or_default();
-    let state = text(&ti["state"]);
-    // A cleared task waits for its next try, but the try whose log this is
-    // ended, and the task keeps that try's end_date.
-    let cleared = id.attempt.is_none()
+    let latest = ti["try_number"].as_i64().unwrap_or_default();
+    let mut attempt = id.attempt.unwrap_or(latest);
+    // Airflow 2 takes a try back when a task defers, so a deferred first
+    // try reads 0 while its log is try 1's.
+    if v1 && attempt == 0 && ti["state"] == "deferred" {
+        attempt = 1;
+    }
+    let earlier = v1 && attempt < latest;
+    let state = if earlier { None } else { text(&ti["state"]) };
+    // A cleared or up_for_retry task waits for its next try, but the try
+    // whose log this is ended, and the task keeps that try's end_date. The
+    // latest try's record says so too: Airflow 3's tries/N answers it with
+    // the task's state, and Airflow 2 has only the latest try's record.
+    let cleared = !earlier
         && matches!(state.as_deref(), None | Some("up_for_retry" | "restarting"))
         && !ti["end_date"].is_null();
     if cleared {
         ctx.note(format!(
-            "[the task was cleared and its next try has not started; this is try {attempt}]"
+            "[try {attempt} ended; the task waits for its next try]"
         ));
     }
-    let done = cleared || finished(state.as_deref());
+    let done = cleared || earlier || finished(state.as_deref());
     let path = format!(
         "{}/taskInstances/{}/logs/{attempt}",
         id.run_path(),
@@ -80,7 +91,22 @@ fn task_logs(ctx: &Ctx, args: TaskLogsArgs) -> Result<TaskLogs> {
     let mut content: Vec<Value> = Vec::new();
     let mut url = base.clone();
     let mut complete = true;
-    for page in 1.. {
+    // Airflow 2's JSON log is a Python list's repr; its text is the log,
+    // after a line naming the host it came from.
+    let pages = if v1 {
+        let log = client.text(&base)?;
+        let host = ti["hostname"].as_str().unwrap_or_default();
+        let log = log
+            .strip_prefix(host)
+            .and_then(|rest| rest.strip_prefix('\n'))
+            .filter(|_| !host.is_empty())
+            .unwrap_or(&log);
+        content.push(Value::String(log.to_owned()));
+        0
+    } else {
+        MOST_PAGES
+    };
+    for page in 1..=pages {
         let answer = client.get(&url)?;
         content.extend(answer["content"].as_array().cloned().unwrap_or_default());
         let Some(token) = text(&answer["continuation_token"]) else {
@@ -111,7 +137,7 @@ fn task_logs(ctx: &Ctx, args: TaskLogsArgs) -> Result<TaskLogs> {
         .and_then(|_| {
             dag_file(&rendered.lines).or_else(|| {
                 let dag = client.get(&id.dag_path()).ok()?;
-                text(&dag["relative_fileloc"])
+                crate::source::dag_file(&dag)
             })
         })
         .and_then(|file| failing_line(rendered.lines.iter().map(String::as_str), &file))
@@ -204,13 +230,13 @@ fn render(content: &[Value]) -> Rendered {
     let mut in_sources = false;
     for message in content {
         let Some(fields) = message.as_object() else {
-            out.lines.extend(
-                message
-                    .as_str()
-                    .unwrap_or_default()
-                    .lines()
-                    .map(str::to_owned),
-            );
+            // Airflow 2 marks where it looked for the log with `*** `.
+            for line in message.as_str().unwrap_or_default().lines() {
+                match line.strip_prefix("*** ") {
+                    Some(source) => out.sources.push(source.trim().to_owned()),
+                    None => out.lines.push(line.to_owned()),
+                }
+            }
             continue;
         };
         let event = fields
@@ -490,7 +516,7 @@ mod tests {
         assert!(
             outcome
                 .stderr
-                .contains("[the task was cleared and its next try has not started; this is try 2]")
+                .contains("[try 2 ended; the task waits for its next try]")
                 && !outcome.stderr.contains("this is the log so far"),
             "{}",
             outcome.stderr
@@ -600,5 +626,58 @@ mod tests {
             outcome.stdout.contains("row 4999 loaded"),
             "the tail survives the guard"
         );
+    }
+
+    #[test]
+    fn airflow_2_logs_are_read_as_text_without_their_host_line() {
+        let text = "etl-nightly-load-orders-q8x1k2vz\n*** Found local files:\n***   * /opt/airflow/logs/attempt=1.log\n\
+            [2026-09-29T00:41:07.120+0000] {taskinstance.py:2306} INFO - Starting attempt 1 of 2\n\
+            Traceback (most recent call last):\n  File \"/opt/airflow/dags/etl_nightly.py\", line 42, in load_orders\n\
+            ValueError: order 88123 has no customer_id";
+        let (outcome, transport) = crate::testing::airflow_v1(
+            &[
+                "airflow",
+                "task",
+                "logs",
+                &format!("etl_nightly/{RUN}/load_orders/1"),
+            ],
+            vec![
+                Answer::json(&ti("load_orders", "failed", 2)),
+                Answer::status(200, text),
+                Answer::json(&crate::testing::dag_v1("etl_nightly", false)),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let got = outcome.json();
+        assert_eq!(got["id"], format!("etl_nightly/{RUN}/load_orders/1"));
+        assert_eq!(got.get("state"), None, "the record is try 2's; try 1 ended");
+        assert_eq!(got["complete"], true);
+        assert_eq!(got["error"], "ValueError: order 88123 has no customer_id");
+        assert_eq!(got["at"], "etl_nightly:42");
+        assert_eq!(got["sources"][0], "Found local files:");
+        assert!(
+            got["text"]
+                .as_str()
+                .unwrap()
+                .starts_with("[2026-09-29T00:41:07")
+        );
+        assert_eq!(
+            paths(&transport),
+            [
+                format!("{RUN_PATH}/taskInstances/load_orders"),
+                format!(
+                    "{RUN_PATH}/taskInstances/load_orders/logs/1?full_content=true&map_index=-1"
+                ),
+                "dags/etl_nightly".to_owned(),
+            ]
+        );
+        let accept = |at: usize| {
+            transport.sent()[at]
+                .headers
+                .iter()
+                .find(|(name, _)| name == "Accept")
+                .map(|(_, v)| v.clone())
+        };
+        assert_eq!(accept(1).as_deref(), Some("text/plain"));
     }
 }

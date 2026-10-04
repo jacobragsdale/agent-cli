@@ -97,7 +97,7 @@ fn run_wait(ctx: &Ctx, args: RunIdArgs) -> Result<Waited> {
             // With no scheduler, nothing moves the run however long one waits.
             let stalled = !paused
                 && client
-                    .public("monitor/health")
+                    .health()
                     .is_ok_and(|health| health["scheduler"]["status"] != "healthy");
             let hint = if stalled {
                 "the scheduler is not running, so the run cannot move: agent-cli doctor airflow"
@@ -211,5 +211,31 @@ mod tests {
             "{}",
             outcome.stderr
         );
+    }
+
+    #[test]
+    fn wait_on_airflow_2_asks_its_health_at_the_deadline() {
+        let (outcome, transport) = crate::testing::airflow_v1(
+            &[
+                "airflow",
+                "run",
+                "wait",
+                &format!("etl_nightly/{RUN}"),
+                "--timeout",
+                "3",
+            ],
+            vec![
+                Answer::json(&crate::testing::run_v1("running")),
+                Answer::json(&crate::testing::run_v1("running")),
+                Answer::json(&json!({"scheduler": {"status": "unhealthy"}})),
+            ],
+        );
+        assert_eq!(outcome.code, 124, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("the scheduler is not running"),
+            "{}",
+            outcome.stderr
+        );
+        assert_eq!(paths(&transport).last().unwrap(), "health");
     }
 }

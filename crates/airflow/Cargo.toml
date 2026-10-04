@@ -1,6 +1,6 @@
 [package]
 name = "agent-cli-airflow"
-description = "The airflow domain of agent-cli: DAGs, runs, task instances, logs and import errors on Apache Airflow 3"
+description = "The airflow domain of agent-cli: DAGs, runs, task instances, logs and import errors on Apache Airflow 2.9+ and 3"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

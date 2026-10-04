@@ -7,10 +7,12 @@ pub(crate) mod list;
 /// Airflow). Anything a URL parser might read two ways is refused.
 pub(crate) fn check_base_url(raw: &str) -> Result<String, String> {
     let base = raw.trim().trim_end_matches('/');
-    if let Some(server) = base.strip_suffix("/api/v2") {
-        return Err(format!(
-            "base_url {raw:?} ends in /api/v2; give the server without it: {server:?}"
-        ));
+    for api in ["/api/v1", "/api/v2"] {
+        if let Some(server) = base.strip_suffix(api) {
+            return Err(format!(
+                "base_url {raw:?} ends in {api}; give the server without it: {server:?}"
+            ));
+        }
     }
     let wrong = || {
         format!(
@@ -76,7 +78,9 @@ mod tests {
         ] {
             assert!(check_base_url(raw).is_err(), "{raw}");
         }
-        let api = check_base_url("https://airflow.contoso.example/api/v2/").unwrap_err();
-        assert!(api.contains("\"https://airflow.contoso.example\""), "{api}");
+        for api in ["/api/v2/", "/api/v1"] {
+            let api = check_base_url(&format!("https://airflow.contoso.example{api}")).unwrap_err();
+            assert!(api.contains("\"https://airflow.contoso.example\""), "{api}");
+        }
     }
 }

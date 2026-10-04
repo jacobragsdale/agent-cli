@@ -68,9 +68,19 @@ fn xcom_get(ctx: &Ctx, args: XcomGetArgs) -> Result<Xcom> {
         args.dag.as_deref(),
         args.run.as_deref(),
     )?;
-    let mut query = vec!["deserialize=true".to_owned(), "stringify=false".to_owned()];
+    // Airflow 2 has no stringify, and deserialize only when its config
+    // allows: it prints the value as Python's str() of it.
+    let v1 = client.v1()?;
+    let mut query = if v1 {
+        Vec::new()
+    } else {
+        vec!["deserialize=true".to_owned(), "stringify=false".to_owned()]
+    };
     query.extend(Some(map_query(&id)).filter(|map| !map.is_empty()));
-    let path = format!("{}/{}?{}", entries_path(&id), segment(key), query.join("&"));
+    let mut path = format!("{}/{}", entries_path(&id), segment(key));
+    if !query.is_empty() {
+        path = format!("{path}?{}", query.join("&"));
+    }
     let mut entry = client
         .get(&path)
         .map_err(|error| match error.downcast::<Failure>() {
@@ -84,6 +94,9 @@ fn xcom_get(ctx: &Ctx, args: XcomGetArgs) -> Result<Xcom> {
             Err(error) => error,
         })?;
     let mut value = entry["value"].take();
+    if v1 && let Some(text) = value.as_str() {
+        value = from_python(text);
+    }
     let json = value.to_string();
     if json.len() > MOST {
         let mut cut = MOST;
@@ -102,6 +115,66 @@ fn xcom_get(ctx: &Ctx, args: XcomGetArgs) -> Result<Xcom> {
         time: stamp(&entry["timestamp"]),
         value,
     })
+}
+
+/// A value as Python's `str()` prints it, as JSON: `'` strings, `True`,
+/// `False`, `None` and tuples become JSON's. Anything else (a set, a
+/// datetime, a plain string) stays the text it is.
+fn from_python(text: &str) -> Value {
+    fn convert(text: &str) -> Option<String> {
+        let mut json = String::new();
+        let mut chars = text.chars().peekable();
+        while let Some(c) = chars.next() {
+            match c {
+                '\'' | '"' => {
+                    let mut string = String::new();
+                    loop {
+                        match chars.next()? {
+                            end if end == c => break,
+                            '\\' => match chars.next()? {
+                                'n' => string.push('\n'),
+                                't' => string.push('\t'),
+                                'r' => string.push('\r'),
+                                'x' => {
+                                    let hex: String = chars.by_ref().take(2).collect();
+                                    string.push(char::from(u8::from_str_radix(&hex, 16).ok()?));
+                                }
+                                other => string.push(other),
+                            },
+                            other => string.push(other),
+                        }
+                    }
+                    json.push_str(&serde_json::to_string(&string).ok()?);
+                }
+                c if c.is_ascii_alphabetic() => {
+                    let mut word = String::from(c);
+                    while let Some(next) = chars.next_if(char::is_ascii_alphanumeric) {
+                        word.push(next);
+                    }
+                    json.push_str(match word.as_str() {
+                        "True" => "true",
+                        "False" => "false",
+                        "None" => "null",
+                        _ => return None,
+                    });
+                }
+                '(' => json.push('['),
+                ')' | ']' | '}' => {
+                    // A one-item tuple's trailing comma.
+                    let kept = json.trim_end().len();
+                    if json[..kept].ends_with(',') {
+                        json.truncate(kept - 1);
+                    }
+                    json.push(if c == ')' { ']' } else { c });
+                }
+                other => json.push(other),
+            }
+        }
+        Some(json)
+    }
+    convert(text)
+        .and_then(|json| serde_json::from_str(&json).ok())
+        .unwrap_or_else(|| Value::String(text.to_owned()))
 }
 
 command! {
@@ -143,6 +216,24 @@ mod tests {
                     "{RUN_PATH}/taskInstances/extract_orders/xcomEntries/return_value?deserialize=true&stringify=false"
                 )]
             );
+        }
+    }
+
+    #[test]
+    fn airflow_2s_python_printed_values_read_as_json() {
+        for (text, want) in [
+            (
+                "[{'order_id': 88122, 'paid': True, 'note': None}]",
+                json!([{"order_id": 88122, "paid": true, "note": null}]),
+            ),
+            ("(1,)", json!([1])),
+            (r#"{'a\'b': "x\ny"}"#, json!({"a'b": "x\ny"})),
+            (r"'caf\xe9'", json!("café")),
+            ("2", json!(2)),
+            ("plain text", json!("plain text")),
+            ("{1, 2}", json!("{1, 2}")),
+        ] {
+            assert_eq!(super::from_python(text), want, "{text}");
         }
     }
 
@@ -205,5 +296,32 @@ mod tests {
         );
         assert_eq!(outcome.code, 2, "{outcome:?}");
         assert!(transport.sent().is_empty());
+    }
+
+    #[test]
+    fn xcom_get_on_airflow_2_sends_no_stringify_and_reads_pythons_print() {
+        let answer = json!({"key": "return_value", "timestamp": "2026-09-29T00:12:31.5+00:00",
+            "map_index": 2, "task_id": "extract_orders", "dag_id": "etl_nightly",
+            "value": "[{'order_id': 88122, 'paid': True}]"});
+        let (outcome, transport) = crate::testing::airflow_v1(
+            &[
+                "airflow",
+                "xcom",
+                "get",
+                &format!("etl_nightly/{RUN}/extract_orders:2"),
+            ],
+            vec![Answer::json(&answer)],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json()["value"],
+            json!([{"order_id": 88122, "paid": true}])
+        );
+        assert_eq!(
+            paths(&transport),
+            [format!(
+                "{RUN_PATH}/taskInstances/extract_orders/xcomEntries/return_value?map_index=2"
+            )]
+        );
     }
 }

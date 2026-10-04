@@ -26,7 +26,9 @@ pub(crate) fn refused(error: anyhow::Error, path: &str) -> anyhow::Error {
             failure.hint =
                 Some("the Airflow role behind this credential lacks this permission".to_owned());
         }
-        Some(status @ (300..=399 | 404 | 405)) if status < 400 || path == "auth/token" => {
+        Some(status @ (300..=399 | 404 | 405))
+            if status < 400 || matches!(path, "auth/token" | "version") =>
+        {
             failure.exit = Exit::Setup;
             failure.hint = Some(
                 "base_url is wrong (its scheme or path prefix); fix it under [[airflow.instance]]"

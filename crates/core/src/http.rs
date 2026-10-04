@@ -92,6 +92,9 @@ pub struct Request<'a> {
     pub headers: Vec<(String, String)>,
     pub body: Body,
     pub auth: Option<Mint<'a>>,
+    /// A `3xx` is the answer rather than a failure: a form sign-in's `302`
+    /// carries the session cookie in its `Set-Cookie`. Still never followed.
+    pub keep_redirect: bool,
 }
 
 impl<'a> Request<'a> {
@@ -103,6 +106,7 @@ impl<'a> Request<'a> {
             headers: Vec::new(),
             body: Body::None,
             auth: None,
+            keep_redirect: false,
         }
     }
 
@@ -144,6 +148,12 @@ impl<'a> Request<'a> {
     #[must_use]
     pub fn auth(mut self, mint: Mint<'a>) -> Self {
         self.auth = Some(mint);
+        self
+    }
+
+    #[must_use]
+    pub fn keep_redirect(mut self) -> Self {
+        self.keep_redirect = true;
         self
     }
 }
@@ -423,6 +433,9 @@ impl Op for Request<'_> {
                 std::thread::sleep(wait);
                 continue;
             }
+            if self.keep_redirect && (300..400).contains(&response.status) {
+                return Ok(response);
+            }
             return checked(self.method, response);
         }
     }
@@ -493,6 +506,27 @@ pub fn host_under(url: &str, suffix: &str) -> bool {
         host == suffix || host.ends_with(&format!(".{suffix}"))
     };
     plain && under && !suffix.is_empty()
+}
+
+/// Standard base64 with padding: the `Basic` scheme's `user:password`.
+#[must_use]
+pub fn base64(bytes: &[u8]) -> String {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut output = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let mut buffer = [0_u8; 3];
+        buffer[..chunk.len()].copy_from_slice(chunk);
+        let bits = u32::from(buffer[0]) << 16 | u32::from(buffer[1]) << 8 | u32::from(buffer[2]);
+        for index in 0..4 {
+            if index <= chunk.len() {
+                let value = (bits >> (18 - 6 * index)) & 0x3f;
+                output.push(char::from(TABLE[value as usize]));
+            } else {
+                output.push('=');
+            }
+        }
+    }
+    output
 }
 
 /// `application/x-www-form-urlencoded`, which is also a query string.
@@ -585,6 +619,14 @@ mod tests {
             form_encode(&[("a b".into(), "x/y&z".into())]),
             "a+b=x%2Fy%26z"
         );
+        for (raw, encoded) in [
+            ("", ""),
+            ("a", "YQ=="),
+            ("ab", "YWI="),
+            ("admin:admin", "YWRtaW46YWRtaW4="),
+        ] {
+            assert_eq!(base64(raw.as_bytes()), encoded);
+        }
     }
 
     #[test]
@@ -649,6 +691,16 @@ mod tests {
             describe(&error)
                 .1
                 .contains("redirect to https://login.example/, which is not followed")
+        );
+        let (ctx, _) = fake(vec![
+            Answer::status(302, "").with_header("Set-Cookie", "session=s1; Path=/"),
+        ]);
+        let kept = ctx
+            .read(Request::get("https://h.example/login/").keep_redirect())
+            .unwrap();
+        assert_eq!(
+            (kept.status, kept.header("set-cookie")),
+            (302, Some("session=s1; Path=/"))
         );
     }
 

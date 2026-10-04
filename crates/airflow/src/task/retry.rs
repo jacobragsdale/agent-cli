@@ -59,6 +59,21 @@ fn task_retry(ctx: &Ctx, args: TaskRetryArgs) -> Result<TasksRetried> {
         .into());
     }
     client.writable()?;
+    if let Some(mapped) = ids.iter().find(|id| id.map.is_some())
+        && client.v1()?
+    {
+        return Err(Failure::usage(format!(
+            "Airflow 2's API clears a mapped task's every index, not {}:{} alone",
+            mapped.task,
+            mapped.map.unwrap_or_default()
+        ))
+        .hint(format!(
+            "agent-cli airflow task retry {}/{}  (every index), or clear the one index in the Airflow UI",
+            mapped.run_id(),
+            mapped.task
+        ))
+        .into());
+    }
     let task_ids: Vec<Value> = ids
         .iter()
         .map(|id| match id.map {
@@ -237,5 +252,43 @@ mod tests {
             vec![],
         );
         assert_eq!(outcome.code, 2, "destructive needs --yes: {outcome:?}");
+    }
+
+    #[test]
+    fn airflow_2_clears_by_task_id_and_refuses_one_map_index() {
+        let (plans, _) = crate::testing::dry_run_with(
+            crate::testing::CONFIG_V1,
+            &[
+                "airflow",
+                "task",
+                "retry",
+                &format!("etl_nightly/{RUN}/load_orders"),
+            ],
+            vec![tis(vec![ti("load_orders", "failed", 1)])],
+        );
+        assert_eq!(
+            plans[0]["url"],
+            "https://airflow.contoso.example/api/v1/dags/etl_nightly/clearTaskInstances"
+        );
+        assert_eq!(plans[0]["body"]["task_ids"], json!(["load_orders"]));
+        let (outcome, transport) = crate::testing::airflow_v1(
+            &[
+                "airflow",
+                "task",
+                "retry",
+                &format!("etl_nightly/{RUN}/load_orders:3"),
+                "--yes",
+            ],
+            vec![],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains(&format!(
+                "hint: agent-cli airflow task retry etl_nightly/{RUN}/load_orders  (every index)"
+            )),
+            "{}",
+            outcome.stderr
+        );
+        assert!(transport.sent().is_empty());
     }
 }

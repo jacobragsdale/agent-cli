@@ -125,8 +125,8 @@ agent-cli airflow run list — List DAG runs, newest first, across DAGs or for o
   --dag str                     Only this DAG's runs (default: every DAG)
   --state queued|running|success|failed[]  Only runs in this state (repeatable)
   --type scheduled|manual|backfill|asset_triggered[]  Only runs of this type (repeatable)
-  --since time                  Only runs due at or after this (their run_after)
-  --until time                  Only runs due at or before this
+  --since time                  Only runs due at or after this (their run_after; on Airflow 2 their logical date)
+  --until time                  Only runs due at or before this (on Airflow 2, their logical date)
   --instance str                The [[airflow.instance]] name; defaults to the only one
   --limit int                   (default 50)
 A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.

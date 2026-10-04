@@ -192,4 +192,31 @@ mod tests {
             outcome.stderr
         );
     }
+
+    #[test]
+    fn run_get_on_airflow_2_resolves_latest_by_logical_date() {
+        let mut manual = crate::testing::run_v1("failed");
+        manual["run_type"] = json!("manual");
+        manual["logical_date"] = json!("2026-09-29T12:00:00+00:00");
+        manual["data_interval_end"] = json!("2026-09-29T00:00:00+00:00");
+        let (outcome, transport) = crate::testing::airflow_v1(
+            &["airflow", "run", "get", "etl_nightly/latest"],
+            vec![
+                Answer::json(&json!({"dag_runs": [manual.clone()], "total_entries": 1})),
+                Answer::json(&manual),
+                tasks(vec![ti("load_orders", "failed", 1)]),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let got = outcome.json();
+        assert_eq!(
+            got["run_after"], "2026-09-29T12:00:00Z",
+            "a manual run is due when triggered, after its interval"
+        );
+        assert_eq!(got.get("dag_version"), None);
+        assert_eq!(
+            paths(&transport)[0],
+            "dags/etl_nightly/dagRuns?order_by=-execution_date&limit=1"
+        );
+    }
 }

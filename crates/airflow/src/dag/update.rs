@@ -35,7 +35,7 @@ fn dag_update(ctx: &Ctx, args: DagUpdateArgs) -> Result<DagUpdated> {
         None,
     )?;
     client.writable()?;
-    let dag = client.get(&format!("{}/details", id.dag_path()))?;
+    let dag = super::details(&client, &id)?;
     if !args.paused && dag["catchup"].as_bool() == Some(true) {
         ctx.note(format!(
             "[catchup is on: unpausing {} schedules every interval missed since {}]",
@@ -52,7 +52,7 @@ fn dag_update(ctx: &Ctx, args: DagUpdateArgs) -> Result<DagUpdated> {
     Ok(DagUpdated {
         id: id.dag,
         paused: updated["is_paused"].as_bool().unwrap_or(args.paused),
-        next_run: stamp(&updated["next_dagrun_run_after"]),
+        next_run: super::next_run(&updated),
     })
 }
 
@@ -138,5 +138,43 @@ mod tests {
             );
             assert!(transport.sent().is_empty());
         }
+    }
+
+    #[test]
+    fn dag_update_on_airflow_2_patches_the_same_path() {
+        let (plans, _) = crate::testing::dry_run_with(
+            crate::testing::CONFIG_V1,
+            &[
+                "airflow",
+                "dag",
+                "update",
+                "etl_nightly",
+                "--paused",
+                "true",
+            ],
+            vec![Answer::json(&crate::testing::dag_v1("etl_nightly", false))],
+        );
+        assert_eq!(
+            plans[0]["url"],
+            "https://airflow.contoso.example/api/v1/dags/etl_nightly?update_mask=is_paused"
+        );
+        let (outcome, _) = crate::testing::airflow_v1(
+            &[
+                "airflow",
+                "dag",
+                "update",
+                "etl_nightly",
+                "--paused",
+                "false",
+            ],
+            vec![
+                Answer::json(&crate::testing::dag_v1("etl_nightly", true)),
+                Answer::json(&crate::testing::dag_v1("etl_nightly", false)),
+            ],
+        );
+        assert_eq!(
+            outcome.json(),
+            json!({"id": "etl_nightly", "paused": false, "next_run": "2026-09-30T00:00:00Z"})
+        );
     }
 }

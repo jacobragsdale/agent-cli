@@ -9,12 +9,15 @@ use crate::client::ti_id;
 pub(crate) const RUN_STATES: [&str; 4] = ["queued", "running", "success", "failed"];
 
 /// The task instances a clear's dry run listed, without a try: the next try
-/// is the one that will run.
+/// is the one that will run. Airflow 2 lists a mapped task once per index
+/// without the index, so it shows once.
 pub(crate) fn cleared_ids(preview: &Value) -> Vec<String> {
-    preview["task_instances"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .map(|task| ti_id(task, false))
-        .collect()
+    let mut ids: Vec<String> = Vec::new();
+    for task in preview["task_instances"].as_array().into_iter().flatten() {
+        let id = ti_id(task, false);
+        if !ids.contains(&id) {
+            ids.push(id);
+        }
+    }
+    ids
 }

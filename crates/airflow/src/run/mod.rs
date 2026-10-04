@@ -67,13 +67,28 @@ fn run_row(run: &Value) -> RunRow {
         ),
         state: text(&run["state"]),
         kind: text(&run["run_type"]),
-        run_after: stamp(&run["run_after"]),
+        run_after: run_after(run),
         logical_date: stamp(&run["logical_date"]),
         start: stamp(&run["start_date"]),
         end: stamp(&run["end_date"]),
         duration: seconds(&run["start_date"], &run["end_date"]),
         triggered_by: text(&run["triggered_by"]),
     }
+}
+
+/// When a run was due. Airflow 2 has no `run_after`: a scheduled run there
+/// is due when its data interval ends, a manual one at its logical date
+/// (its trigger time, after its interval), so the later of the two.
+pub(crate) fn run_after(run: &Value) -> Option<String> {
+    stamp(&run["run_after"]).or_else(|| {
+        let ends = &run["data_interval_end"];
+        let later = match seconds(ends, &run["logical_date"]) {
+            Some(gap) if gap > 0 => &run["logical_date"],
+            Some(_) => ends,
+            None => &run["logical_date"],
+        };
+        stamp(later)
+    })
 }
 
 /// The failed task instances, with their try, so they paste into task logs.

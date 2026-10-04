@@ -150,4 +150,30 @@ mod tests {
             )]
         );
     }
+
+    #[test]
+    fn xcom_list_reads_the_same_path_on_airflow_2() {
+        let entry = json!({"key": "return_value", "timestamp": "2026-09-29T00:12:31.5+00:00",
+            "map_index": -1, "task_id": "extract_orders", "dag_id": "etl_nightly",
+            "execution_date": "2026-09-28T00:00:00+00:00"});
+        let (outcome, transport) = crate::testing::airflow_v1(
+            &[
+                "airflow",
+                "xcom",
+                "list",
+                &format!("etl_nightly/{RUN}/extract_orders"),
+            ],
+            vec![Answer::json(
+                &json!({"xcom_entries": [entry], "total_entries": 1}),
+            )],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()[0]["time"], "2026-09-29T00:12:31Z");
+        assert_eq!(
+            transport.sent()[0].url,
+            format!(
+                "https://airflow.contoso.example/api/v1/{RUN_PATH}/taskInstances/extract_orders/xcomEntries?limit=50&offset=0"
+            )
+        );
+    }
 }

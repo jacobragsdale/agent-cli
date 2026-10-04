@@ -27,11 +27,13 @@ a definition for details rather than reading whole files.
 
 ## HTTP and processes
 - `Request` (`get`, `query` = a POST that only reads, `.json`, `.form`,
-  `.bytes`, `.header`, `.auth(Mint)`), `Response` (`bytes` when not UTF-8,
-  `into_bytes`), `Method`, `Body`, `Mint`.
+  `.bytes`, `.header`, `.auth(Mint)`, `.keep_redirect()` = a 3xx is the
+  answer, as a form sign-in's 302 with its cookie), `Response` (`bytes`
+  when not UTF-8, `into_bytes`), `Method`, `Body`, `Mint`.
 - `Transport`, `Https`: the seam tests fake, and the real one.
 - `host_under(url, suffix)` before any token goes out; `percent_encode`,
-  `form_encode`; `failure_message`: a refusal in the service's own words.
+  `form_encode`, `base64` (a `Basic` credential); `failure_message`: a
+  refusal in the service's own words.
 - `run_until`, `Output`: a child process under the deadline.
 
 ## Errors and secrets
@@ -50,7 +52,8 @@ a definition for details rather than reading whole files.
 
 ## Testing (`agent_cli_core::testing`)
 - `run(DOMAINS, argv, Setup::fake(FakeTransport::answering([Answer::json(&v)])))`
-  gives an `Outcome` (`code`, `.json()`); `transport.sent()` is what went out.
+  gives an `Outcome` (`code`, `.json()`); `transport.sent()` is what went
+  out (with its `headers`).
 - `Setup::with_env`, `with_stdin`, `with_config`, `read_only`.
 - `assert_dry_run`, `assert_read_only_refuses`, `assert_search_quality`,
   `printed_command_problems`, `non_utc_times`, `next_command` (the argv a

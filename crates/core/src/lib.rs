@@ -42,7 +42,7 @@ pub use discover::command_help;
 pub use dispatch::{run, run_with};
 pub use error::{Exit, Failure, status_of};
 pub use http::{
-    Body, Https, Method, Mint, Request, Response, Transport, form_encode, host_under,
+    Body, Https, Method, Mint, Request, Response, Transport, base64, form_encode, host_under,
     percent_encode,
 };
 pub use process::{Output, run_until};

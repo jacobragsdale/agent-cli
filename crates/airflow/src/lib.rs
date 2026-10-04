@@ -1,7 +1,7 @@
 //! The airflow domain: DAGs and their source, runs, task instances with
 //! their logs and XComs, import errors, pools, variables and connections,
-//! live from Apache Airflow 3's REST API (`/api/v2`). Airflow 2's `/api/v1`
-//! is out of scope: doctor names a v2 server and stops.
+//! live from Apache Airflow 3's REST API (`/api/v2`) or 2.9's (`/api/v1`),
+//! whichever the server speaks.
 //!
 //! Every id is the ref: a DAG is `etl_nightly`, a line of its file
 //! `etl_nightly:42`, a run `DAG/RUN`, a task instance
