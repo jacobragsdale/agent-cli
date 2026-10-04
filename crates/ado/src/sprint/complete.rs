@@ -23,6 +23,9 @@ pub struct SprintCompleteArgs {
     /// The team whose sprints they are (default: [ado] team)
     #[arg(long)]
     team: Option<String>,
+    /// The project (default: the first in [ado] project)
+    #[arg(long)]
+    project: Option<String>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -42,7 +45,7 @@ pub struct Skipped {
 }
 
 fn sprint_complete(ctx: &Ctx, args: SprintCompleteArgs) -> Result<Completed> {
-    let ado = Ado::load(ctx)?;
+    let ado = Ado::load_in(ctx, args.project.as_deref())?;
     let team = team(&ado, args.team.as_deref())?;
     let sprint = resolve(ctx, &ado, Some(team), &args.sprint)?;
     let to = resolve(ctx, &ado, Some(team), &args.move_to)?;

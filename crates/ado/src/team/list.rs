@@ -10,6 +10,9 @@ pub struct TeamListArgs {
     /// Most rows to return
     #[arg(long, default_value_t = 50)]
     limit: usize,
+    /// The project (default: the first in [ado] project)
+    #[arg(long)]
+    project: Option<String>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -20,7 +23,7 @@ pub struct TeamRow {
 }
 
 fn team_list(ctx: &Ctx, args: TeamListArgs) -> Result<Vec<TeamRow>> {
-    let ado = Ado::load(ctx)?;
+    let ado = Ado::load_in(ctx, args.project.as_deref())?;
     let url = ado.api(
         None,
         &format!("projects/{}/teams", segment(&ado.project)),

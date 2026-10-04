@@ -76,6 +76,9 @@ pub struct ListArgs {
     /// The team whose sprint @current, @next and @previous mean (default: [ado] team)
     #[arg(long)]
     team: Option<String>,
+    /// Only this project (default: every project in [ado] project)
+    #[arg(long)]
+    project: Option<String>,
     /// Most rows to return
     #[arg(long, default_value_t = 50)]
     limit: usize,
@@ -89,8 +92,8 @@ enum DateField {
 
 /// The WHERE clause the flags spell, newest change (or creation) first. `iteration` is the
 /// iteration condition already worked out, since `@current` may need a read.
-fn wiql(args: &ListArgs, iteration: Option<String>, assignee: Option<String>) -> String {
-    let mut conditions = vec!["[System.TeamProject] = @project".to_owned()];
+fn wiql(ado: &Ado, args: &ListArgs, iteration: Option<String>, assignee: Option<String>) -> String {
+    let mut conditions = vec![ado.projects_condition(args.project.is_some())];
     conditions.extend(assignee);
     if !args.state.is_empty() {
         conditions.push(one_of("System.State", &args.state));
@@ -149,14 +152,16 @@ fn wiql(args: &ListArgs, iteration: Option<String>, assignee: Option<String>) ->
 
 /// `--iteration` as a WIQL condition, and the team whose URL the query must
 /// go to. `@current` is WIQL's own `@CurrentIteration` when one team is
-/// named or configured (the macro reads the team from the URL); with several, each
-/// team's current sprint is read from its settings. `@next` and `@previous`
-/// have no macro, so the team's sprints say which path they are.
+/// named or configured (the macro reads the team from the URL); with several
+/// (each project's, when the list spans them), each team's current sprint is
+/// read from its settings. `@next` and `@previous` have no macro, so the
+/// team's sprints say which path they are.
 fn iteration_condition(
     ctx: &Ctx,
     ado: &Ado,
     team: Option<&str>,
     iteration: Option<&str>,
+    every_project: bool,
 ) -> Result<(Option<String>, Option<String>)> {
     let Some(iteration) = iteration.map(str::trim) else {
         return Ok((None, None));
@@ -168,21 +173,32 @@ fn iteration_condition(
             None,
         ));
     }
-    let teams = team.map_or_else(|| ado.teams.clone(), |team| vec![team.to_owned()]);
+    let teams: Vec<(String, String)> = match team {
+        Some(team) => vec![(ado.project.clone(), team.to_owned())],
+        None if every_project => ado.all_teams.clone(),
+        None => (ado.teams.iter())
+            .map(|team| (ado.project.clone(), team.clone()))
+            .collect(),
+    };
     match teams.as_slice() {
+        [] if !ado.all_teams.is_empty() => Err(crate::iteration::no_team(ado)),
         [] => Err(Failure::setup(
             "--iteration @current means your team's sprint, and [ado] team is not set",
         )
         .hint("agent-cli ado team list --fields name, then set team = \"NAME\" under [ado] (or AGENT_CLI_ADO_TEAM)")
         .into()),
-        [team] => Ok((
+        [(project, team)] if *project == ado.project => Ok((
             Some("[System.IterationPath] = @CurrentIteration".to_owned()),
             Some(team.clone()),
         )),
         teams => {
             let mut sprints: Vec<String> = Vec::new();
-            for team in teams {
-                let url = ado.team(team, "work/teamsettings/iterations", "$timeframe=current");
+            for (project, team) in teams {
+                let url = ado.clone().in_project(project).team(
+                    team,
+                    "work/teamsettings/iterations",
+                    "$timeframe=current",
+                );
                 let answer = ado.get(ctx, &url)?;
                 if let Some(path) = text(&answer["value"][0]["path"])
                     && !sprints.contains(&path)
@@ -191,9 +207,10 @@ fn iteration_condition(
                 }
             }
             if sprints.is_empty() {
+                let names: Vec<&str> = teams.iter().map(|(_, team)| team.as_str()).collect();
                 return Err(Failure::not_found(format!(
                     "none of the teams {} is in a sprint today",
-                    teams.join(", ")
+                    names.join(", ")
                 ))
                 .hint("name the sprint: --iteration 'Project\\Sprint 12'")
                 .into());
@@ -213,9 +230,14 @@ fn workitem_list(ctx: &Ctx, args: ListArgs) -> Result<Vec<WorkItemRow>> {
             .hint("agent-cli ado workitem list --text login --fields id,title")
             .into());
     }
-    let ado = Ado::load(ctx)?;
-    let (iteration, team) =
-        iteration_condition(ctx, &ado, args.team.as_deref(), args.iteration.as_deref())?;
+    let ado = Ado::load_in(ctx, args.project.as_deref())?;
+    let (iteration, team) = iteration_condition(
+        ctx,
+        &ado,
+        args.team.as_deref(),
+        args.iteration.as_deref(),
+        args.project.is_none(),
+    )?;
     // A name is resolved to one person, as --author is on pull requests,
     // so a part of one is not silently nobody; "" is the unassigned.
     let assignee = match args.assignee.as_deref().map(str::trim) {
@@ -232,7 +254,7 @@ fn workitem_list(ctx: &Ctx, args: ListArgs) -> Result<Vec<WorkItemRow>> {
             ))
         }
     };
-    let query = wiql(&args, iteration, assignee);
+    let query = wiql(&ado, &args, iteration, assignee);
     let mut top = format!("$top={WIQL_TOP}");
     if args.since.is_some() || args.until.is_some() {
         top.push_str("&timePrecision=true");
@@ -257,7 +279,11 @@ fn workitem_list(ctx: &Ctx, args: ListArgs) -> Result<Vec<WorkItemRow>> {
         .collect();
     // A state no type has matches nothing, which would read as no work.
     if ids.is_empty() && !args.state.is_empty() {
-        known_states(ctx, &ado, &args.work_item_type, &args.state)?;
+        let projects = match args.project {
+            Some(_) => std::slice::from_ref(&ado.project),
+            None => ado.projects.as_slice(),
+        };
+        known_states(ctx, &ado, projects, &args.work_item_type, &args.state)?;
     }
     if ids.len() > args.limit {
         let more = if ids.len() >= WIQL_TOP { "+" } else { "" };
@@ -270,9 +296,15 @@ fn workitem_list(ctx: &Ctx, args: ListArgs) -> Result<Vec<WorkItemRow>> {
     rows(ctx, &ado, &ids[..ids.len().min(args.limit)])
 }
 
-/// Exit 2 for a state none of `types` (else of the project's types) has.
-fn known_states(ctx: &Ctx, ado: &Ado, types: &[String], states: &[String]) -> Result<()> {
-    let answer = ado.get(ctx, &ado.work("wit/workitemtypes", ""))?;
+/// Exit 2 for a state none of `types` (else of the types) has in any of
+/// `projects`: their processes may differ.
+fn known_states(
+    ctx: &Ctx,
+    ado: &Ado,
+    projects: &[String],
+    types: &[String],
+    states: &[String],
+) -> Result<()> {
     let mut known: Vec<String> = Vec::new();
     let wanted = |kind: &&serde_json::Value| {
         types.is_empty()
@@ -280,13 +312,17 @@ fn known_states(ctx: &Ctx, ado: &Ado, types: &[String], states: &[String]) -> Re
                 .iter()
                 .any(|t| text(&kind["name"]).is_some_and(|n| n.eq_ignore_ascii_case(t.trim())))
     };
-    for kind in list(&answer["value"]).iter().filter(wanted) {
-        for name in list(&kind["states"])
-            .iter()
-            .filter_map(|state| text(&state["name"]))
-        {
-            if !known.contains(&name) {
-                known.push(name);
+    for project in projects {
+        let url = ado.api(Some(project), "wit/workitemtypes", "", crate::client::API);
+        let answer = ado.get(ctx, &url)?;
+        for kind in list(&answer["value"]).iter().filter(wanted) {
+            for name in list(&kind["states"])
+                .iter()
+                .filter_map(|state| text(&state["name"]))
+            {
+                if !known.contains(&name) {
+                    known.push(name);
+                }
             }
         }
     }
@@ -511,6 +547,89 @@ mod tests {
         assert!(
             query.contains("[System.IterationPath] IN ('Fabrikam\\Sprint 12', 'Fabrikam\\Data 4')"),
             "{query}"
+        );
+    }
+
+    const PROJECTS: &str = "[ado]\norg = \"contoso\"\nproject = [\"Fabrikam\", \"Contoso Mobile\"]\nteam = [\"Web Team\", \"Contoso Mobile/Apps\"]\n";
+
+    #[test]
+    fn several_projects_are_one_query_and_project_narrows_it_to_one() {
+        let (outcome, transport) = ado_with(
+            PROJECTS,
+            &["ado", "workitem", "list", "--iteration", "@current"],
+            vec![
+                Answer::json(&json!({"count": 1, "value": [{"path": "Fabrikam\\Sprint 12"}]})),
+                Answer::json(&json!({"count": 1, "value": [{"path": "Contoso Mobile\\M 3"}]})),
+                wiql(&[]),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let sent = urls(&transport);
+        assert_eq!(
+            sent[1],
+            format!(
+                "{BASE}/Contoso%20Mobile/Apps/_apis/work/teamsettings/iterations?$timeframe=current&api-version=7.1"
+            ),
+            "each project's team, under its project"
+        );
+        assert!(sent[2].starts_with(&format!("{BASE}/Fabrikam/_apis/wit/wiql")));
+        assert!(
+            query_of(&transport, 2).starts_with(
+                "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] IN ('Fabrikam', 'Contoso Mobile') \
+                 AND [System.IterationPath] IN ('Fabrikam\\Sprint 12', 'Contoso Mobile\\M 3')"
+            ),
+            "{}",
+            query_of(&transport, 2)
+        );
+
+        let (outcome, transport) = ado_with(
+            PROJECTS,
+            &[
+                "ado",
+                "workitem",
+                "list",
+                "--project",
+                "contoso mobile",
+                "--iteration",
+                "@current",
+            ],
+            vec![wiql(&[])],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert!(
+            urls(&transport)[0]
+                .starts_with(&format!("{BASE}/Contoso%20Mobile/Apps/_apis/wit/wiql")),
+            "its one team's @CurrentIteration"
+        );
+        assert!(
+            query_of(&transport, 0).starts_with(
+                "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project \
+                 AND [System.IterationPath] = @CurrentIteration"
+            ),
+            "{}",
+            query_of(&transport, 0)
+        );
+    }
+
+    #[test]
+    fn a_state_only_another_projects_process_has_is_no_error() {
+        let types = |states: &[&str]| {
+            let states: Vec<_> = states.iter().map(|name| json!({"name": name})).collect();
+            Answer::json(&json!({"count": 1, "value": [{"name": "Task", "states": states}]}))
+        };
+        let (outcome, transport) = ado_with(
+            PROJECTS,
+            &["ado", "workitem", "list", "--state", "Closed"],
+            vec![
+                wiql(&[]),
+                types(&["To Do", "Done"]),
+                types(&["New", "Closed"]),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            urls(&transport)[2],
+            format!("{BASE}/Contoso%20Mobile/_apis/wit/workitemtypes?api-version=7.1")
         );
     }
 

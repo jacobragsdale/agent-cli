@@ -2,12 +2,13 @@
 
 use agent_cli_core::{Check, Config, Ctx};
 
-use crate::client::{self, Ado, az_config_path, az_defaults};
+use crate::client::{self, Ado};
+use crate::config::{az_config_path, az_defaults};
 
 /// `ado contoso/Fabrikam`, from config and the az devops defaults alone.
 pub(crate) fn status(config: &Config) -> String {
     match Ado::names(config) {
-        Ok(ado) => format!("ado {}/{}", ado.org, ado.project),
+        Ok(ado) => format!("ado {}/{}", ado.org, ado.projects.join(", ")),
         Err(_) if config.has_section("ado") => "ado config broken".to_owned(),
         Err(_) => "ado not set up".to_owned(),
     }
@@ -36,23 +37,37 @@ pub(crate) fn doctor(ctx: &Ctx) -> Vec<Check> {
         format!(
             "{}/{}{}{}",
             ado.org,
-            ado.project,
+            ado.projects.join(", "),
             if ado.code_project == ado.project {
                 String::new()
             } else {
                 format!(", code in {}", ado.code_project)
             },
-            if ado.teams.is_empty() {
+            if ado.all_teams.is_empty() {
                 ", no team (so no @current)".to_owned()
             } else {
-                format!(", team {}", ado.teams.join(", "))
+                let teams: Vec<String> = (ado.all_teams.iter())
+                    .map(|(project, team)| {
+                        if *project == ado.project {
+                            team.clone()
+                        } else {
+                            format!("{project}/{team}")
+                        }
+                    })
+                    .collect();
+                format!(", team {}", teams.join(", "))
             }
         ),
     )];
-    let hint = "run `az login`, or set AZURE_DEVOPS_EXT_PAT";
+    let hint = "set pat_env or pat_cmd under [ado] (or AZURE_DEVOPS_EXT_PAT), or run `az login`";
     match ado.authorization(ctx, false) {
-        Ok(_) if ado.uses_pat() => checks.push(Check::ok("credential", "AZURE_DEVOPS_EXT_PAT")),
-        Ok(_) => checks.push(Check::ok("credential", "an az token for Azure DevOps")),
+        Ok(_) => checks.push(Check::ok(
+            "credential",
+            ado.pat_source()
+                .map_or("an az token for Azure DevOps".to_owned(), |source| {
+                    format!("a personal access token from {source}")
+                }),
+        )),
         Err(error) => {
             checks.push(Check::failed("credential", format!("{error:#}"), hint));
             return checks;
@@ -68,8 +83,8 @@ pub(crate) fn doctor(ctx: &Ctx) -> Vec<Check> {
             return checks;
         }
     }
-    let mut projects = vec![ado.project.clone()];
-    if ado.code_project != ado.project {
+    let mut projects = ado.projects.clone();
+    if !projects.contains(&ado.code_project) {
         projects.push(ado.code_project.clone());
     }
     for project in projects {
@@ -105,6 +120,12 @@ mod tests {
         let config = |toml: &str| Config::parse("c.toml", Some(toml), Vec::new());
         assert_eq!(status(&config(testing::CONFIG)), "ado contoso/Fabrikam");
         assert_eq!(
+            status(&config(
+                "[ado]\norg = \"contoso\"\nproject = [\"Fabrikam\", \"Mobile\"]\n"
+            )),
+            "ado contoso/Fabrikam, Mobile"
+        );
+        assert_eq!(
             status(&config("[ado]\norg = \"contoso\"\n")),
             "ado config broken"
         );
@@ -124,7 +145,11 @@ mod tests {
             ),
         ]);
         let setup = Setup::fake(transport.clone())
-            .with_config(&format!("{}code_project = \"Code\"\n", testing::CONFIG));
+            .with_config(&format!(
+                "{}code_project = \"Code\"\npat_env = \"CONTOSO_PAT\"\n",
+                testing::CONFIG
+            ))
+            .with_env("CONTOSO_PAT", "fixture-pat");
         let outcome = run(&[DOMAIN], &["doctor", "ado"], setup);
         assert_eq!(outcome.code, 1, "one check failed: {outcome:?}");
         let rows = outcome.json();
@@ -146,6 +171,13 @@ mod tests {
             ]
         );
         assert!(outcome.stdout.contains("signed in as Jane Doe"));
+        assert!(
+            outcome
+                .stdout
+                .contains("a personal access token from pat_env CONTOSO_PAT"),
+            "{}",
+            outcome.stdout
+        );
         assert!(!outcome.stdout.contains("fixture-pat") && !outcome.stderr.contains("Basic"));
         assert!(
             transport.sent()[1]

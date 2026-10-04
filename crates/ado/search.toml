@@ -513,6 +513,14 @@ text = "which ticket kinds can I create"
 expect = "ado workitem-type list"
 
 [[query]]
+text = "work item types in the other project"
+expect = "ado workitem-type list"
+
+[[query]]
+text = "list open bugs in one project only"
+expect = "ado workitem list"
+
+[[query]]
 text = "what states can a bug move to"
 expect = "ado workitem-type get"
 

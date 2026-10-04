@@ -19,6 +19,9 @@ pub struct BacklogListArgs {
     /// Most rows to return (from the top)
     #[arg(long, default_value_t = 50)]
     limit: usize,
+    /// The project (default: the first in [ado] project)
+    #[arg(long)]
+    project: Option<String>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -32,7 +35,7 @@ pub struct BacklogRow {
 }
 
 fn backlog_list(ctx: &Ctx, args: BacklogListArgs) -> Result<Vec<BacklogRow>> {
-    let ado = Ado::load(ctx)?;
+    let ado = Ado::load_in(ctx, args.project.as_deref())?;
     let team = team(&ado, args.team.as_deref())?;
     let levels = ado.get(ctx, &ado.team(team, "work/backlogs", ""))?;
     // Processes name the requirement level differently (Stories, Backlog

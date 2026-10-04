@@ -32,7 +32,8 @@ pub struct UpdateArgs {
 fn workitem_update(ctx: &Ctx, args: UpdateArgs) -> Result<WorkItemRow> {
     let ado = Ado::load(ctx)?;
     let id = ado.id(Kind::WorkItem, &args.id)?;
-    let kind = || item_type(ctx, &ado, id);
+    let (kind, ado) = item_type(ctx, ado, id)?;
+    let kind = || Ok(kind.clone());
     let changes = field_ops(
         ctx,
         &ado,
@@ -109,7 +110,7 @@ fn patch(
     let updated = ado
         .patch_work_item(ctx, Method::Patch, &url, document)
         .map_err(|error| moved_on(error, id))
-        .map_err(|error| broke_rules(error, || kind().unwrap_or_else(|_| "TYPE".to_owned())))
+        .map_err(|error| broke_rules(ado, error, || kind().unwrap_or_else(|_| "TYPE".to_owned())))
         .map_err(|error| match error.downcast::<Failure>() {
             // Sent and unanswered: the change may be there. The item says.
             Ok(failure) if failure.exit == Exit::TimedOut => failure
@@ -123,17 +124,25 @@ fn patch(
     Ok(row(&updated))
 }
 
-/// The work item's type, whose fields `--field` names.
-fn item_type(ctx: &Ctx, ado: &Ado, id: i64) -> Result<String> {
+/// The work item's type, whose fields `--field` names, and `ado` in the
+/// item's project: its type's rules, sprints and backlog are that
+/// project's, whichever one is configured.
+fn item_type(ctx: &Ctx, ado: Ado, id: i64) -> Result<(String, Ado)> {
     let url = ado.api(
         None,
         &format!("wit/workitems/{id}"),
-        "fields=System.WorkItemType",
+        "fields=System.WorkItemType,System.TeamProject",
         crate::client::API,
     );
     let item = ado.get(ctx, &url)?;
-    crate::client::text(&item["fields"]["System.WorkItemType"])
-        .ok_or_else(|| anyhow::anyhow!("work item {id} came back without its type"))
+    let field = |name: &str| crate::client::text(&item["fields"][name]);
+    let kind = field("System.WorkItemType")
+        .ok_or_else(|| anyhow::anyhow!("work item {id} came back without its type"))?;
+    let ado = match field("System.TeamProject") {
+        Some(project) => ado.in_project(&project),
+        None => ado,
+    };
+    Ok((kind, ado))
 }
 
 /// The backlog move `--above` or `--below` asks for: a `ReorderOperation`
@@ -164,7 +173,7 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{BASE, ado, dry_run, item};
+    use crate::testing::{BASE, ado, dry_run, home, item};
 
     #[test]
     fn update_leads_with_the_rev_test_and_a_moved_on_item_is_a_conflict() {
@@ -181,7 +190,7 @@ mod tests {
                 "--if-rev",
                 "7",
             ],
-            vec![],
+            vec![home("Bug", "Fabrikam")],
         );
         assert_eq!(plans[0]["method"], "PATCH");
         assert_eq!(
@@ -208,7 +217,7 @@ mod tests {
                 &[
                     "ado", "workitem", "update", "42", "--title", "New", "--if-rev", "7",
                 ],
-                vec![refusal],
+                vec![home("Bug", "Fabrikam"), refusal],
             );
             assert_eq!(outcome.code, 5, "{outcome:?}");
             assert!(
@@ -227,14 +236,15 @@ mod tests {
             );
         }
 
+        // An item in another project is held to its own project's rules.
         let (outcome, _) = ado(
             &["ado", "workitem", "update", "42", "--state", "Doing"],
             vec![
+                home("User Story", "Contoso Mobile"),
                 Answer::status(
                     400,
                     r#"{"message":"The field 'State' contains the value 'Doing' that is not in the list of supported values","typeKey":"RuleValidationException"}"#,
                 ),
-                Answer::json(&json!({"id": 42, "fields": {"System.WorkItemType": "User Story"}})),
             ],
         );
         assert_eq!(outcome.code, 2, "a broken rule keeps its code: {outcome:?}");
@@ -242,21 +252,24 @@ mod tests {
             outcome
                 .stderr
                 .contains("answered 400: The field 'State' contains the value 'Doing'")
-                && outcome
-                    .stderr
-                    .contains("hint: agent-cli ado workitem-type get \"User Story\""),
+                && outcome.stderr.contains(
+                    "hint: agent-cli ado workitem-type get \"User Story\" --project 'Contoso Mobile'"
+                ),
             "{}",
             outcome.stderr
         );
 
-        let (outcome, transport) = ado(&["ado", "workitem", "update", "42"], vec![]);
+        let (outcome, transport) = ado(
+            &["ado", "workitem", "update", "42"],
+            vec![home("Bug", "Fabrikam")],
+        );
         assert_eq!(outcome.code, 2, "{outcome:?}");
         assert!(outcome.stderr.contains("nothing to change"));
-        assert!(transport.sent().is_empty());
+        assert!(transport.sent().iter().all(|sent| sent.method.is_read()));
 
         let (outcome, _) = ado(
             &["ado", "workitem", "update", "42", "--priority", "1"],
-            vec![Answer::json(&item(42, 8, "Crash"))],
+            vec![home("Bug", "Fabrikam"), Answer::json(&item(42, 8, "Crash"))],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(outcome.json()["rev"], 8);
@@ -268,7 +281,7 @@ mod tests {
         let sprints = || Answer::json(&json!({"count": 0, "value": []}));
         let plans = dry_run(
             &["ado", "workitem", "update", "42", "--above", "#7"],
-            vec![sprints()],
+            vec![home("Bug", "Fabrikam"), sprints()],
         );
         assert_eq!(plans[0]["method"], "PATCH");
         assert_eq!(plans[0]["url"], order);
@@ -282,6 +295,7 @@ mod tests {
                 "ado", "workitem", "update", "42", "--state", "Active", "--below", "7",
             ],
             vec![
+                home("Bug", "Fabrikam"),
                 sprints(),
                 Answer::json(&item(42, 8, "Crash")),
                 Answer::json(&json!({"count": 1, "value": [{"id": 42, "order": 1000102770.0}]})),
@@ -291,16 +305,16 @@ mod tests {
         assert_eq!(outcome.json()["rev"], 8);
         let sent = transport.sent();
         assert!(
-            sent[0].url.contains("teamsettings/iterations"),
+            sent[1].url.contains("teamsettings/iterations"),
             "the team is checked before any write"
         );
         assert_eq!(
-            sent[1].url,
+            sent[2].url,
             format!("{BASE}/_apis/wit/workitems/42?api-version=7.1")
         );
-        assert_eq!(sent[2].url, order);
+        assert_eq!(sent[3].url, order);
         assert_eq!(
-            sent[2].body.as_ref().unwrap(),
+            sent[3].body.as_ref().unwrap(),
             &json!({"ids": [42], "parentId": 0, "previousId": 7})
         );
 
@@ -328,11 +342,11 @@ mod tests {
                 "Data",
                 "--dry-run",
             ],
-            vec![crate::sprint::tests::sprints()],
+            vec![home("Bug", "Fabrikam"), crate::sprint::tests::sprints()],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(
-            transport.sent()[0].url,
+            transport.sent()[1].url,
             format!("{BASE}/Fabrikam/Data/_apis/work/teamsettings/iterations?api-version=7.1")
         );
         assert_eq!(

@@ -5,9 +5,15 @@ use serde::Serialize;
 
 use crate::client::{Ado, list, text};
 
-/// No flags: a project has a handful of types.
 #[derive(clap::Args)]
-pub struct WorkitemTypeListArgs {}
+pub struct WorkitemTypeListArgs {
+    /// The project (default: the first in [ado] project)
+    #[arg(long)]
+    project: Option<String>,
+    /// Most rows to return
+    #[arg(long, default_value_t = 50)]
+    limit: usize,
+}
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct WorkitemTypeRow {
@@ -17,8 +23,8 @@ pub struct WorkitemTypeRow {
     states: Vec<String>,
 }
 
-fn workitem_type_list(ctx: &Ctx, _: WorkitemTypeListArgs) -> Result<Vec<WorkitemTypeRow>> {
-    let ado = Ado::load(ctx)?;
+fn workitem_type_list(ctx: &Ctx, args: WorkitemTypeListArgs) -> Result<Vec<WorkitemTypeRow>> {
+    let ado = Ado::load_in(ctx, args.project.as_deref())?;
     let answer = ado.get(ctx, &ado.work("wit/workitemtypes", ""))?;
     Ok(list(&answer["value"])
         .iter()
@@ -34,6 +40,7 @@ fn workitem_type_list(ctx: &Ctx, _: WorkitemTypeListArgs) -> Result<Vec<Workitem
                     .collect(),
             })
         })
+        .take(args.limit)
         .collect())
 }
 

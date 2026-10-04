@@ -4,10 +4,13 @@ Work items, sprints, PRs, repos, pipelines, runs and approvals over REST:
 https://learn.microsoft.com/rest/api/azure/devops/
 
 ## Config
-`[ado]`: `org`, `project`, `code_project` (repos and pipelines, if
-elsewhere), `team` (one or a list: `@current`, sprints, people). Unset org
-and project fall back to `az devops configure`. Credential:
-`AZURE_DEVOPS_EXT_PAT` (Basic), else an `az` token; only to `trusted` hosts.
+`[ado]`: `org`, `project` and `team` (one or a list; the first project is
+the default; `PROJECT/TEAM`), `code_project`, else
+`az devops configure`. Credential: `pat_env`, `pat_cmd`,
+`AZURE_DEVOPS_EXT_PAT`, then `az`; only to `trusted` hosts; a `pat`
+literal is refused, as dd's keys are. `Ado.project` steers URLs, caches:
+lists search all projects in one WIQL, other verbs take `--project` or
+the item's `System.TeamProject`.
 
 ## Ids
 Work item, PR, run: `8812`, `AB#8812` or its web URL (`Ado::id(Kind, raw)`).
@@ -18,8 +21,9 @@ a tag. `each` runs a verb over `ID…`.
 
 ## Where things are (`src/`)
 A command is `<resource>/<verb>.rs`; `<resource>/mod.rs` is what they share.
-- `lib.rs`: `DOMAIN` (the listing's order). `doctor.rs`.
-- `client.rs`: `Ado::load`; `get`, `query` (a POST that reads), `change`,
+- `lib.rs`: `DOMAIN` (the listing's order). `doctor.rs`. `config.rs`:
+  `Ado::load`, `load_in`, `in_project`.
+- `client.rs`: `get`, `query` (a POST that reads), `change`,
   `patch_work_item`; URLs `api`, `work`, `code`, `team`; cached `me`,
   `person` (`@me`, a name or an address), `identity`; `repo` and `pipeline_id` (live);
   row helpers `text`, `stamp` (UTC), `list`, `segment`.

@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
-use agent_cli_core::{Ctx, Effect, Failure, Method, command};
+use agent_cli_core::{Ctx, Effect, Method, command};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::json;
 
-use crate::client::{API, Ado, COMMENTS_API, Kind, stamp};
+use crate::client::{API, Ado, COMMENTS_API, Kind, stamp, text};
 use crate::compose::{CommentBody, rich_text};
 
 #[derive(clap::Args)]
@@ -33,40 +33,30 @@ fn workitem_comment(ctx: &Ctx, args: CommentArgs) -> Result<CommentPosted> {
     let body = CommentBody::read(ctx, args.text.as_deref(), args.text_file.as_deref())?;
     let ado = Ado::load(ctx)?;
     let id = ado.id(Kind::WorkItem, &args.id)?;
+    // A comment goes under the item's own project, which may not be the
+    // configured one. Reading it first also makes a deleted item exit 4,
+    // where the comment alone answers a 500 about area permissions.
+    let read = ado.api(
+        None,
+        &format!("wit/workitems/{id}"),
+        "fields=System.TeamProject",
+        API,
+    );
+    let project = text(&ado.get(ctx, &read)?["fields"]["System.TeamProject"]);
     let url = ado.api(
-        Some(&ado.project),
+        Some(project.as_deref().unwrap_or(&ado.project)),
         &format!("wit/workItems/{}/comments", id),
         "",
         COMMENTS_API,
     );
     let html = rich_text(ctx, &ado, &body.markdown())?;
-    let posted = ado
-        .change(
-            ctx,
-            Effect::Write,
-            Method::Post,
-            &url,
-            json!({"text": html}),
-        )
-        .map_err(|error| {
-            // A deleted work item answers a comment with a 500 about area
-            // permissions (TF237135); reading it says what is wrong.
-            let area = |failure: &Failure| failure.message.contains("TF237135");
-            if error.downcast_ref::<Failure>().is_some_and(area) {
-                let read = ado.api(
-                    None,
-                    &format!("wit/workitems/{id}"),
-                    "fields=System.Id",
-                    API,
-                );
-                if let Err(missing) = ado.get(ctx, &read)
-                    && agent_cli_core::status_of(&missing) == Some(404)
-                {
-                    return missing;
-                }
-            }
-            error
-        })?;
+    let posted = ado.change(
+        ctx,
+        Effect::Write,
+        Method::Post,
+        &url,
+        json!({"text": html}),
+    )?;
     Ok(CommentPosted {
         work_item: id,
         id: posted["id"].as_i64(),
@@ -87,13 +77,13 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{BASE, ado, ado_piped, dry_run, page, person};
+    use crate::testing::{BASE, ado, ado_piped, dry_run, home, page, person};
 
     #[test]
     fn comment_posts_markdown_as_html_to_the_preview_endpoint() {
         let plans = dry_run(
             &["ado", "workitem", "comment", "42", "Fixed in **!17**"],
-            vec![],
+            vec![home("Bug", "Fabrikam")],
         );
         assert_eq!(plans[0]["method"], "POST");
         assert_eq!(
@@ -105,16 +95,26 @@ mod tests {
             json!({"text": "<p>Fixed in <b>!17</b></p>"})
         );
 
-        let (outcome, _) = ado(
+        let (outcome, transport) = ado(
             &["ado", "workitem", "comment", "42", "done"],
-            vec![Answer::json(
-                &json!({"id": 9001, "workItemId": 42, "createdDate": "2026-09-29T10:00:00Z"}),
-            )],
+            vec![
+                home("Task", "Contoso Mobile"),
+                Answer::json(
+                    &json!({"id": 9001, "workItemId": 42, "createdDate": "2026-09-29T10:00:00Z"}),
+                ),
+            ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(
             outcome.json(),
             json!({"work_item": 42, "id": 9001, "date": "2026-09-29T10:00:00Z"})
+        );
+        assert_eq!(
+            transport.sent()[1].url,
+            format!(
+                "{BASE}/Contoso%20Mobile/_apis/wit/workItems/42/comments?api-version=7.1-preview.4"
+            ),
+            "an item in another project is commented on in its own"
         );
         let (outcome, _) = ado(&["ado", "workitem", "comment", "42", " "], vec![]);
         assert_eq!(outcome.code, 2, "{outcome:?}");
@@ -166,7 +166,7 @@ mod tests {
         }
         let plans = dry_run(
             &["ado", "workitem", "comment", "42", "-- a dash, not a flag"],
-            vec![],
+            vec![home("Bug", "Fabrikam")],
         );
         assert_eq!(
             plans[0]["body"],
@@ -179,7 +179,7 @@ mod tests {
         let (outcome, _) = ado_piped(
             "test result: FAILED. 1 passed; 1 failed\n",
             &["ado", "workitem", "comment", "42", "-", "--dry-run"],
-            vec![],
+            vec![home("Bug", "Fabrikam")],
         );
         assert_eq!(
             outcome.json()["would"][0]["body"],
@@ -198,7 +198,7 @@ mod tests {
                 "--text-file",
                 note.to_str().unwrap(),
             ],
-            vec![],
+            vec![home("Bug", "Fabrikam")],
         );
         assert_eq!(
             plans[0]["body"],
@@ -245,7 +245,7 @@ mod tests {
                 "42",
                 "cc @<Sam Lee> and @sam@contoso.com, not jane@contoso.com or `@<x>`",
             ],
-            vec![sam(), sam()],
+            vec![home("Bug", "Fabrikam"), sam(), sam()],
         );
         let anchor = r##"<a href="#" data-vss-mention="version:2.0,u-2">@Sam Lee</a>"##;
         assert_eq!(
@@ -257,7 +257,7 @@ mod tests {
 
         let (outcome, transport) = ado(
             &["ado", "workitem", "comment", "42", "ask @<Nobody>"],
-            vec![page(vec![])],
+            vec![home("Bug", "Fabrikam"), page(vec![])],
         );
         assert_eq!(outcome.code, 4, "{outcome:?}");
         assert!(outcome.stderr.contains("agent-cli ado person list"));
@@ -265,10 +265,13 @@ mod tests {
 
         let (outcome, transport) = ado(
             &["ado", "workitem", "comment", "42", "ask @<Sam>"],
-            vec![page(vec![
-                json!({"id": "u-2", "providerDisplayName": "Sam Lee", "properties": {}}),
-                json!({"id": "u-3", "providerDisplayName": "Sam Leeds", "properties": {}}),
-            ])],
+            vec![
+                home("Bug", "Fabrikam"),
+                page(vec![
+                    json!({"id": "u-2", "providerDisplayName": "Sam Lee", "properties": {}}),
+                    json!({"id": "u-3", "providerDisplayName": "Sam Leeds", "properties": {}}),
+                ]),
+            ],
         );
         assert_eq!(outcome.code, 2, "{outcome:?}");
         assert!(transport.sent().iter().all(|sent| sent.method.is_read()));
@@ -276,19 +279,14 @@ mod tests {
 
     #[test]
     fn a_comment_on_a_deleted_work_item_is_not_found_not_a_permission_error() {
-        let area = agent_cli_core::testing::Answer::status(
-            500,
-            r#"{"message":"TF237135: The current user does not have permissions to save work item comments under the specified area path."}"#,
-        );
         let gone = agent_cli_core::testing::Answer::status(
             404,
             r#"{"message":"TF401232: Work item 904 does not exist, or you do not have permissions to read it."}"#,
         );
-        let (outcome, _) = crate::testing::ado(
-            &["ado", "workitem", "comment", "904", "x"],
-            vec![area, gone],
-        );
+        let (outcome, transport) =
+            crate::testing::ado(&["ado", "workitem", "comment", "904", "x"], vec![gone]);
         assert_eq!(outcome.code, 4, "{outcome:?}");
+        assert!(transport.sent().iter().all(|sent| sent.method.is_read()));
         assert!(outcome.stderr.contains("TF401232"), "{}", outcome.stderr);
         assert!(
             outcome.stderr.contains(

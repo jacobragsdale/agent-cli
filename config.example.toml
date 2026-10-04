@@ -9,13 +9,17 @@
 # lands.
 
 # [ado]
-# Sign-in: AZURE_DEVOPS_EXT_PAT (a personal access token) if set, else the
-# Azure CLI's login (`az login`). org and project fall back to
+# Sign-in: a personal access token from pat_env or pat_cmd, else
+# AZURE_DEVOPS_EXT_PAT, else the Azure CLI's login (`az login`). A token
+# written here (pat = "...") is refused. org and project fall back to
 # `az devops configure --defaults organization=... project=...`.
 # org = "contoso"                        # or "https://dev.azure.com/contoso"
-# project = "web"                        # where the work items live
+# project = ["web", "mobile"]            # where the work items live; one or a
+#                                        # list, the first the default --project
 # code_project = "web"                   # repos, PRs, pipelines; default: project
-# team = "web team"                      # or a list; `--iteration @current` needs it
+# team = ["web team", "mobile/apps"]     # or one; PROJECT/TEAM for another
+#                                        # project's; `--iteration @current` needs it
+# pat_cmd = "pass show contoso/ado-pat"  # or pat_env = "CONTOSO_ADO_PAT"
 
 # [azure]
 # kv, acr and aks sign in with your `az login`; nothing here is required. An

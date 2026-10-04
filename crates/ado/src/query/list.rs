@@ -13,10 +13,13 @@ pub struct QueryListArgs {
     /// Most rows to return
     #[arg(long, default_value_t = 50)]
     limit: usize,
+    /// The project (default: the first in [ado] project)
+    #[arg(long)]
+    project: Option<String>,
 }
 
 fn query_list(ctx: &Ctx, args: QueryListArgs) -> Result<Vec<QueryRow>> {
-    let ado = Ado::load(ctx)?;
+    let ado = Ado::load_in(ctx, args.project.as_deref())?;
     let wanted = args.text.as_deref().map(str::to_lowercase);
     let mut rows: Vec<QueryRow> = queries(ctx, &ado)?
         .into_iter()

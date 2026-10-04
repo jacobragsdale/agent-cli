@@ -14,8 +14,9 @@ const CHILD: &str = "System.LinkTypes.Hierarchy-Forward";
 
 const REMAINING: &str = "Microsoft.VSTS.Scheduling.RemainingWork";
 
-const FIELDS: [&str; 9] = [
+const FIELDS: [&str; 10] = [
     "System.Id",
+    "System.TeamProject",
     "System.WorkItemType",
     "System.Title",
     "System.State",
@@ -124,21 +125,26 @@ struct Walk<'a> {
     ado: &'a Ado,
     items: HashMap<i64, &'a Value>,
     children: HashMap<i64, Vec<i64>>,
-    done: HashMap<(String, String), bool>,
+    /// By (project, type, state): children may sit in other projects, whose
+    /// processes may differ.
+    done: HashMap<(String, String, String), bool>,
     max_depth: usize,
     hidden: usize,
 }
 
 impl Walk<'_> {
-    fn done(&mut self, node: &Node) -> Result<bool> {
+    fn done(&mut self, id: i64, node: &Node) -> Result<bool> {
         let (Some(kind), Some(state)) = (&node.kind, &node.state) else {
             return Ok(false);
         };
-        let key = (kind.clone(), state.clone());
+        let project = text(&self.items[&id]["fields"]["System.TeamProject"])
+            .unwrap_or_else(|| self.ado.project.clone());
+        let key = (project, kind.clone(), state.clone());
         if let Some(done) = self.done.get(&key) {
             return Ok(*done);
         }
-        let done = types::done(self.ctx, self.ado, kind, state)?;
+        let ado = self.ado.clone().in_project(&key.0);
+        let done = types::done(self.ctx, &ado, kind, state)?;
         self.done.insert(key, done);
         Ok(done)
     }
@@ -153,7 +159,7 @@ impl Walk<'_> {
                 continue;
             }
             let (node, below) = self.build(child, depth + 1)?;
-            rollup.add(&node, self.done(&node)?);
+            rollup.add(&node, self.done(child, &node)?);
             rollup.merge(&below);
             if depth < self.max_depth {
                 here.children.push(node);
@@ -327,6 +333,26 @@ mod tests {
             json!([1, 2, 3, 4, 5])
         );
         assert_eq!(sent.len(), 6, "each type and state is judged once");
+    }
+
+    #[test]
+    fn a_child_in_another_project_is_judged_by_that_projects_process() {
+        let mut elsewhere = work(2, "Task", "Closed", None, None);
+        elsewhere["fields"]["System.TeamProject"] = json!("Contoso Mobile");
+        let (outcome, transport) = ado(
+            &["ado", "tree", "get", "1"],
+            vec![
+                links(&[(1, 2)]),
+                batch(vec![work(1, "User Story", "Active", None, None), elsewhere]),
+                states(&[("New", "Proposed"), ("Closed", "Completed")]),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()["rollup"]["done"], 1);
+        assert_eq!(
+            transport.sent()[2].url,
+            format!("{BASE}/Contoso%20Mobile/_apis/wit/workitemtypes/Task/states?api-version=7.1")
+        );
     }
 
     #[test]

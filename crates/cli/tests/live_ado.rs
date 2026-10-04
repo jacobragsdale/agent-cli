@@ -134,7 +134,8 @@ impl Live {
             .to_owned()
     }
 
-    fn check_all(&self) {
+    /// Every check; answers the requirement-level type.
+    fn check_all(&self) -> String {
         let story = self.types();
         let team = self.people_and_sprints();
         let me = self.fields_comments_and_mentions(&story);
@@ -148,6 +149,27 @@ impl Live {
             None => skip("sprint complete", "the config names no team"),
         }
         self.activity(first, &me);
+        story
+    }
+
+    /// The first config on an item of this one's project, whose type and
+    /// states (another process's, perhaps) are read from the item's project.
+    fn seen_from_the_first_config(&self, story: &str) {
+        let id = self.make(story, "seen from the first config", &[]);
+        let id = id.to_string();
+        let Some(first) = Live::new(None) else { return };
+        first.ok(&["ado", "history", "get", &id, "--field", "State"]);
+        first.ok(&["ado", "tree", "get", &id]);
+        first.ok(&[
+            "ado",
+            "workitem",
+            "comment",
+            &id,
+            "seen from the first config",
+        ]);
+        let end = self.end.borrow()[story].clone();
+        let done = first.ok(&["ado", "workitem", "update", &id, "--state", &end]);
+        assert_eq!(done["state"], end.as_str(), "{done}");
     }
 
     /// `workitem-type list|get`: `required` is only what a caller must set.
@@ -555,6 +577,7 @@ fn the_work_item_commands_hold_on_the_second_config() {
         return;
     };
     if let Some(live) = Live::new(Some(config)) {
-        live.check_all();
+        let story = live.check_all();
+        live.seen_from_the_first_config(&story);
     }
 }

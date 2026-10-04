@@ -7613,6 +7613,7 @@
    ],
    "fields": [
     "System.Id",
+    "System.TeamProject",
     "System.WorkItemType",
     "System.Title",
     "System.State",

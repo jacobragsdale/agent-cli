@@ -2,7 +2,7 @@
 # count), each with the count it may not grow past (no_source_file_is_too_long
 # in crates/cli/src/main.rs). The list only shrinks: split a file, then drop
 # its line. No command file belongs here.
-crates/ado/src/client.rs 790  # the one door to Azure DevOps and the lookups every resource shares
+crates/ado/src/client.rs 703  # the one door to Azure DevOps and the lookups every resource shares
 crates/ado/src/markdown.rs 845  # one tokenizer and its two directions, HTML to Markdown and back
 crates/airflow/src/client.rs 844  # the one door to Airflow, its config and the id parser every resource shares
 crates/core/src/discover.rs 621  # every text an agent reads to find a command, kept together so they read alike
