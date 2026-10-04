@@ -1,4 +1,4 @@
-use agent_cli_core::{Ctx, command};
+use agent_cli_core::{Ctx, Failure, command};
 use anyhow::Result;
 use clap::builder::PossibleValuesParser;
 
@@ -40,6 +40,13 @@ fn dag_list(ctx: &Ctx, args: DagListArgs) -> Result<Vec<DagRow>> {
         query.push(format!("paused={paused}"));
     }
     if let Some(state) = &args.last_state {
+        if client.v1()? {
+            return Err(Failure::usage(
+                "Airflow 2's API cannot filter DAGs by their last run's state",
+            )
+            .hint(format!("agent-cli airflow run list --state {state}"))
+            .into());
+        }
         query.push(format!("last_dag_run_state={state}"));
     }
     let (dags, total) = client.list("dags", &query.join("&"), "dags", args.limit)?;
@@ -129,5 +136,39 @@ mod tests {
             ]
         );
         assert!(outcome.stderr.is_empty(), "{}", outcome.stderr);
+    }
+
+    #[test]
+    fn dag_list_on_airflow_2_reads_its_field_names_and_refuses_last_state() {
+        let (outcome, transport) = crate::testing::airflow_v1(
+            &["airflow", "dag", "list", "etl", "--paused", "false"],
+            vec![Answer::json(
+                &json!({"dags": [crate::testing::dag_v1("etl_nightly", false)], "total_entries": 1}),
+            )],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json(),
+            json!([{"id": "etl_nightly", "paused": false, "schedule": "0 0 * * *",
+                "next_run": "2026-09-30T00:00:00Z", "tags": ["etl"], "owners": ["data-eng"],
+                "file": "etl_nightly.py", "import_errors": false}])
+        );
+        assert_eq!(
+            transport.sent()[0].url,
+            "https://airflow.contoso.example/api/v1/dags?order_by=dag_id&dag_id_pattern=etl&paused=false&limit=50&offset=0"
+        );
+        let (outcome, transport) = crate::testing::airflow_v1(
+            &["airflow", "dag", "list", "--last-state", "failed"],
+            vec![],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("hint: agent-cli airflow run list --state failed"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(transport.sent().is_empty());
     }
 }

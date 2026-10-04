@@ -3,7 +3,26 @@
 
 pub(crate) mod get;
 
-use crate::client::Instance;
+use serde_json::Value;
+
+use crate::client::{Instance, text};
+
+/// A DAG's file in its folder: Airflow 3's `relative_fileloc`, else Airflow
+/// 2's absolute `fileloc` through [`in_folder`].
+pub(crate) fn dag_file(dag: &Value) -> Option<String> {
+    text(&dag["relative_fileloc"]).or_else(|| text(&dag["fileloc"]).map(|file| in_folder(&file)))
+}
+
+/// An absolute path after its `/dags/`, where Airflow 2's default
+/// dags_folder ends; a relative one as it is.
+// ponytail: a dags_folder named otherwise keeps its absolute path; read
+// [core] dags_folder from the config endpoint when one shows up.
+pub(crate) fn in_folder(path: &str) -> String {
+    match path.split_once("/dags/") {
+        Some((_, rest)) if path.starts_with('/') => rest.to_owned(),
+        _ => path.to_owned(),
+    }
+}
 
 /// The line of the last traceback frame in `file`: the path the DagBag
 /// filled from, or the DAG's path in its bundle, which a frame's ends with.

@@ -6,7 +6,7 @@ use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::client::{Airflow, At, note_more, query_value, text};
+use crate::client::{Airflow, At, note_more, text};
 
 #[derive(clap::Args)]
 pub struct VariableListArgs {
@@ -25,25 +25,27 @@ pub struct VariableRow {
     /// The key, what a DAG reads with Variable.get.
     id: String,
     description: Option<String>,
-    /// Stored encrypted with the Fernet key.
-    encrypted: bool,
+    /// Stored encrypted with the Fernet key (Airflow 3 says).
+    encrypted: Option<bool>,
 }
 
 fn variable_list(ctx: &Ctx, args: VariableListArgs) -> Result<Vec<VariableRow>> {
     let airflow = Airflow::load(ctx.config())?;
     let client = airflow.open(ctx, args.at.instance.as_deref())?;
-    let query = args
-        .pattern
-        .map(|pattern| format!("variable_key_pattern={}", query_value(pattern.trim())))
-        .unwrap_or_default();
-    let (variables, total) = client.list("variables", &query, "variables", args.limit)?;
+    let (variables, total) = client.list_like(
+        "variables",
+        "variables",
+        ("variable_key_pattern", "key"),
+        args.pattern.as_deref(),
+        args.limit,
+    )?;
     note_more(ctx, variables.len(), total);
     Ok(variables
         .iter()
         .map(|variable| VariableRow {
             id: variable["key"].as_str().unwrap_or_default().to_owned(),
             description: text(&variable["description"]),
-            encrypted: variable["is_encrypted"].as_bool().unwrap_or_default(),
+            encrypted: variable["is_encrypted"].as_bool(),
         })
         .collect())
 }
@@ -84,5 +86,25 @@ mod tests {
             paths(&transport),
             ["variables?variable_key_pattern=orders&limit=50&offset=0"]
         );
+    }
+
+    #[test]
+    fn airflow_2_has_no_key_pattern_so_variables_are_matched_here() {
+        let variables = json!({"variables": [
+            {"key": "orders_batch_size", "description": "Rows per insert", "value": "500"},
+            {"key": "customers_api", "description": null, "value": "x"},
+            {"key": "Orders_Token", "description": null, "value": "y"}], "total_entries": 3});
+        let (outcome, transport) = crate::testing::airflow_v1(
+            &["airflow", "variable", "list", "orders", "--limit", "1"],
+            vec![Answer::json(&variables)],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json(),
+            json!([{"id": "orders_batch_size", "description": "Rows per insert"}]),
+            "no encrypted where Airflow 2 does not say, and never a value"
+        );
+        assert_eq!(outcome.stderr, "[1 of 2; --limit N]\n");
+        assert_eq!(paths(&transport), ["variables?limit=100&offset=0"]);
     }
 }

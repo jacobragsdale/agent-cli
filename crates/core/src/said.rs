@@ -24,6 +24,8 @@ pub fn failure_message(text: &str) -> String {
         &parsed["error"]["message"],
         &parsed["errors"][0]["message"],
         &parsed["message"],
+        // RFC 7807's problem+json with a null `detail` (Airflow 2).
+        &parsed["title"],
     ] {
         if let Some(said) = candidate.as_str() {
             return if details.is_empty() {
@@ -101,6 +103,10 @@ mod tests {
         assert_eq!(
             failure_message(r#"{"message":"TF401232: no such item"}"#),
             "TF401232: no such item"
+        );
+        assert_eq!(
+            failure_message(r#"{"detail":null,"status":404,"title":"XCom entry not found"}"#),
+            "XCom entry not found"
         );
         assert_eq!(
             failure_message(r#"{"error":{"message":"bad","details":[{"message":"why"}]}}"#),

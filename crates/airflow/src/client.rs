@@ -1,6 +1,7 @@
-//! Airflow 3 over its REST API (`/api/v2`): the `[airflow]` section, the
-//! token, the one door every request goes through, and the ids every command
-//! takes.
+//! Airflow over its REST API, Airflow 3's `/api/v2` or 2's `/api/v1`: the
+//! `[airflow]` section and the one door every request goes through. `auth`
+//! says which API a server speaks and signs in; `id` holds the ids every
+//! command takes.
 //!
 //! Core's `host_under` does not fit a configured server (it wants https with
 //! no port, and a compose Airflow is `http://localhost:8080`), but every URL
@@ -9,17 +10,24 @@
 //! the door attaches the token only to URLs that start with `base_url/`
 //! exactly, and `base_url` itself is checked when the section loads.
 
-use std::cell::RefCell;
+use std::cell::{OnceCell, RefCell};
 
 use agent_cli_core::{
     Config, Credential, Ctx, Effect, Exit, Failure, Method, Request, Response, Secret,
-    percent_encode, pick, utc,
+    percent_encode, pick, status_of, utc,
 };
 use anyhow::{Context, Result, bail};
-use serde::Deserialize;
-use serde_json::{Value, json};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
+
+mod auth;
+mod id;
+
+use auth::REMEMBER;
+use id::disagree;
+pub(crate) use id::{Ref, Want, ti_id};
 
 use crate::instance::check_base_url;
 use crate::refused::refused;
@@ -29,6 +37,15 @@ const PAGE: usize = 100;
 /// Where the Helm chart's docs install Airflow, and so where its
 /// KubernetesExecutor starts task pods unless `k8s_namespace` says otherwise.
 const CHART_NAMESPACE: &str = "airflow";
+/// Which REST API a server speaks.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum Api {
+    /// Airflow 2 (2.9 and later 2.x).
+    V1,
+    /// Airflow 3.
+    V2,
+}
 
 /// `[airflow]` in config.toml.
 #[derive(Debug, Default, Deserialize)]
@@ -43,6 +60,7 @@ struct Section {
 struct Raw {
     name: String,
     base_url: String,
+    api: Option<Api>,
     username: Option<String>,
     password: Option<String>,
     password_env: Option<String>,
@@ -58,7 +76,8 @@ struct Raw {
 }
 
 pub(crate) enum Auth {
-    /// `POST {base_url}/auth/token`: the Simple, FAB and Keycloak managers.
+    /// Airflow 3: a JWT from `POST {base_url}/auth/token` (the Simple, FAB and
+    /// Keycloak managers). Airflow 2: HTTP Basic, else the sign-in form.
     Password {
         username: String,
         password: Credential,
@@ -72,6 +91,8 @@ pub(crate) struct Instance {
     pub(crate) name: String,
     /// No trailing slash, no `/api/v2`.
     pub(crate) base_url: String,
+    /// The API `api` names; otherwise asked of the server.
+    pub(crate) api: Option<Api>,
     pub(crate) auth: Auth,
     pub(crate) read_only: bool,
     /// The `[[k8s.scope]]` its KubernetesExecutor pods run in.
@@ -324,6 +345,7 @@ impl Raw {
         Ok(Instance {
             name: self.name,
             base_url,
+            api: self.api,
             auth,
             read_only: self.read_only,
             k8s_scope,
@@ -383,203 +405,16 @@ pub(crate) fn query_value(raw: &str) -> String {
     out
 }
 
-/// What a command's positional names.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum Want {
-    Dag,
-    Run,
-    Task,
-}
-
-impl Want {
-    fn noun(self) -> &'static str {
-        match self {
-            Self::Dag => "DAG",
-            Self::Run => "run",
-            Self::Task => "task instance",
-        }
-    }
-
-    fn shape(self) -> &'static str {
-        match self {
-            Self::Dag => "DAG (etl_nightly)",
-            Self::Run => {
-                "DAG/RUN (etl_nightly/scheduled__2026-09-28T00:00:00+00:00, or DAG/latest)"
-            }
-            Self::Task => {
-                "DAG/RUN/TASK[:MAP][/TRY] (etl_nightly/latest/load_orders, …/load_orders:3/2)"
-            }
-        }
-    }
-
-    fn url_shape(self) -> &'static str {
-        match self {
-            Self::Dag => "/dags/DAG",
-            Self::Run => "/dags/DAG/runs/RUN",
-            Self::Task => "/dags/DAG/runs/RUN/tasks/TASK",
-        }
-    }
-}
-
-/// A DAG, run or task instance, as its pieces.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub(crate) struct Ref {
-    pub(crate) dag: String,
-    pub(crate) run: String,
-    pub(crate) task: String,
-    pub(crate) map: Option<i64>,
-    /// The try the id names, when it names one.
-    pub(crate) attempt: Option<i64>,
-}
-
-impl Ref {
-    /// `raw` as `want`'s id, with `--dag` and `--run` standing in for its
-    /// leading pieces. The DAG comes off the front and `TASK[:MAP][/TRY]` off
-    /// the back, so a custom run id holding `/` still parses.
-    pub(crate) fn parse(
-        raw: &str,
-        want: Want,
-        dag: Option<&str>,
-        run: Option<&str>,
-    ) -> Result<Self, String> {
-        let mut parts: Vec<&str> = raw.split('/').collect();
-        if parts
-            .iter()
-            .any(|part| part.trim().is_empty() || matches!(*part, "." | ".."))
-        {
-            return Err(format!("{raw:?} is not a {} id", want.noun()));
-        }
-        let mut id = Self::default();
-        let missing = |what: &str| format!("{raw:?} names no {what}; give {}", want.shape());
-        match want {
-            Want::Dag => {
-                if parts.len() != 1 {
-                    return Err(format!("{raw:?} is not a DAG id (it holds a /)"));
-                }
-                id.dag = parts[0].to_owned();
-                disagree(raw, &id.dag, dag, "dag")?;
-            }
-            Want::Run => {
-                if parts.len() == 1 {
-                    id.dag = dag.ok_or_else(|| missing("DAG"))?.to_owned();
-                    id.run = parts[0].to_owned();
-                } else {
-                    id.dag = parts[0].to_owned();
-                    id.run = parts[1..].join("/");
-                    disagree(raw, &id.dag, dag, "dag")?;
-                }
-            }
-            Want::Task => {
-                // The pieces the id must carry in front of the task.
-                let front = 2 - usize::from(dag.is_some()) - usize::from(run.is_some());
-                let digits = |part: &str| part.bytes().all(|b| b.is_ascii_digit());
-                if parts.len() > front + 1 && parts.last().is_some_and(|last| digits(last)) {
-                    id.attempt = parts.pop().and_then(|attempt| attempt.parse().ok());
-                }
-                let task = parts.pop().unwrap_or_default();
-                match task.split_once(':') {
-                    Some((task, map)) if digits(map) && !map.is_empty() => {
-                        id.task = task.to_owned();
-                        id.map = map.parse().ok();
-                    }
-                    Some(_) => return Err(format!("{raw:?}: a map index is :N, a number")),
-                    None => id.task = task.to_owned(),
-                }
-                match (parts.as_slice(), dag, run) {
-                    ([], Some(dag), Some(run)) => {
-                        id.dag = dag.to_owned();
-                        id.run = run.to_owned();
-                    }
-                    ([held], Some(dag), Some(run)) => {
-                        disagree(raw, held, Some(run), "run")?;
-                        id.dag = dag.to_owned();
-                        id.run = run.to_owned();
-                    }
-                    ([held], Some(dag), None) => {
-                        id.dag = dag.to_owned();
-                        id.run = (*held).to_owned();
-                    }
-                    ([held], None, Some(run)) => {
-                        id.dag = (*held).to_owned();
-                        id.run = run.to_owned();
-                    }
-                    ([first, rest @ ..], dag, run) if !rest.is_empty() => {
-                        id.dag = (*first).to_owned();
-                        id.run = rest.join("/");
-                        disagree(raw, &id.dag, dag, "dag")?;
-                        disagree(raw, &id.run, run, "run")?;
-                    }
-                    _ => return Err(missing("DAG and run")),
-                }
-                if id.task.is_empty() {
-                    return Err(missing("task"));
-                }
-            }
-        }
-        Ok(id)
-    }
-
-    /// `DAG/RUN`: what the run commands take.
-    pub(crate) fn run_id(&self) -> String {
-        format!("{}/{}", self.dag, self.run)
-    }
-
-    pub(crate) fn dag_path(&self) -> String {
-        format!("dags/{}", segment(&self.dag))
-    }
-
-    pub(crate) fn run_path(&self) -> String {
-        format!("{}/dagRuns/{}", self.dag_path(), segment(&self.run))
-    }
-
-    /// `…/taskInstances/TASK[/MAP]`.
-    pub(crate) fn ti_path(&self) -> String {
-        let mut path = format!("{}/taskInstances/{}", self.run_path(), segment(&self.task));
-        if let Some(map) = self.map {
-            path.push_str(&format!("/{map}"));
-        }
-        path
-    }
-}
-
-/// Exit 2 when a flag names a different piece than the ref holds.
-fn disagree(raw: &str, held: &str, flag: Option<&str>, what: &str) -> Result<(), String> {
-    match flag {
-        Some(flag) if !held.is_empty() && flag != held => Err(format!(
-            "{raw} names {what} {held}, and --{what} says {flag}"
-        )),
-        _ => Ok(()),
-    }
-}
-
-/// A task instance's id from the API's own record: `DAG/RUN/TASK[:MAP]`,
-/// and `/TRY` when `with_try` and it has run, so it pastes into `task logs`
-/// for that try.
-pub(crate) fn ti_id(ti: &Value, with_try: bool) -> String {
-    let mut id = format!(
-        "{}/{}/{}",
-        ti["dag_id"].as_str().unwrap_or_default(),
-        ti["dag_run_id"].as_str().unwrap_or_default(),
-        ti["task_id"].as_str().unwrap_or_default()
-    );
-    if let Some(map) = ti["map_index"].as_i64().filter(|map| *map >= 0) {
-        id.push_str(&format!(":{map}"));
-    }
-    if let Some(attempt) = ti["try_number"]
-        .as_i64()
-        .filter(|attempt| with_try && *attempt > 0)
-    {
-        id.push_str(&format!("/{attempt}"));
-    }
-    id
-}
-
-/// One instance, and the token for it, minted at most once per command.
+/// One instance, its API, and the credential for it, minted at most once
+/// per command.
 pub(crate) struct Client<'a> {
     pub(crate) ctx: &'a Ctx,
     pub(crate) instance: &'a Instance,
     /// The `Authorization` value. JWTs stay in memory, never on disk.
     token: RefCell<Option<Secret>>,
+    api: OnceCell<Api>,
+    /// Airflow 2's session cookie, once its sign-in form gave one.
+    session: RefCell<Option<Secret>>,
 }
 
 impl<'a> Client<'a> {
@@ -588,6 +423,8 @@ impl<'a> Client<'a> {
             ctx,
             instance,
             token: RefCell::new(None),
+            api: OnceCell::new(),
+            session: RefCell::new(None),
         }
     }
 
@@ -605,27 +442,55 @@ impl<'a> Client<'a> {
         Ok(())
     }
 
-    pub(crate) fn url(&self, path: &str) -> String {
-        format!("{}/api/v2/{path}", self.instance.base_url)
+    /// True on Airflow 2, whose `/api/v1` names some paths, parameters and
+    /// fields differently and lacks a few.
+    pub(crate) fn v1(&self) -> Result<bool> {
+        Ok(self.api()? == Api::V1)
+    }
+
+    pub(crate) fn url(&self, path: &str) -> Result<String> {
+        let api = match self.api()? {
+            Api::V1 => "v1",
+            Api::V2 => "v2",
+        };
+        Ok(format!("{}/api/{api}/{path}", self.instance.base_url))
     }
 
     pub(crate) fn get(&self, path: &str) -> Result<Value> {
-        self.send(Method::Get, path, None, None)?.json()
+        self.send(Method::Get, path, None, None, "application/json")?
+            .json()
+    }
+
+    /// A read as plain text: Airflow 2's task logs, whose JSON form is a
+    /// Python list's repr.
+    pub(crate) fn text(&self, path: &str) -> Result<String> {
+        Ok(self.send(Method::Get, path, None, None, "text/plain")?.body)
     }
 
     /// A read that needs no credential (version, health), so doctor can tell
     /// a wrong `base_url` from a wrong password.
     pub(crate) fn public(&self, path: &str) -> Result<Value> {
-        let request = Request::get(self.url(path)).header("Accept", "application/json");
+        let request = Request::get(self.url(path)?).header("Accept", "application/json");
         self.ctx
             .read(request)
             .map_err(|error| refused(error, path))?
             .json()
     }
 
+    /// The scheduler's, triggerer's and database's health: `monitor/health`
+    /// on Airflow 3, `health` on 2.
+    pub(crate) fn health(&self) -> Result<Value> {
+        self.public(if self.v1()? {
+            "health"
+        } else {
+            "monitor/health"
+        })
+    }
+
     /// A POST that only reads: a clear's server-side dry run.
     pub(crate) fn preview(&self, path: &str, body: Value) -> Result<Value> {
-        self.send(Method::Query, path, Some(body), None)?.json()
+        self.send(Method::Query, path, Some(body), None, "application/json")?
+            .json()
     }
 
     /// A change, which core checks against `--dry-run`, read-only mode and
@@ -637,91 +502,112 @@ impl<'a> Client<'a> {
         path: &str,
         body: Value,
     ) -> Result<Value> {
-        self.send(method, path, Some(body), Some(effect))?.json()
+        self.send(method, path, Some(body), Some(effect), "application/json")?
+            .json()
     }
 
-    /// The one door: the token only under `base_url`, and Airflow's refusals
-    /// read as the next step to take.
+    /// How a password signed in, for doctor.
+    pub(crate) fn signed_in_by(&self) -> Option<&'static str> {
+        match (&self.instance.auth, self.v1().unwrap_or(false)) {
+            (Auth::Token(_), _) => None,
+            (Auth::Password { .. }, false) => Some("a JWT from /auth/token"),
+            (Auth::Password { .. }, true) if self.session.borrow().is_some() => {
+                Some("the sign-in form (the API takes only session auth)")
+            }
+            (Auth::Password { .. }, true) => Some("HTTP Basic"),
+        }
+    }
+
+    /// The one door: the credential only under `base_url`, and Airflow's
+    /// refusals read as the next step to take. Airflow 2 takes a password
+    /// as HTTP Basic when `[api] auth_backends` lists `basic_auth` (the
+    /// official compose does); its default lists only `session`, so a
+    /// refused Basic signs in through the web form once and sends its cookie.
     fn send(
         &self,
         method: Method,
         path: &str,
         body: Option<Value>,
         effect: Option<Effect>,
+        accept: &str,
     ) -> Result<Response> {
-        let url = self.url(path);
+        let url = self.url(path)?;
         if !same_origin(&self.instance.base_url, &url) {
-            bail!("refusing to send the Airflow token to {url}");
+            bail!("refusing to send the Airflow credential to {url}");
+        }
+        let form = self.v1()? && matches!(self.instance.auth, Auth::Password { .. });
+        let remembered = self.remembered("session");
+        if form
+            && self.session.borrow().is_none()
+            && self.ctx.cache().get::<bool>(&remembered).is_some()
+        {
+            self.sign_in_form()?;
         }
         let mint = |fresh: bool| self.authorization(fresh);
-        let mut request = Request::new(method, &url)
-            .header("Accept", "application/json")
-            .auth(&mint);
-        if let Some(body) = body {
-            request = request.json(body);
-        }
-        match effect {
-            None => self.ctx.read(request),
-            Some(effect) => self.ctx.write(effect, request),
-        }
-        .map_err(|error| refused(error, path))
-    }
-
-    /// `Bearer …`: minted once, and again after a 401.
-    fn authorization(&self, fresh: bool) -> Result<Secret> {
-        if !fresh && let Some(token) = self.token.borrow().clone() {
-            return Ok(token);
-        }
-        let bearer = match &self.instance.auth {
-            Auth::Token(token) => token.resolve(self.ctx)?,
-            Auth::Password { username, password } => {
-                self.sign_in(username, &password.resolve(self.ctx)?)?
+        let basic = |_: bool| self.basic();
+        let attempt = || {
+            let mut request = Request::new(method, &url).header("Accept", accept);
+            let cookie = self.session.borrow().clone();
+            request = match (cookie, form) {
+                // Masked in a --dry-run plan, as every cookie header is.
+                (Some(cookie), _) => request.header("Cookie", cookie.expose()),
+                (None, true) => request.auth(&basic),
+                (None, false) => request.auth(&mint),
+            };
+            if let Some(body) = body.clone() {
+                request = request.json(body);
+            }
+            match effect {
+                None => self.ctx.read(request),
+                Some(effect) => self.ctx.write(effect, request),
             }
         };
-        let token = Secret::new(format!("Bearer {}", bearer.expose()));
-        *self.token.borrow_mut() = Some(token.clone());
-        Ok(token)
-    }
-
-    /// A JWT from `/auth/token`. A read (the POST changes nothing), so it
-    /// also works under `--dry-run` and `AGENT_CLI_READ_ONLY`.
-    fn sign_in(&self, username: &str, password: &Secret) -> Result<Secret> {
-        let url = format!("{}/auth/token", self.instance.base_url);
-        let request = Request::query(
-            &url,
-            json!({"username": username, "password": password.expose()}),
-        )
-        .header("Accept", "application/json");
-        let response = self.ctx.read(request).map_err(|error| {
-            match error.downcast::<Failure>() {
-                Ok(failure) if matches!(failure.status, Some(400 | 401 | 403)) => {
-                    Failure::setup(failure.message)
-                        .hint(format!(
-                            "check username and the password for instance {:?}; `agent-cli doctor airflow` checks it",
-                            self.instance.name
-                        ))
-                        .into()
-                }
-                Ok(failure) => refused(failure.into(), "auth/token"),
-                Err(error) => error,
+        let refusal = |error: &anyhow::Error| matches!(status_of(error), Some(401 | 403));
+        match attempt() {
+            // Airflow 2 answers a refused credential with 403, as it does a
+            // missing permission: only the form tells them apart.
+            Err(error) if form && self.session.borrow().is_none() && refusal(&error) => {
+                self.sign_in_form()?;
+                self.ctx.cache().put(&remembered, &true, REMEMBER);
+                attempt().map_err(|error| {
+                    if !refusal(&error) {
+                        return refused(error, path);
+                    }
+                    match error.downcast::<Failure>() {
+                        Ok(failure) => failure
+                            .hint(
+                                "the password signs in, and the API still refuses it: the user's role lacks this \
+                                 permission, or [api] auth_backends lists neither basic_auth nor session (ask the \
+                                 Airflow admins to add airflow.api.auth.backend.basic_auth)",
+                            )
+                            .into(),
+                        Err(error) => error,
+                    }
+                })
             }
-        })?;
-        let token = response.json()?["access_token"]
-            .as_str()
-            .filter(|token| !token.is_empty())
-            .map(Secret::new)
-            .with_context(|| format!("{url} answered without an access_token"))?;
-        Ok(token)
+            other => other.map_err(|error| refused(error, path)),
+        }
     }
 
-    /// `DAG/latest` as the newest run of the DAG by `run_after`.
+    /// Runs newest first: by `run_after` on Airflow 3; Airflow 2 has no
+    /// such field and orders by its logical date, `execution_date`.
+    pub(crate) fn newest_first(&self) -> Result<&'static str> {
+        Ok(if self.v1()? {
+            "order_by=-execution_date"
+        } else {
+            "order_by=-run_after"
+        })
+    }
+
+    /// `DAG/latest` as the newest run of the DAG.
     pub(crate) fn resolve(&self, id: &mut Ref) -> Result<()> {
         if id.run != "latest" {
             return Ok(());
         }
         let answer = self.get(&format!(
-            "{}/dagRuns?order_by=-run_after&limit=1",
-            id.dag_path()
+            "{}/dagRuns?{}&limit=1",
+            id.dag_path(),
+            self.newest_first()?
         ))?;
         id.run = answer["dag_runs"][0]["dag_run_id"]
             .as_str()
@@ -769,6 +655,52 @@ impl<'a> Client<'a> {
         }
         Ok((items, total))
     }
+
+    /// [`Self::list`] with `param` (`variable_key_pattern`, …) set to
+    /// `pattern`: `%` and `_` are wildcards, matched anywhere in `field`,
+    /// any case. Airflow 2 has no such filter, so there it runs here.
+    // ponytail: on Airflow 2 matches among the first 1,000; page on if a
+    // deployment has more.
+    pub(crate) fn list_like(
+        &self,
+        path: &str,
+        key: &str,
+        (param, field): (&str, &str),
+        pattern: Option<&str>,
+        limit: usize,
+    ) -> Result<(Vec<Value>, Option<usize>)> {
+        let Some(pattern) = pattern.map(str::trim) else {
+            return self.list(path, "", key, limit);
+        };
+        if !self.v1()? {
+            let query = format!("{param}={}", query_value(pattern));
+            return self.list(path, &query, key, limit);
+        }
+        let (mut items, _) = self.list(path, "", key, 1000)?;
+        items.retain(|item| like(pattern, item[field].as_str().unwrap_or_default()));
+        let total = items.len();
+        items.truncate(limit);
+        Ok((items, Some(total)))
+    }
+}
+
+/// SQL's `ILIKE '%pattern%'`: `%` is any run of characters, `_` one.
+fn like(pattern: &str, text: &str) -> bool {
+    fn matches(pattern: &[char], text: &[char]) -> bool {
+        match (pattern.split_first(), text.split_first()) {
+            (None, _) => text.is_empty(),
+            (Some(('%', rest)), _) => {
+                matches(rest, text) || (!text.is_empty() && matches(pattern, &text[1..]))
+            }
+            (Some((want, rest)), Some((got, more))) if *want == '_' || want == got => {
+                matches(rest, more)
+            }
+            _ => false,
+        }
+    }
+    let pattern: Vec<char> = format!("%{}%", pattern.to_lowercase()).chars().collect();
+    let text: Vec<char> = text.to_lowercase().chars().collect();
+    matches(&pattern, &text)
 }
 
 /// A non-empty string, owned.
@@ -837,6 +769,19 @@ mod tests {
         );
     }
     #[test]
+    fn like_matches_anywhere_with_sql_wildcards_and_any_case() {
+        for (pattern, text, want) in [
+            ("orders", "e2e_orders_bucket", true),
+            ("ORD%BUCK", "e2e_orders_bucket", true),
+            ("e2e_", "e2eXapi", true),
+            ("orders", "customers", false),
+            ("", "anything", true),
+        ] {
+            assert_eq!(like(pattern, text), want, "{pattern} {text}");
+        }
+    }
+
+    #[test]
     fn a_token_goes_only_under_the_configured_base_url() {
         for (base, url) in [
             (
@@ -880,84 +825,6 @@ mod tests {
         ] {
             assert!(!same_origin(base, url), "{url}");
         }
-    }
-
-    #[test]
-    fn ids_take_the_dag_off_the_front_and_the_task_off_the_back() {
-        let task =
-            |raw: &str, dag: Option<&str>, run: Option<&str>| Ref::parse(raw, Want::Task, dag, run);
-        let want = |dag: &str, run: &str, task: &str, map: Option<i64>, attempt: Option<i64>| {
-            Ok(Ref {
-                dag: dag.into(),
-                run: run.into(),
-                task: task.into(),
-                map,
-                attempt,
-            })
-        };
-        let run = "scheduled__2026-09-28T00:00:00+00:00";
-        assert_eq!(
-            task(&format!("etl/{run}/load_orders:3/2"), None, None),
-            want("etl", run, "load_orders", Some(3), Some(2))
-        );
-        assert_eq!(
-            task("etl/custom/with/slash/load/2", None, None),
-            want("etl", "custom/with/slash", "load", None, Some(2)),
-            "a run id holding / still parses"
-        );
-        assert_eq!(
-            task("etl/r1/123", None, None),
-            want("etl", "r1", "123", None, None),
-            "three pieces are always DAG/RUN/TASK"
-        );
-        assert_eq!(
-            task("load", Some("etl"), Some("r1")),
-            want("etl", "r1", "load", None, None)
-        );
-        assert_eq!(
-            task("load/2", Some("etl"), Some("r1")),
-            want("etl", "r1", "load", None, Some(2))
-        );
-        assert_eq!(
-            task("r1/load", Some("etl"), None),
-            want("etl", "r1", "load", None, None)
-        );
-        assert_eq!(
-            task("etl/r1/load", Some("etl"), Some("r1")),
-            want("etl", "r1", "load", None, None),
-            "a flag that agrees is fine"
-        );
-        for (raw, dag, run) in [
-            ("etl/r1/load", Some("other"), None),
-            ("etl/r1/load", None, Some("r2")),
-            ("load", None, None),
-            ("r1/load", None, None),
-            ("etl/r1/load:x", None, None),
-            ("etl//load", None, None),
-            ("etl/../load", None, None),
-        ] {
-            assert!(task(raw, dag, run).is_err(), "{raw} {dag:?} {run:?}");
-        }
-        assert_eq!(
-            Ref::parse("etl/latest", Want::Run, None, None)
-                .unwrap()
-                .run_id(),
-            "etl/latest"
-        );
-        assert_eq!(
-            Ref::parse("r1", Want::Run, Some("etl"), None)
-                .unwrap()
-                .run_id(),
-            "etl/r1"
-        );
-        assert!(Ref::parse("r1", Want::Run, None, None).is_err());
-        assert!(Ref::parse("etl/r1", Want::Run, Some("other"), None).is_err());
-        assert!(Ref::parse("etl/r1", Want::Dag, None, None).is_err());
-        let id = Ref::parse(&format!("etl/{run}/load:3"), Want::Task, None, None).unwrap();
-        assert_eq!(
-            id.ti_path(),
-            "dags/etl/dagRuns/scheduled__2026-09-28T00%3A00%3A00%2B00%3A00/taskInstances/load/3"
-        );
     }
 
     #[test]
@@ -1007,7 +874,7 @@ mod tests {
     #[test]
     fn a_password_signs_in_once_and_again_after_a_401_and_the_jwt_never_prints() {
         let config = "[[airflow.instance]]\nname = \"dev\"\nbase_url = \"http://localhost:8080\"\n\
-                      username = \"agent\"\npassword_env = \"AIRFLOW_PASSWORD\"\n";
+                      username = \"agent\"\npassword_env = \"AIRFLOW_PASSWORD\"\napi = \"v2\"\n";
         let page = json!({"dags": [], "total_entries": 0});
         let transport = FakeTransport::answering([
             Answer::status(201, r#"{"access_token":"eyJhbGciOi.first-jwt.sig1"}"#),

@@ -4,7 +4,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::client::{Airflow, stamp, text};
+use crate::client::{Airflow, stamp, text, ti_id};
 
 use super::{TaskIdArgs, finished, task_row};
 
@@ -59,9 +59,27 @@ fn task_get(ctx: &Ctx, args: TaskGetArgs) -> Result<TaskDetail> {
     let airflow = Airflow::load(ctx.config())?;
     let (client, id) = args.id.locate(&airflow, ctx)?;
     let ti = client.get(&id.ti_path())?;
-    let tries = client.get(&format!("{}/tries", id.ti_path()))?;
     let state = text(&ti["state"]);
+    // Airflow 2.9's API has neither a task's tries nor its dependencies.
+    let v1 = client.v1()?;
+    let tries = if v1 {
+        ctx.note(format!(
+            "[Airflow 2 keeps no try history in its API; agent-cli airflow task logs {} reads one try's log]",
+            ti_id(&ti, true)
+        ));
+        Value::Null
+    } else {
+        client.get(&format!("{}/tries", id.ti_path()))?
+    };
     let blocked_by = if finished(state.as_deref()) {
+        Vec::new()
+    } else if v1 {
+        ctx.note(format!(
+            "[Airflow 2's API does not say what blocks a task; its pool {}'s open slots: agent-cli airflow pool list, and whether {} is paused: agent-cli airflow dag get {}]",
+            ti["pool"].as_str().unwrap_or("?"),
+            id.dag,
+            id.dag
+        ));
         Vec::new()
     } else {
         let answer = client.get(&format!("{}/dependencies", id.ti_path()))?;
@@ -183,7 +201,7 @@ mod tests {
             format!("{RUN_PATH}/taskInstances/load_orders/3/dependencies")
         );
 
-        let no_k8s = "[[airflow.instance]]\nname = \"prod\"\nbase_url = \"https://airflow.contoso.example\"\ntoken_env = \"AIRFLOW_TOKEN\"\n";
+        let no_k8s = "[[airflow.instance]]\nname = \"prod\"\nbase_url = \"https://airflow.contoso.example\"\ntoken_env = \"AIRFLOW_TOKEN\"\napi = \"v2\"\n";
         let (outcome, _) = airflow_with(
             no_k8s,
             &[
@@ -216,5 +234,33 @@ mod tests {
         );
         assert_eq!(outcome.code, 2, "{outcome:?}");
         assert!(outcome.stderr.contains("hint: name the mapped task as TASK:N; its map indexes: agent-cli airflow task list DAG/RUN"), "{}", outcome.stderr);
+    }
+
+    #[test]
+    fn airflow_2_has_no_tries_or_dependencies_and_says_where_to_look() {
+        let mut waiting = ti("load_orders", "scheduled", 0);
+        waiting["pool"] = json!("orders_pool");
+        let (outcome, transport) = crate::testing::airflow_v1(
+            &[
+                "airflow",
+                "task",
+                "get",
+                &format!("etl_nightly/{RUN}/load_orders"),
+            ],
+            vec![Answer::json(&waiting)],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            paths(&transport),
+            [format!("{RUN_PATH}/taskInstances/load_orders")]
+        );
+        assert!(
+            outcome.stderr.contains("[Airflow 2 keeps no try history")
+                && outcome
+                    .stderr
+                    .contains("its pool orders_pool's open slots: agent-cli airflow pool list"),
+            "{}",
+            outcome.stderr
+        );
     }
 }

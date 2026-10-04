@@ -82,6 +82,10 @@ fn run_create(ctx: &Ctx, args: RunCreateArgs) -> Result<RunCreated> {
         ));
     }
     let mut body = json!({"logical_date": logical_date, "conf": conf});
+    // Airflow 2 refuses a null logical_date and takes none as now.
+    if logical_date.is_null() && client.v1()? {
+        body = json!({"conf": body["conf"].take()});
+    }
     if let Some(run_id) = &args.run_id {
         body["dag_run_id"] = json!(run_id);
     }
@@ -275,5 +279,40 @@ mod tests {
             vec![Answer::json(&active)],
         );
         assert_eq!(plans[0]["body"]["conf"], json!({"day": "2026-09-28"}));
+    }
+
+    #[test]
+    fn airflow_2_refuses_a_null_logical_date_so_none_is_sent() {
+        let active = crate::testing::dag_v1("etl_nightly", false);
+        let (plans, _) = crate::testing::dry_run_with(
+            crate::testing::CONFIG_V1,
+            &[
+                "airflow",
+                "run",
+                "create",
+                "etl_nightly",
+                "--conf",
+                "{\"day\":\"2026-09-28\"}",
+            ],
+            vec![Answer::json(&active)],
+        );
+        assert_eq!(
+            plans[0]["url"],
+            "https://airflow.contoso.example/api/v1/dags/etl_nightly/dagRuns"
+        );
+        assert_eq!(plans[0]["body"], json!({"conf": {"day": "2026-09-28"}}));
+        let (plans, _) = crate::testing::dry_run_with(
+            crate::testing::CONFIG_V1,
+            &[
+                "airflow",
+                "run",
+                "create",
+                "etl_nightly",
+                "--logical-date",
+                "2026-09-01T00:00:00Z",
+            ],
+            vec![Answer::json(&active)],
+        );
+        assert_eq!(plans[0]["body"]["logical_date"], "2026-09-01T00:00:00Z");
     }
 }

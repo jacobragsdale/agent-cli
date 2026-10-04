@@ -4,7 +4,7 @@
 # its line. No command file belongs here.
 crates/ado/src/client.rs 790  # the one door to Azure DevOps and the lookups every resource shares
 crates/ado/src/markdown.rs 845  # one tokenizer and its two directions, HTML to Markdown and back
-crates/airflow/src/client.rs 844  # the one door to Airflow, its config and the id parser every resource shares
+crates/airflow/src/client.rs 732  # the one door to Airflow, its config, and the paging and row helpers every resource shares
 crates/core/src/discover.rs 621  # every text an agent reads to find a command, kept together so they read alike
 crates/core/src/registry.rs 668  # the command type, command! and every invariant check_registry holds
 crates/dd/src/client.rs 754  # the one door to Datadog, its credentials, and the tag and window helpers

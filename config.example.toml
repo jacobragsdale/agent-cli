@@ -73,15 +73,20 @@
 # only read.
 
 # [[airflow.instance]]
-# One per Apache Airflow 3 server (/api/v2; Airflow 2 is not supported).
-# --instance takes the name; the only one is the default. Sign in with a
-# username and password (POST {base_url}/auth/token: the Simple, FAB and
-# Keycloak managers), or with a bearer token (token_env or token_cmd: Astro,
-# Composer, MWAA). The token goes only to URLs under base_url.
+# One per Apache Airflow server, 2.9+ or 3: which API it speaks (/api/v1 or
+# /api/v2) is asked of the server. --instance takes the name; the only one is
+# the default. Sign in with a username and password (Airflow 3: POST
+# {base_url}/auth/token; Airflow 2: HTTP Basic, else its sign-in form when
+# [api] auth_backends allows only session), or with a bearer token (token_env
+# or token_cmd: Astro, Composer, MWAA). The credential goes only to URLs
+# under base_url. An SSO user has no password the API takes: use a service
+# account.
 # name = "dev"
-# base_url = "https://airflow-dev.contoso.example"  # the API server, with any path
-#                                        # prefix, without /api/v2; plain http
-#                                        # only to localhost
+# base_url = "https://airflow-dev.contoso.example"  # the webserver or API server,
+#                                        # with any path prefix, without /api/v1
+#                                        # or /api/v2; plain http only to localhost
+# api = "v1"                             # optional: v1 (Airflow 2) or v2 (3);
+#                                        # asked of the server when left out
 # username = "agent"
 # password_env = "AIRFLOW_DEV_PASSWORD"  # or password_cmd = "pass show airflow/dev"
 # k8s_scope = "dev"                      # the [[k8s.scope]] its KubernetesExecutor

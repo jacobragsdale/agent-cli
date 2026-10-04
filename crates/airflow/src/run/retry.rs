@@ -20,10 +20,27 @@ fn run_retry(ctx: &Ctx, args: RunIdArgs) -> Result<Retried> {
     let airflow = Airflow::load(ctx.config())?;
     let (client, id) = args.locate(&airflow, ctx)?;
     client.writable()?;
-    let path = format!("{}/clear", id.run_path());
+    // Airflow 2's run clear takes no only_failed and resets every task, so
+    // there the DAG's clearTaskInstances clears the run's failed ones.
+    let (path, body) = if client.v1()? {
+        (
+            format!("{}/clearTaskInstances", id.dag_path()),
+            json!({"dag_run_id": id.run, "only_failed": true, "reset_dag_runs": true}),
+        )
+    } else {
+        (
+            format!("{}/clear", id.run_path()),
+            json!({"only_failed": true}),
+        )
+    };
+    let with = |dry_run: bool| {
+        let mut body = body.clone();
+        body["dry_run"] = json!(dry_run);
+        body
+    };
     // The server's own dry run says what a clear would reset; a real clear
     // must send dry_run false, since true is the default.
-    let preview = client.preview(&path, json!({"dry_run": true, "only_failed": true}))?;
+    let preview = client.preview(&path, with(true))?;
     let cleared = cleared_ids(&preview);
     if cleared.is_empty() {
         ctx.note(format!(
@@ -38,12 +55,7 @@ fn run_retry(ctx: &Ctx, args: RunIdArgs) -> Result<Retried> {
     if ctx.globals().dry_run {
         ctx.note(format!("[would clear: {}]", cleared.join(", ")));
     }
-    client.change(
-        Effect::Write,
-        Method::Post,
-        &path,
-        json!({"dry_run": false, "only_failed": true}),
-    )?;
+    client.change(Effect::Write, Method::Post, &path, with(false))?;
     ctx.note(format!(
         "[next: agent-cli airflow run wait {}]",
         id.run_id()
@@ -125,6 +137,32 @@ mod tests {
             outcome.stderr.contains("nothing to retry"),
             "{}",
             outcome.stderr
+        );
+    }
+
+    #[test]
+    fn airflow_2_retries_a_run_through_the_dags_clear_task_instances() {
+        // Airflow 2 lists each map index of a task without its index.
+        let preview = tasks(vec![
+            ti("load_orders", "failed", 1),
+            ti("load_orders", "failed", 1),
+        ]);
+        let (plans, stderr) = crate::testing::dry_run_with(
+            crate::testing::CONFIG_V1,
+            &["airflow", "run", "retry", &format!("etl_nightly/{RUN}")],
+            vec![preview],
+        );
+        assert_eq!(
+            plans[0]["url"],
+            "https://airflow.contoso.example/api/v1/dags/etl_nightly/clearTaskInstances"
+        );
+        assert_eq!(
+            plans[0]["body"],
+            json!({"dag_run_id": RUN, "only_failed": true, "reset_dag_runs": true, "dry_run": false})
+        );
+        assert!(
+            stderr.contains(&format!("[would clear: etl_nightly/{RUN}/load_orders]")),
+            "{stderr}"
         );
     }
 }

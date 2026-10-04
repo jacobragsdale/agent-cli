@@ -38,6 +38,8 @@ an import error, ship and verify) and what a miss says. Run one:
 `tests/ado.rs`, `sql.rs`, `e2e.rs`: end-to-end runs of the real binary.
 `tests/live_ado.rs`: the work item commands against a live sandbox, off
 unless `AGENT_CLI_TEST_ADO=1` (`docs/first-live-run.md`).
+`tests/live_airflow.rs`: every airflow command against the Airflow
+`scripts/airflow-up.sh` starts, off unless `AGENT_CLI_TEST_AIRFLOW=1`.
 
 ## Never needed
 The domain crates' sources (their cards say where things are),

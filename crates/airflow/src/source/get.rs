@@ -99,8 +99,13 @@ fn source_get(ctx: &Ctx, args: SourceGetArgs) -> Result<Source> {
     let (client, id) =
         airflow.locate(ctx, args.at.instance.as_deref(), dag, Want::Dag, None, None)?;
     let meta = client.get(&id.dag_path())?;
-    let source = client.get(&format!("dagSources/{}", segment(&id.dag)))?;
-    let file = text(&meta["relative_fileloc"]);
+    // Airflow 2 serves a DAG's source by its file_token, 3 by its id.
+    let key = match text(&meta["file_token"]) {
+        Some(token) if client.v1()? => token,
+        _ => id.dag.clone(),
+    };
+    let source = client.get(&format!("dagSources/{}", segment(&key)))?;
+    let file = super::dag_file(&meta);
     let all: Vec<&str> = source["content"]
         .as_str()
         .unwrap_or_default()
@@ -146,7 +151,7 @@ fn source_get(ctx: &Ctx, args: SourceGetArgs) -> Result<Source> {
     Ok(Source {
         id: format!("{}{range}", id.dag),
         dag: id.dag,
-        file: file.or_else(|| text(&meta["fileloc"])),
+        file,
         version: source["version_number"].as_i64(),
         lines: format!("{first}-{last} of {total}"),
         text: shown.join("\n"),
@@ -279,5 +284,28 @@ mod tests {
             outcome.stderr
         );
         assert!(transport.sent().is_empty());
+    }
+
+    #[test]
+    fn airflow_2_serves_the_source_by_the_dags_file_token() {
+        let config = crate::testing::CONFIG_V1
+            .replace("k8s_scope", "dags_repo = \"airflow-dags:dags\"\nk8s_scope");
+        let (outcome, transport) = airflow_with(
+            &config,
+            &["airflow", "source", "get", "etl_nightly:3"],
+            vec![
+                Answer::json(&crate::testing::dag_v1("etl_nightly", false)),
+                Answer::json(&json!({"content": "a\nb\nc\nd"})),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let got = outcome.json();
+        assert_eq!(got["file"], "etl_nightly.py", "its path in the dags folder");
+        assert_eq!(got["repo_file"], "airflow-dags:dags/etl_nightly.py:3");
+        assert_eq!(got.get("version"), None);
+        assert_eq!(
+            paths(&transport),
+            ["dags/etl_nightly", "dagSources/Ii9vcHQvYWlyZmxvdyI.x1"]
+        );
     }
 }

@@ -85,4 +85,21 @@ mod tests {
         );
         assert_eq!(paths(&transport), ["pools?limit=50&offset=0"]);
     }
+
+    #[test]
+    fn pool_list_reads_the_same_path_on_airflow_2() {
+        let pool = json!({"name": "default_pool", "slots": 128, "open_slots": 127,
+            "running_slots": 1, "queued_slots": 0, "scheduled_slots": 0, "deferred_slots": 0,
+            "description": "Default pool", "occupied_slots": 1});
+        let (outcome, transport) = crate::testing::airflow_v1(
+            &["airflow", "pool", "list"],
+            vec![Answer::json(&json!({"pools": [pool], "total_entries": 1}))],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()[0]["open"], 127);
+        assert_eq!(
+            transport.sent()[0].url,
+            "https://airflow.contoso.example/api/v1/pools?limit=50&offset=0"
+        );
+    }
 }

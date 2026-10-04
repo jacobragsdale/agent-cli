@@ -48,14 +48,25 @@ fn task_list(ctx: &Ctx, args: TaskListArgs) -> Result<Vec<TaskRow>> {
         args.dag.as_deref(),
         None,
     )?;
-    let mut query = vec!["order_by=start_date".to_owned()];
+    // Airflow 2 takes no order_by here: its page is sorted as it comes.
+    let v1 = client.v1()?;
+    let mut query: Vec<String> = Vec::new();
+    if !v1 {
+        query.push("order_by=start_date".to_owned());
+    }
     query.extend(args.state.iter().map(|state| format!("state={state}")));
-    let (tasks, total) = client.list(
+    let (mut tasks, total) = client.list(
         &format!("{}/taskInstances", id.run_path()),
         &query.join("&"),
         "task_instances",
         args.limit,
     )?;
+    if v1 {
+        tasks.sort_by_key(|task| {
+            let start = task["start_date"].as_str().map(str::to_owned);
+            (start.is_none(), start)
+        });
+    }
     note_more(ctx, tasks.len(), total);
     Ok(tasks.iter().map(task_row).collect())
 }
@@ -110,6 +121,37 @@ mod tests {
             [format!(
                 "{RUN_PATH}/taskInstances?order_by=start_date&state=failed&state=upstream_failed&limit=50&offset=0"
             )]
+        );
+    }
+
+    #[test]
+    fn airflow_2_takes_no_order_by_so_tasks_are_sorted_by_start_here() {
+        let mut late = ti("publish_report", "success", 1);
+        late["start_date"] = json!("2026-09-29T00:50:00+00:00");
+        let mut waiting = ti("cleanup", "scheduled", 0);
+        waiting["start_date"] = serde_json::Value::Null;
+        let (outcome, transport) = crate::testing::airflow_v1(
+            &[
+                "airflow",
+                "task",
+                "list",
+                &format!("etl_nightly/{RUN}"),
+                "--fields",
+                "id",
+            ],
+            vec![tis(vec![waiting, late, ti("load_orders", "success", 1)])],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json(),
+            json!([{"id": format!("etl_nightly/{RUN}/load_orders/1")},
+                {"id": format!("etl_nightly/{RUN}/publish_report/1")},
+                {"id": format!("etl_nightly/{RUN}/cleanup")}]),
+            "by start, the unstarted last"
+        );
+        assert_eq!(
+            paths(&transport),
+            [format!("{RUN_PATH}/taskInstances?limit=50&offset=0")]
         );
     }
 }

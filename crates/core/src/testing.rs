@@ -83,6 +83,8 @@ pub struct Sent {
     /// The minted `Authorization` value, exposed so a test can assert which
     /// token signed which call.
     pub authorization: Option<String>,
+    /// The request's own headers (a `Cookie`, an `Accept`).
+    pub headers: Vec<(String, String)>,
 }
 
 /// A transport over recorded answers, keeping every request it was handed.
@@ -138,6 +140,7 @@ impl Transport for FakeTransport {
             url: request.url.clone(),
             body,
             authorization: authorization.map(|secret| secret.expose().to_owned()),
+            headers: request.headers.clone(),
         });
         let answer = locked(&self.answers).pop_front().ok_or_else(|| {
             anyhow::anyhow!(

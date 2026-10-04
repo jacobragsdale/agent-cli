@@ -5,6 +5,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::client::{Airflow, At, Want, seconds, stamp, text};
+use crate::run::run_after;
 
 use super::dag_row;
 
@@ -74,10 +75,11 @@ fn dag_get(ctx: &Ctx, args: DagGetArgs) -> Result<DagDetail> {
         None,
         None,
     )?;
-    let dag = client.get(&format!("{}/details", id.dag_path()))?;
+    let dag = super::details(&client, &id)?;
     let runs = client.get(&format!(
-        "{}/dagRuns?order_by=-run_after&limit=5",
-        id.dag_path()
+        "{}/dagRuns?{}&limit=5",
+        id.dag_path(),
+        client.newest_first()?
     ))?;
     let params = dag["params"]
         .as_object()
@@ -109,7 +111,8 @@ fn dag_get(ctx: &Ctx, args: DagGetArgs) -> Result<DagDetail> {
         schedule: row.schedule,
         schedule_text: text(&dag["timetable_description"]),
         next_run: row.next_run,
-        next_logical_date: stamp(&dag["next_dagrun_logical_date"]),
+        next_logical_date: stamp(&dag["next_dagrun_logical_date"])
+            .or_else(|| stamp(&dag["next_dagrun"])),
         catchup: dag["catchup"].as_bool().unwrap_or_default(),
         max_active_runs: dag["max_active_runs"].as_i64(),
         owners: row.owners,
@@ -134,7 +137,7 @@ fn dag_get(ctx: &Ctx, args: DagGetArgs) -> Result<DagDetail> {
                 ),
                 state: text(&run["state"]),
                 kind: text(&run["run_type"]),
-                run_after: stamp(&run["run_after"]),
+                run_after: run_after(run),
                 duration: seconds(&run["start_date"], &run["end_date"]),
             })
             .collect(),
@@ -272,5 +275,58 @@ mod tests {
             "{}",
             outcome.stderr
         );
+    }
+
+    #[test]
+    fn dag_get_on_airflow_2_orders_runs_by_logical_date_and_finds_a_stale_dag() {
+        let mut details = crate::testing::dag_v1("etl_nightly", false);
+        details["catchup"] = json!(true);
+        details["params"] = json!({"day": {"__class": "airflow.models.param.Param",
+            "value": null, "description": "The day to load", "schema": {}}});
+        let (outcome, transport) = crate::testing::airflow_v1(
+            &["airflow", "dag", "get", "etl_nightly"],
+            vec![
+                Answer::json(&details),
+                Answer::json(
+                    &json!({"dag_runs": [crate::testing::run_v1("failed")], "total_entries": 1}),
+                ),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let got = outcome.json();
+        assert_eq!(got["next_logical_date"], "2026-09-29T00:00:00Z");
+        assert_eq!(got["params"][0]["description"], "The day to load");
+        assert_eq!(
+            got["recent_runs"][0]["run_after"], "2026-09-29T00:00:00Z",
+            "a scheduled run is due when its interval ends"
+        );
+        assert_eq!(
+            paths(&transport),
+            [
+                "dags/etl_nightly/details",
+                "dags/etl_nightly/dagRuns?order_by=-execution_date&limit=5"
+            ]
+        );
+
+        // Airflow 2 reads details from the parsed DAG: a stale one is a 404.
+        let mut stale = crate::testing::dag_v1("e2e_wide", false);
+        stale["is_active"] = json!(false);
+        let (outcome, transport) = crate::testing::airflow_v1(
+            &["airflow", "dag", "get", "e2e_wide", "--fields", "id,stale"],
+            vec![
+                Answer::status(
+                    404,
+                    r#"{"detail": "The DAG with dag_id: e2e_wide was not found", "status": 404}"#,
+                ),
+                Answer::json(&stale),
+                Answer::json(&json!({"dag_runs": [], "total_entries": 0})),
+            ],
+        );
+        assert_eq!(
+            outcome.json(),
+            json!({"id": "e2e_wide", "stale": true}),
+            "{outcome:?}"
+        );
+        assert_eq!(paths(&transport)[1], "dags/e2e_wide");
     }
 }

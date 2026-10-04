@@ -7,7 +7,7 @@ use anyhow::Result;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::client::{Airflow, At, note_more, query_value, text};
+use crate::client::{Airflow, At, note_more, text};
 
 #[derive(clap::Args)]
 pub struct ConnectionListArgs {
@@ -101,11 +101,13 @@ fn sql_conn(
 fn connection_list(ctx: &Ctx, args: ConnectionListArgs) -> Result<Vec<ConnectionRow>> {
     let airflow = Airflow::load(ctx.config())?;
     let client = airflow.open(ctx, args.at.instance.as_deref())?;
-    let query = args
-        .pattern
-        .map(|pattern| format!("connection_id_pattern={}", query_value(pattern.trim())))
-        .unwrap_or_default();
-    let (connections, total) = client.list("connections", &query, "connections", args.limit)?;
+    let (connections, total) = client.list_like(
+        "connections",
+        "connections",
+        ("connection_id_pattern", "connection_id"),
+        args.pattern.as_deref(),
+        args.limit,
+    )?;
     note_more(ctx, connections.len(), total);
     // A broken [sql] section is sql's to report; here it only means no match.
     let sql: Sql = ctx.config().section("sql").unwrap_or_default();
@@ -244,5 +246,27 @@ mod tests {
             paths(&transport),
             ["connections?connection_id_pattern=orders&limit=50&offset=0"]
         );
+    }
+
+    #[test]
+    fn airflow_2_has_no_id_pattern_so_connections_are_matched_here() {
+        let connections = json!({"connections": [
+            {"connection_id": "orders_mssql", "conn_type": "mssql", "host": "sql.contoso.example",
+             "port": 1433, "schema": "reporting", "login": "etl", "description": null},
+            {"connection_id": "slack", "conn_type": "http", "host": "hooks.contoso.example"}],
+            "total_entries": 2});
+        let (outcome, transport) = crate::testing::airflow_with(
+            &format!(
+                "{}[[sql.connection]]\nname = \"reporting\"\nkind = \"mssql\"\nhost = \"sql.contoso.example\"\n\
+                 database = \"reporting\"\nuser = \"a\"\npassword_cmd = \"echo x\"\n",
+                crate::testing::CONFIG_V1
+            ),
+            &["airflow", "connection", "list", "ORDERS_%"],
+            vec![Answer::json(&connections)],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()[0]["sql_conn"], "reporting", "{outcome:?}");
+        assert_eq!(outcome.json().as_array().unwrap().len(), 1);
+        assert_eq!(paths(&transport), ["connections?limit=100&offset=0"]);
     }
 }
