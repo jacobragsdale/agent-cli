@@ -144,6 +144,8 @@ impl Config {
             }
         };
         let prefix = env_prefix(name);
+        // Keys the file lacks, typed by guess; kept as text if the guess fails.
+        let mut guessed = Vec::new();
         for (variable, raw) in &self.env {
             let Some(key) = variable.strip_prefix(&prefix) else {
                 continue;
@@ -157,15 +159,30 @@ impl Config {
                     "give {variable} a value of the same type as {key}, or unset it"
                 ))
             })?;
+            if !section.contains_key(&key) {
+                guessed.push((key.clone(), raw));
+            }
             section.insert(key, value);
         }
-        Value::Table(section)
-            .try_into()
-            .map_err(|error: toml::de::Error| {
-                Failure::setup(format!("[{name}] in {path}: {}", error.message()))
-                    .hint(fix)
-                    .into()
-            })
+        let typed = Value::Table(section.clone()).try_into();
+        let answer = match typed {
+            Err(_) if !guessed.is_empty() => {
+                // A project named "2024" or "1" is a string, not a number or bool.
+                // ponytail: all guesses turn to text at once, so a numeric-looking
+                // name beside a real number, both missing from the file, still
+                // fails; adding either key to the file pins its type.
+                for (key, raw) in guessed {
+                    section.insert(key, Value::String(raw.clone()));
+                }
+                Value::Table(section).try_into()
+            }
+            typed => typed,
+        };
+        answer.map_err(|error: toml::de::Error| {
+            Failure::setup(format!("[{name}] in {path}: {}", error.message()))
+                .hint(fix)
+                .into()
+        })
     }
 }
 
@@ -377,10 +394,9 @@ fn env_prefix(section: &str) -> String {
 }
 
 /// A variable's text as the type the file already gives that key, or inferred
-/// (bool, then integer, then string) for a key the file does not have. Lists
-/// and tables are not scalars and cannot be overridden.
-// ponytail: an inferred key that looks like a number (an org named "123")
-// becomes an integer; add the key to the file to pin its type.
+/// (bool, then integer, then string) for a key the file does not have;
+/// `section` retries a wrong guess as text. Lists and tables are not scalars
+/// and cannot be overridden.
 fn override_value(existing: Option<&Value>, raw: &str) -> Option<Value> {
     match existing {
         Some(Value::String(_)) => Some(Value::String(raw.to_owned())),
@@ -628,5 +644,26 @@ mod tests {
             "AGENT_CLI_ADO_TOP=many does not fit [ado] top in c.toml"
         );
         assert!(Config::parse("c.toml", None, env(&[("AGENT_CLI_K8S_X", "1")])).has_section("k8s"));
+    }
+
+    #[test]
+    fn a_variable_for_a_key_the_file_lacks_is_text_when_its_guessed_type_does_not_fit() {
+        let config = Config::parse(
+            "c.toml",
+            Some("[ado]\n"),
+            env(&[
+                ("AGENT_CLI_ADO_ORG", "2024"),
+                ("AGENT_CLI_ADO_PROJECT", "1"),
+            ]),
+        );
+        let ado: Ado = config.section("ado").unwrap();
+        assert_eq!((ado.org.as_str(), ado.project.as_str()), ("2024", "1"));
+        let typed = Config::parse(
+            "c.toml",
+            Some("[ado]\nproject = \"web\"\n"),
+            env(&[("AGENT_CLI_ADO_TOP", "9"), ("AGENT_CLI_ADO_PROJECT", "1")]),
+        );
+        let ado: Ado = typed.section("ado").unwrap();
+        assert_eq!((ado.top, ado.project.as_str()), (9, "1"));
     }
 }
