@@ -143,6 +143,19 @@ fn unknown_words_get_did_you_mean_and_the_closest_commands() {
         domain.stderr
     );
 
+    let status = go(&["status", "tracker"]);
+    assert_eq!(status.code, 2);
+    assert_eq!(
+        status.stderr,
+        "error: unknown domain \"status\"; agent-cli doctor tracker checks that things work\nhint: agent-cli doctor tracker\n"
+    );
+    let question = go(&["status", "of", "ticket", "42"]);
+    assert!(
+        question.stderr.contains("closest commands"),
+        "{}",
+        question.stderr
+    );
+
     let verb = go(&["tracker", "ticket", "lst"]);
     assert!(
         verb.stderr.starts_with(
@@ -335,6 +348,21 @@ fn a_search_about_setting_up_leads_with_the_config_example_for_its_domain() {
     );
     assert!(first(&["search", "config"]).starts_with("agent-cli config example DOMAIN  # "));
     assert!(!first(&["search", "list", "db", "connections"]).contains("config example"));
+}
+
+#[test]
+fn a_search_asking_whether_things_work_leads_with_doctor() {
+    let first = |argv: &[&str]| {
+        go(argv)
+            .stdout
+            .lines()
+            .next()
+            .unwrap_or_default()
+            .to_owned()
+    };
+    assert!(first(&["search", "status"]).starts_with("agent-cli doctor  # "));
+    assert!(first(&["search", "db", "health"]).starts_with("agent-cli doctor db  # "));
+    assert!(!first(&["search", "status", "of", "ticket", "42"]).contains("doctor"));
 }
 
 #[test]

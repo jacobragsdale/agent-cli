@@ -326,6 +326,7 @@ fn doc(command: &Command) -> Doc<'_> {
 pub(crate) fn search_lines(domains: &[Domain], query: &str, limit: usize) -> Vec<String> {
     let hits = rank(domains, query);
     let mut lines: Vec<String> = setup_line(domains, query, &hits).into_iter().collect();
+    lines.extend(health_line(domains, query));
     if hits.first().is_some_and(|hit| hit.coverage < 0.5) {
         lines.push("(no command matches most of these words; closest:)".to_owned());
     }
@@ -383,6 +384,47 @@ fn setup_line(domains: &[Domain], query: &str, hits: &[Hit<'_>]) -> Option<Strin
     Some(format!(
         "agent-cli config example {domain}  # Print the config section that sets up {domain}; then agent-cli doctor {domain}"
     ))
+}
+
+/// Words that ask whether things work: doctor's job, which no command
+/// ranks for.
+pub(crate) const HEALTH_WORDS: &[&str] = &["status", "health", "healthcheck", "check", "diagnose"];
+
+/// `agent-cli doctor [DOMAIN]` when every word is a health word or a domain
+/// (`status`, `sql health`), so `status of run 42` still finds its command.
+pub(crate) fn doctor_for(domains: &[Domain], words: &[&str]) -> Option<String> {
+    let lower: Vec<String> = words.iter().map(|word| word.to_ascii_lowercase()).collect();
+    let domain = lower
+        .iter()
+        .find(|word| domains.iter().any(|domain| domain.name == word.as_str()));
+    let healthy = |word: &String| HEALTH_WORDS.contains(&word.as_str());
+    let only = lower
+        .iter()
+        .all(|word| healthy(word) || Some(word) == domain);
+    (only && lower.iter().any(healthy)).then(|| {
+        format!(
+            "agent-cli doctor{}",
+            domain.map(|d| format!(" {d}")).unwrap_or_default()
+        )
+    })
+}
+
+/// `agent-cli status [DOMAIN]` and its kin: exit 2 naming doctor.
+pub(crate) fn health_question(domains: &[Domain], words: &[String]) -> Option<anyhow::Error> {
+    let said: Vec<&str> = words.iter().take(2).map(String::as_str).collect();
+    let doctor = doctor_for(domains, &said)?;
+    let message = format!(
+        "unknown domain {:?}; {doctor} checks that things work",
+        said[0]
+    );
+    Some(crate::Failure::usage(message).hint(doctor).into())
+}
+
+fn health_line(domains: &[Domain], query: &str) -> Option<String> {
+    let words: Vec<&str> = query.split_whitespace().collect();
+    doctor_for(domains, &words).map(|doctor| {
+        format!("{doctor}  # Live checks: config, sign-in and a connection per service")
+    })
 }
 
 pub(crate) fn hit_line(command: &Command) -> String {

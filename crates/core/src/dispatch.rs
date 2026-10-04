@@ -136,6 +136,9 @@ fn dispatch(
         _ => {}
     }
     let Some(domain) = domains.iter().find(|domain| domain.name == first) else {
+        if let Some(error) = search::health_question(domains, words) {
+            return Err(error);
+        }
         let names = domains
             .iter()
             .map(|domain| domain.name)
