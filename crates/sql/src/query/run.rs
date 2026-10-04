@@ -9,7 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::config::{Kind, Sql};
-use crate::db::{Fetch, OnConnection, ResultSet, Session, is_timeout, write_timed_out};
+use crate::db::{Fetch, KEEP_BYTES, OnConnection, ResultSet, Session, is_timeout, write_timed_out};
 use crate::split;
 
 use super::{door, failed_at, millis, plan, statements, summary};
@@ -101,7 +101,18 @@ fn query_run(ctx: &Ctx, args: RunArgs) -> Result<QueryResult> {
         },
     };
     let results = door(ctx, spec, op)?;
-    if results.iter().any(|set| set.truncated) {
+    let short = results
+        .iter()
+        .find(|set| set.truncated && (set.rows.len() as u64) < args.max_rows);
+    if let Some(short) = short {
+        ctx.note(format!(
+            "[a result set stopped at {} rows, short of --max-rows {}: agent-cli holds about {} \
+             MB of rows; select fewer columns or rows]",
+            short.rows.len(),
+            args.max_rows,
+            KEEP_BYTES >> 20,
+        ));
+    } else if results.iter().any(|set| set.truncated) {
         ctx.note(format!(
             "[a result set stopped at --max-rows {}; raise it for more]",
             args.max_rows

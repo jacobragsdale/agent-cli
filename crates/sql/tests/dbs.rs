@@ -844,7 +844,11 @@ fn oracle_objects_schemas_and_sources() {
     ])
     .json();
     assert_eq!(listed[0]["name"], "ORDER_PKG");
-    assert!(listed[0]["modified"].as_str().unwrap().contains('T'));
+    let modified = listed[0]["modified"].as_str().unwrap();
+    assert!(
+        modified.ends_with('Z') && agent_cli_core::utc(modified) == modified,
+        "{modified}"
+    );
 
     let package = sql(&[
         "sql",

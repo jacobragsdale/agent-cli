@@ -1,6 +1,6 @@
 # sql: SQL Server and Oracle
 
-Queries, objects and schemas, ported from sql-bench. SQL Server over
+Queries, objects and schemas. SQL Server over
 tiberius (https://docs.rs/tiberius), Oracle over the `oracle` crate and the
 Instant Client (https://docs.rs/oracle).
 
@@ -32,7 +32,7 @@ and tests (`query/run.rs` is `sql query run`). Copy a sibling.
   `ctx.read` / `ctx.write`), `Session::run(sql, Fetch, deadline)`,
   `bounded`, cell helpers `int`, `decimal`, `text`, `maybe`, `whole`.
 - `split.rs`: cuts a script (`GO`; `;` and `/`) and classifies statements.
-- `mssql.rs`, `oracle.rs`: the drivers. `tests/dbs.rs`: the compose DBs.
+- `mssql.rs`, `oracle.rs`, `oracle/cell.rs`: drivers. `tests/dbs.rs`: the DBs.
 
 ## Fixtures
 No world recording (trials have no database). Integration tests need
@@ -50,7 +50,8 @@ without the variable they skip. Queries `crates/sql/search.toml`.
   session: the next statement reconnects, and `bench` names the reconnects.
   So only a read with no write before it is cut, and a transaction a script
   leaves open is rolled back and reported.
-- The only async code (a current-thread runtime for tiberius) is here.
+- A signal or deadline ends the server's work: SQL Server's with the
+  socket, Oracle's by a break.
 
 ## Never needed
 Other crates' sources, `docs/plans/`, `docs/reference/`,
