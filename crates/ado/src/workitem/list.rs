@@ -348,7 +348,7 @@ fn known_states(
 
 command! {
     pub WORKITEM_LIST = ["ado", "workitem", "list"], Read,
-    "List work items matching filters (live WIQL)",
+    "List work items (bugs, stories, tasks) matching filters (live WIQL)",
     keywords: ["query", "find", "search", "assigned", "my", "mine", "sprint", "active", "open", "resolved", "wiql", "high", "urgent", "filed", "opened", "created", "mentions", "follow", "followed", "watching"],
     example: "ado workitem list --assignee @me --state Active --fields id,title,state",
     run: workitem_list,

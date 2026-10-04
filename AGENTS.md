@@ -152,5 +152,6 @@ and the docs' command lines. The `fixtures` feature (never in a release)
 replays `fixtures/world`; `eval "$(scripts/trial-env.sh)"` sets up a shell
 for it. The sql database tests need `scripts/db-up.sh` and
 `AGENT_CLI_TEST_DBS=1`. The live ado suite (`crates/cli/tests/live_ado.rs`)
-needs `AGENT_CLI_TEST_ADO=1` and a sandbox project seeded by
-`scripts/ado-sandbox.py`; `AGENT_CLI_TEST_ADO_CONFIG` adds a second one.
+needs `AGENT_CLI_TEST_ADO=1`, `AGENT_CLI_READ_ONLY` off and
+`AGENT_CLI_TEST_ADO_CONFIG` naming the config of a sandbox seeded by
+`scripts/ado-sandbox.py` (a second after a colon); never your own config.

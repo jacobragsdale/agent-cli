@@ -105,6 +105,10 @@ pub const DOMAIN: Domain = Domain {
     synonyms: &[
         ("ticket", &["workitem"]),
         ("tickets", &["workitem"]),
+        // Both ask how the sprint is going (`ado sprint current` is a guessed
+        // command shape): sprint get's burndown.
+        ("sprint current", &["burndown"]),
+        ("status", &["burndown"]),
         ("bug", &["workitem"]),
         ("bugs", &["workitem"]),
         ("story", &["workitem"]),

@@ -413,9 +413,13 @@ if args[:1] == ["scale"]:
 if args[:1] == ["get"] and "/" in args[1] and "-o" in args and "json" in args:
     kind, name = args[1].split("/", 1)
     found = [o for o in here(KINDS.get(kind, kind.capitalize())) if o["metadata"]["name"] == name]
+    # A ReplicaSet named DEPLOYMENT-HASH is that Deployment's, as the API has it.
+    base = name.rsplit("-", 1)[0]
+    owners = [{"kind": "Deployment", "name": base, "controller": True}] \
+        if kind == "replicaset" and any(d["metadata"]["name"] == base for d in here("Deployment")) else []
     print(json.dumps(found[0] if found else {
         "apiVersion": "apps/v1", "kind": kind.capitalize(),
-        "metadata": {"name": name, "namespace": ns},
+        "metadata": {"name": name, "namespace": ns, "ownerReferences": owners},
         # A deployment named paused-* is paused (kubectl rollout pause).
         "spec": {"replicas": 3, **({"paused": True} if name.startswith("paused-") else {})},
         "status": {"readyReplicas": 3, "replicas": 3},

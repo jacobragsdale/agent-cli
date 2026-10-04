@@ -62,7 +62,7 @@ pub(crate) fn iterations(ctx: &Ctx, ado: &Ado, team: &str) -> Result<Vec<Iterati
 }
 
 /// The iterations, and whether they came from the cache (`fresh` skips it).
-fn read_iterations(
+pub(crate) fn read_iterations(
     ctx: &Ctx,
     ado: &Ado,
     team: &str,

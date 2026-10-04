@@ -37,14 +37,6 @@ Projects of thousands of work items and hundreds of people. Measure first, then 
 - [ ] Rate limits: ADO meters TSTUs (200 per user per sliding 5 minutes); record `X-RateLimit-Remaining` and `X-RateLimit-Delay` in the debug note so a sweep that comes near the limit shows up before it is throttled
 - [ ] Incremental reads for the pm sweep: `[System.ChangedDate] > last sweep` plus the cached rows, if sweeps get repeated within a day
 
-## Audit 2026-10-02: open findings
-
-Each has its proposed fix; the report lives outside the repository.
-
-- [ ] LIF-33: `k8s deployment scale` of a Deployment-owned ReplicaSet exits 0 and the Deployment reverts it: refuse with exit 2 naming the Deployment, hint `deployment scale`
-- [ ] FAI-62: two live ado suites at once move each other's sprint items, and an interrupted suite leaves items open: end leftovers (tag `agent-cli-e2e-run`) at the start, and hold a lock file for the run
-- [ ] IFC-36: searches for "status", "sprint current", "bug list" miss: labeled queries
-
 ## Built only when asked
 
 - [ ] `ado pr list --build succeeded|failed|running|none`: the PR search carries no build status, so it costs one policy-evaluations read per PR (what `pr get` does); cap it

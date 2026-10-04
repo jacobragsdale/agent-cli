@@ -2,7 +2,7 @@
 
 | Command | Effect | Summary |
 |---|---|---|
-| [`ado workitem list`](#ado-workitem-list) | read | List work items matching filters (live WIQL) |
+| [`ado workitem list`](#ado-workitem-list) | read | List work items (bugs, stories, tasks) matching filters (live WIQL) |
 | [`ado workitem get`](#ado-workitem-get) | read | Show a work item: fields, description as Markdown, links, latest comments |
 | [`ado workitem create`](#ado-workitem-create) | write | Create a work item (bug, task, story …), optionally under a parent |
 | [`ado workitem update`](#ado-workitem-update) | write | Change a work item's state, assignee, fields or backlog rank, with a comment |
@@ -63,7 +63,7 @@
 ### ado workitem list
 
 ```text
-agent-cli ado workitem list — List work items matching filters (live WIQL)
+agent-cli ado workitem list — List work items (bugs, stories, tasks) matching filters (live WIQL)
   --assignee str          Name, email or @me
   --state str[]           Active, "In Progress" … (repeatable)
   --type str[]            Bug, "User Story", Task … (repeatable)
@@ -340,7 +340,7 @@ e.g. agent-cli ado sprint get @current --fields name,working_days_left,totals,pe
 ```text
 agent-cli ado sprint complete — Close a sprint: move its unfinished work items to the next sprint
  *<sprint> str   The sprint to close: @current, @previous, a sprint's path or its name
-  --move-to str  The sprint unfinished work moves to: @next (the default), a path or a name (default @next)
+  --move-to str  The sprint unfinished work moves to: @next (the default: the sprint after the one closed), a path or a name; never one that starts before it (default @next)
   --team str     The team whose sprints they are (default: [ado] team)
   --project str  The project (default: the first in [ado] project)
 Returns: {sprint,to,moved[{id,type,title,state}],skipped[{id,reason}]}
@@ -393,9 +393,9 @@ agent-cli ado activity list — List what someone did: work items changed, comme
   --since time  Only what happened after this (default 1d)
   --limit int   Most rows to return (default 50)
 A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
-Returns: [{at,kind,action,id,title}]
+Returns: [{at,kind,action,id,title,count,first_at}]
 Read. Globals: --fields --raw --timeout --output
-e.g. agent-cli ado activity list --person @me --since 1d --fields at,kind,action,id,title
+e.g. agent-cli ado activity list --person @me --since 1d --fields at,kind,action,id,title,count
 ```
 
 ### ado repo list

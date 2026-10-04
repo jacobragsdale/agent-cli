@@ -36,7 +36,7 @@ pub struct ActivityListArgs {
 /// One thing the person did.
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct Activity {
-    /// When, RFC 3339.
+    /// When, RFC 3339; of a merged row, the last update.
     at: String,
     /// workitem, comment, pr, commit or run.
     kind: &'static str,
@@ -49,6 +49,10 @@ pub struct Activity {
     /// The work item's or pull request's title, the commit's first line, the
     /// run's pipeline.
     title: Option<String>,
+    /// How many updates in a row it merges: 205 comments are one row.
+    count: u32,
+    /// When the first of them was, RFC 3339; `at` when count is 1.
+    first_at: String,
 }
 
 /// `raw` when it falls in the window.
@@ -150,20 +154,24 @@ fn work_items(ctx: &Ctx, ado: &Ado, who: &Person, since: When) -> Result<Vec<Act
             let (Some(at), Some((kind, action))) = (after(when, since), action(update)) else {
                 continue;
             };
-            // Adding five children is one thing done, not five.
+            // Adding five children is one thing done, not five; the count
+            // and the first time say how much and since when.
             if let Some(last) = rows[start..].last_mut()
                 && last.kind == kind
                 && last.action == action
             {
                 last.at = at;
+                last.count += 1;
                 continue;
             }
             rows.push(Activity {
+                first_at: at.clone(),
                 at,
                 kind,
                 action,
                 id: id.to_string(),
                 title: title.clone(),
+                count: 1,
             });
         }
     }
@@ -186,11 +194,13 @@ fn pull_requests(
     };
     let since_utc = query_value(&since.utc());
     let row = |pr: &Value, at: String, action: &str| Activity {
+        first_at: at.clone(),
         at,
         kind: "pr",
         action: action.to_owned(),
         id: pr["pullRequestId"].as_i64().unwrap_or_default().to_string(),
         title: text(&pr["title"]),
+        count: 1,
     };
     let mut rows = Vec::new();
     for pr in search(format!(
@@ -309,12 +319,14 @@ fn commits(ctx: &Ctx, ado: &Ado, who: &Person, since: When, limit: usize) -> Res
                 continue;
             };
             rows.push(Activity {
+                first_at: at.clone(),
                 at,
                 kind: "commit",
                 action: "committed".to_owned(),
                 id: format!("{}@{sha}", repo.name),
                 title: text(&commit["comment"])
                     .and_then(|message| message.lines().next().map(str::to_owned)),
+                count: 1,
             });
         }
     }
@@ -341,12 +353,15 @@ fn runs(ctx: &Ctx, ado: &Ado, who: &Person, since: When, limit: usize) -> Result
     Ok(list(&ado.get(ctx, &url)?["value"])
         .iter()
         .filter_map(|run| {
+            let at = after(&run["queueTime"], since)?;
             Some(Activity {
-                at: after(&run["queueTime"], since)?,
+                first_at: at.clone(),
+                at,
                 kind: "run",
                 action: text(&run["result"]).or_else(|| text(&run["status"]))?,
                 id: run["id"].as_i64()?.to_string(),
                 title: text(&run["definition"]["name"]),
+                count: 1,
             })
         })
         .collect())
@@ -375,7 +390,7 @@ command! {
     pub ACTIVITY_LIST = ["ado", "activity", "list"], Read,
     "List what someone did: work items changed, comments, PRs, votes, commits, runs",
     keywords: ["standup", "did", "done", "yesterday", "today", "recent", "feed", "timeline", "worked", "contributions", "summary", "report", "person"],
-    example: "ado activity list --person @me --since 1d --fields at,kind,action,id,title",
+    example: "ado activity list --person @me --since 1d --fields at,kind,action,id,title,count",
     run: activity_list,
 }
 
@@ -474,7 +489,17 @@ mod tests {
             ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
-        let row = |at: &str, kind: &str, action: &str, id: &str, title: &str| json!({"at": at, "kind": kind, "action": action, "id": id, "title": title});
+        let row = |at: &str, kind: &str, action: &str, id: &str, title: &str| json!({"at": at, "kind": kind, "action": action, "id": id, "title": title, "count": 1, "first_at": at});
+        // The two children added a second apart are one row.
+        let mut linked = row(
+            "2026-09-29T10:00:01Z",
+            "workitem",
+            "linked",
+            "42",
+            "Checkout",
+        );
+        linked["count"] = json!(2);
+        linked["first_at"] = json!("2026-09-29T10:00:00Z");
         assert_eq!(
             outcome.json(),
             json!([
@@ -493,13 +518,7 @@ mod tests {
                     "42",
                     "Checkout"
                 ),
-                row(
-                    "2026-09-29T10:00:01Z",
-                    "workitem",
-                    "linked",
-                    "42",
-                    "Checkout"
-                ),
+                linked,
                 row("2026-09-29T10:00:00Z", "run", "failed", "5", "web-ci"),
                 row(
                     "2026-09-29T09:00:00Z",
