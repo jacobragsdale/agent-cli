@@ -165,6 +165,32 @@ fn inherited_ignores() -> u64 {
         .unwrap_or(0)
 }
 
+/// Never returns once a signal is being handled: the signal's thread is
+/// stopping what still runs, and exits.
+pub(crate) fn wait_if_stopping() {
+    while stopping() {
+        std::thread::park();
+    }
+}
+
+/// stderr, unlocked so the signal's line can get through, and silent once a
+/// signal is being handled: what a cancelled call says (ORA-01013, a lost
+/// connection) is not news then.
+pub(crate) struct Stderr;
+
+impl std::io::Write for Stderr {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        if stopping() {
+            return Ok(bytes.len());
+        }
+        std::io::stderr().write(bytes)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        std::io::stderr().flush()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
