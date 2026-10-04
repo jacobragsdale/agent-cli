@@ -44,7 +44,8 @@ server names never go into this public repository. Replace them with `contoso`-s
    - `kubernetes_version` should be the running version, and `power_state`
      should be `Running` or `Stopped`.
    - Run the command again: it should come back at once from the cache. With
-     `--no-cache` it should read again.
+     `--no-cache` it should read again, and refresh the cache with what it
+     read.
 4. **Secrets, metadata only.**
    - Run `agent-cli kv secret list --fields vault,name,expires,updated`.
      Every vault should be there, in the order `[azure] vaults` gives them.

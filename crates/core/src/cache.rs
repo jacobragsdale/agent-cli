@@ -14,8 +14,11 @@ use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
 
 pub struct Cache {
-    /// `None` under `--no-cache`: nothing is read or written.
+    /// `None` turns the cache off: nothing is read or written.
     dir: Option<PathBuf>,
+    /// Off under `--no-cache`, which still writes what it fetched, so the
+    /// next plain call sees the fresh answer rather than the stale one.
+    pub(crate) read: bool,
 }
 
 pub(crate) fn default_dir() -> Option<PathBuf> {
@@ -25,12 +28,15 @@ pub(crate) fn default_dir() -> Option<PathBuf> {
 impl Cache {
     #[must_use]
     pub fn new(dir: Option<PathBuf>) -> Self {
-        Self { dir }
+        Self { dir, read: true }
     }
 
     /// The value under `key`, if it is there and has not expired.
     #[must_use]
     pub fn get<T: DeserializeOwned>(&self, key: &str) -> Option<T> {
+        if !self.read {
+            return None;
+        }
         let entry = self.entries().remove(key)?;
         if entry["expires"].as_u64()? <= now() {
             return None;
@@ -110,7 +116,7 @@ mod tests {
     }
 
     #[test]
-    fn no_cache_neither_reads_nor_writes_and_a_corrupt_file_is_a_miss() {
+    fn an_off_cache_neither_reads_nor_writes_and_a_corrupt_file_is_a_miss() {
         let off = Cache::new(None);
         off.put("k", &1, Duration::from_secs(60));
         assert_eq!(off.get::<i32>("k"), None);
@@ -121,5 +127,19 @@ mod tests {
         assert_eq!(cache.get::<i32>("k"), None);
         cache.put("k", &1, Duration::from_secs(60));
         assert_eq!(cache.get::<i32>("k"), Some(1));
+    }
+
+    #[test]
+    fn no_cache_skips_reading_but_writes_what_it_fetched() {
+        let dir = tempfile::tempdir().unwrap();
+        Cache::new(Some(dir.path().to_owned())).put("k", &1, Duration::from_secs(60));
+        let mut fresh = Cache::new(Some(dir.path().to_owned()));
+        fresh.read = false;
+        assert_eq!(fresh.get::<i32>("k"), None);
+        fresh.put("k", &2, Duration::from_secs(60));
+        assert_eq!(
+            Cache::new(Some(dir.path().to_owned())).get::<i32>("k"),
+            Some(2)
+        );
     }
 }

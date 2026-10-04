@@ -341,7 +341,7 @@ pub fn check_registry(domains: &[Domain]) -> Vec<String> {
         problems.extend(check_listings(domain));
         problems.extend(check_synonyms(domain, domains));
     }
-    let overview = discover::overview(domains, &Config::empty());
+    let overview = discover::overview(domains, &Config::empty(), true);
     let crowded = discover::overview_at_most(domains);
     for (text, when) in [
         (overview, "with no config"),

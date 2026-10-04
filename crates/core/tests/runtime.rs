@@ -220,6 +220,20 @@ fn a_bad_leaf_call_is_a_usage_error_that_shows_the_example() {
             "error: unknown flag --log-id; tracker ticket list takes --assignee --state --text --limit"
         ),
     );
+    let swallowed = go(&[
+        "db",
+        "query",
+        "run",
+        "--conn",
+        "local",
+        "--sqlfile",
+        "q.sql",
+    ]);
+    assert_eq!(
+        swallowed.stderr.lines().next(),
+        Some("error: unknown flag --sqlfile; db query run takes --conn"),
+        "the flag, not the value a positional left over"
+    );
     let extra = go(&["tracker", "ticket", "get", "42", "43"]);
     assert_eq!(
         extra.stderr.lines().next(),
@@ -387,6 +401,63 @@ fn a_dry_run_runs_the_reads_and_plans_the_first_write_redacted() {
         process,
         [json!({"run": ["echo", "pod", "api-1", "deleted"]})]
     );
+}
+
+#[test]
+fn a_dry_run_plan_with_output_is_refused_and_nothing_is_saved() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("plan.json");
+    let path = path.to_str().unwrap();
+    let argv = ["db", "query", "run", "--conn", "local", "drop table t"];
+    let refused = go(&[&argv[..], &["--dry-run", "--output", path]].concat());
+    assert_eq!(refused.code, 2, "{refused:?}");
+    assert!(
+        refused.stderr.contains("run it again without --output"),
+        "{}",
+        refused.stderr
+    );
+    assert!(!std::path::Path::new(path).exists());
+    let read = go(&[&argv[..5], &["select 1", "--dry-run", "--output", path]].concat());
+    assert_eq!(
+        read.code, 0,
+        "a read under --dry-run still saves its answer"
+    );
+}
+
+#[test]
+fn search_refuses_the_globals_it_would_ignore() {
+    for flag in ["--fields=id", "--raw", "--output"] {
+        let refused = go(&["search", "list", "tickets", flag, "x.json"]);
+        assert_eq!(refused.code, 2, "{flag}");
+        let name = flag.split('=').next().unwrap();
+        assert!(
+            refused
+                .stderr
+                .starts_with(&format!("error: search does not take {name}\n")),
+            "{}",
+            refused.stderr
+        );
+    }
+    assert_eq!(go(&["search", "list", "tickets", "--limit", "2"]).code, 0);
+}
+
+#[test]
+fn read_only_shows_in_the_overview_and_doctor_and_doctor_names_the_version() {
+    let read_only = || fake(Vec::new()).0.read_only();
+    let overview = run(DOMAINS, &[], read_only());
+    assert!(
+        overview
+            .stdout
+            .contains("Config:      read-only (writes refused) \u{b7} tracker not set up"),
+        "{}",
+        overview.stdout
+    );
+    let rows = run(DOMAINS, &["doctor"], read_only()).json();
+    assert_eq!(rows[1]["check"], "read-only");
+    assert_eq!(rows[1]["ok"], true);
+    let version = format!("agent-cli {} \u{b7} ", env!("CARGO_PKG_VERSION"));
+    assert!(rows[0]["detail"].as_str().unwrap().starts_with(&version));
+    assert_ne!(go(&["doctor"]).json()[1]["check"], "read-only");
 }
 
 #[test]

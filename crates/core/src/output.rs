@@ -70,16 +70,18 @@ pub(crate) fn emit(
     if let Some(path) = &globals.output {
         return save(&value, path, out);
     }
-    let text = dumps(&value, tty);
+    // Measured compact, so a terminal (an agent harness's PTY, often) is cut
+    // where a pipe is, and only then pretty-printed.
+    let text = value.to_string();
     // --reveal asked for the value on stdout; a spill file would leave it on disk.
-    if globals.raw || globals.reveal || globals.fields.is_some() || tty || text.len() <= GUARD {
-        writeln!(out, "{text}")?;
+    if globals.raw || globals.reveal || globals.fields.is_some() || text.len() <= GUARD {
+        writeln!(out, "{}", dumps(&value, tty))?;
         return Ok(());
     }
     if value.get("text").is_some_and(Value::is_string) {
-        return guard_text(value, &text, keep_tail, out, err);
+        return guard_text(value, &text, keep_tail, out, err, tty);
     }
-    guard_list(&value, &text, out, err)
+    guard_list(&value, &text, out, err, tty)
 }
 
 pub(crate) fn dumps(value: &Value, pretty: bool) -> String {
@@ -90,12 +92,17 @@ pub(crate) fn dumps(value: &Value, pretty: bool) -> String {
     }
 }
 
-/// Only the dotted `paths`; lists are mapped through.
+/// Only the dotted `paths`; lists are mapped through. A path that goes on
+/// below a scalar (`tags.x` on a list of strings) matches nothing there.
 fn project(value: &Value, paths: &[Vec<&str>]) -> Value {
     match value {
-        Value::Array(items) => {
-            Value::Array(items.iter().map(|item| project(item, paths)).collect())
-        }
+        Value::Array(items) => Value::Array(
+            items
+                .iter()
+                .map(|item| project(item, paths))
+                .filter(|item| !item.is_null())
+                .collect(),
+        ),
         Value::Object(map) => {
             let mut heads: Vec<(&str, Vec<Vec<&str>>)> = Vec::new();
             for path in paths {
@@ -122,7 +129,7 @@ fn project(value: &Value, paths: &[Vec<&str>]) -> Value {
             }
             Value::Object(kept)
         }
-        other => other.clone(),
+        _ => Value::Null,
     }
 }
 
@@ -233,7 +240,13 @@ fn save_temp(content: &str, suffix: &str) -> Result<String> {
 
 /// Keeps a prefix of the largest list, prints valid JSON, and says where the
 /// rest is.
-fn guard_list(value: &Value, text: &str, out: &mut dyn Write, err: &mut dyn Write) -> Result<()> {
+fn guard_list(
+    value: &Value,
+    text: &str,
+    out: &mut dyn Write,
+    err: &mut dyn Write,
+    tty: bool,
+) -> Result<()> {
     // The answer is worth more than the copy: print it cut either way.
     let saved = save_temp(text, ".json").unwrap_or_else(|error| format!("not saved ({error:#})"));
     let found = biggest_list(value, &[]).filter(|(_, items)| !items.is_empty());
@@ -241,7 +254,7 @@ fn guard_list(value: &Value, text: &str, out: &mut dyn Write, err: &mut dyn Writ
         let mut shown = value.clone();
         let cut = cut_strings(&mut shown);
         if !cut.is_empty() && shown.to_string().len() <= GUARD {
-            writeln!(out, "{shown}")?;
+            writeln!(out, "{}", dumps(&shown, tty))?;
             writeln!(
                 err,
                 "[cut short: {}. Full JSON ({} KB): {saved}\n --raw prints everything]",
@@ -286,7 +299,7 @@ fn guard_list(value: &Value, text: &str, out: &mut dyn Write, err: &mut dyn Writ
     *node = Value::Array(kept.clone());
     // A long text beside the list (a description) can hold the answer over.
     let cut = cut_strings(&mut shown);
-    writeln!(out, "{shown}")?;
+    writeln!(out, "{}", dumps(&shown, tty))?;
     // A --fields path maps through lists, so only the keys name it.
     let keys: Vec<&str> = at
         .iter()
@@ -425,6 +438,7 @@ fn guard_text(
     keep_tail: bool,
     out: &mut dyn Write,
     err: &mut dyn Write,
+    tty: bool,
 ) -> Result<()> {
     let full = value["text"].as_str().unwrap_or_default().to_owned();
     let saved = save_temp(&full, ".txt").unwrap_or_else(|error| format!("not saved ({error:#})"));
@@ -442,7 +456,7 @@ fn guard_text(
     let shown = cut.len();
     value["text"] = Value::String(cut.to_owned());
     value["truncated"] = Value::Bool(true);
-    writeln!(out, "{value}")?;
+    writeln!(out, "{}", dumps(&value, tty))?;
     writeln!(
         err,
         "[text is {} KB; showing the {} {} KB. Full text: {saved}. --raw prints everything]",
@@ -654,6 +668,40 @@ mod tests {
             err.trim(),
             "[--fields matched nothing. Available: id,author.name]"
         );
+    }
+
+    #[test]
+    fn a_path_below_a_scalar_matches_nothing_and_says_so() {
+        let value = json!({"id": 1, "tags": ["a", "b"]});
+        let (out, err) = run(value.clone(), &fields("tags.x"), false);
+        assert_eq!(out.trim(), "{}");
+        assert_eq!(err.trim(), "[--fields matched nothing. Available: id,tags]");
+        let (out, _) = run(value, &fields("id,tags.x"), false);
+        assert_eq!(out.trim(), r#"{"id":1}"#);
+    }
+
+    #[test]
+    fn a_terminal_is_guarded_like_a_pipe_and_still_pretty() {
+        let items: Vec<Value> = (0..3000).map(|i| json!({"id": i})).collect();
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        emit(
+            json!({"value": items}),
+            &Globals::default(),
+            false,
+            &mut out,
+            &mut err,
+            true,
+        )
+        .unwrap();
+        let (out, err) = (
+            String::from_utf8(out).unwrap(),
+            String::from_utf8(err).unwrap(),
+        );
+        assert!(out.starts_with("{\n  \"value\": ["), "{}", &out[..40]);
+        let shown: Value = serde_json::from_str(&out).unwrap();
+        assert!(shown["value"].as_array().unwrap().len() < 3000);
+        assert!(err.starts_with("[truncated value: showing"), "{err}");
+        std::fs::remove_file(saved_path(&err)).unwrap();
     }
 
     #[test]

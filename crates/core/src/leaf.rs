@@ -24,7 +24,7 @@ pub(crate) fn parse_leaf(command: &Command, args: &[String]) -> Result<ArgMatche
         .color(clap::ColorChoice::Never)
         .try_get_matches_from(args)
         .map_err(|error| {
-            usage(unknown_flag(command, &error).unwrap_or_else(|| clap_message(&error)))
+            usage(unknown_flag(command, &error, args).unwrap_or_else(|| clap_message(&error)))
         })?;
     match flag_taken_as_text(command, &matches) {
         Some(message) => Err(usage(message)),
@@ -80,7 +80,7 @@ fn flag_shaped(value: &str) -> Option<&str> {
 /// A flag the command does not have: the close ones, and every one it has.
 /// clap's own tip ("to pass '--log-id' as a value, use '-- --log-id'")
 /// sends an agent the wrong way.
-fn unknown_flag(command: &Command, error: &clap::Error) -> Option<String> {
+fn unknown_flag(command: &Command, error: &clap::Error, args: &[String]) -> Option<String> {
     use clap::error::{ContextKind, ContextValue, ErrorKind};
     if error.kind() != ErrorKind::UnknownArgument {
         return None;
@@ -88,10 +88,18 @@ fn unknown_flag(command: &Command, error: &clap::Error) -> Option<String> {
     let Some(ContextValue::String(flag)) = error.get(ContextKind::InvalidArg) else {
         return None;
     };
-    if !flag.starts_with('-') {
-        return None;
+    if flag.starts_with('-') {
+        return Some(unknown_flag_named(command, flag));
     }
-    Some(unknown_flag_named(command, flag))
+    // `--sqlfile q.sql`: a positional that takes hyphens took the unknown
+    // flag as its value, so clap names `q.sql`. The flag is the news.
+    let own = (command.args)();
+    let unknown = args
+        .iter()
+        .take_while(|arg| *arg != "--")
+        .filter_map(|arg| flag_shaped(arg))
+        .find(|name| !own.get_arguments().any(|arg| arg.get_long() == Some(*name)))?;
+    Some(unknown_flag_named(command, &format!("--{unknown}")))
 }
 
 fn unknown_flag_named(command: &Command, flag: &str) -> String {

@@ -49,7 +49,8 @@ mod tests {
              command, what `agent-cli <domain> <resource> <verb> --help` prints: arguments (`*` \
              required), `Returns:`, the effect, and an example.\n\n\
              Every command also takes the globals `--fields a,b.c`, `--raw`, `--dry-run`, `--yes`, \
-             `--reveal`, `--timeout S`, `--output FILE` and `--no-cache`. Exit codes: 0 ok, 1 \
+             `--reveal`, `--timeout S`, `--output FILE` and `--no-cache` (fetch again, and \
+             refresh the cache with it). Exit codes: 0 ok, 1 \
              failed, 2 fix the call, 3 needs setup, 4 not found, 5 conflict, 124 timed out.\n\n\
              | Domain | Summary |\n|---|---|\n",
         );

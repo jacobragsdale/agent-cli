@@ -63,8 +63,8 @@ agent-cli k8s deployment list --fields id,images     # the call, narrowed to wha
 
 Search is the front door; help shows the exact shape a command returns, so
 `--fields` can ask for only that. Without `--fields`, output over 12 KB is cut
-to valid JSON and the whole of it saved to a file whose path stderr names;
-`--raw` prints everything.
+to valid JSON (in a terminal too, pretty-printed) and the whole of it saved
+to a file whose path stderr names; `--raw` prints everything.
 
 ## Safety
 
@@ -79,7 +79,8 @@ Every command declares an effect, shown in search and help:
 | read or write | Decided by the input, as for SQL: a write follows the rules above. |
 
 `AGENT_CLI_READ_ONLY=1` refuses every write, destructive and reveal command
-before anything is sent. A SQL connection or Airflow instance marked
+before anything is sent; the overview's `Config:` line and `agent-cli doctor`
+say when it is on. A SQL connection or Airflow instance marked
 `read_only = true` refuses changes on its own. Tokens and passwords never
 appear in output, plans or errors. The real guard is still a credential that
 can only read.

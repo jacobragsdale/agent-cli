@@ -811,6 +811,7 @@ pub struct QueryRun {
     #[arg(long)]
     conn: String,
     /// the SQL text
+    #[arg(allow_hyphen_values = true)]
     sql: String,
 }
 

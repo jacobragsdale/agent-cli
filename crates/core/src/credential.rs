@@ -32,13 +32,26 @@ enum Source {
 
 impl Credential {
     /// The one source among `KEY`, `KEY_env` and `KEY_cmd`; `None` when none
-    /// is set. Two is a mistake the message names.
+    /// is set. Two, or a blank name or command (later "export , or …"), is a
+    /// mistake the message names.
     pub fn from_keys(
         key: &str,
         value: Option<String>,
         env: Option<String>,
         cmd: Option<String>,
     ) -> Result<Option<Self>, String> {
+        for (suffix, given) in [("env", &env), ("cmd", &cmd)] {
+            if given.as_ref().is_some_and(|given| given.trim().is_empty()) {
+                return Err(format!(
+                    "{key}_{suffix} is empty; name the {} that gives the {key}, or leave {key}_{suffix} out",
+                    if suffix == "env" {
+                        "variable"
+                    } else {
+                        "command"
+                    }
+                ));
+            }
+        }
         let source = match (value, env, cmd) {
             (None, None, None) => return Ok(None),
             (Some(value), None, None) => Source::Value(Secret::new(value)),
@@ -168,6 +181,20 @@ mod tests {
             Credential::from_keys("password", None, None, None)
                 .unwrap()
                 .is_none()
+        );
+    }
+
+    #[test]
+    fn a_blank_variable_name_or_command_is_refused_naming_its_key() {
+        let error = Credential::from_keys("token", None, Some(" ".into()), None).unwrap_err();
+        assert!(
+            error.starts_with("token_env is empty; name the variable"),
+            "{error}"
+        );
+        let error = Credential::from_keys("token", None, None, Some(String::new())).unwrap_err();
+        assert!(
+            error.starts_with("token_cmd is empty; name the command"),
+            "{error}"
         );
     }
 }

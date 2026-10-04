@@ -21,7 +21,7 @@ use crate::discover::{self, did_you_mean};
 use crate::error::{Exit, Failure, data_of, describe};
 pub(crate) use crate::leaf::parse_leaf;
 use crate::output::{self, dumps};
-use crate::registry::{Command, Domain, Effect};
+use crate::registry::{Command, Domain, Effect, GLOBAL_FLAGS};
 use crate::search;
 use crate::secret::redact_value;
 
@@ -101,11 +101,23 @@ fn dispatch(
         words = &words[1..];
     }
     let Some(first) = words.first() else {
-        writeln!(out, "{}", discover::overview(domains, &setup.config))?;
+        let overview = discover::overview(domains, &setup.config, setup.read_only);
+        writeln!(out, "{overview}")?;
         return Ok(Exit::Ok);
     };
     match first.as_str() {
-        "search" => return search_builtin(domains, &words[1..], globals.help, out),
+        "search" => {
+            // Taken quietly, `search --fields id` would look like it worked.
+            let ignored = argv.iter().take_while(|arg| *arg != "--").find_map(|arg| {
+                let name = arg.split('=').next()?.strip_prefix("--")?;
+                (name != "help" && GLOBAL_FLAGS.contains(&name)).then_some(name)
+            });
+            if let Some(flag) = ignored {
+                let refusal = Failure::usage(format!("search does not take --{flag}"));
+                return Err(refusal.hint("search takes words and --limit N").into());
+            }
+            return search_builtin(domains, &words[1..], globals.help, out);
+        }
         "doctor" => {
             let ctx = Ctx::new(globals, setup, command_line);
             return doctor_builtin(domains, &words[1..], &ctx, out, err, tty);
@@ -207,6 +219,10 @@ fn dispatch(
                 None => Err(error),
             },
         }
+    } else if ctx.globals().output.is_some() {
+        // The plan is small, and a file would read as the command's answer.
+        let refusal = Failure::usage("--dry-run prints its plan; --output has nothing to save");
+        Err(refusal.hint("run it again without --output").into())
     } else {
         // The handler stopped at its first change; whatever it made of that
         // error, what it would have done is the answer.
@@ -464,6 +480,10 @@ fn doctor_builtin(
         _ => return Err(Failure::usage("usage: agent-cli doctor [domain]").into()),
     };
     let mut rows = vec![config_row(ctx.config())];
+    if ctx.read_only() {
+        let detail = "AGENT_CLI_READ_ONLY is set: every write is refused before anything is sent";
+        rows.push(json!({"domain": "core", "check": "read-only", "ok": true, "detail": detail}));
+    }
     let named = !args.is_empty();
     for domain in selected {
         let checks = (domain.doctor)(ctx);
@@ -500,9 +520,10 @@ fn doctor_builtin(
     Ok(if failed { Exit::Failed } else { Exit::Ok })
 }
 
+/// The config file's row, naming the build too: is the binary current?
 fn config_row(config: &Config) -> Value {
     let path = config.path().display().to_string();
-    match config.problem() {
+    let mut row = match config.problem() {
         Some(problem) => json!({
             "domain": "core", "check": "config", "ok": false, "detail": problem,
             "hint": format!("fix {path}; `agent-cli config example` shows every key"),
@@ -514,7 +535,13 @@ fn config_row(config: &Config) -> Value {
             "domain": "core", "check": "config", "ok": true,
             "detail": format!("{path} does not exist, so every section is empty"),
         }),
-    }
+    };
+    let version = concat!("agent-cli ", env!("CARGO_PKG_VERSION"), " \u{b7} ");
+    row["detail"] = json!(format!(
+        "{version}{}",
+        row["detail"].as_str().unwrap_or_default()
+    ));
+    row
 }
 
 /// `word` as a shell would need it typed, for "run it again" hints.

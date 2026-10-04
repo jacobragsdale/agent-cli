@@ -144,12 +144,13 @@ pub struct Ctx {
 impl Ctx {
     #[must_use]
     pub fn new(globals: Globals, setup: Setup, command_line: impl Into<String>) -> Self {
-        let cache_dir = setup.cache_dir.filter(|_| !globals.no_cache);
+        let mut cache = Cache::new(setup.cache_dir);
+        cache.read = !globals.no_cache;
         Self {
             deadline: Instant::now() + globals.timeout.unwrap_or(DEFAULT_TIMEOUT),
             globals,
             config: setup.config,
-            cache: Cache::new(cache_dir),
+            cache,
             transport: setup.transport,
             read_only: setup.read_only,
             env: setup.env,
@@ -166,6 +167,10 @@ impl Ctx {
     #[must_use]
     pub fn globals(&self) -> &Globals {
         &self.globals
+    }
+
+    pub(crate) fn read_only(&self) -> bool {
+        self.read_only
     }
 
     #[must_use]

@@ -57,7 +57,7 @@ mod tests {
     }
 
     #[test]
-    fn the_inventory_is_cached_and_no_cache_reads_it_again() {
+    fn the_inventory_is_cached_and_no_cache_reads_it_again_and_refreshes_it() {
         let temp = tempfile::tempdir().unwrap();
         let dir = temp.path().to_owned();
         let setup = |answers: Vec<Answer>| {
@@ -86,6 +86,14 @@ mod tests {
             2,
             "the inventory, then the subscriptions check"
         );
+        let (fourth, transport) = setup(vec![]);
+        let outcome = agent_cli_core::testing::run(&[KV], &["kv", "vault", "list"], fourth);
+        assert_eq!(
+            outcome.stdout.trim(),
+            "[]",
+            "--no-cache refreshed the cache"
+        );
+        assert!(transport.sent().is_empty());
         let cached = std::fs::read_to_string(dir.join("cache.json")).unwrap();
         assert!(!cached.contains("token"), "{cached}");
     }

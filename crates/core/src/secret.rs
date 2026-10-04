@@ -17,6 +17,9 @@ use crate::http::percent_encode;
 const MASK: &str = "***";
 /// Shorter values would mask ordinary words wherever they appear.
 const MIN_KNOWN: usize = 6;
+/// The shortest word after `Bearer` or `Basic` taken for a credential, so
+/// TOML's "invalid basic string" keeps its word; any real one is longer.
+const MIN_SCHEME_TOKEN: usize = 8;
 /// Every secret value made in this process, so redaction can find it however
 /// it was spliced into a message.
 static KNOWN: Mutex<Vec<String>> = Mutex::new(Vec::new());
@@ -178,7 +181,7 @@ fn secret_spans(text: &str) -> Vec<Range<usize>> {
         for (at, _) in lower.match_indices(scheme) {
             let start = skip(bytes, at + scheme.len(), |byte| byte == b' ');
             let end = skip(bytes, start, is_token_byte);
-            if end > start && &text[start..end] != MASK {
+            if end - start >= MIN_SCHEME_TOKEN {
                 spans.push(start..end);
             }
         }
@@ -260,6 +263,15 @@ mod tests {
         let cases = [
             ("Authorization: Bearer abc123.def", "Authorization: *** ***"),
             ("header basic dXNlcjpwYXNz= sent", "header basic *** sent"),
+            ("BASIC OmZpeHR1cmUtcGF0LTE=", "BASIC ***"),
+            (
+                "sent bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2ln",
+                "sent bearer ***",
+            ),
+            (
+                "invalid basic string, expected `\"`",
+                "invalid basic string, expected `\"`",
+            ),
             (
                 "Server=db;User Id=app;Password=hunter2;Encrypt=true",
                 "Server=db;User Id=app;Password=***;Encrypt=true",
@@ -288,7 +300,7 @@ mod tests {
             assert_eq!(redact(text), want, "{text}");
         }
         assert_eq!(
-            redact("héllo Bearer abc ünïcode"),
+            redact("héllo Bearer abc123def ünïcode"),
             "héllo Bearer *** ünïcode"
         );
         assert_eq!(redact("héllo Bearer ünïcode"), "héllo Bearer ünïcode");
@@ -298,7 +310,7 @@ mod tests {
     fn a_plan_masks_sensitive_keys_and_redacts_every_string() {
         let plan = json!({
             "headers": {"Authorization": "Bearer x", "Accept": "application/json"},
-            "body": {"db_password": "p", "note": "Bearer abcdef", "count": 3},
+            "body": {"db_password": "p", "note": "Bearer abcdef12", "count": 3},
             "run": ["sqlcmd", "-P", "pwd=zzz"],
         });
         assert_eq!(

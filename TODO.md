@@ -43,12 +43,7 @@ Each has its proposed fix; the report lives outside the repository.
 
 - [ ] LIF-33: `k8s deployment scale` of a Deployment-owned ReplicaSet exits 0 and the Deployment reverts it: refuse with exit 2 naming the Deployment, hint `deployment scale`
 - [ ] FAI-62: two live ado suites at once move each other's sprint items, and an interrupted suite leaves items open: end leftovers (tag `agent-cli-e2e-run`) at the start, and hold a lock file for the run
-- [ ] IFC-23: an unknown flag (`--sqlfile q.sql`) is reported as "unexpected argument q.sql": name the flag token
-- [ ] IFC-31: `--fields tags.x` below a list of strings returns `tags` unchanged: a path below a scalar matches nothing, with the note
-- [ ] IFC-36: searches for "status", "sprint current", "bug list" miss (labeled queries), and no version is printed anywhere (a version in doctor's core row)
-- [ ] IFC-39: `search` accepts globals it ignores (`--fields`): refuse them
-- [ ] IFC-46: a write's `--dry-run` plan ignores `--output`: refuse the pair
-- [ ] INP-33: an empty `*_env` name (`token_env = ""`) is accepted and reads "export , or …": refuse it
+- [ ] IFC-36: searches for "status", "sprint current", "bug list" miss: labeled queries
 
 ## Built only when asked
 

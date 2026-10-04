@@ -50,7 +50,8 @@ of pull requests where the agent-first arm read 7 KB.
 
 The 12 KB guard is the backstop: it cuts the largest list so what prints is
 still valid JSON, saves the whole answer to a file, and says how to narrow
-it. It cuts structurally because a text cut produced invalid JSON in
+it. A terminal gets the same cut, only pretty-printed: agent harnesses often
+run commands in a PTY. It cuts structurally because a text cut produced invalid JSON in
 design.md's round 2, and Haiku spent 17 calls recovering. This round no call
 reached the guard, over about 104 KB of stdout for 187 calls, and bounded
 defaults (`--limit 50`, `--tail 200`, rows that are already narrow) did most

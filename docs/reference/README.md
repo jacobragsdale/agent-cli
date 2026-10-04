@@ -2,7 +2,7 @@
 
 Generated from the registry by `crates/cli` (`UPDATE_DOCS=1 cargo test -p agent-cli reference`); a test fails when it is stale. Each domain's page holds, for every command, what `agent-cli <domain> <resource> <verb> --help` prints: arguments (`*` required), `Returns:`, the effect, and an example.
 
-Every command also takes the globals `--fields a,b.c`, `--raw`, `--dry-run`, `--yes`, `--reveal`, `--timeout S`, `--output FILE` and `--no-cache`. Exit codes: 0 ok, 1 failed, 2 fix the call, 3 needs setup, 4 not found, 5 conflict, 124 timed out.
+Every command also takes the globals `--fields a,b.c`, `--raw`, `--dry-run`, `--yes`, `--reveal`, `--timeout S`, `--output FILE` and `--no-cache` (fetch again, and refresh the cache with it). Exit codes: 0 ok, 1 failed, 2 fix the call, 3 needs setup, 4 not found, 5 conflict, 124 timed out.
 
 | Domain | Summary |
 |---|---|
