@@ -181,6 +181,12 @@ pub(crate) fn timeline() -> Answer {
     ]}))
 }
 
+/// A work item's type and project, which update and comment read first.
+pub(crate) fn home(kind: &str, project: &str) -> Answer {
+    Answer::json(&json!({"id": 42, "rev": 3, "fields": {
+        "System.WorkItemType": kind, "System.TeamProject": project}}))
+}
+
 /// The identity search finding one person.
 pub(crate) fn person(id: &str, name: &str, email: &str) -> Answer {
     Answer::json(

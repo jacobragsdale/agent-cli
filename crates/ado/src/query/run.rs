@@ -18,6 +18,9 @@ pub struct QueryRunArgs {
     /// Most rows to return
     #[arg(long, default_value_t = 50)]
     limit: usize,
+    /// The project (default: the first in [ado] project)
+    #[arg(long)]
+    project: Option<String>,
 }
 
 /// A work item the query found, as workitem list prints it; a tree or
@@ -33,7 +36,7 @@ pub struct QueryResultRow {
 }
 
 fn query_run(ctx: &Ctx, args: QueryRunArgs) -> Result<Vec<QueryResultRow>> {
-    let ado = Ado::load(ctx)?;
+    let ado = Ado::load_in(ctx, args.project.as_deref())?;
     let id = resolve(ctx, &ado, &args.query)?;
     let path = format!("wit/wiql/{id}");
     let top = format!("$top={}", args.limit.saturating_add(1));

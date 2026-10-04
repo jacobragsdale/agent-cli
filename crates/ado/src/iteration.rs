@@ -31,16 +31,28 @@ pub(crate) fn team<'a>(ado: &'a Ado, wanted: Option<&'a str>) -> Result<&'a str>
         return Ok(team);
     }
     if ado.teams.is_empty() {
-        return Err(no_team());
+        return Err(no_team(ado));
     }
     Ok(pick("team", "--team", None, &ado.teams, String::as_str)?)
 }
 
-/// `[ado] team` unset, where a command needs a team.
-pub(crate) fn no_team() -> anyhow::Error {
-    Failure::setup("[ado] team is not set, and sprints and members belong to a team")
-        .hint("agent-cli ado team list --fields name, then set team = \"NAME\" under [ado] (or AGENT_CLI_ADO_TEAM)")
-        .into()
+/// No team of `ado.project` in `[ado] team`, where a command needs a team.
+pub(crate) fn no_team(ado: &Ado) -> anyhow::Error {
+    if ado.all_teams.is_empty() {
+        return Failure::setup("[ado] team is not set, and sprints and members belong to a team")
+            .hint("agent-cli ado team list --fields name, then set team = \"NAME\" under [ado] (or AGENT_CLI_ADO_TEAM)")
+            .into();
+    }
+    Failure::setup(format!(
+        "[ado] team names no team in {}, and sprints and members belong to a team",
+        ado.project
+    ))
+    .hint(format!(
+        "agent-cli ado team list{} --fields name, then add \"{}/NAME\" to team under [ado], or pass --team NAME",
+        ado.project_flag(),
+        ado.project
+    ))
+    .into()
 }
 
 /// The team's iterations in its settings' order (by start date), cached for
@@ -145,12 +157,16 @@ pub(crate) fn path(ctx: &Ctx, ado: &Ado, team: Option<&str>, raw: &str) -> Resul
     // Azure DevOps writes paths with `\`; `project/Sprint 1`, or a leading
     // `\`, means the same path.
     let raw = raw.trim().trim_start_matches('\\');
+    let project = |root: &str| {
+        root.eq_ignore_ascii_case(&ado.project)
+            || ado.projects.iter().any(|p| p.eq_ignore_ascii_case(root))
+    };
     let slashed = raw
         .split_once('/')
-        .filter(|(root, _)| root.eq_ignore_ascii_case(&ado.project))
+        .filter(|(root, _)| project(root))
         .map(|_| raw.replace('/', "\\"));
     let raw = slashed.as_deref().unwrap_or(raw);
-    if raw.starts_with('@') || !(raw.contains('\\') || raw.eq_ignore_ascii_case(&ado.project)) {
+    if raw.starts_with('@') || !(raw.contains('\\') || project(raw)) {
         return Ok(resolve(ctx, ado, team, raw)?.path);
     }
     Ok(raw.to_owned())

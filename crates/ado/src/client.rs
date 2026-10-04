@@ -1,20 +1,22 @@
-//! Azure DevOps over REST: where the organization and projects come from, the
-//! credential, the one door every request goes through, and the lookups worth
-//! caching for a day (who "me" is, repository and pipeline ids).
+//! Azure DevOps over REST: the credential, the one door every request goes
+//! through, and the lookups worth caching for a day (who "me" is, repository
+//! and pipeline ids). Where the organization and projects come from is
+//! `config.rs`.
 //!
 //! Ported from ticket-tui's `azure.rs`. Retrying a spent token, waiting out a
 //! throttle and refusing redirects are core's; what is Azure DevOps's own is
 //! here: the sign-in page it answers bad credentials with, the headers and
 //! API versions it wants, and where a credential may be sent.
 
-use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use agent_cli_core::{
-    Ctx, Effect, Exit, Failure, Method, Request, Response, Secret, host_under, percent_encode,
+    Credential, Ctx, Effect, Exit, Failure, Method, Request, Response, Secret, host_under,
+    percent_encode,
 };
 use anyhow::{Context, Result, bail};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// The resource `az account get-access-token` mints Azure DevOps tokens for.
@@ -28,125 +30,48 @@ const CONNECTION_DATA_API: &str = "7.1-preview";
 pub(crate) const PREVIEW_API: &str = "7.1-preview.1";
 /// IDs change about never; a day keeps a renamed repository from lingering.
 const CACHE_TTL: Duration = Duration::from_secs(24 * 3600);
-const SIGN_IN_HINT: &str = "run `az login`, or set AZURE_DEVOPS_EXT_PAT to a personal access token; `agent-cli doctor ado` checks the setup";
-
-/// `[ado]` in config.toml.
-#[derive(Debug, Default, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct Section {
-    /// A slug (`contoso`) or a URL (`https://dev.azure.com/contoso`).
-    org: Option<String>,
-    /// Where the work items live.
-    project: Option<String>,
-    /// Where the repositories, pull requests and pipelines live, when a shop
-    /// keeps its board and its code in different projects.
-    code_project: Option<String>,
-    /// The team (or teams) whose sprint `@current` means.
-    #[serde(default, deserialize_with = "one_or_many")]
-    team: Vec<String>,
-}
-
-/// `team = "Web"` and `team = ["Web", "Data"]` both read.
-fn one_or_many<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<String>, D::Error> {
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum OneOrMany {
-        One(String),
-        Many(Vec<String>),
-    }
-    let teams = match OneOrMany::deserialize(deserializer)? {
-        OneOrMany::One(one) => vec![one],
-        OneOrMany::Many(many) => many,
-    };
-    Ok(teams
-        .into_iter()
-        .map(|team| team.trim().to_owned())
-        .filter(|team| !team.is_empty())
-        .collect())
-}
+const SIGN_IN_HINT: &str = "set pat_env or pat_cmd under [ado] (or AZURE_DEVOPS_EXT_PAT) to a personal access token, or run `az login`; `agent-cli doctor ado` checks the setup";
 
 /// One organization and its projects, and the credential for them.
+#[derive(Clone)]
 pub(crate) struct Ado {
     pub(crate) org: String,
+    /// The project this command works in: `--project`, the work item's own,
+    /// else the first of `[ado] project`. Work URLs and cache keys follow
+    /// it, since two projects may run different processes.
     pub(crate) project: String,
+    /// `[ado] project`: every project a work item list searches.
+    pub(crate) projects: Vec<String>,
     pub(crate) code_project: String,
+    /// `project`'s teams in `[ado] team`.
     pub(crate) teams: Vec<String>,
-    /// `Basic …` made from `AZURE_DEVOPS_EXT_PAT`; `None` borrows `az`'s login.
-    pat: Option<Secret>,
+    /// `[ado] team` as (project, team).
+    pub(crate) all_teams: Vec<(String, String)>,
+    /// A personal access token from `pat_env`, `pat_cmd` or
+    /// `AZURE_DEVOPS_EXT_PAT`; `None` borrows `az`'s login.
+    pub(crate) pat: Option<Credential>,
+    /// The PAT as `Basic …`, read on the first request only.
+    pub(crate) basic: OnceLock<Secret>,
 }
 
 impl Ado {
-    /// `[ado]` (with `AGENT_CLI_ADO_*` applied by core), falling back to the
-    /// `az devops configure` defaults for the organization and project.
-    pub(crate) fn load(ctx: &Ctx) -> Result<Self> {
-        let section: Section = ctx.section("ado")?;
-        let mut ado = Self::resolve(
-            section,
-            || az_defaults(az_config_path()),
-            ctx.config().path(),
-        )?;
-        ado.pat = ctx.env("AZURE_DEVOPS_EXT_PAT").map(|pat| basic(pat.trim()));
-        Ok(ado)
-    }
-
-    /// The names without a credential, for the overview's status line.
-    pub(crate) fn names(config: &agent_cli_core::Config) -> Result<Self> {
-        let section: Section = config.section("ado")?;
-        Self::resolve(section, || az_defaults(az_config_path()), config.path())
-    }
-
-    fn resolve(
-        section: Section,
-        defaults: impl FnOnce() -> (Option<String>, Option<String>),
-        path: &Path,
-    ) -> Result<Self> {
-        let blank =
-            |value: Option<String>| value.map(|v| v.trim().to_owned()).filter(|v| !v.is_empty());
-        let (mut org, mut project) = (blank(section.org), blank(section.project));
-        if org.is_none() || project.is_none() {
-            let (default_org, default_project) = defaults();
-            org = org.or_else(|| blank(default_org));
-            project = project.or_else(|| blank(default_project));
-        }
-        let missing = |key: &str, example: &str, az: &str| {
-            Failure::setup(format!(
-                "no Azure DevOps {key}: [ado] {key} is not set in {}",
-                path.display()
-            ))
-            .hint(format!(
-                "add `{key} = \"{example}\"` under [ado] (or set AGENT_CLI_ADO_{}), or run `az devops configure --defaults {az}`",
-                key.to_uppercase()
-            ))
-        };
-        let org = org.ok_or_else(|| {
-            missing(
-                "org",
-                "contoso",
-                "organization=https://dev.azure.com/contoso",
-            )
-        })?;
-        let project = project.ok_or_else(|| missing("project", "Fabrikam", "project=Fabrikam"))?;
-        Ok(Self {
-            org: crate::ids::org(&org)?,
-            code_project: blank(section.code_project).unwrap_or_else(|| project.clone()),
-            project,
-            teams: section.team,
-            pat: None,
-        })
-    }
-
     /// The `Authorization` value: the PAT as `Basic`, or an `az` token as
     /// `Bearer`, minted afresh when `fresh` says the last one was refused.
     pub(crate) fn authorization(&self, ctx: &Ctx, fresh: bool) -> Result<Secret> {
         if let Some(pat) = &self.pat {
-            return Ok(pat.clone());
+            if let Some(basic) = self.basic.get() {
+                return Ok(basic.clone());
+            }
+            let made = basic(pat.resolve(ctx)?.expose().trim());
+            return Ok(self.basic.get_or_init(|| made).clone());
         }
         let token = ctx.az_token(RESOURCE, fresh)?;
         Ok(Secret::new(format!("Bearer {}", token.expose())))
     }
 
-    pub(crate) fn uses_pat(&self) -> bool {
-        self.pat.is_some()
+    /// Where the PAT comes from, for doctor; `None` for an `az` token.
+    pub(crate) fn pat_source(&self) -> Option<String> {
+        self.pat.as_ref().map(Credential::source)
     }
 
     /// A read.
@@ -224,7 +149,8 @@ impl Ado {
             None => ctx.read(request),
             Some(effect) => ctx.write(effect, request),
         }
-        .map_err(signed_out)?;
+        .map_err(signed_out)
+        .map_err(|error| self.no_such_project(error))?;
         // Bad credentials can also come back as a 203 sign-in page: a success
         // status carrying HTML, which would otherwise read as broken JSON.
         if response.status == 203 {
@@ -236,6 +162,22 @@ impl Ado {
             .into());
         }
         Ok(response)
+    }
+
+    /// A project the organization lacks (TF200016), from `--project` or a
+    /// file id: exit 2 naming the configured ones.
+    fn no_such_project(&self, error: anyhow::Error) -> anyhow::Error {
+        match error.downcast_ref::<Failure>() {
+            Some(failure) if failure.message.contains("TF200016") => {
+                Failure::usage(failure.message.clone())
+                    .hint(format!(
+                        "pass --project one of [ado] project: {}",
+                        self.projects.join(", ")
+                    ))
+                    .into()
+            }
+            _ => error,
+        }
     }
 
     /// `https://dev.azure.com/{org}`.
@@ -444,12 +386,22 @@ impl Ado {
                         .into(),
                 );
             }
-            (_, many) => {
-                let names: Vec<&str> = many
-                    .iter()
-                    .take(5)
-                    .map(|person| person.0.name.as_str())
+            // Several exact ones (two people sharing a display name) are as
+            // ambiguous as several partial ones.
+            (exact, many) => {
+                let many: Vec<&Person> = match exact {
+                    [] => many.iter().map(|person| &person.0).collect(),
+                    exact => exact.iter().map(|person| &person.0).collect(),
+                };
+                let mut names: Vec<String> = (many.iter().take(10))
+                    .map(|person| match &person.email {
+                        Some(email) => format!("{} <{email}>", person.name),
+                        None => person.name.clone(),
+                    })
                     .collect();
+                if many.len() > names.len() {
+                    names.push(format!("and {} more", many.len() - names.len()));
+                }
                 return Err(Failure::usage(format!(
                     "{who:?} matches {} people: {}",
                     many.len(),
@@ -653,9 +605,8 @@ fn signed_out(error: anyhow::Error) -> anyhow::Error {
     }
 }
 
-/// `Basic` credentials from a personal access token: `AZURE_DEVOPS_EXT_PAT`,
-/// the variable the Azure DevOps CLI extension reads too.
-fn basic(pat: &str) -> Secret {
+/// `Basic` credentials from a personal access token.
+pub(crate) fn basic(pat: &str) -> Secret {
     // Made a Secret so redaction also masks the bare value.
     let _ = Secret::new(pat);
     Secret::new(format!("Basic {}", base64(format!(":{pat}").as_bytes())))
@@ -678,33 +629,6 @@ fn base64(bytes: &[u8]) -> String {
         }
     }
     output
-}
-
-/// The organization and project `az devops configure --defaults` saved.
-pub(crate) fn az_defaults(path: Option<PathBuf>) -> (Option<String>, Option<String>) {
-    let Some(raw) = path.and_then(|path| std::fs::read_to_string(path).ok()) else {
-        return (None, None);
-    };
-    let (mut org, mut project) = (None, None);
-    for line in raw.lines() {
-        let Some((key, value)) = line.split_once('=') else {
-            continue;
-        };
-        match key.trim() {
-            "organization" => org = Some(value.trim().to_owned()),
-            "project" => project = Some(value.trim().to_owned()),
-            _ => {}
-        }
-    }
-    (org, project)
-}
-
-pub(crate) fn az_config_path() -> Option<PathBuf> {
-    let dir = std::env::var_os("AZURE_CONFIG_DIR").map_or_else(
-        || std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".azure")),
-        |dir| Some(PathBuf::from(dir)),
-    )?;
-    Some(dir.join("azuredevops").join("config"))
 }
 
 /// A URL path segment: project and repository names carry spaces.
@@ -779,6 +703,9 @@ pub(crate) fn rate_limit_pause(response: &Response) -> Option<Duration> {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
+    use crate::config::Section;
     use crate::{DOMAIN, testing};
     use agent_cli_core::testing::run;
     use agent_cli_core::testing::{Answer, FakeTransport, ctx};
@@ -791,87 +718,6 @@ mod tests {
         Config::parse("c.toml", Some(toml), Vec::new())
             .section("ado")
             .unwrap()
-    }
-
-    #[test]
-    fn config_takes_urls_or_slugs_one_team_or_several_and_the_code_project_defaults() {
-        let none = || (None, None);
-        let ado = Ado::resolve(
-            section("[ado]\norg = \"https://dev.azure.com/contoso/\"\nproject = \"Fabrikam\"\nteam = \"Web Team\"\n"),
-            none,
-            Path::new("c.toml"),
-        )
-        .unwrap();
-        assert_eq!(
-            (ado.org.as_str(), ado.project.as_str()),
-            ("contoso", "Fabrikam")
-        );
-        assert_eq!(ado.code_project, "Fabrikam");
-        assert_eq!(ado.teams, ["Web Team"]);
-
-        let ado = Ado::resolve(
-            section("[ado]\norg = \"https://contoso.visualstudio.com\"\nproject = \"Board\"\ncode_project = \"Code\"\nteam = [\"A\", \" \", \"B\"]\n"),
-            none,
-            Path::new("c.toml"),
-        )
-        .unwrap();
-        assert_eq!(
-            (ado.org.as_str(), ado.code_project.as_str()),
-            ("contoso", "Code")
-        );
-        assert_eq!(ado.teams, ["A", "B"]);
-    }
-
-    #[test]
-    fn a_missing_org_or_project_falls_back_to_az_defaults_then_is_needs_setup() {
-        let defaults = || {
-            (
-                Some("https://dev.azure.com/fabrikam".to_owned()),
-                Some("Web".to_owned()),
-            )
-        };
-        let ado = Ado::resolve(Section::default(), defaults, Path::new("c.toml")).unwrap();
-        assert_eq!(
-            (ado.org.as_str(), ado.project.as_str()),
-            ("fabrikam", "Web")
-        );
-
-        let error = Ado::resolve(
-            section("[ado]\norg = \"contoso\"\n"),
-            || (None, None),
-            Path::new("/x/c.toml"),
-        )
-        .err()
-        .unwrap();
-        let failure = error.downcast_ref::<Failure>().unwrap();
-        assert_eq!(failure.exit, Exit::Setup);
-        assert_eq!(
-            failure.message,
-            "no Azure DevOps project: [ado] project is not set in /x/c.toml"
-        );
-        assert!(
-            failure
-                .hint
-                .as_deref()
-                .unwrap()
-                .contains("AGENT_CLI_ADO_PROJECT")
-        );
-
-        let dir = tempfile::tempdir().unwrap();
-        let file = dir.path().join("config");
-        std::fs::write(
-            &file,
-            "[defaults]\norganization = https://dev.azure.com/contoso/\nproject = Fabrikam\n",
-        )
-        .unwrap();
-        assert_eq!(
-            az_defaults(Some(file)),
-            (
-                Some("https://dev.azure.com/contoso/".into()),
-                Some("Fabrikam".into())
-            )
-        );
-        assert_eq!(az_defaults(Some(dir.path().join("missing"))), (None, None));
     }
 
     #[test]
@@ -976,7 +822,7 @@ mod tests {
     #[test]
     fn a_sign_in_page_or_a_redirect_is_needs_setup_with_the_ado_hint() {
         let ado = Ado {
-            pat: Some(basic("fixture-pat")),
+            pat: Credential::from_keys("pat", Some("fixture-pat".into()), None, None).unwrap(),
             ..Ado::resolve(
                 section("[ado]\norg=\"contoso\"\nproject=\"Fabrikam\"\n"),
                 || (None, None),
@@ -1070,7 +916,7 @@ mod tests {
         };
         let ctx = ctx(setup);
         let ado = Ado {
-            pat: Some(basic("fixture-pat")),
+            pat: Credential::from_keys("pat", Some("fixture-pat".into()), None, None).unwrap(),
             ..Ado::resolve(
                 section("[ado]\norg=\"contoso\"\nproject=\"Fabrikam\"\n"),
                 || (None, None),
@@ -1149,6 +995,48 @@ mod tests {
         assert_eq!(
             transport.sent()[0].authorization.as_deref(),
             Some("Basic OmZpeHR1cmUtcGF0")
+        );
+    }
+
+    #[test]
+    fn a_name_several_people_share_lists_each_with_their_address() {
+        let (outcome, transport) = testing::ado(
+            &["ado", "workitem", "list", "--assignee", "Sam Lee"],
+            vec![testing::page(vec![
+                json!({"id": "u-2", "providerDisplayName": "Sam Lee",
+                    "properties": {"Account": {"$value": "sam@contoso.com"}}}),
+                json!({"id": "u-3", "providerDisplayName": "Sam Lee",
+                    "properties": {"Account": {"$value": "sam.lee@fabrikam.com"}}}),
+                json!({"id": "u-4", "providerDisplayName": "Sam Leeds", "properties": {}}),
+            ])],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains(
+                "\"Sam Lee\" matches 2 people: Sam Lee <sam@contoso.com>, Sam Lee <sam.lee@fabrikam.com>"
+            ),
+            "{}",
+            outcome.stderr
+        );
+        assert_eq!(transport.sent().len(), 1, "no query runs on a guess");
+    }
+
+    #[test]
+    fn a_project_the_organization_lacks_is_exit_2_naming_the_configured_ones() {
+        let (outcome, _) = testing::ado(
+            &["ado", "workitem-type", "list", "--project", "Nope"],
+            vec![Answer::status(
+                404,
+                r#"{"message":"TF200016: The following project does not exist: Nope."}"#,
+            )],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("hint: pass --project one of [ado] project: Fabrikam"),
+            "{}",
+            outcome.stderr
         );
     }
 }

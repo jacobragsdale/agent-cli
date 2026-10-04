@@ -13,6 +13,9 @@ pub struct WorkitemTypeGetArgs {
     /// Bug, "User Story", Task … (any case), from workitem-type list
     #[arg(id = "type")]
     kind: String,
+    /// The project (default: the first in [ado] project)
+    #[arg(long)]
+    project: Option<String>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -28,7 +31,7 @@ pub struct WorkitemTypeDetail {
 }
 
 fn workitem_type_get(ctx: &Ctx, args: WorkitemTypeGetArgs) -> Result<WorkitemTypeDetail> {
-    let ado = Ado::load(ctx)?;
+    let ado = Ado::load_in(ctx, args.project.as_deref())?;
     let kind = types::read_type(ctx, &ado, &args.kind, "", "")?;
     let name = text(&kind["name"]).unwrap_or(args.kind);
     let transitions = kind["transitions"]

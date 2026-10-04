@@ -20,10 +20,13 @@ pub struct CreateArgs {
     parent: Option<i64>,
     #[command(flatten)]
     fields: Fields,
+    /// The project (default: the first in [ado] project)
+    #[arg(long)]
+    project: Option<String>,
 }
 
 fn workitem_create(ctx: &Ctx, args: CreateArgs) -> Result<WorkItemRow> {
-    let ado = Ado::load(ctx)?;
+    let ado = Ado::load_in(ctx, args.project.as_deref())?;
     let kind = args.work_item_type.trim();
     let mut document = field_ops(ctx, &ado, Some(&args.title), &args.fields, None, &|| {
         Ok(kind.to_owned())
@@ -46,7 +49,7 @@ fn workitem_create(ctx: &Ctx, args: CreateArgs) -> Result<WorkItemRow> {
     );
     let created = ado
         .patch_work_item(ctx, Method::Post, &url, document)
-        .map_err(|error| broke_rules(error, || kind.to_owned()))?;
+        .map_err(|error| broke_rules(&ado, error, || kind.to_owned()))?;
     Ok(row(&created))
 }
 
@@ -144,6 +147,41 @@ mod tests {
                     .contains("hint: agent-cli ado workitem-type get Bug"),
             "{}",
             outcome.stderr
+        );
+    }
+
+    #[test]
+    fn project_creates_it_in_another_project_with_that_projects_sprint() {
+        let config = "[ado]\norg = \"contoso\"\nproject = [\"Fabrikam\", \"Mobile\"]\nteam = [\"Web Team\", \"Mobile/Apps\"]\n";
+        let (outcome, transport) = crate::testing::ado_with(
+            config,
+            &[
+                "ado",
+                "workitem",
+                "create",
+                "--project",
+                "mobile",
+                "--type",
+                "Task",
+                "--title",
+                "Ship",
+                "--iteration",
+                "@current",
+                "--dry-run",
+            ],
+            vec![crate::sprint::tests::sprints()],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let sent = transport.sent();
+        assert_eq!(
+            sent[0].url,
+            format!("{BASE}/Mobile/Apps/_apis/work/teamsettings/iterations?api-version=7.1"),
+            "the project's own team"
+        );
+        let plan = &outcome.json()["would"][0];
+        assert_eq!(
+            plan["url"],
+            format!("{BASE}/Mobile/_apis/wit/workitems/$Task?api-version=7.1")
         );
     }
 }

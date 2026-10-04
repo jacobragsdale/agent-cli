@@ -139,8 +139,14 @@ fn field_ops(
         } else if who.eq_ignore_ascii_case("@me") {
             let me = ado.me(ctx)?;
             set("System.AssignedTo", me.email.unwrap_or(me.name))
-        } else {
+        } else if who.contains('@') {
+            // An address names one sign-in; Azure DevOps checks it.
             set("System.AssignedTo", who)
+        } else {
+            // A name is resolved here, so one several people share is exit 2
+            // naming them (with their addresses) rather than a guess.
+            let person = ado.person(ctx, who)?;
+            set("System.AssignedTo", person.email.unwrap_or(person.name))
         });
     }
     if let Some(iteration) = &fields.iteration {
@@ -262,7 +268,7 @@ fn custom_ops(
             })
         else {
             return Err(Failure::usage(format!("{kind} has no field {name:?}"))
-                .hint(type_hint(kind))
+                .hint(type_hint(ado, kind))
                 .into());
         };
         let path = format!("/fields/{}", field.reference);
@@ -308,7 +314,7 @@ fn custom_ops(
 /// A refusal over the type's rules (a state it lacks, a required field, a
 /// value it does not allow) in Azure DevOps's own words, pointing at the
 /// rules. `kind` is asked for only then.
-fn broke_rules(error: anyhow::Error, kind: impl FnOnce() -> String) -> anyhow::Error {
+fn broke_rules(ado: &Ado, error: anyhow::Error, kind: impl FnOnce() -> String) -> anyhow::Error {
     let Some(failure) = error
         .chain()
         .find_map(|cause| cause.downcast_ref::<Failure>())
@@ -322,18 +328,20 @@ fn broke_rules(error: anyhow::Error, kind: impl FnOnce() -> String) -> anyhow::E
     {
         return error;
     }
-    let mut kept = Failure::new(failure.exit, failure.message.clone()).hint(type_hint(&kind()));
+    let mut kept =
+        Failure::new(failure.exit, failure.message.clone()).hint(type_hint(ado, &kind()));
     kept.status = failure.status;
     kept.into()
 }
 
-/// The command that shows a type's states and fields.
-fn type_hint(kind: &str) -> String {
+/// The command that shows a type's states and fields in `ado`'s project.
+fn type_hint(ado: &Ado, kind: &str) -> String {
     let kind = kind.trim();
+    let project = ado.project_flag();
     if kind.contains(char::is_whitespace) {
-        format!("agent-cli ado workitem-type get {kind:?}")
+        format!("agent-cli ado workitem-type get {kind:?}{project}")
     } else {
-        format!("agent-cli ado workitem-type get {kind}")
+        format!("agent-cli ado workitem-type get {kind}{project}")
     }
 }
 
@@ -360,7 +368,9 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{BASE, CODE, ado, ado_piped, dry_run, page, person, story_fields, urls};
+    use crate::testing::{
+        BASE, CODE, ado, ado_piped, dry_run, home, page, person, story_fields, urls,
+    };
 
     /// What `markdown_to_html` makes of `markdown`, so the tests above do not
     /// restate the renderer.
@@ -409,7 +419,7 @@ mod tests {
                 "--acceptance-criteria-file",
                 criteria,
             ],
-            vec![],
+            vec![home("Bug", "Fabrikam")],
         );
         assert_eq!(
             plans[0]["body"],
@@ -466,17 +476,15 @@ mod tests {
                 "cannot read the acceptance criteria from /nonexistent.md",
             ),
         ] {
-            let (outcome, transport) = ado_piped(stdin, argv, vec![]);
+            let (outcome, transport) = ado_piped(stdin, argv, vec![home("Bug", "Fabrikam")]);
             assert_eq!(outcome.code, 2, "{outcome:?}");
             assert!(outcome.stderr.contains(said), "{}", outcome.stderr);
-            assert!(transport.sent().is_empty());
+            assert!(transport.sent().iter().all(|sent| sent.method.is_read()));
         }
     }
 
     fn story(answers: Vec<Answer>) -> Vec<Answer> {
-        let mut all = vec![Answer::json(
-            &json!({"id": 1207, "fields": {"System.WorkItemType": "User Story"}}),
-        )];
+        let mut all = vec![home("User Story", "Fabrikam")];
         all.extend(answers);
         all
     }
@@ -514,7 +522,7 @@ mod tests {
             urls(&transport),
             [
                 format!(
-                    "{BASE}/_apis/wit/workitems/1207?fields=System.WorkItemType&api-version=7.1"
+                    "{BASE}/_apis/wit/workitems/1207?fields=System.WorkItemType,System.TeamProject&api-version=7.1"
                 ),
                 format!(
                     "{CODE}/wit/workitemtypes/User%20Story/fields?$expand=allowedValues&api-version=7.1"
@@ -611,7 +619,11 @@ mod tests {
                 "--if-rev",
                 "7",
             ],
-            vec![me, person("u-2", "Sam Lee", "sam@contoso.com")],
+            vec![
+                home("Bug", "Fabrikam"),
+                me,
+                person("u-2", "Sam Lee", "sam@contoso.com"),
+            ],
         );
         assert_eq!(
             plans[0]["body"],
@@ -634,7 +646,7 @@ mod tests {
                 "-",
                 "--dry-run",
             ],
-            vec![],
+            vec![home("Bug", "Fabrikam")],
         );
         assert_eq!(
             outcome.json()["would"][0]["body"],
@@ -660,10 +672,10 @@ mod tests {
                 "a comment cannot be empty",
             ),
         ] {
-            let (outcome, transport) = ado_piped("x", argv, vec![]);
+            let (outcome, transport) = ado_piped("x", argv, vec![home("Bug", "Fabrikam")]);
             assert_eq!(outcome.code, 2, "{outcome:?}");
             assert!(outcome.stderr.contains(said), "{}", outcome.stderr);
-            assert!(transport.sent().is_empty());
+            assert!(transport.sent().iter().all(|sent| sent.method.is_read()));
         }
 
         // Nobody by that name: exit 4, and the change is never sent.
@@ -676,7 +688,7 @@ mod tests {
                 "--description",
                 "ask @<Nobody>",
             ],
-            vec![page(vec![])],
+            vec![home("Bug", "Fabrikam"), page(vec![])],
         );
         assert_eq!(outcome.code, 4, "{outcome:?}");
         assert!(transport.sent().iter().all(|sent| sent.method.is_read()));

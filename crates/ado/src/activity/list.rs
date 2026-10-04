@@ -106,9 +106,10 @@ fn action(update: &Value) -> Option<(&'static str, String)> {
 fn work_items(ctx: &Ctx, ado: &Ado, who: &Person, since: When) -> Result<Vec<Activity>> {
     let name = who.email.as_deref().unwrap_or(&who.name);
     let query = format!(
-        "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project \
+        "SELECT [System.Id] FROM WorkItems WHERE {} \
          AND [System.ChangedDate] >= '{}' AND EVER [System.ChangedBy] = '{}' \
          ORDER BY [System.ChangedDate] DESC",
+        ado.projects_condition(false),
         since.utc(),
         name.replace('\'', "''")
     );

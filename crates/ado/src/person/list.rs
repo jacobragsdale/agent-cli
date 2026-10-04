@@ -16,6 +16,9 @@ pub struct PersonListArgs {
     /// Most rows to return
     #[arg(long, default_value_t = 50)]
     limit: usize,
+    /// The project (default: the first in [ado] project)
+    #[arg(long)]
+    project: Option<String>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -27,10 +30,10 @@ pub struct PersonRow {
 }
 
 fn person_list(ctx: &Ctx, args: PersonListArgs) -> Result<Vec<PersonRow>> {
-    let ado = Ado::load(ctx)?;
+    let ado = Ado::load_in(ctx, args.project.as_deref())?;
     let teams: Vec<&str> = match &args.team {
         Some(team) => vec![team.as_str()],
-        None if ado.teams.is_empty() => return Err(crate::iteration::no_team()),
+        None if ado.teams.is_empty() => return Err(crate::iteration::no_team(&ado)),
         None => ado.teams.iter().map(String::as_str).collect(),
     };
     let words = args.text.as_deref().map(str::to_lowercase);

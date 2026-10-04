@@ -80,6 +80,7 @@ agent-cli ado workitem list — List work items matching filters (live WIQL)
   --mentioned             Only work items that @mention you (the last 30 days)
   --following             Only work items you follow
   --team str              The team whose sprint @current, @next and @previous mean (default: [ado] team)
+  --project str           Only this project (default: every project in [ado] project)
   --limit int             Most rows to return (default 50)
 A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
 Returns: [{id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev}]
@@ -117,6 +118,7 @@ agent-cli ado workitem create — Create a work item (bug, task, story …), opt
   --acceptance-criteria-file path  The acceptance criteria from a Markdown file
   --field str[]                 Any other field by reference or display name, repeatable; NAME= clears it
   --team str                    The team whose sprints and backlog these are (default: [ado] team)
+  --project str                 The project (default: the first in [ado] project)
 Returns: {id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado workitem create --type 'User Story' --title 'Pay by card' --field 'Story Points=3'
@@ -267,8 +269,9 @@ e.g. agent-cli ado attachment create 1207 --file crash.log --comment 'Log from t
 
 ```text
 agent-cli ado query list — List saved work item queries in My Queries and Shared Queries
-  --text str   Only queries whose name or path holds this text (any case)
-  --limit int  Most rows to return (default 50)
+  --text str     Only queries whose name or path holds this text (any case)
+  --limit int    Most rows to return (default 50)
+  --project str  The project (default: the first in [ado] project)
 Returns: [{id,name,path,type,is_public}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado query list --text triage --fields id,path,type
@@ -278,8 +281,9 @@ e.g. agent-cli ado query list --text triage --fields id,path,type
 
 ```text
 agent-cli ado query run — Run a saved work item query (shared or my query) and list the work items
- *<query> str  The saved query: its id or path as query list prints them, a name no other query has, or its web URL
-  --limit int  Most rows to return (default 50)
+ *<query> str    The saved query: its id or path as query list prints them, a name no other query has, or its web URL
+  --limit int    Most rows to return (default 50)
+  --project str  The project (default: the first in [ado] project)
 Returns: [{id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev,parent,linked_from}]
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado query run 'Shared Queries/Triage' --fields id,title,state,assignee
@@ -289,6 +293,8 @@ e.g. agent-cli ado query run 'Shared Queries/Triage' --fields id,title,state,ass
 
 ```text
 agent-cli ado workitem-type list — List the project's work item types (Bug, User Story, Task …) and their states
+  --project str  The project (default: the first in [ado] project)
+  --limit int    Most rows to return (default 50)
 Returns: [{name,description,states[]}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado workitem-type list --fields name,states
@@ -298,7 +304,8 @@ e.g. agent-cli ado workitem-type list --fields name,states
 
 ```text
 agent-cli ado workitem-type get — Show a work item type's states, moves and fields (required, allowed values)
- *<type> str  Bug, "User Story", Task … (any case), from workitem-type list
+ *<type> str     Bug, "User Story", Task … (any case), from workitem-type list
+  --project str  The project (default: the first in [ado] project)
 Returns: {name,description,states[{name,category}],transitions,fields[{name,ref,type,required,allowed_values[],default}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado workitem-type get Bug --fields states,transitions
@@ -308,8 +315,9 @@ e.g. agent-cli ado workitem-type get Bug --fields states,transitions
 
 ```text
 agent-cli ado sprint list — List a team's sprints (iterations) with their dates, oldest first
-  --team str   The team whose sprints to list (default: [ado] team)
-  --limit int  Most rows to return (the latest) (default 50)
+  --team str     The team whose sprints to list (default: [ado] team)
+  --limit int    Most rows to return (the latest) (default 50)
+  --project str  The project (default: the first in [ado] project)
 Returns: [{id,name,path,start,finish,timeframe}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado sprint list --fields id,start,finish,timeframe
@@ -319,8 +327,9 @@ e.g. agent-cli ado sprint list --fields id,start,finish,timeframe
 
 ```text
 agent-cli ado sprint get — Show how a sprint is going: totals, each person's load and capacity left
-  <sprint> str  @current, @next, @previous, a sprint's path or its name (default @current)
-  --team str    The team whose sprint it is (default: [ado] team)
+  <sprint> str   @current, @next, @previous, a sprint's path or its name (default @current)
+  --team str     The team whose sprint it is (default: [ado] team)
+  --project str  The project (default: the first in [ado] project)
 Returns: {id,name,path,start,finish,timeframe,working_days_left,totals{items,by_state,points,points_done,remaining_work},people[{name,items,points,remaining_work,capacity_per_day,days_off,capacity_left}],team_days_off[{start,end}]}
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado sprint get @current --fields name,working_days_left,totals,people
@@ -333,6 +342,7 @@ agent-cli ado sprint complete — Close a sprint: move its unfinished work items
  *<sprint> str   The sprint to close: @current, @previous, a sprint's path or its name
   --move-to str  The sprint unfinished work moves to: @next (the default), a path or a name (default @next)
   --team str     The team whose sprints they are (default: [ado] team)
+  --project str  The project (default: the first in [ado] project)
 Returns: {sprint,to,moved[{id,type,title,state}],skipped[{id,reason}]}
 Destructive: needs --yes; --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado sprint complete @current --move-to @next --yes
@@ -345,6 +355,7 @@ agent-cli ado backlog list — List a team's ranked backlog (stories, features o
   --level stories|features|epics  stories (the team's requirement backlog), features or epics (default stories)
   --team str                    The team whose backlog it is (default: [ado] team)
   --limit int                   Most rows to return (from the top) (default 50)
+  --project str                 The project (default: the first in [ado] project)
 Returns: [{id,type,title,state,assignee,iteration,area,priority,tags[],changed,rev,rank,points}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado backlog list --level stories --limit 20 --fields rank,id,title,points
@@ -354,7 +365,8 @@ e.g. agent-cli ado backlog list --level stories --limit 20 --fields rank,id,titl
 
 ```text
 agent-cli ado team list — List the project's teams (for [ado] team, which @current needs)
-  --limit int  Most rows to return (default 50)
+  --limit int    Most rows to return (default 50)
+  --project str  The project (default: the first in [ado] project)
 Returns: [{name,id,description}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado team list --fields name
@@ -364,9 +376,10 @@ e.g. agent-cli ado team list --fields name
 
 ```text
 agent-cli ado person list — List a team's members with the address --assignee and @mentions take
-  --team str   A team's name (default: every team in [ado] team)
-  --text str   Words in the name or address
-  --limit int  Most rows to return (default 50)
+  --team str     A team's name (default: every team in [ado] team)
+  --text str     Words in the name or address
+  --limit int    Most rows to return (default 50)
+  --project str  The project (default: the first in [ado] project)
 Returns: [{id,name,team}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado person list --text sam --fields id,name

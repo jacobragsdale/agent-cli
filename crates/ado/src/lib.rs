@@ -11,6 +11,7 @@ mod client;
 mod code;
 mod commit;
 mod compose;
+mod config;
 mod diff;
 mod doctor;
 mod file;

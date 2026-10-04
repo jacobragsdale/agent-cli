@@ -43,19 +43,26 @@ fn attachment_create(ctx: &Ctx, args: AttachmentCreateArgs) -> Result<Attachment
         .ok_or_else(|| Failure::usage(format!("{} names no file", args.file)))?;
     let bytes = std::fs::read(path).map_err(unreadable)?;
     // Bytes uploaded for a work item that is not there would stay in the
-    // organization with nothing pointing at them, so it is read first.
-    ado.get(
+    // organization with nothing pointing at them, so it is read first; its
+    // project is where they are uploaded.
+    let item = ado.get(
         ctx,
         &ado.api(
             None,
             &format!("wit/workitems/{id}"),
-            "fields=System.Id",
+            "fields=System.TeamProject",
             API,
         ),
     )?;
+    let project = text(&item["fields"]["System.TeamProject"]);
     // The bytes go first: the relation needs the URL the upload answers with.
     // %20, not +: the name is what the work item shows.
-    let upload = ado.work("wit/attachments", &format!("fileName={}", segment(name)));
+    let upload = ado.api(
+        Some(project.as_deref().unwrap_or(&ado.project)),
+        "wit/attachments",
+        &format!("fileName={}", segment(name)),
+        API,
+    );
     let uploaded = ado
         .send(
             ctx,
@@ -124,7 +131,9 @@ mod tests {
                 "Spec for the work",
             ],
             vec![
-                Answer::json(&json!({"id": 299, "fields": {"System.Id": 299}})),
+                Answer::json(
+                    &json!({"id": 299, "fields": {"System.TeamProject": "Contoso Mobile"}}),
+                ),
                 uploaded,
                 Answer::json(&work_item()),
             ],
@@ -139,13 +148,13 @@ mod tests {
         assert_eq!(
             urls(&transport),
             [
-                format!("{BASE}/_apis/wit/workitems/299?fields=System.Id&api-version=7.1"),
+                format!("{BASE}/_apis/wit/workitems/299?fields=System.TeamProject&api-version=7.1"),
                 format!(
-                    "{BASE}/Fabrikam/_apis/wit/attachments?fileName=Spec%20v2.txt&api-version=7.1"
+                    "{BASE}/Contoso%20Mobile/_apis/wit/attachments?fileName=Spec%20v2.txt&api-version=7.1"
                 ),
                 format!("{BASE}/_apis/wit/workitems/299?api-version=7.1"),
             ],
-            "the work item is read before any byte is uploaded"
+            "the work item is read before any byte is uploaded, to its own project"
         );
         assert_eq!(sent[1].body, Some(json!("Spec for 299")));
         assert_eq!(

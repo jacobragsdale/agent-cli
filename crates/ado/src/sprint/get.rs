@@ -24,6 +24,9 @@ pub struct SprintGetArgs {
     /// The team whose sprint it is (default: [ado] team)
     #[arg(long)]
     team: Option<String>,
+    /// The project (default: the first in [ado] project)
+    #[arg(long)]
+    project: Option<String>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -76,7 +79,7 @@ struct Person {
 }
 
 fn sprint_get(ctx: &Ctx, args: SprintGetArgs) -> Result<SprintDetail> {
-    let ado = Ado::load(ctx)?;
+    let ado = Ado::load_in(ctx, args.project.as_deref())?;
     let team = team(&ado, args.team.as_deref())?;
     let sprint = resolve(ctx, &ado, Some(team), &args.sprint)?;
     let mut fields = vec![ASSIGNED, REMAINING];

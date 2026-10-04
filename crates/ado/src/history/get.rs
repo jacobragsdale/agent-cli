@@ -121,7 +121,7 @@ fn shown(value: &Value, kind: Option<&str>) -> Option<Value> {
 
 /// The reference name `--field` means: one of the type's fields by either
 /// name, or a reference name as typed (a field the type has since dropped).
-fn wanted(raw: &str, kind: Option<&str>, fields: &[Field]) -> Result<String> {
+fn wanted(ado: &Ado, raw: &str, kind: Option<&str>, fields: &[Field]) -> Result<String> {
     let raw = raw.trim();
     if let Some(field) = fields
         .iter()
@@ -134,7 +134,10 @@ fn wanted(raw: &str, kind: Option<&str>, fields: &[Field]) -> Result<String> {
     }
     let kind = kind.unwrap_or("TYPE");
     Err(Failure::usage(format!("{kind} has no field {raw:?}"))
-        .hint(format!("agent-cli ado workitem-type get {kind:?}"))
+        .hint(format!(
+            "agent-cli ado workitem-type get {kind:?}{}",
+            ado.project_flag()
+        ))
         .into())
 }
 
@@ -165,6 +168,11 @@ fn history_get(ctx: &Ctx, args: HistoryGetArgs) -> Result<History> {
     let id = ado.id(Kind::WorkItem, &args.id)?;
     let updates = updates(ctx, &ado, id)?;
     let latest = |name: &str| updates.iter().rev().find_map(|u| text(new_value(u, name)));
+    // Its type's fields are its own project's, whichever one is configured.
+    let ado = match latest("System.TeamProject") {
+        Some(project) => ado.in_project(&project),
+        None => ado,
+    };
     let kind = latest("System.WorkItemType");
     let fields = match &kind {
         Some(kind) => types::fields(ctx, &ado, kind)?,
@@ -172,7 +180,7 @@ fn history_get(ctx: &Ctx, args: HistoryGetArgs) -> Result<History> {
     };
     let by_ref: HashMap<&str, &Field> = fields.iter().map(|f| (f.reference.as_str(), f)).collect();
     let only = match &args.field {
-        Some(raw) => Some(wanted(raw, kind.as_deref(), &fields)?),
+        Some(raw) => Some(wanted(&ado, raw, kind.as_deref(), &fields)?),
         None => None,
     };
 
@@ -406,6 +414,34 @@ mod tests {
                 .contains("agent-cli ado workitem-type get \"User Story\""),
             "{}",
             outcome.stderr
+        );
+    }
+
+    #[test]
+    fn an_item_in_another_project_is_read_with_that_projects_type() {
+        let mut moved = updates();
+        let mut body: Value = serde_json::from_str(&moved.body).unwrap();
+        body["value"][0]["fields"]["System.TeamProject"] = json!({"newValue": "Contoso Mobile"});
+        moved.body = body.to_string();
+        let mut answers = vec![moved];
+        answers.extend(type_fields());
+        let (outcome, transport) = ado(
+            &["ado", "history", "get", "42", "--field", "Effort"],
+            answers,
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains(
+                "agent-cli ado workitem-type get \"User Story\" --project 'Contoso Mobile'"
+            ),
+            "{}",
+            outcome.stderr
+        );
+        assert_eq!(
+            urls(&transport)[1],
+            format!(
+                "{BASE}/Contoso%20Mobile/_apis/wit/workitemtypes/User%20Story/fields?$expand=allowedValues&api-version=7.1"
+            )
         );
     }
 

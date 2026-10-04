@@ -41,7 +41,7 @@ fn a_read_without_a_credential_is_needs_setup_naming_both_ways_in() {
     assert!(output.stdout.is_empty());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.contains("hint: run `az login`, or set AZURE_DEVOPS_EXT_PAT"),
+        stderr.contains("hint: set pat_env or pat_cmd under [ado] (or AZURE_DEVOPS_EXT_PAT)"),
         "{stderr}"
     );
 }

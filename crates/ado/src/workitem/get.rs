@@ -88,6 +88,7 @@ fn workitem_get(ctx: &Ctx, args: GetArgs) -> Result<WorkItem> {
             crate::client::API,
         ),
     )?;
+    let project = text(&item["fields"]["System.TeamProject"]);
     let mut work = WorkItem {
         row: row(&item),
         parent: None,
@@ -103,7 +104,7 @@ fn workitem_get(ctx: &Ctx, args: GetArgs) -> Result<WorkItem> {
             .map(|html| html_to_markdown(&html)),
         comment_count: None,
         comments: Vec::new(),
-        url: ado.work_item_url(text(&item["fields"]["System.TeamProject"]).as_deref(), id),
+        url: ado.work_item_url(project.as_deref(), id),
     };
     let mut artifacts = Vec::new();
     for (rel, url) in relations(&item) {
@@ -142,8 +143,9 @@ fn workitem_get(ctx: &Ctx, args: GetArgs) -> Result<WorkItem> {
         }
     }
     if args.comments > 0 {
+        // Comments hang off a project: the item's own, whichever is configured.
         let url = ado.api(
-            Some(&ado.project),
+            Some(project.as_deref().unwrap_or(&ado.project)),
             &format!("wit/workItems/{id}/comments"),
             &format!("$top={}&order=desc", args.comments),
             COMMENTS_API,
@@ -277,7 +279,7 @@ mod tests {
         assert!(
             outcome
                 .stderr
-                .contains("hint: run `az login`, or set AZURE_DEVOPS_EXT_PAT"),
+                .contains("hint: set pat_env or pat_cmd under [ado] (or AZURE_DEVOPS_EXT_PAT)"),
             "{}",
             outcome.stderr
         );
@@ -287,23 +289,32 @@ mod tests {
     fn an_item_in_another_project_links_to_that_project() {
         let other = json!({"id": 837, "rev": 1, "fields": {"System.Title": "Elsewhere",
             "System.TeamProject": "Contoso Mobile"}});
-        let (outcome, _) = ado(
+        let (outcome, transport) = ado(
             &[
                 "ado",
                 "workitem",
                 "get",
                 "837",
                 "--comments",
-                "0",
+                "1",
                 "--fields",
                 "url",
             ],
-            vec![Answer::json(&other)],
+            vec![
+                Answer::json(&other),
+                Answer::json(&json!({"totalCount": 0, "comments": []})),
+            ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(
             outcome.json()["url"],
             format!("{BASE}/Contoso%20Mobile/_workitems/edit/837")
+        );
+        assert!(
+            transport.sent()[1].url.starts_with(&format!(
+                "{BASE}/Contoso%20Mobile/_apis/wit/workItems/837/comments"
+            )),
+            "its comments, from its project"
         );
     }
 }
