@@ -138,6 +138,25 @@
 # read_only = true                       # refuse every change here: trigger,
 #                                        # pause, retry
 # k8s_scope = "prod"
+
+# [[controlm.instance]]
+# One per BMC Control-M Enterprise Manager (on-prem), over its Automation API.
+# --instance takes the name; the only one is the default. Sign in with the
+# username and password of Control-M's web client (POST {base_url}/session/login,
+# a session token per command), or with an API token (Enterprise Manager
+# 9.0.21+, sent as x-api-key). The credential goes only to URLs under base_url.
+# name = "prod"
+# base_url = "https://ctm-em.contoso.example:8443/automation-api"
+#                                        # the Automation API endpoint, with
+#                                        # /automation-api
+# username = "agent"
+# password_env = "CONTROLM_PASSWORD"     # or password_cmd = "pass show controlm/prod"
+# token_env = "CONTROLM_TOKEN"           # instead of username and password:
+#                                        # an API token (or token_cmd)
+# utc_offset = "-05:00"                  # the Control-M/Servers' clock, which
+#                                        # every time the API prints and takes
+#                                        # is on; default +00:00
+# read_only = true                       # refuse every change here: rerun, order
 # [datadog]
 # Also read as [dd]. The credential is a Datadog personal access token (sent
 # as Authorization: Bearer), else the API + application key pair. Name where

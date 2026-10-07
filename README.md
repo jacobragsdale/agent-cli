@@ -2,10 +2,10 @@
 
 One command-line tool that gives AI coding agents Azure DevOps, Confluence
 Cloud, Azure (Key Vault, Container Registry, AKS, AI Search), Kubernetes, SQL
-Server and Oracle, Apache Airflow and Datadog. Its only users are agents: every
-command is `agent-cli <domain> <resource> <verb>`, output is compact JSON that
-`--fields` narrows, errors name the command to run next, and every change
-honours `--dry-run`, `--yes` and a read-only mode.
+Server and Oracle, Apache Airflow, BMC Control-M and Datadog. Its only users
+are agents: every command is `agent-cli <domain> <resource> <verb>`, output is
+compact JSON that `--fields` narrows, errors name the command to run next, and
+every change honours `--dry-run`, `--yes` and a read-only mode.
 
 ## Install
 
@@ -19,7 +19,8 @@ cargo install --git https://github.com/jacobragsdale/agent-cli agent-cli
 Oracle connections also need Oracle Instant Client at run time; nothing else
 does. To tell your agents the tool exists, one line in a global `CLAUDE.md` or
 `AGENTS.md` is enough: "agent-cli gives you Azure DevOps, Confluence, Azure
-(AI Search too), Kubernetes, SQL, Airflow and Datadog; start with `agent-cli`."
+(AI Search too), Kubernetes, SQL, Airflow, Control-M and Datadog; start with
+`agent-cli`."
 
 ## Configure
 
@@ -40,6 +41,7 @@ any key, for example `AGENT_CLI_ADO_PROJECT=web`.
 | k8s | `[[k8s.scope]]` per cluster | your kubeconfig; `agent-cli aks cluster connect NAME` fetches it for AKS |
 | sql | `[[sql.connection]]` per database | `password_env` or `password_cmd` |
 | airflow | `[[airflow.instance]]` per server | username with `password_env`/`password_cmd`, or `token_env`/`token_cmd` |
+| controlm | `[[controlm.instance]]` per Enterprise Manager | username with `password_env`/`password_cmd`, or an API token: `token_env`/`token_cmd` |
 | dd | `[datadog]` site and env | `token_env`/`token_cmd`, else `DD_ACCESS_TOKEN` |
 
 A credential is named by where it comes from (`KEY_env` for a variable,
@@ -99,6 +101,7 @@ can only read.
 | k8s | Kubernetes pods, logs, events, deployments, config maps, secrets | 14 |
 | sql | SQL Server and Oracle queries and catalog | 6 |
 | airflow | Apache Airflow 2.9+ and 3 DAGs, runs, task instances, logs, import errors | 21 |
+| controlm | BMC Control-M job runs, their status, output and definitions; rerun and order | 7 |
 | dd | Datadog logs, metrics, monitors, downtimes, events, APM, incidents, SLOs | 20 |
 
 ## Documentation

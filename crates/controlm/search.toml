@@ -1,0 +1,66 @@
+# Labeled search queries for controlm, written as tasks an agent would type.
+# The search gate in crates/cli reads every crates/*/search.toml; CI fails
+# when search puts the expected command first in fewer than 80% of queries,
+# or in the top five in fewer than 95%, across all crates.
+
+# ---------- controlm ----------
+
+[[query]]
+text = "which control-m jobs failed today"
+expect = "controlm job list"
+
+[[query]]
+text = "find the ctm job load_orders"
+expect = "controlm job list"
+
+[[query]]
+text = "list running batch jobs in control-m"
+expect = "controlm job list"
+
+[[query]]
+text = "why is the control-m job still waiting"
+expect = "controlm job get"
+
+[[query]]
+text = "status of control-m job ctm-prod:00a1b"
+expect = "controlm job get"
+
+[[query]]
+text = "show the output of a failed control-m job"
+expect = "controlm job logs"
+
+[[query]]
+text = "read the sysout of a ctm job"
+expect = "controlm job logs"
+
+[[query]]
+text = "rerun a failed control-m job"
+expect = "controlm job retry"
+
+[[query]]
+text = "retry the ctm job that ended not ok"
+expect = "controlm job retry"
+
+[[query]]
+text = "trigger a control-m job manually"
+expect = "controlm job run"
+
+[[query]]
+text = "order a control-m folder to run now"
+expect = "controlm job run"
+
+[[query]]
+text = "which control-m folder defines the job load_orders"
+expect = "controlm definition list"
+
+[[query]]
+text = "what command does the ctm job run and on which host"
+expect = "controlm definition list"
+
+[[query]]
+text = "when is the control-m job scheduled to run"
+expect = "controlm definition get"
+
+[[query]]
+text = "what conditions does the control-m job wait for in its definition"
+expect = "controlm definition get"

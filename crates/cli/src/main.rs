@@ -17,6 +17,7 @@ const DOMAINS: &[Domain] = &[
     agent_cli_k8s::K8S,
     agent_cli_sql::DOMAIN,
     agent_cli_airflow::DOMAIN,
+    agent_cli_controlm::DOMAIN,
     agent_cli_dd::DOMAIN,
 ];
 
@@ -542,6 +543,18 @@ username = "agent"
 password_env = "AIRFLOW_PROD_PASSWORD"
 read_only = true
 k8s_scope = "prod"
+
+[[controlm.instance]]
+name = "prod"
+base_url = "https://ctm-em-prod.contoso.example:8443/automation-api"
+username = "agent"
+password_env = "CONTROLM_PROD_PASSWORD"
+utc_offset = "-05:00"
+
+[[controlm.instance]]
+name = "test"
+base_url = "https://ctm-em-test.contoso.example:8443/automation-api"
+token_env = "CONTROLM_TEST_TOKEN"
 [datadog]
 site = "datadoghq.eu"
 env = "prod"
@@ -570,6 +583,7 @@ token_cmd = "pup auth token"
             "k8s 2 scopes",
             "sql 2 connections",
             "airflow 2 instances",
+            "controlm 2 instances",
             "dd eu",
         ] {
             assert!(config_line.contains(status), "{status}: {config_line}");

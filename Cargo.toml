@@ -17,6 +17,7 @@ agent-cli-sql = { path = "crates/sql" }
 agent-cli-azure = { path = "crates/azure" }
 agent-cli-k8s = { path = "crates/k8s" }
 agent-cli-airflow = { path = "crates/airflow" }
+agent-cli-controlm = { path = "crates/controlm" }
 agent-cli-dd = { path = "crates/dd" }
 anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive"] }

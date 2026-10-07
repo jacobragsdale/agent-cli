@@ -1,7 +1,6 @@
 # agent-cli-core: the API a domain uses
 
-`src/lib.rs` re-exports all of it; each name below is one `pub use`. Jump
-to definitions.
+`src/lib.rs` re-exports each name below. Jump to definitions.
 
 ## Registry
 - `command!` makes a `Command` from `fn(&Ctx, Args) -> Result<Row>` (Args:
@@ -18,21 +17,21 @@ to definitions.
 ## Ctx: every effect goes through it
 - `Ctx`: `read(op)`, `write(effect, op)` (where --dry-run, read-only and
   --yes are enforced), `note`, `env`, `section`, `config`, `cache`,
-  `deadline`, `remaining`, `long_text` (returns `LongText`), `save` (bytes
+  `deadline`, `remaining`, `long_text` (a `LongText`), `save` (bytes
   to `--output`; the row then prints). `Op`: what read and write perform.
 - `Globals`, `Setup`, `DEFAULT_TIMEOUT`: the run's surroundings.
 - `Config`; `pick`: the one rule for scope flags; `Cache`: keyed, with a TTL.
-  A doctor returning no checks reads as not set up (`agent-cli config`).
+  A doctor with no checks reads as not set up (`agent-cli config`).
 
 ## HTTP and processes
 - `Request` (`get`, `query` = a POST that only reads, `.json`, `.form`,
   `.bytes`, `.header`, `.auth(Mint)`, `.keep_redirect()`: a 3xx is the
   answer, `.quota_429()`: a 429 is final), `Response` (`bytes` when not
   UTF-8, `into_bytes`), `Method`, `Body`, `Mint`.
-- `Transport`, `Https`: the seam tests fake, and the real one.
-- `host_under(url, suffix)` before any token goes out; `percent_encode`,
-  `form_encode`, `base64`; `failure_message`: a refusal in the service's
-  own words.
+- `Transport`, `Https`: the seam tests fake; the real one.
+- `host_under(url, suffix)` before a token goes out; for a configured
+  server, `same_origin` under `check_base_url`. `percent_encode`,
+  `form_encode`, `base64`; `failure_message`: the service's own words.
 - `run_until`, `Output`: a child process under the deadline.
 - `on_stop`, `OnStop`: what a signal must stop (a DB call) until dropped.
 

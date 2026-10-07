@@ -14,7 +14,7 @@ use std::cell::{OnceCell, RefCell};
 
 use agent_cli_core::{
     Config, Credential, Ctx, Effect, Exit, Failure, Method, Request, Response, Secret,
-    percent_encode, pick, status_of, utc,
+    percent_encode, pick, same_origin, status_of, utc,
 };
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
@@ -357,13 +357,6 @@ impl Raw {
             dags_repo: self.dags_repo.filter(|repo| !repo.trim().is_empty()),
         })
     }
-}
-
-// ponytail: `url` under `base` and a `/`, the token check `host_under` (https, no ports) can't
-// make for a compose Airflow; move it to core when a second domain has a configurable base URL.
-pub(crate) fn same_origin(base: &str, url: &str) -> bool {
-    url.strip_prefix(base)
-        .is_some_and(|rest| rest.starts_with('/'))
 }
 
 /// A URL path segment with every `%XX` decoded.
@@ -778,52 +771,6 @@ mod tests {
             ("", "anything", true),
         ] {
             assert_eq!(like(pattern, text), want, "{pattern} {text}");
-        }
-    }
-
-    #[test]
-    fn a_token_goes_only_under_the_configured_base_url() {
-        for (base, url) in [
-            (
-                "https://airflow.contoso.example",
-                "https://airflow.contoso.example/api/v2/dags",
-            ),
-            ("http://localhost:8080", "http://localhost:8080/auth/token"),
-            (
-                "https://contoso.example/airflow",
-                "https://contoso.example/airflow/api/v2/x",
-            ),
-        ] {
-            assert!(same_origin(base, url), "{url}");
-        }
-        for (base, url) in [
-            (
-                "https://airflow.contoso.example",
-                "https://airflow.contoso.example.evil.example/x",
-            ),
-            (
-                "https://airflow.contoso.example",
-                "https://airflow.contoso.example@evil.example/x",
-            ),
-            (
-                "https://airflow.contoso.example",
-                "http://airflow.contoso.example/x",
-            ),
-            (
-                "https://airflow.contoso.example",
-                "https://airflow.contoso.example:8443/x",
-            ),
-            (
-                "https://contoso.example/airflow",
-                "https://contoso.example/airflow2/x",
-            ),
-            (
-                "https://contoso.example/airflow",
-                "https://contoso.example/other",
-            ),
-            ("http://localhost:8080", "http://localhost:80801/x"),
-        ] {
-            assert!(!same_origin(base, url), "{url}");
         }
     }
 

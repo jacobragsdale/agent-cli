@@ -570,7 +570,7 @@ mod tests {
             unknown
                 .hint
                 .unwrap()
-                .contains("ado, confluence, azure, k8s, sql, airflow, datadog, kv"),
+                .contains("ado, confluence, azure, k8s, sql, airflow, controlm, datadog, kv"),
             "every section and alias is named"
         );
     }

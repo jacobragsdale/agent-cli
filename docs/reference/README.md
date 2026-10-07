@@ -15,4 +15,5 @@ Every command also takes the globals `--fields a,b.c`, `--raw`, `--dry-run`, `--
 | [k8s](k8s.md) | Kubernetes |
 | [sql](sql.md) | SQL Server/Oracle |
 | [airflow](airflow.md) | Apache Airflow |
+| [controlm](controlm.md) | BMC Control-M |
 | [dd](dd.md) | Datadog |

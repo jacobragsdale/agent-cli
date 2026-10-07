@@ -24,6 +24,7 @@ const DOMAINS: &[Domain] = &[
     agent_cli_k8s::K8S,
     agent_cli_sql::DOMAIN,
     agent_cli_airflow::DOMAIN,
+    agent_cli_controlm::DOMAIN,
     agent_cli_dd::DOMAIN,
 ];
 

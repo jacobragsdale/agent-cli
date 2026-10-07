@@ -8,6 +8,7 @@
 //! command gets all of it by being registered.
 
 mod az;
+mod base_url;
 mod cache;
 mod config;
 mod credential;
@@ -35,6 +36,7 @@ pub use clap;
 pub use schemars;
 pub use serde_json;
 
+pub use base_url::{check_base_url, same_origin};
 pub use cache::Cache;
 pub use config::{Config, pick};
 pub use credential::Credential;

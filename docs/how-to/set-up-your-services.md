@@ -323,6 +323,39 @@ The connection row must say "signed in as" your name. A site that lets
 anyone read answers a wrong or expired token as the anonymous user instead
 of refusing it, and doctor reports that as a failure.
 
+## 10. Control-M (controlm)
+
+An on-prem Control-M Enterprise Manager, over its Automation API (usually
+port 8443).
+
+```sh
+agent-cli config example controlm
+```
+
+```toml
+[[controlm.instance]]
+name = "prod"
+base_url = "https://ctm-em.contoso.example:8443/automation-api"
+username = "agent"
+password_cmd = "pass show controlm/prod"
+utc_offset = "-05:00"
+read_only = true
+```
+
+The username and password are the ones Control-M's web client takes; each
+command logs in once. An API token (Enterprise Manager 9.0.21 and later,
+made in the web client) goes as `token_cmd` instead of the pair. Set
+`utc_offset` to the Control-M/Servers' clock: the API prints times on it, and
+agent-cli turns them into UTC.
+
+```sh
+agent-cli doctor controlm
+```
+
+The credential row names the Control-M/Servers the credential sees. A
+certificate error means agent-cli does not trust the Enterprise Manager's
+certificate (its built-in roots are the public ones).
+
 ## WSL
 
 On WSL 2 under Windows 11, four things go wrong that do not on Linux.
