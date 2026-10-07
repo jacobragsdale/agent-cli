@@ -1,8 +1,8 @@
 # agent-cli
 
-One command-line tool that gives AI coding agents Azure DevOps, Azure (Key
-Vault, Container Registry, AKS), Kubernetes, SQL Server and Oracle, Apache
-Airflow and Datadog. Its only users are agents: every command is `agent-cli
+One command-line tool that gives AI coding agents Azure DevOps, Confluence
+Cloud, Azure (Key Vault, Container Registry, AKS), Kubernetes, SQL Server and
+Oracle, Apache Airflow and Datadog. Its only users are agents: every command is `agent-cli
 <domain> <resource> <verb>`, output is compact JSON that `--fields` narrows,
 errors name the command to run next, and every change honours `--dry-run`,
 `--yes` and a read-only mode.
@@ -18,8 +18,8 @@ cargo install --git https://github.com/jacobragsdale/agent-cli agent-cli
 
 Oracle connections also need Oracle Instant Client at run time; nothing else
 does. To tell your agents the tool exists, one line in a global `CLAUDE.md` or
-`AGENTS.md` is enough: "agent-cli gives you Azure DevOps, Azure, Kubernetes,
-SQL, Airflow and Datadog; start with `agent-cli`."
+`AGENTS.md` is enough: "agent-cli gives you Azure DevOps, Confluence, Azure,
+Kubernetes, SQL, Airflow and Datadog; start with `agent-cli`."
 
 ## Configure
 
@@ -35,6 +35,7 @@ any key, for example `AGENT_CLI_ADO_PROJECT=web`.
 | Domain | Section | Sign-in |
 |---|---|---|
 | ado | `[ado]` org, project, team | `AZURE_DEVOPS_EXT_PAT`, else your `az login` |
+| confluence | `[confluence]` url, email | an API token: `token_env`/`token_cmd` |
 | kv, acr, aks | `[azure]` (optional allowlists) | your `az login` |
 | k8s | `[[k8s.scope]]` per cluster | your kubeconfig; `agent-cli aks cluster connect NAME` fetches it for AKS |
 | sql | `[[sql.connection]]` per database | `password_env` or `password_cmd` |
@@ -90,6 +91,7 @@ can only read.
 | Domain | Service | Commands |
 |---|---|---|
 | ado | Azure DevOps: work items, pull requests, pipelines, runs, approvals | 57 |
+| confluence | Confluence Cloud pages as Markdown, page trees, comments, attachments, versions | 14 |
 | kv | Key Vault secrets and versions (metadata; values only with `--reveal`) | 4 |
 | acr | Container Registry repositories, tags, manifests | 4 |
 | aks | AKS clusters and their credentials | 2 |

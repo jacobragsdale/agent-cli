@@ -4,6 +4,7 @@
 use std::time::Duration;
 
 use time::format_description::BorrowedFormatItem;
+use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
 use time::{OffsetDateTime, PrimitiveDateTime};
 
@@ -23,8 +24,9 @@ const HTTP_DATE: &[BorrowedFormatItem<'static>] = format_description!(
 
 /// How long to leave a throttled answer alone: `Retry-After`, Resource
 /// Graph's `x-ms-user-quota-resets-after` clock, `X-RateLimit-Reset`
-/// (Datadog's seconds to wait, or an epoch second as some services write
-/// it), or the default. The caller caps it by the deadline.
+/// (Datadog's seconds to wait, an epoch second as some services write it,
+/// or Confluence's ISO 8601 time), or the default. The caller caps it by the
+/// deadline.
 #[must_use]
 pub(crate) fn throttle_wait(response: &Response, now: OffsetDateTime) -> Duration {
     if let Some(header) = response.header("Retry-After") {
@@ -47,6 +49,14 @@ pub(crate) fn throttle_wait(response: &Response, now: OffsetDateTime) -> Duratio
         } else {
             reset
         };
+        return retry_after(Some(&seconds.to_string()), now);
+    }
+    // Confluence writes it as an ISO 8601 time: `2025-10-08T15:00:00Z`.
+    if let Some(reset) = response
+        .header("X-RateLimit-Reset")
+        .and_then(|raw| OffsetDateTime::parse(raw.trim(), &Rfc3339).ok())
+    {
+        let seconds = (reset - now).as_seconds_f64();
         return retry_after(Some(&seconds.to_string()), now);
     }
     DEFAULT_RETRY_AFTER
@@ -119,5 +129,10 @@ mod tests {
             "an epoch second counts forward from now"
         );
         assert_eq!(throttle_wait(&reset("soon"), now), DEFAULT_RETRY_AFTER);
+        assert_eq!(
+            throttle_wait(&reset("2023-11-14T22:13:35Z"), now),
+            Duration::from_secs(15),
+            "an ISO 8601 time counts forward from now"
+        );
     }
 }

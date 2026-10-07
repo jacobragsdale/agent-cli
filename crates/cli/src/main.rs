@@ -9,6 +9,7 @@ use agent_cli_core::Domain;
 /// Every domain, in overview order. Each later phase adds its crate's `DOMAIN`.
 const DOMAINS: &[Domain] = &[
     agent_cli_ado::DOMAIN,
+    agent_cli_confluence::DOMAIN,
     agent_cli_azure::KV,
     agent_cli_azure::ACR,
     agent_cli_azure::AKS,
@@ -494,6 +495,11 @@ mod tests {
 org = "contoso-engineering-platform"
 project = "Fabrikam Fiber Commerce"
 
+[confluence]
+url = "https://contoso-engineering.atlassian.net/wiki"
+email = "jane.doe@contoso-engineering.com"
+token_env = "CONFLUENCE_TOKEN"
+
 [azure]
 vaults = ["kv-contoso-prod-westeurope", "kv-contoso-staging-westeurope"]
 registries = "contosoacr"
@@ -555,6 +561,7 @@ token_cmd = "pup auth token"
             .unwrap();
         for status in [
             "ado contoso-engineeri\u{2026}",
+            "confluence contoso-en\u{2026}",
             "kv 2 vaults",
             "acr 1 registry",
             "k8s 2 scopes",
