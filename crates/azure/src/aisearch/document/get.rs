@@ -49,6 +49,18 @@ fn document_get(ctx: &Ctx, args: DocumentGetArgs) -> Result<Each<Document>> {
         cut: false,
         vectors: args.vectors,
     };
+    // `orders 88123`: an index and a key, given as two words.
+    if args.index.is_none()
+        && let [index, key] = args.document.as_slice()
+        && !index.contains('/')
+        && !key.contains('/')
+    {
+        return Err(Failure::usage(format!("{key} names no index"))
+            .hint(format!(
+                "agent-cli aisearch document get {key} --index {index}"
+            ))
+            .into());
+    }
     each(&args.document, |raw| {
         let (service, index, key) = located(raw, args.index.as_deref(), args.service.as_deref())?;
         let search = holder(ctx, &azure, "indexes", &index, service.as_deref())?;
@@ -93,6 +105,24 @@ mod tests {
             "srch-contoso-prod",
             "aadOrApiKey",
         )])
+    }
+
+    #[test]
+    fn an_index_and_a_key_as_two_words_get_the_command_that_takes_them() {
+        let (outcome, transport) = azure(
+            &[AISEARCH],
+            &["aisearch", "document", "get", "orders", "88123"],
+            vec![],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("agent-cli aisearch document get 88123 --index orders"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(transport.sent().is_empty());
     }
 
     #[test]

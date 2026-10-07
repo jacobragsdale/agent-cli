@@ -2188,5 +2188,669 @@
     "authorId": "557058:00000000-0000-4000-8000-00000000a001"
    }
   }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/rest/api/search?cql=siteSearch+~+%22release+notes%22+and+text+~+%22release+notes%22+and+type+in+%28page%2C+blogpost%29&expand=content.space%2Ccontent.version&limit=50",
+  "note": "page list \"release notes\"",
+  "answer": {
+   "results": [
+    {
+     "content": {
+      "id": "1201",
+      "type": "page",
+      "status": "current",
+      "title": "Release notes v1.4.2",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a001",
+        "displayName": "Jane Doe"
+       },
+       "when": "2026-09-28T22:05:00.000Z",
+       "number": 3
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+       "tinyui": "/x/sQQ"
+      }
+     },
+     "title": "Release notes v1.4.2",
+     "excerpt": "Released to prod on 2026-09-28. Changes Retry on 429 from the orders service: PR 431 Work items 1207 and 1210 Rollout The full changelog is ; the roll",
+     "url": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-09-28T22:05:00.000Z"
+    },
+    {
+     "content": {
+      "id": "1200",
+      "type": "page",
+      "status": "current",
+      "title": "Release notes",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a001",
+        "displayName": "Jane Doe"
+       },
+       "when": "2026-03-02T09:06:00.000Z",
+       "number": 1
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1200/Release+notes",
+       "tinyui": "/x/sAQ"
+      }
+     },
+     "title": "Release notes",
+     "excerpt": "One page per release of the api service.",
+     "url": "/spaces/ENG/pages/1200/Release+notes",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-03-02T09:06:00.000Z"
+    }
+   ],
+   "start": 0,
+   "limit": 50,
+   "size": 2,
+   "totalSize": 2,
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki",
+    "context": "/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/rest/api/search?cql=siteSearch+~+%22v1.4.2%22+and+text+~+%22v1.4.2%22+and+type+in+%28page%2C+blogpost%29&expand=content.space%2Ccontent.version&limit=50",
+  "note": "page list v1.4.2",
+  "answer": {
+   "results": [
+    {
+     "content": {
+      "id": "1201",
+      "type": "page",
+      "status": "current",
+      "title": "Release notes v1.4.2",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a001",
+        "displayName": "Jane Doe"
+       },
+       "when": "2026-09-28T22:05:00.000Z",
+       "number": 3
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+       "tinyui": "/x/sQQ"
+      }
+     },
+     "title": "Release notes v1.4.2",
+     "excerpt": "Released to prod on 2026-09-28. Changes Retry on 429 from the orders service: PR 431 Work items 1207 and 1210 Rollout The full changelog is ; the roll",
+     "url": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-09-28T22:05:00.000Z"
+    }
+   ],
+   "start": 0,
+   "limit": 50,
+   "size": 1,
+   "totalSize": 1,
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki",
+    "context": "/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/rest/api/search?cql=type+in+%28page%2C+blogpost%29+and+title+~+%22release%22+order+by+lastmodified+desc&expand=content.space%2Ccontent.version&limit=50",
+  "note": "page list --title release",
+  "answer": {
+   "results": [
+    {
+     "content": {
+      "id": "1201",
+      "type": "page",
+      "status": "current",
+      "title": "Release notes v1.4.2",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a001",
+        "displayName": "Jane Doe"
+       },
+       "when": "2026-09-28T22:05:00.000Z",
+       "number": 3
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+       "tinyui": "/x/sQQ"
+      }
+     },
+     "title": "Release notes v1.4.2",
+     "excerpt": "Released to prod on 2026-09-28. Changes Retry on 429 from the orders service: PR 431 Work items 1207 and 1210 Rollout The full changelog is ; the roll",
+     "url": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-09-28T22:05:00.000Z"
+    },
+    {
+     "content": {
+      "id": "1200",
+      "type": "page",
+      "status": "current",
+      "title": "Release notes",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a001",
+        "displayName": "Jane Doe"
+       },
+       "when": "2026-03-02T09:06:00.000Z",
+       "number": 1
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1200/Release+notes",
+       "tinyui": "/x/sAQ"
+      }
+     },
+     "title": "Release notes",
+     "excerpt": "One page per release of the api service.",
+     "url": "/spaces/ENG/pages/1200/Release+notes",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-03-02T09:06:00.000Z"
+    }
+   ],
+   "start": 0,
+   "limit": 50,
+   "size": 2,
+   "totalSize": 2,
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki",
+    "context": "/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/rest/api/search?cql=type+in+%28page%2C+blogpost%29+order+by+lastmodified+desc&expand=content.space%2Ccontent.version&limit=50",
+  "note": "page list: every page, newest first",
+  "answer": {
+   "results": [
+    {
+     "content": {
+      "id": "1201",
+      "type": "page",
+      "status": "current",
+      "title": "Release notes v1.4.2",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a001",
+        "displayName": "Jane Doe"
+       },
+       "when": "2026-09-28T22:05:00.000Z",
+       "number": 3
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+       "tinyui": "/x/sQQ"
+      }
+     },
+     "title": "Release notes v1.4.2",
+     "excerpt": "Released to prod on 2026-09-28. Changes Retry on 429 from the orders service: PR 431 Work items 1207 and 1210 Rollout The full changelog is ; the roll",
+     "url": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-09-28T22:05:00.000Z"
+    },
+    {
+     "content": {
+      "id": "1101",
+      "type": "page",
+      "status": "current",
+      "title": "Runbook: etl_nightly",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a002",
+        "displayName": "Sam Lee"
+       },
+       "when": "2026-09-25T14:02:11.000Z",
+       "number": 4
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1101/Runbook+etl+nightly",
+       "tinyui": "/x/TQQ"
+      }
+     },
+     "title": "Runbook: etl_nightly",
+     "excerpt": "Owner: the data team. Alert: the etl_nightly DAG failing in prod Airflow. First checks Open the failed run in Airflow and find the task that failed, u",
+     "url": "/spaces/ENG/pages/1101/Runbook+etl+nightly",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-09-25T14:02:11.000Z"
+    },
+    {
+     "content": {
+      "id": "1102",
+      "type": "page",
+      "status": "current",
+      "title": "Runbook: worker crash loop",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a003",
+        "displayName": "Priya Patel"
+       },
+       "when": "2026-09-21T09:40:00.000Z",
+       "number": 2
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1102/Runbook+worker+crash+loop",
+       "tinyui": "/x/TgQ"
+      }
+     },
+     "title": "Runbook: worker crash loop",
+     "excerpt": "Alert: [prod] worker crash-looping in Datadog. Cause The worker cannot sign in to the orders database once its password has expired. Fix Rotate kv-con",
+     "url": "/spaces/ENG/pages/1102/Runbook+worker+crash+loop",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-09-21T09:40:00.000Z"
+    },
+    {
+     "content": {
+      "id": "1300",
+      "type": "page",
+      "status": "current",
+      "title": "Orders search",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a002",
+        "displayName": "Sam Lee"
+       },
+       "when": "2026-09-10T15:30:00.000Z",
+       "number": 6
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1300/Orders+search",
+       "tinyui": "/x/FAU"
+      }
+     },
+     "title": "Orders search",
+     "excerpt": "Goal Let support find an order by customer, id or address in one box. Tracked in SRCH-12 . Design An Azure AI Search index orders on srch-contoso-prod",
+     "url": "/spaces/ENG/pages/1300/Orders+search",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-09-10T15:30:00.000Z"
+    },
+    {
+     "content": {
+      "id": "1000",
+      "type": "page",
+      "status": "current",
+      "title": "Engineering",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a001",
+        "displayName": "Jane Doe"
+       },
+       "when": "2026-08-03T10:12:40.000Z",
+       "number": 2
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1000/Engineering",
+       "tinyui": "/x/6AM"
+      }
+     },
+     "title": "Engineering",
+     "excerpt": "The engineering space: runbooks, release notes and designs for the orders platform.",
+     "url": "/spaces/ENG/pages/1000/Engineering",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-08-03T10:12:40.000Z"
+    },
+    {
+     "content": {
+      "id": "1400",
+      "type": "page",
+      "status": "current",
+      "title": "Incidents",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a001",
+        "displayName": "Jane Doe"
+       },
+       "when": "2026-03-02T09:07:00.000Z",
+       "number": 1
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1400/Incidents",
+       "tinyui": "/x/eAU"
+      }
+     },
+     "title": "Incidents",
+     "excerpt": "One postmortem per incident, newest first.",
+     "url": "/spaces/ENG/pages/1400/Incidents",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-03-02T09:07:00.000Z"
+    },
+    {
+     "content": {
+      "id": "1200",
+      "type": "page",
+      "status": "current",
+      "title": "Release notes",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a001",
+        "displayName": "Jane Doe"
+       },
+       "when": "2026-03-02T09:06:00.000Z",
+       "number": 1
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1200/Release+notes",
+       "tinyui": "/x/sAQ"
+      }
+     },
+     "title": "Release notes",
+     "excerpt": "One page per release of the api service.",
+     "url": "/spaces/ENG/pages/1200/Release+notes",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-03-02T09:06:00.000Z"
+    },
+    {
+     "content": {
+      "id": "1100",
+      "type": "page",
+      "status": "current",
+      "title": "Runbooks",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a001",
+        "displayName": "Jane Doe"
+       },
+       "when": "2026-03-02T09:05:00.000Z",
+       "number": 1
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1100/Runbooks",
+       "tinyui": "/x/TAQ"
+      }
+     },
+     "title": "Runbooks",
+     "excerpt": "What to do when a job or a service fails in prod. Each runbook names its alert, its first checks and its fix.",
+     "url": "/spaces/ENG/pages/1100/Runbooks",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-03-02T09:05:00.000Z"
+    }
+   ],
+   "start": 0,
+   "limit": 50,
+   "size": 8,
+   "totalSize": 8,
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki",
+    "context": "/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1201?body-format=storage&include-labels=true&version=1",
+  "answer": {
+   "id": "1201",
+   "status": "historical",
+   "title": "Release notes v1.4.2",
+   "spaceId": "2001",
+   "parentId": "1200",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-09-27T10:00:00.000Z",
+   "version": {
+    "number": 1,
+    "message": "draft",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-09-27T10:00:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+    "editui": "/pages/resumedraft.action?draftId=1201",
+    "tinyui": "/x/sQQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<p>Not released yet.</p><h2>Changes</h2><ul><li><p>Retry on 429 from the orders service: <a href=\"https://dev.azure.com/contoso/Fabrikam/_git/api/pullrequest/431\">PR 431</a></p></li><li><p>Work items <a href=\"https://dev.azure.com/contoso/Fabrikam/_workitems/edit/1207\">1207</a> and <a href=\"https://dev.azure.com/contoso/Fabrikam/_workitems/edit/1210\">1210</a></p></li></ul>"
+    }
+   },
+   "labels": {
+    "results": [
+     {
+      "prefix": "global",
+      "name": "release",
+      "id": "3100"
+     }
+    ],
+    "meta": {
+     "hasMore": false
+    }
+   }
+  },
+  "note": "version 1 (Jane Doe's draft): not released yet; Sam Lee's version 2 set the release date"
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1201?body-format=storage&include-labels=true&version=3",
+  "answer": {
+   "id": "1201",
+   "status": "current",
+   "title": "Release notes v1.4.2",
+   "spaceId": "2001",
+   "parentId": "1200",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-09-27T10:00:00.000Z",
+   "version": {
+    "number": 3,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-09-28T22:05:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+    "editui": "/pages/resumedraft.action?draftId=1201",
+    "tinyui": "/x/sQQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<p>Released to prod on 2026-09-28.</p><h2>Changes</h2><ul><li><p>Retry on 429 from the orders service: <a href=\"https://dev.azure.com/contoso/Fabrikam/_git/api/pullrequest/431\">PR 431</a></p></li><li><p>Work items <a href=\"https://dev.azure.com/contoso/Fabrikam/_workitems/edit/1207\">1207</a> and <a href=\"https://dev.azure.com/contoso/Fabrikam/_workitems/edit/1210\">1210</a></p></li></ul><h2>Rollout</h2><p>The full changelog is <ac:link><ri:attachment ri:filename=\"changes-v1.4.2.txt\" /></ac:link>; the rollout went out at 21:34 UTC.</p><p><ac:image ac:alt=\"rollout\"><ri:attachment ri:filename=\"rollout.png\" /></ac:image></p>"
+    }
+   },
+   "labels": {
+    "results": [
+     {
+      "prefix": "global",
+      "name": "release",
+      "id": "3100"
+     }
+    ],
+    "meta": {
+     "hasMore": false
+    }
+   }
+  },
+  "note": "version 3 is the current one"
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/spaces?keys=OPS",
+  "answer": {
+   "results": [
+    {
+     "id": "2002",
+     "key": "OPS",
+     "name": "Operations",
+     "type": "global",
+     "status": "current",
+     "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+     "createdAt": "2026-03-02T09:00:00.000Z",
+     "homepageId": "3000",
+     "description": null,
+     "_links": {
+      "webui": "/spaces/OPS"
+     }
+    }
+   ],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages?space-id=2002&title=No+such+page&limit=1",
+  "note": "a title no page has: Cloud answers an empty list",
+  "answer": {
+   "results": [],
+   "_links": {}
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages?space-id=2001&title=No+such+page&limit=1",
+  "note": "a title no page has: Cloud answers an empty list",
+  "answer": {
+   "results": [],
+   "_links": {}
+  }
  }
 ]

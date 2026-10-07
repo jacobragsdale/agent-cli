@@ -71,7 +71,12 @@ impl PageRef {
                 title: title.trim().to_owned(),
             });
         }
-        Err(wrong(format!("{raw:?} is not a page")))
+        Err(Failure::usage(format!("{raw:?} is not a page"))
+            .hint(format!(
+                "pass an id, ID@VERSION, KEY:Title or a URL; to find a page by its words: agent-cli confluence page list {}",
+                quote(raw)
+            ))
+            .into())
     }
 
     /// The page's id and the version asked for, looking a title or a

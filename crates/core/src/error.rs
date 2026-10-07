@@ -98,10 +98,14 @@ impl Failure {
         self
     }
 
-    /// Printed on stdout like a success, with this failure's exit code.
+    /// Printed on stdout like a success, with this failure's exit code. An
+    /// empty list says nothing (every id of several failed), so none prints.
     #[must_use]
     pub fn with_data(mut self, data: impl Serialize) -> Self {
-        self.data = serde_json::to_value(data).ok().map(Box::new);
+        self.data = serde_json::to_value(data)
+            .ok()
+            .filter(|value| value.as_array().is_none_or(|items| !items.is_empty()))
+            .map(Box::new);
         self
     }
 }
@@ -162,6 +166,23 @@ mod tests {
         assert_eq!(describe(&plain).0, Exit::Failed);
         assert_eq!(Exit::TimedOut.code(), 124);
         assert_eq!(Exit::Setup.code(), 3);
+    }
+
+    #[test]
+    fn an_empty_list_is_no_data_but_an_object_or_rows_are() {
+        assert!(
+            Failure::usage("x")
+                .with_data(Vec::<u8>::new())
+                .data
+                .is_none()
+        );
+        assert!(Failure::usage("x").with_data([1]).data.is_some());
+        assert!(
+            Failure::usage("x")
+                .with_data(serde_json::json!({}))
+                .data
+                .is_some()
+        );
     }
 
     #[test]

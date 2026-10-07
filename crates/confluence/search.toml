@@ -138,3 +138,26 @@ expect = "confluence version list"
 [[query]]
 text = "list the revisions of a wiki page"
 expect = "confluence version list"
+
+# ---------- what agents typed in the 2026-10-07 trial ----------
+
+[[query]]
+text = "etl_nightly runbook"
+expect = "confluence page list"
+
+[[query]]
+text = "runbook for an order missing its customer id"
+expect = "confluence page list"
+
+[[query]]
+text = "release notes for v1.4.2"
+expect = "confluence page list"
+
+[[query]]
+text = "add comment to page"
+expect = "confluence page comment"
+
+[[query]]
+text = "page history versions"
+expect = "confluence version list"
+

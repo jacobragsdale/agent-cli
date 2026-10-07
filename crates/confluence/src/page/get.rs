@@ -124,6 +124,15 @@ fn page_get(ctx: &Ctx, args: PageGetArgs) -> Result<Pages> {
         let exit = failure.map_or(agent_cli_core::Exit::Failed, |failure| failure.exit);
         let mut failure = Failure::new(exit, message).with_data(&rows);
         failure.hint = first.downcast_ref::<Failure>().and_then(|f| f.hint.clone());
+        // Several words and no page among them: a title typed loose, so
+        // search for all of it at once.
+        if rows.is_empty() && exit == agent_cli_core::Exit::Usage {
+            let words: Vec<&str> = args.page.iter().map(String::as_str).collect();
+            failure.hint = Some(format!(
+                "agent-cli confluence page list {}",
+                crate::ids::quote(&words.join(" "))
+            ));
+        }
         return Err(failure.into());
     }
     Ok(match rows.len() {
@@ -328,6 +337,37 @@ mod tests {
     use crate::testing::{V2, confluence, page, people, space, urls};
 
     const BODY: &str = "<h2>Steps</h2><p>Fix the order in the CRM.</p><h2>An order without customer_id</h2><p>Retry <code>load_orders</code>.</p><ac:structured-macro ac:name=\"toc\" />";
+
+    #[test]
+    fn words_that_are_no_page_ask_for_one_search_of_all_of_them() {
+        let (outcome, transport) = confluence(&["confluence", "page", "get", "v1.4.2"], vec![]);
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("agent-cli confluence page list v1.4.2"),
+            "{}",
+            outcome.stderr
+        );
+        let (outcome, _) = confluence(
+            &["confluence", "page", "get", "v1.4.2", "release", "notes"],
+            vec![],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome.stdout.is_empty(),
+            "no empty list: {}",
+            outcome.stdout
+        );
+        assert!(
+            outcome
+                .stderr
+                .contains("agent-cli confluence page list 'v1.4.2 release notes'"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(transport.sent().is_empty());
+    }
 
     #[test]
     fn a_page_reads_as_markdown_with_who_changed_it_and_what_markdown_lost() {

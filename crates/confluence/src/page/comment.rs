@@ -181,7 +181,7 @@ fn parent_kind(
 command! {
     pub PAGE_COMMENT = ["confluence", "page", "comment"], Write,
     "Comment on a page: at its foot, inline on some text (--on), or as a reply",
-    keywords: ["reply", "note", "discuss", "feedback", "inline", "footer", "annotate", "remark"],
+    keywords: ["add", "reply", "note", "discuss", "feedback", "inline", "footer", "annotate", "remark"],
     example: "confluence page comment 1201 'Rolled out to prod at 21:34' --on 'v1.4.2'",
     run: page_comment,
 }

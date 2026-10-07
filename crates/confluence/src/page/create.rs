@@ -152,8 +152,8 @@ fn duplicate(error: anyhow::Error, key: &str, title: &str) -> anyhow::Error {
 
 command! {
     pub PAGE_CREATE = ["confluence", "page", "create"], Write,
-    "Publish a new page from Markdown (or storage) in a space or under a page",
-    keywords: ["new", "add", "write", "publish", "post", "document", "postmortem", "runbook"],
+    "Publish a new page from Markdown (or storage) in a space, under a parent",
+    keywords: ["new", "add", "write", "publish", "post", "document", "postmortem"],
     example: "confluence page create --title 'Postmortem: etl_nightly' --parent 1100 --body-file postmortem.md",
     run: page_create,
 }

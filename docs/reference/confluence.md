@@ -3,9 +3,9 @@
 | Command | Effect | Summary |
 |---|---|---|
 | [`confluence space list`](#confluence-space-list) | read | List Confluence spaces, or find one by key or name |
-| [`confluence page list`](#confluence-page-list) | read | Search Confluence pages and blog posts by words, space, label, title or date |
+| [`confluence page list`](#confluence-page-list) | read | Search Confluence pages (runbooks, designs) by words, space, label, title, date |
 | [`confluence page get`](#confluence-page-get) | read | Show a page as Markdown with its version, author, labels and outline |
-| [`confluence page create`](#confluence-page-create) | write | Publish a new page from Markdown (or storage) in a space or under a page |
+| [`confluence page create`](#confluence-page-create) | write | Publish a new page from Markdown (or storage) in a space, under a parent |
 | [`confluence page update`](#confluence-page-update) | write | Edit a page: replace or append to its body or a section, retitle, move, relabel |
 | [`confluence page comment`](#confluence-page-comment) | write | Comment on a page: at its foot, inline on some text (--on), or as a reply |
 | [`confluence page delete`](#confluence-page-delete) | destructive | Move a page to its space's trash, from which it can be restored |
@@ -32,7 +32,7 @@ e.g. agent-cli confluence space list eng --fields id,name,homepage
 ### confluence page list
 
 ```text
-agent-cli confluence page list — Search Confluence pages and blog posts by words, space, label, title or date
+agent-cli confluence page list — Search Confluence pages (runbooks, designs) by words, space, label, title, date
   <text> str              Words to search for, ranked as the web search ranks them (the index trails edits by about a minute)
   --space str[]           Only in this space (its key or URL); repeatable
   --label str[]           Only pages carrying this label; repeatable, each one required
@@ -69,7 +69,7 @@ e.g. agent-cli confluence page get 1101 --section 'An order without customer_id'
 ### confluence page create
 
 ```text
-agent-cli confluence page create — Publish a new page from Markdown (or storage) in a space or under a page
+agent-cli confluence page create — Publish a new page from Markdown (or storage) in a space, under a parent
  *--title str       The new page's title (unique in its space)
   --space str       The space, by key or URL (default: the parent's)
   --parent int      The parent page's id (default: the space's homepage)

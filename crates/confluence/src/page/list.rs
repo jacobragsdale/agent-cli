@@ -210,7 +210,7 @@ fn quoted(value: &str) -> String {
 
 command! {
     pub PAGE_LIST = ["confluence", "page", "list"], Read,
-    "Search Confluence pages and blog posts by words, space, label, title or date",
+    "Search Confluence pages (runbooks, designs) by words, space, label, title, date",
     keywords: ["find", "search", "cql", "query", "recent", "changed", "label", "runbook", "documentation"],
     example: "confluence page list 'etl_nightly runbook' --space ENG --fields id,title,updated",
     run: page_list,

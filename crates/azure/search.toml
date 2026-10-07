@@ -272,3 +272,14 @@ expect = "aisearch indexer wait"
 [[query]]
 text = "block until the search indexer is done"
 expect = "aisearch indexer wait"
+
+# ---------- what agents typed in the 2026-10-07 trial ----------
+
+[[query]]
+text = "delayed orders in orders search index"
+expect = "aisearch document list"
+
+[[query]]
+text = "index capacity of the dev search service"
+expect = "aisearch service get"
+

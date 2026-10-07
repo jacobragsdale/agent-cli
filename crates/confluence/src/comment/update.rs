@@ -71,7 +71,7 @@ fn comment_update(ctx: &Ctx, args: CommentUpdateArgs) -> Result<Resolved> {
 command! {
     pub COMMENT_UPDATE = ["confluence", "comment", "update"], Write,
     "Resolve an inline comment on a page, or reopen it",
-    keywords: ["resolve", "reopen", "close", "done", "inline", "thread", "addressed"],
+    keywords: ["resolve", "reopen", "close", "done", "inline", "thread", "answered"],
     example: "confluence comment update 5002 --status resolved",
     run: comment_update,
 }

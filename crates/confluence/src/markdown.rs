@@ -186,7 +186,12 @@ impl Writer<'_> {
             _ => match crate::storage::level(name) {
                 Some(level) => {
                     let text = self.inline(&element.children);
-                    let text = text.trim();
+                    // The editor leaves breaks at the end of a heading; a
+                    // Markdown heading is one line.
+                    let mut text = text.trim();
+                    while let Some(rest) = text.strip_suffix("<br>") {
+                        text = rest.trim_end();
+                    }
                     if text.is_empty() {
                         return;
                     }
@@ -671,6 +676,14 @@ mod tests {
         assert_eq!(
             read.lossy,
             ["table cell blocks", "layout", "inline comment marks"]
+        );
+    }
+
+    #[test]
+    fn breaks_the_editor_leaves_at_the_end_of_a_heading_are_dropped() {
+        assert_eq!(
+            md("<h2><strong>Goal:</strong> ship it<br/><br /></h2>").text,
+            "## **Goal:** ship it"
         );
     }
 
