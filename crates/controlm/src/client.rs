@@ -414,8 +414,8 @@ impl Op for Call<'_, '_> {
 pub(crate) fn refused(error: anyhow::Error, path: &str) -> anyhow::Error {
     let mut failure = match error.downcast::<Failure>() {
         Ok(failure) => failure,
-        // No answer at all: the server is down, base_url points nowhere, or
-        // its certificate is not one agent-cli trusts.
+        // No answer at all: the server is down or base_url points nowhere
+        // (core already names an untrusted certificate).
         Err(error) => {
             return Failure::new(Exit::Failed, format!("{error:#}"))
                 .hint("is the Automation API up at base_url? `agent-cli doctor controlm` checks it")

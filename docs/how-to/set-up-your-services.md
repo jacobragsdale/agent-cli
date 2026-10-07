@@ -353,12 +353,13 @@ agent-cli doctor controlm
 ```
 
 The credential row names the Control-M/Servers the credential sees. A
-certificate error means agent-cli does not trust the Enterprise Manager's
-certificate (its built-in roots are the public ones).
+certificate this machine does not trust exits 3: agent-cli uses the
+system's trust store, so install the CA that signed the Enterprise Manager's
+certificate there (on WSL, as [below](#wsl)), not anywhere in agent-cli.
 
 ## WSL
 
-On WSL 2 under Windows 11, four things go wrong that do not on Linux.
+On WSL 2 under Windows 11, five things go wrong that do not on Linux.
 
 **The corporate VPN breaks DNS.** Names resolve on Windows but not in WSL.
 Mirror Windows' networking: put this in `%UserProfile%\.wslconfig` on the
@@ -377,6 +378,26 @@ networkingMode=mirrored
 sudo apt-get install -y libaio1t64
 sudo ln -s /usr/lib/x86_64-linux-gnu/libaio.so.1t64 /usr/lib/x86_64-linux-gnu/libaio.so.1
 ```
+
+**An internal server's certificate is not trusted** (exit 3, "does not
+trust the server's certificate"). Windows trusts the company CA, but WSL's
+Ubuntu keeps its own store, which agent-cli reads. Export the CA on the
+Windows side (PowerShell; change the subject to your company's CA):
+
+```powershell
+Get-ChildItem Cert:\LocalMachine\Root | Where-Object Subject -like '*Contoso*' |
+  ForEach-Object { Export-Certificate -Cert $_ -FilePath "$env:USERPROFILE\company-ca.cer" }
+```
+
+then add it in WSL (`update-ca-certificates` takes PEM files named `.crt`):
+
+```sh
+openssl x509 -inform der -in /mnt/c/Users/YOU/company-ca.cer -out company-ca.crt
+sudo cp company-ca.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates
+```
+
+A server with a self-signed certificate is trusted the same way, with its
+own certificate in place of the CA's.
 
 **`az login` opens no browser.** Use the device code instead, and open the
 link it prints on Windows:

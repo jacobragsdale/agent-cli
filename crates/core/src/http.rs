@@ -29,7 +29,6 @@ const CONNECT: Duration = Duration::from_secs(10);
 /// For a write whose answer did not come: the read that tells is the domain's.
 pub const MAY_HAVE_LANDED: &str =
     "the change may have been made before the deadline: read it back before running it again";
-
 /// A body larger than this is not an answer any command wants; Azure DevOps
 /// keeps attachments up to 60 MB.
 const BODY_LIMIT: u64 = 64 * 1024 * 1024;
@@ -236,13 +235,7 @@ impl Transport for Https {
         authorization: Option<&Secret>,
         timeout: Duration,
     ) -> Result<Response> {
-        let agent = self.agent.get_or_init(|| {
-            ureq::Agent::config_builder()
-                .http_status_as_error(false)
-                .max_redirects(0)
-                .build()
-                .into()
-        });
+        let agent = self.agent.get_or_init(crate::tls::agent);
         let url = request.url.as_str();
         let mut headers: Vec<(&str, &str)> = request
             .headers
@@ -299,7 +292,18 @@ impl Transport for Https {
                 anyhow::Error::new(late).context(error)
             }
             other => {
-                anyhow::Error::new(other).context(format!("{} {url} failed", request.method.wire()))
+                let said = other.to_string();
+                match crate::tls::untrusted(&said) {
+                    Some(hint) => anyhow::Error::new(
+                        Failure::setup(format!(
+                            "{} {url} failed: this machine does not trust the server's certificate ({said})",
+                            request.method.wire()
+                        ))
+                        .hint(hint),
+                    ),
+                    None => anyhow::Error::new(other)
+                        .context(format!("{} {url} failed", request.method.wire())),
+                }
             }
         })?;
         let status = response.status().as_u16();

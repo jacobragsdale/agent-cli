@@ -29,6 +29,7 @@ mod secret;
 mod stop;
 pub mod testing;
 mod throttle;
+mod tls;
 mod when;
 
 pub use anyhow;

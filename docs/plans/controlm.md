@@ -24,7 +24,7 @@ server, host, folder, job or user names in anything committed (use
 `contoso`-style names like the tests), and `config.toml` never goes in the
 repository.
 
-## 1. Configure, and get past TLS
+## 1. Configure, and trust its certificate
 
 Add the instance to your own config (`agent-cli config` prints where it is):
 
@@ -39,21 +39,14 @@ read_only = true                           # until the writes are verified
 
 Then `cargo build -p agent-cli && target/debug/agent-cli doctor controlm`.
 
-A certificate error (`UnknownIssuer`, `invalid peer certificate`) is
-expected. Core trusts only the public roots (ureq with webpki-roots), and an
-Enterprise Manager's certificate is self-signed or from the company's CA.
-That's a core change for every domain, so make it once:
-
-1. In the root `Cargo.toml`, give ureq the feature:
-   `ureq = { version = "3.4.1", features = ["platform-verifier"] }`.
-2. In `crates/core/src/http.rs`, where `Https::send` builds the agent, add
-   `.tls_config(ureq::tls::TlsConfig::builder().root_certs(ureq::tls::RootCerts::PlatformVerifier).build())`
-   to the `config_builder()` chain.
-3. Trust the certificate in WSL: export it (in a browser, or
-   `openssl s_client -connect EM_HOST:8443 -showcerts </dev/null`), then
-   `sudo cp em.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates`.
-4. The commit message says why (`rustls-platform-verifier`: the OS trust
-   store, so a company CA works).
+A certificate this machine does not trust exits 3, and the hint names
+the fix. Core verifies with the OS trust store (`rustls-platform-verifier`),
+so the fix is never in agent-cli: install the CA that signed the Enterprise
+Manager's certificate in WSL's store, as the WSL section of
+`docs/how-to/set-up-your-services.md` shows (export it from Windows, convert,
+`update-ca-certificates`). If the hint says the server presents a CA
+certificate as its own, no trust store helps: the Control-M admins have to
+install a proper server certificate.
 
 Other errors, by what doctor prints:
 - **401:** the password.
