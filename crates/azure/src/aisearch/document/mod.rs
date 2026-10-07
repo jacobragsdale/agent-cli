@@ -35,6 +35,9 @@ pub(crate) struct Schema {
     /// Vector fields, and whether each has a vectorizer (text queries need one).
     pub vectors: Vec<(String, bool)>,
     pub semantic: Option<String>,
+    /// Text fields full-text search reads, which highlights come from.
+    #[serde(default)]
+    pub searchable: Vec<String>,
 }
 
 /// The index's schema, read once per `[azure] refresh`; `None`, with a note
@@ -75,6 +78,17 @@ pub(crate) fn schema(ctx: &Ctx, search: &Search<'_>, index: &str) -> Result<Opti
             })
             .collect(),
         semantic: text(&definition["semantic"]["defaultConfiguration"]),
+        searchable: list(&definition["fields"])
+            .iter()
+            .filter(|field| {
+                field["searchable"].as_bool() == Some(true)
+                    && matches!(
+                        field["type"].as_str(),
+                        Some("Edm.String" | "Collection(Edm.String)")
+                    )
+            })
+            .filter_map(|field| text(&field["name"]))
+            .collect(),
     };
     ctx.cache().put(&key, &schema, Azure::load(ctx)?.refresh());
     Ok(Some(schema))

@@ -210,10 +210,14 @@ fn decode(raw: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-/// The service a name or a data-plane host stands for: a host is matched to
-/// a service's endpoint, else read as `{name}.search.windows.net`.
+/// The service a name, a data-plane host, its endpoint or its portal link
+/// stands for: a host is matched to a service's endpoint, else read as
+/// `{name}.search.windows.net`.
 pub(crate) fn service_name(found: &[SearchService], raw: &str) -> String {
-    let raw = raw.trim();
+    let named = parse(raw, Want::Service)
+        .ok()
+        .and_then(|found| found.service);
+    let raw = named.as_deref().unwrap_or(raw).trim();
     if !raw.contains('.') {
         return raw.to_owned();
     }
@@ -380,6 +384,13 @@ mod tests {
         assert_eq!(
             service_name(&found, "srch-contoso-dev.search.windows.net"),
             "srch-contoso-dev"
+        );
+        assert_eq!(
+            service_name(
+                &found,
+                "https://srch-contoso-prod-1a2b.sg.search.windows.net/"
+            ),
+            "srch-contoso-prod"
         );
         assert_eq!(
             agree(

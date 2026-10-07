@@ -153,4 +153,24 @@ mod tests {
             "never both"
         );
     }
+
+    #[test]
+    fn an_endpoint_off_search_windows_net_gets_no_token_and_no_key() {
+        for auth in ["aadOrApiKey", "apiKeyOnly"] {
+            let mut bad = testing::search_service("srch-contoso-prod", auth);
+            bad["endpoint"] = json!("https://srch-contoso-prod.search.windows.net.evil.example/");
+            let (outcome, transport) = azure(
+                &[AISEARCH],
+                &["aisearch", "service", "get", "srch-contoso-prod"],
+                vec![testing::inventory(vec![bad])],
+            );
+            assert_eq!(outcome.code, 1, "{outcome:?}");
+            assert!(
+                outcome.stderr.contains("is not an AI Search address"),
+                "{}",
+                outcome.stderr
+            );
+            assert_eq!(transport.sent().len(), 1, "only the inventory went out");
+        }
+    }
 }

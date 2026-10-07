@@ -321,7 +321,10 @@ mod tests {
                     "data": [testing::vault("kv-contoso"), testing::cluster("aks-contoso")],
                     "$skipToken": "page-2",
                 })),
-                testing::inventory(vec![testing::registry("contosoacr")]),
+                testing::inventory(vec![
+                    testing::registry("contosoacr"),
+                    testing::search_service("srch-contoso", "aadOrApiKey"),
+                ]),
             ],
             "",
         );
@@ -336,6 +339,20 @@ mod tests {
         );
         assert_eq!(inventory.clusters[0].kubernetes_version, "1.30.4");
         assert_eq!(inventory.clusters[0].power_state, "Running");
+        let search = &inventory.search_services[0];
+        assert_eq!(
+            (
+                search.endpoint.as_str(),
+                search.auth_options.as_str(),
+                search.replicas
+            ),
+            (
+                "https://srch-contoso.search.windows.net/",
+                "aadOrApiKey",
+                Some(2)
+            )
+        );
+        assert!(search.complete());
         let sent = transport.sent();
         assert_eq!(sent.len(), 2);
         assert_eq!(

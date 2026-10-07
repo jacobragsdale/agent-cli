@@ -95,6 +95,13 @@ fn document_list(ctx: &Ctx, args: DocumentListArgs) -> Result<Vec<Hit>> {
     if args.semantic && args.lucene {
         return Err(Failure::usage("--semantic and --lucene are two query types; pick one").into());
     }
+    if args.lucene && args.mode == "vector" {
+        return Err(
+            Failure::usage("--lucene shapes keyword text; --mode vector sends none")
+                .hint("use --mode hybrid --lucene")
+                .into(),
+        );
+    }
     let text_given = args
         .text
         .as_deref()
@@ -163,6 +170,13 @@ fn document_list(ctx: &Ctx, args: DocumentListArgs) -> Result<Vec<Hit>> {
         if let Some(value) = flag {
             body[name] = json!(value);
         }
+    }
+    // Highlights say which words matched where: the answer to "why did this
+    // come back".
+    let searchable = schema.iter().flat_map(|schema| &schema.searchable);
+    let searchable: Vec<&str> = searchable.map(String::as_str).collect();
+    if text_given.is_some() && args.mode != "vector" && !searchable.is_empty() {
+        body["highlight"] = json!(searchable.join(","));
     }
     if let Some(select) = &args.select {
         // The key builds each row's id, so it is always asked for.
@@ -255,7 +269,7 @@ mod tests {
 
     fn definition() -> Answer {
         Answer::json(&json!({"name": "orders",
-            "fields": [{"name": "id", "type": "Edm.String", "key": true},
+            "fields": [{"name": "id", "type": "Edm.String", "key": true}, {"name": "summary", "type": "Edm.String", "searchable": true},
                 {"name": "summary_vector", "type": "Collection(Edm.Single)", "dimensions": 1536, "vectorSearchProfile": "orders-hnsw"}],
             "semantic": {"defaultConfiguration": "orders-semantic"},
             "vectorSearch": {"profiles": [{"name": "orders-hnsw", "algorithm": "hnsw", "vectorizer": "aoai-embed"}]}}))
@@ -292,7 +306,7 @@ mod tests {
                 definition(),
                 Answer::json(&json!({"@odata.count": 3, "value": [
                     {"@search.score": 0.0331, "@search.rerankerScore": 2.71,
-                     "@search.captions": [{"text": "Order 88122 arrived late.", "highlights": "<em>late</em>"}],
+                     "@search.captions": [{"text": "Order 88122 arrived late.", "highlights": "<em>late</em>"}], "@search.highlights": {"summary": ["<em>late</em> delivery"]},
                      "id": "88122", "status": "failed", "summary": "y".repeat(300), "summary_vector": vector}]})),
             ],
         );
@@ -301,6 +315,10 @@ mod tests {
         assert_eq!(hit["id"], "srch-contoso-prod/orders/88122");
         assert_eq!(hit["reranker"], 2.71);
         assert_eq!(hit["caption"], "Order 88122 arrived late.");
+        assert_eq!(
+            hit["highlights"],
+            json!({"summary": ["<em>late</em> delivery"]})
+        );
         assert_eq!(hit["doc"]["summary_vector"], "[1536 floats]");
         assert_eq!(hit["doc"]["summary"].as_str().unwrap().chars().count(), 201);
         assert!(
@@ -325,7 +343,7 @@ mod tests {
             json!({"count": true, "top": 50, "search": "late delivery", "queryType": "semantic",
                 "vectorQueries": [{"kind": "text", "text": "late delivery", "k": 50, "fields": "summary_vector"}],
                 "semanticConfiguration": "orders-semantic", "captions": "extractive", "semanticErrorHandling": "partial",
-                "filter": "status eq 'failed'", "select": "summary,status,id"})
+                "highlight": "summary", "filter": "status eq 'failed'", "select": "summary,status,id"})
         );
     }
 

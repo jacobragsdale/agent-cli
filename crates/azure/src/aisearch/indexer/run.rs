@@ -60,14 +60,22 @@ fn indexer_run(ctx: &Ctx, args: IndexerRunArgs) -> Result<Requested> {
             Role::Manage,
         )
         .map_err(|error| match refused_with(&error) {
-            // Microsoft's own sample expects a 429 here; clients see 409.
-            Some(409 | 429) => Failure::conflict(format!(
-                "{id} did not start: {error:#}"
-            ))
-            .hint(format!(
-                "a run may already be going (one at a time; every 180 s on Free): agent-cli aisearch indexer wait {id}"
-            ))
-            .into(),
+            Some(409) => Failure::conflict(format!("{id} did not start: {error:#}"))
+                .hint(format!(
+                    "a run is already going (one at a time): agent-cli aisearch indexer wait {id}"
+                ))
+                .into(),
+            // Unconfirmed: Microsoft's own sample expects a 429 for a run
+            // already going, which is also how the Free tier's 180-second
+            // spacing and a runtime quota answer.
+            Some(429) => match error.downcast::<Failure>() {
+                Ok(failure) => failure
+                    .hint(format!(
+                        "a run may be going, or the tier allows no run now (every 180 s on Free): agent-cli aisearch indexer wait {id}"
+                    ))
+                    .into(),
+                Err(error) => error,
+            },
             _ => error,
         })?;
     ctx.note(format!(
