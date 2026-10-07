@@ -16,6 +16,7 @@ const NOW: &str = "2026-09-29T12:00:00Z";
 /// The binary's registry, to check every command line it prints.
 const DOMAINS: &[Domain] = &[
     agent_cli_ado::DOMAIN,
+    agent_cli_confluence::DOMAIN,
     agent_cli_azure::KV,
     agent_cli_azure::ACR,
     agent_cli_azure::AKS,

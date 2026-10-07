@@ -1,7 +1,8 @@
 # The contoso world
 
 A small, consistent, entirely synthetic company that agent trials run against
-when no real Azure DevOps, Azure, cluster, Airflow or Datadog is reachable.
+when no real Azure DevOps, Confluence, Azure, cluster, Airflow or Datadog is
+reachable.
 Every domain's recordings describe the same facts, so a cross-domain question
 ("which work items shipped in the api image running in prod?") can be
 answered end to end.
@@ -20,7 +21,7 @@ agent-cli k8s deployment list
 |---|---|
 | `AGENT_CLI_FIXTURES` | This directory. The fixtures build answers every HTTP request from `http/*.json` and turns the cache off; the fake kubectl serves `kubectl.json` |
 | `AGENT_CLI_FIXTURES_MATCH` | `loose`: a request with no recording gets the closest recording of its method and path, whatever its query or body, and a path never recorded gets a 404. Agents pick their own windows and limits, and a trial should show them a service, not the harness. Unset it to see what a command would need recorded |
-| `AGENT_CLI_CONFIG` | `config.toml` here: `[ado]`, `[azure]`, `[[k8s.scope]]`, `[[airflow.instance]]`, one `[[sql.connection]]` (no sql recordings), `[datadog]`. Its credentials are `*_cmd` stand-ins (`echo stand-in`): the recorded `/auth/token` answers any password, and the replayer never checks a token |
+| `AGENT_CLI_CONFIG` | `config.toml` here: `[ado]`, `[confluence]`, `[azure]`, `[[k8s.scope]]`, `[[airflow.instance]]`, one `[[sql.connection]]` (no sql recordings), `[datadog]`. Its credentials are `*_cmd` stand-ins (`echo stand-in`): the recorded `/auth/token` answers any password, and the replayer never checks a token |
 | `AGENT_CLI_NOW` | `2026-09-29T12:00:00Z`, the moment the world was recorded. Relative times (`--since 1d`, `--expires-within 30d`, ages) resolve against it, so they keep matching the recordings on any day |
 | `PATH` | `target/debug` (the fixtures build) and `scripts/fake` (`az`, `kubectl`, `kubelogin`) first. The fake `az` hands out a stand-in token; nothing checks it |
 
@@ -28,7 +29,8 @@ A release build ignores `AGENT_CLI_FIXTURES`: the feature is not in it.
 
 ## What is true here
 
-Each domain's facts are in `facts/`: [ado](facts/ado.md), [acr](facts/acr.md),
+Each domain's facts are in `facts/`: [ado](facts/ado.md),
+[confluence](facts/confluence.md), [acr](facts/acr.md),
 [k8s](facts/k8s.md), [kv](facts/kv.md), [aks](facts/aks.md),
 [airflow](facts/airflow.md), [dd](facts/dd.md),
 [aisearch](facts/aisearch.md). They tie the domains together:
@@ -60,6 +62,7 @@ agent-cli k8s pod logs prod/web/etl-nightly-load-orders-q8x1k2vz --tail 20
 ```
 config.toml       the config agent-cli reads
 http/ado.json     Azure DevOps answers
+http/confluence.json Confluence Cloud answers (contoso.atlassian.net)
 http/azure.json   Resource Graph, Key Vault and ACR answers
 http/aisearch.json AI Search's data plane and its admin key (ARM)
 http/airflow.json Airflow's REST API (/api/v2 and /auth/token)

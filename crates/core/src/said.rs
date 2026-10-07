@@ -6,13 +6,22 @@ use serde_json::Value;
 /// `error.message` (with the actionable part in `error.details`), a registry
 /// under `errors[0].message`, Azure DevOps under `message`, FastAPI (Airflow)
 /// under `detail` (a string, or a 422's list of `{loc, msg}`), Datadog as
-/// `errors: ["…"]`; anything else is worth the front of its body rather than
-/// nothing. Core redacts it on the way out, like every error.
+/// `errors: ["…"]`, Confluence's v2 as `errors: [{title, detail}]` and its v1
+/// as a `message` led by the Java exception's class; anything else is worth
+/// the front of its body rather than nothing. Core redacts it on the way
+/// out, like every error.
 #[must_use]
 pub fn failure_message(text: &str) -> String {
     let parsed = serde_json::from_str::<Value>(text).unwrap_or(Value::Null);
     if let Some(said) = listed_failures(&parsed) {
         return said;
+    }
+    // Confluence's v1: `com.atlassian.….NotFoundException: No content found`.
+    if let Some(said) = parsed["message"].as_str()
+        && said.starts_with("com.atlassian.")
+        && let Some((_, rest)) = said.split_once("Exception: ")
+    {
+        return rest.to_owned();
     }
     let details: Vec<&str> = parsed["error"]["details"]
         .as_array()
@@ -71,19 +80,22 @@ fn listed_failures(parsed: &Value) -> Option<String> {
             })
             .collect()
     } else {
-        // Datadog's v1 errors are strings; its v2 (JSON:API) ones objects
-        // with a `detail` or `title`.
+        // Datadog's v1 errors are strings; its v2 (JSON:API) ones, and
+        // Confluence's v2, objects with a `title` and a `detail` (often null),
+        // which say different things when both are there.
         parsed["errors"]
             .as_array()
             .into_iter()
             .flatten()
-            .filter_map(|error| {
-                error
-                    .as_str()
-                    .or_else(|| error["detail"].as_str())
-                    .or_else(|| error["title"].as_str())
-            })
-            .map(str::to_owned)
+            .filter_map(
+                |error| match (error["title"].as_str(), error["detail"].as_str()) {
+                    _ if error.is_string() => error.as_str().map(str::to_owned),
+                    (Some(title), Some(detail)) if title != detail => {
+                        Some(format!("{title} \u{2014} {detail}"))
+                    }
+                    (title, detail) => detail.or(title).map(str::to_owned),
+                },
+            )
             .collect()
     };
     (!said.is_empty()).then(|| said.join("; "))
@@ -130,7 +142,19 @@ mod tests {
             failure_message(
                 r#"{"errors":[{"status":"404","title":"Not found","detail":"no monitor 4711"}]}"#
             ),
-            "no monitor 4711"
+            "Not found \u{2014} no monitor 4711"
+        );
+        assert_eq!(
+            failure_message(
+                r#"{"errors":[{"status":404,"code":"NOT_FOUND","title":"Cannot find a page with id [1]","detail":null}]}"#
+            ),
+            "Cannot find a page with id [1]"
+        );
+        assert_eq!(
+            failure_message(
+                r#"{"statusCode":404,"message":"com.atlassian.confluence.api.service.exceptions.api.NotFoundException: No content found with id : 1"}"#
+            ),
+            "No content found with id : 1"
         );
         assert_eq!(failure_message("  plain text  "), "plain text");
         assert_eq!(failure_message(""), "(no body)");

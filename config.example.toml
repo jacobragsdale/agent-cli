@@ -22,6 +22,19 @@
 #                                        # project's; `--iteration @current` needs it
 # pat_cmd = "pass show contoso/ado-pat"  # or pat_env = "CONTOSO_ADO_PAT"
 
+# [confluence]
+# Confluence Cloud only (SITE.atlassian.net); Data Center is not supported.
+# Sign-in: an API token from https://id.atlassian.com/manage-profile/security/api-tokens,
+# sent as Basic email:token to the site and nowhere else. Tokens expire
+# within a year; `agent-cli doctor confluence` says when one stops working.
+# url = "https://contoso.atlassian.net/wiki"
+# email = "jane@contoso.com"             # the account the token belongs to
+# token_env = "CONFLUENCE_TOKEN"         # or token_cmd = "pass show contoso/confluence"
+# cloud_id = "11111111-2222-3333-4444-555555555555"  # a scoped token or service
+#                                        # account: calls go through api.atlassian.com
+#                                        # (https://SITE.atlassian.net/_edge/tenant_info
+#                                        # prints it); with no email, Bearer
+
 # [azure]
 # kv, acr, aks and aisearch sign in with your `az login`; nothing here is
 # required. An empty or missing list means everything the login reaches; a

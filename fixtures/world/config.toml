@@ -7,6 +7,11 @@ org = "contoso"
 project = "Fabrikam"
 team = "Fabrikam Team"
 
+[confluence]
+url = "https://contoso.atlassian.net/wiki"
+email = "jane@contoso.com"
+token_cmd = "echo stand-in"
+
 [azure]
 subscriptions = ["00000000-0000-4000-8000-000000005b01"]
 vaults = ["kv-contoso-prod"]

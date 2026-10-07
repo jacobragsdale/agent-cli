@@ -1,0 +1,25 @@
+[package]
+name = "agent-cli-confluence"
+description = "The confluence domain of agent-cli: Confluence Cloud spaces, pages as Markdown, trees, comments, attachments and versions"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+agent-cli-core.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+pulldown-cmark.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+time.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

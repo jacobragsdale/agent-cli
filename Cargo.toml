@@ -11,6 +11,7 @@ repository = "https://github.com/jacobragsdale/agent-cli"
 
 [workspace.dependencies]
 agent-cli-ado = { path = "crates/ado" }
+agent-cli-confluence = { path = "crates/confluence" }
 agent-cli-core = { path = "crates/core" }
 agent-cli-sql = { path = "crates/sql" }
 agent-cli-azure = { path = "crates/azure" }
@@ -21,6 +22,7 @@ anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive"] }
 futures-util = "0.3.34"
 oracle = "0.6.3"
+pulldown-cmark = { version = "0.13.4", default-features = false }
 schemars = { version = "1.2.1", features = ["preserve_order"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.151", features = ["preserve_order"] }

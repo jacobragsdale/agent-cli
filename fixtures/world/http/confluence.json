@@ -1,0 +1,2192 @@
+[
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/rest/api/user/current",
+  "note": "doctor: the token is Jane Doe's",
+  "answer": {
+   "type": "known",
+   "accountId": "557058:00000000-0000-4000-8000-00000000a001",
+   "accountType": "atlassian",
+   "email": "jane@contoso.com",
+   "publicName": "Jane Doe",
+   "displayName": "Jane Doe",
+   "timeZone": "Etc/UTC",
+   "isGuest": false
+  }
+ },
+ {
+  "request": "POST https://contoso.atlassian.net/wiki/api/v2/users-bulk",
+  "note": "any accountIds: everyone the world names",
+  "answer": {
+   "results": [
+    {
+     "accountId": "557058:00000000-0000-4000-8000-00000000a001",
+     "accountType": "atlassian",
+     "accountStatus": "active",
+     "displayName": "Jane Doe",
+     "publicName": "Jane Doe"
+    },
+    {
+     "accountId": "557058:00000000-0000-4000-8000-00000000a002",
+     "accountType": "atlassian",
+     "accountStatus": "active",
+     "displayName": "Sam Lee",
+     "publicName": "Sam Lee"
+    },
+    {
+     "accountId": "557058:00000000-0000-4000-8000-00000000a003",
+     "accountType": "atlassian",
+     "accountStatus": "active",
+     "displayName": "Priya Patel",
+     "publicName": "Priya Patel"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/spaces?type=global&status=current&sort=key&limit=250",
+  "answer": {
+   "results": [
+    {
+     "id": "2001",
+     "key": "ENG",
+     "name": "Engineering",
+     "type": "global",
+     "status": "current",
+     "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+     "createdAt": "2026-03-02T09:00:00.000Z",
+     "homepageId": "1000",
+     "description": null,
+     "_links": {
+      "webui": "/spaces/ENG"
+     }
+    },
+    {
+     "id": "2002",
+     "key": "OPS",
+     "name": "Operations",
+     "type": "global",
+     "status": "current",
+     "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+     "createdAt": "2026-03-02T09:00:00.000Z",
+     "homepageId": "3000",
+     "description": null,
+     "_links": {
+      "webui": "/spaces/OPS"
+     }
+    }
+   ],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/spaces?keys=ENG",
+  "answer": {
+   "results": [
+    {
+     "id": "2001",
+     "key": "ENG",
+     "name": "Engineering",
+     "type": "global",
+     "status": "current",
+     "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+     "createdAt": "2026-03-02T09:00:00.000Z",
+     "homepageId": "1000",
+     "description": null,
+     "_links": {
+      "webui": "/spaces/ENG"
+     }
+    }
+   ],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/spaces/2001",
+  "answer": {
+   "id": "2001",
+   "key": "ENG",
+   "name": "Engineering",
+   "type": "global",
+   "status": "current",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-03-02T09:00:00.000Z",
+   "homepageId": "1000",
+   "description": null,
+   "_links": {
+    "webui": "/spaces/ENG"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1000",
+  "answer": {
+   "id": "1000",
+   "status": "current",
+   "title": "Engineering",
+   "spaceId": "2001",
+   "parentId": null,
+   "parentType": null,
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-03-02T09:00:00.000Z",
+   "version": {
+    "number": 2,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-08-03T10:12:40.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1000/Engineering",
+    "editui": "/pages/resumedraft.action?draftId=1000",
+    "tinyui": "/x/6AM",
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1000?body-format=storage&include-labels=true",
+  "answer": {
+   "id": "1000",
+   "status": "current",
+   "title": "Engineering",
+   "spaceId": "2001",
+   "parentId": null,
+   "parentType": null,
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-03-02T09:00:00.000Z",
+   "version": {
+    "number": 2,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-08-03T10:12:40.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1000/Engineering",
+    "editui": "/pages/resumedraft.action?draftId=1000",
+    "tinyui": "/x/6AM",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<p>The engineering space: runbooks, release notes and designs for the orders platform.</p><ac:structured-macro ac:name=\"children\" ac:schema-version=\"2\" />"
+    }
+   },
+   "labels": {
+    "results": [],
+    "meta": {
+     "hasMore": false
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1000?body-format=storage",
+  "answer": {
+   "id": "1000",
+   "status": "current",
+   "title": "Engineering",
+   "spaceId": "2001",
+   "parentId": null,
+   "parentType": null,
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-03-02T09:00:00.000Z",
+   "version": {
+    "number": 2,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-08-03T10:12:40.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1000/Engineering",
+    "editui": "/pages/resumedraft.action?draftId=1000",
+    "tinyui": "/x/6AM",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<p>The engineering space: runbooks, release notes and designs for the orders platform.</p><ac:structured-macro ac:name=\"children\" ac:schema-version=\"2\" />"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1100",
+  "answer": {
+   "id": "1100",
+   "status": "current",
+   "title": "Runbooks",
+   "spaceId": "2001",
+   "parentId": "1000",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-03-02T09:05:00.000Z",
+   "version": {
+    "number": 1,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-03-02T09:05:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1100/Runbooks",
+    "editui": "/pages/resumedraft.action?draftId=1100",
+    "tinyui": "/x/TAQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1100?body-format=storage&include-labels=true",
+  "answer": {
+   "id": "1100",
+   "status": "current",
+   "title": "Runbooks",
+   "spaceId": "2001",
+   "parentId": "1000",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-03-02T09:05:00.000Z",
+   "version": {
+    "number": 1,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-03-02T09:05:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1100/Runbooks",
+    "editui": "/pages/resumedraft.action?draftId=1100",
+    "tinyui": "/x/TAQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<p>What to do when a job or a service fails in prod. Each runbook names its alert, its first checks and its fix.</p><ac:structured-macro ac:name=\"children\" />"
+    }
+   },
+   "labels": {
+    "results": [],
+    "meta": {
+     "hasMore": false
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1100?body-format=storage",
+  "answer": {
+   "id": "1100",
+   "status": "current",
+   "title": "Runbooks",
+   "spaceId": "2001",
+   "parentId": "1000",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-03-02T09:05:00.000Z",
+   "version": {
+    "number": 1,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-03-02T09:05:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1100/Runbooks",
+    "editui": "/pages/resumedraft.action?draftId=1100",
+    "tinyui": "/x/TAQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<p>What to do when a job or a service fails in prod. Each runbook names its alert, its first checks and its fix.</p><ac:structured-macro ac:name=\"children\" />"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1101",
+  "answer": {
+   "id": "1101",
+   "status": "current",
+   "title": "Runbook: etl_nightly",
+   "spaceId": "2001",
+   "parentId": "1100",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-08-12T08:30:00.000Z",
+   "version": {
+    "number": 4,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+    "createdAt": "2026-09-25T14:02:11.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1101/Runbook+etl_nightly",
+    "editui": "/pages/resumedraft.action?draftId=1101",
+    "tinyui": "/x/TQQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1101?body-format=storage&include-labels=true",
+  "answer": {
+   "id": "1101",
+   "status": "current",
+   "title": "Runbook: etl_nightly",
+   "spaceId": "2001",
+   "parentId": "1100",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-08-12T08:30:00.000Z",
+   "version": {
+    "number": 4,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+    "createdAt": "2026-09-25T14:02:11.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1101/Runbook+etl_nightly",
+    "editui": "/pages/resumedraft.action?draftId=1101",
+    "tinyui": "/x/TQQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<ac:structured-macro ac:name=\"info\"><ac:rich-text-body><p>Owner: the data team. Alert: the <code>etl_nightly</code> DAG failing in prod Airflow.</p></ac:rich-text-body></ac:structured-macro><h2>First checks</h2><ol><li><p>Open the failed run in Airflow and find the task that failed, usually <code>load_orders</code>.</p></li><li><p>Read that task&rsquo;s log for the error line.</p></li></ol><h2>An order without customer_id</h2><p>The load stops with <code>ValueError: order NNNNN has no customer_id</code> when an order reaches the warehouse before the CRM has given it a customer.</p><ol><li><p>Fix the order in the CRM: set its customer, then wait for the hourly customer sync.</p></li><li><p>Then <ac:inline-comment-marker ac:ref=\"5d3e2f1a-0000-4000-8000-000000005002\">retry the load</ac:inline-comment-marker>: clear <code>load_orders</code> for the failed run in Airflow.</p></li><li><p>Re-run the search indexer <code>orders-sql</code> on <code>srch-contoso-prod</code>, so the order shows up in orders search.</p></li></ol><h2>Escalation</h2><p>If the load fails twice, page <ac:link><ri:user ri:account-id=\"557058:00000000-0000-4000-8000-00000000a002\" /></ac:link>.</p>"
+    }
+   },
+   "labels": {
+    "results": [
+     {
+      "prefix": "global",
+      "name": "runbook",
+      "id": "3100"
+     },
+     {
+      "prefix": "global",
+      "name": "airflow",
+      "id": "3101"
+     }
+    ],
+    "meta": {
+     "hasMore": false
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1101?body-format=storage",
+  "answer": {
+   "id": "1101",
+   "status": "current",
+   "title": "Runbook: etl_nightly",
+   "spaceId": "2001",
+   "parentId": "1100",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-08-12T08:30:00.000Z",
+   "version": {
+    "number": 4,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+    "createdAt": "2026-09-25T14:02:11.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1101/Runbook+etl_nightly",
+    "editui": "/pages/resumedraft.action?draftId=1101",
+    "tinyui": "/x/TQQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<ac:structured-macro ac:name=\"info\"><ac:rich-text-body><p>Owner: the data team. Alert: the <code>etl_nightly</code> DAG failing in prod Airflow.</p></ac:rich-text-body></ac:structured-macro><h2>First checks</h2><ol><li><p>Open the failed run in Airflow and find the task that failed, usually <code>load_orders</code>.</p></li><li><p>Read that task&rsquo;s log for the error line.</p></li></ol><h2>An order without customer_id</h2><p>The load stops with <code>ValueError: order NNNNN has no customer_id</code> when an order reaches the warehouse before the CRM has given it a customer.</p><ol><li><p>Fix the order in the CRM: set its customer, then wait for the hourly customer sync.</p></li><li><p>Then <ac:inline-comment-marker ac:ref=\"5d3e2f1a-0000-4000-8000-000000005002\">retry the load</ac:inline-comment-marker>: clear <code>load_orders</code> for the failed run in Airflow.</p></li><li><p>Re-run the search indexer <code>orders-sql</code> on <code>srch-contoso-prod</code>, so the order shows up in orders search.</p></li></ol><h2>Escalation</h2><p>If the load fails twice, page <ac:link><ri:user ri:account-id=\"557058:00000000-0000-4000-8000-00000000a002\" /></ac:link>.</p>"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1102",
+  "answer": {
+   "id": "1102",
+   "status": "current",
+   "title": "Runbook: worker crash loop",
+   "spaceId": "2001",
+   "parentId": "1100",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a003",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a003",
+   "createdAt": "2026-09-02T11:00:00.000Z",
+   "version": {
+    "number": 2,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a003",
+    "createdAt": "2026-09-21T09:40:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1102/Runbook+worker+crash+loop",
+    "editui": "/pages/resumedraft.action?draftId=1102",
+    "tinyui": "/x/TgQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1102?body-format=storage&include-labels=true",
+  "answer": {
+   "id": "1102",
+   "status": "current",
+   "title": "Runbook: worker crash loop",
+   "spaceId": "2001",
+   "parentId": "1100",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a003",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a003",
+   "createdAt": "2026-09-02T11:00:00.000Z",
+   "version": {
+    "number": 2,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a003",
+    "createdAt": "2026-09-21T09:40:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1102/Runbook+worker+crash+loop",
+    "editui": "/pages/resumedraft.action?draftId=1102",
+    "tinyui": "/x/TgQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<p>Alert: <strong>[prod] worker crash-looping</strong> in Datadog.</p><h2>Cause</h2><p>The worker cannot sign in to the orders database once its password has expired.</p><h2>Fix</h2><ol><li><p>Rotate <code>kv-contoso-prod/worker-db-password</code> in Key Vault and set the new value on the database.</p></li><li><p>Restart the worker deployment in <code>prod/web</code>.</p></li></ol><p>Tracked in <a href=\"https://dev.azure.com/contoso/Fabrikam/_workitems/edit/1219\">work item 1219</a>.</p>"
+    }
+   },
+   "labels": {
+    "results": [
+     {
+      "prefix": "global",
+      "name": "runbook",
+      "id": "3100"
+     }
+    ],
+    "meta": {
+     "hasMore": false
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1102?body-format=storage",
+  "answer": {
+   "id": "1102",
+   "status": "current",
+   "title": "Runbook: worker crash loop",
+   "spaceId": "2001",
+   "parentId": "1100",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a003",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a003",
+   "createdAt": "2026-09-02T11:00:00.000Z",
+   "version": {
+    "number": 2,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a003",
+    "createdAt": "2026-09-21T09:40:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1102/Runbook+worker+crash+loop",
+    "editui": "/pages/resumedraft.action?draftId=1102",
+    "tinyui": "/x/TgQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<p>Alert: <strong>[prod] worker crash-looping</strong> in Datadog.</p><h2>Cause</h2><p>The worker cannot sign in to the orders database once its password has expired.</p><h2>Fix</h2><ol><li><p>Rotate <code>kv-contoso-prod/worker-db-password</code> in Key Vault and set the new value on the database.</p></li><li><p>Restart the worker deployment in <code>prod/web</code>.</p></li></ol><p>Tracked in <a href=\"https://dev.azure.com/contoso/Fabrikam/_workitems/edit/1219\">work item 1219</a>.</p>"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1200",
+  "answer": {
+   "id": "1200",
+   "status": "current",
+   "title": "Release notes",
+   "spaceId": "2001",
+   "parentId": "1000",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-03-02T09:06:00.000Z",
+   "version": {
+    "number": 1,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-03-02T09:06:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1200/Release+notes",
+    "editui": "/pages/resumedraft.action?draftId=1200",
+    "tinyui": "/x/sAQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1200?body-format=storage&include-labels=true",
+  "answer": {
+   "id": "1200",
+   "status": "current",
+   "title": "Release notes",
+   "spaceId": "2001",
+   "parentId": "1000",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-03-02T09:06:00.000Z",
+   "version": {
+    "number": 1,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-03-02T09:06:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1200/Release+notes",
+    "editui": "/pages/resumedraft.action?draftId=1200",
+    "tinyui": "/x/sAQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<p>One page per release of the api service.</p><ac:structured-macro ac:name=\"children\" />"
+    }
+   },
+   "labels": {
+    "results": [],
+    "meta": {
+     "hasMore": false
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1200?body-format=storage",
+  "answer": {
+   "id": "1200",
+   "status": "current",
+   "title": "Release notes",
+   "spaceId": "2001",
+   "parentId": "1000",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-03-02T09:06:00.000Z",
+   "version": {
+    "number": 1,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-03-02T09:06:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1200/Release+notes",
+    "editui": "/pages/resumedraft.action?draftId=1200",
+    "tinyui": "/x/sAQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<p>One page per release of the api service.</p><ac:structured-macro ac:name=\"children\" />"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1201",
+  "answer": {
+   "id": "1201",
+   "status": "current",
+   "title": "Release notes v1.4.2",
+   "spaceId": "2001",
+   "parentId": "1200",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-09-27T10:00:00.000Z",
+   "version": {
+    "number": 3,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-09-28T22:05:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+    "editui": "/pages/resumedraft.action?draftId=1201",
+    "tinyui": "/x/sQQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1201?body-format=storage&include-labels=true",
+  "answer": {
+   "id": "1201",
+   "status": "current",
+   "title": "Release notes v1.4.2",
+   "spaceId": "2001",
+   "parentId": "1200",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-09-27T10:00:00.000Z",
+   "version": {
+    "number": 3,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-09-28T22:05:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+    "editui": "/pages/resumedraft.action?draftId=1201",
+    "tinyui": "/x/sQQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<p>Released to prod on 2026-09-28.</p><h2>Changes</h2><ul><li><p>Retry on 429 from the orders service: <a href=\"https://dev.azure.com/contoso/Fabrikam/_git/api/pullrequest/431\">PR 431</a></p></li><li><p>Work items <a href=\"https://dev.azure.com/contoso/Fabrikam/_workitems/edit/1207\">1207</a> and <a href=\"https://dev.azure.com/contoso/Fabrikam/_workitems/edit/1210\">1210</a></p></li></ul><h2>Rollout</h2><p>The full changelog is <ac:link><ri:attachment ri:filename=\"changes-v1.4.2.txt\" /></ac:link>; the rollout went out at 21:34 UTC.</p><p><ac:image ac:alt=\"rollout\"><ri:attachment ri:filename=\"rollout.png\" /></ac:image></p>"
+    }
+   },
+   "labels": {
+    "results": [
+     {
+      "prefix": "global",
+      "name": "release",
+      "id": "3100"
+     }
+    ],
+    "meta": {
+     "hasMore": false
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1201?body-format=storage",
+  "answer": {
+   "id": "1201",
+   "status": "current",
+   "title": "Release notes v1.4.2",
+   "spaceId": "2001",
+   "parentId": "1200",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-09-27T10:00:00.000Z",
+   "version": {
+    "number": 3,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-09-28T22:05:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+    "editui": "/pages/resumedraft.action?draftId=1201",
+    "tinyui": "/x/sQQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<p>Released to prod on 2026-09-28.</p><h2>Changes</h2><ul><li><p>Retry on 429 from the orders service: <a href=\"https://dev.azure.com/contoso/Fabrikam/_git/api/pullrequest/431\">PR 431</a></p></li><li><p>Work items <a href=\"https://dev.azure.com/contoso/Fabrikam/_workitems/edit/1207\">1207</a> and <a href=\"https://dev.azure.com/contoso/Fabrikam/_workitems/edit/1210\">1210</a></p></li></ul><h2>Rollout</h2><p>The full changelog is <ac:link><ri:attachment ri:filename=\"changes-v1.4.2.txt\" /></ac:link>; the rollout went out at 21:34 UTC.</p><p><ac:image ac:alt=\"rollout\"><ri:attachment ri:filename=\"rollout.png\" /></ac:image></p>"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1300",
+  "answer": {
+   "id": "1300",
+   "status": "current",
+   "title": "Orders search",
+   "spaceId": "2001",
+   "parentId": "1000",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a002",
+   "createdAt": "2026-08-20T13:00:00.000Z",
+   "version": {
+    "number": 6,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+    "createdAt": "2026-09-10T15:30:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1300/Orders+search",
+    "editui": "/pages/resumedraft.action?draftId=1300",
+    "tinyui": "/x/FAU",
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1300?body-format=storage&include-labels=true",
+  "answer": {
+   "id": "1300",
+   "status": "current",
+   "title": "Orders search",
+   "spaceId": "2001",
+   "parentId": "1000",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a002",
+   "createdAt": "2026-08-20T13:00:00.000Z",
+   "version": {
+    "number": 6,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+    "createdAt": "2026-09-10T15:30:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1300/Orders+search",
+    "editui": "/pages/resumedraft.action?draftId=1300",
+    "tinyui": "/x/FAU",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<ac:structured-macro ac:name=\"toc\" /><h2>Goal</h2><p>Let support find an order by customer, id or address in one box. Tracked in <ac:structured-macro ac:name=\"jira\"><ac:parameter ac:name=\"key\">SRCH-12</ac:parameter></ac:structured-macro>.</p><h2>Design</h2><p>An Azure AI Search index <code>orders</code> on <code>srch-contoso-prod</code>, filled every 15 minutes by the indexer <code>orders-sql</code> from the reporting database.</p><h2>Open questions</h2><ul><li><p>Should cancelled orders be indexed?</p></li></ul>"
+    }
+   },
+   "labels": {
+    "results": [
+     {
+      "prefix": "global",
+      "name": "design",
+      "id": "3100"
+     },
+     {
+      "prefix": "global",
+      "name": "search",
+      "id": "3101"
+     }
+    ],
+    "meta": {
+     "hasMore": false
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1300?body-format=storage",
+  "answer": {
+   "id": "1300",
+   "status": "current",
+   "title": "Orders search",
+   "spaceId": "2001",
+   "parentId": "1000",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a002",
+   "createdAt": "2026-08-20T13:00:00.000Z",
+   "version": {
+    "number": 6,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+    "createdAt": "2026-09-10T15:30:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1300/Orders+search",
+    "editui": "/pages/resumedraft.action?draftId=1300",
+    "tinyui": "/x/FAU",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<ac:structured-macro ac:name=\"toc\" /><h2>Goal</h2><p>Let support find an order by customer, id or address in one box. Tracked in <ac:structured-macro ac:name=\"jira\"><ac:parameter ac:name=\"key\">SRCH-12</ac:parameter></ac:structured-macro>.</p><h2>Design</h2><p>An Azure AI Search index <code>orders</code> on <code>srch-contoso-prod</code>, filled every 15 minutes by the indexer <code>orders-sql</code> from the reporting database.</p><h2>Open questions</h2><ul><li><p>Should cancelled orders be indexed?</p></li></ul>"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1400",
+  "answer": {
+   "id": "1400",
+   "status": "current",
+   "title": "Incidents",
+   "spaceId": "2001",
+   "parentId": "1000",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-03-02T09:07:00.000Z",
+   "version": {
+    "number": 1,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-03-02T09:07:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1400/Incidents",
+    "editui": "/pages/resumedraft.action?draftId=1400",
+    "tinyui": "/x/eAU",
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1400?body-format=storage&include-labels=true",
+  "answer": {
+   "id": "1400",
+   "status": "current",
+   "title": "Incidents",
+   "spaceId": "2001",
+   "parentId": "1000",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-03-02T09:07:00.000Z",
+   "version": {
+    "number": 1,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-03-02T09:07:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1400/Incidents",
+    "editui": "/pages/resumedraft.action?draftId=1400",
+    "tinyui": "/x/eAU",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<p>One postmortem per incident, newest first.</p><ac:structured-macro ac:name=\"children\" />"
+    }
+   },
+   "labels": {
+    "results": [],
+    "meta": {
+     "hasMore": false
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1400?body-format=storage",
+  "answer": {
+   "id": "1400",
+   "status": "current",
+   "title": "Incidents",
+   "spaceId": "2001",
+   "parentId": "1000",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-03-02T09:07:00.000Z",
+   "version": {
+    "number": 1,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-03-02T09:07:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1400/Incidents",
+    "editui": "/pages/resumedraft.action?draftId=1400",
+    "tinyui": "/x/eAU",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<p>One postmortem per incident, newest first.</p><ac:structured-macro ac:name=\"children\" />"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1201?body-format=storage&include-labels=true&version=2",
+  "note": "version 2, before the rollout section",
+  "answer": {
+   "id": "1201",
+   "status": "historical",
+   "title": "Release notes v1.4.2",
+   "spaceId": "2001",
+   "parentId": "1200",
+   "parentType": "page",
+   "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+   "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+   "createdAt": "2026-09-27T10:00:00.000Z",
+   "version": {
+    "number": 2,
+    "message": "rollout time",
+    "minorEdit": false,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+    "createdAt": "2026-09-28T16:00:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+    "editui": "/pages/resumedraft.action?draftId=1201",
+    "tinyui": "/x/sQQ",
+    "base": "https://contoso.atlassian.net/wiki"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<p>Released to prod on 2026-09-28.</p><h2>Changes</h2><ul><li><p>Retry on 429 from the orders service: <a href=\"https://dev.azure.com/contoso/Fabrikam/_git/api/pullrequest/431\">PR 431</a></p></li><li><p>Work items <a href=\"https://dev.azure.com/contoso/Fabrikam/_workitems/edit/1207\">1207</a> and <a href=\"https://dev.azure.com/contoso/Fabrikam/_workitems/edit/1210\">1210</a></p></li></ul>"
+    }
+   },
+   "labels": {
+    "results": [
+     {
+      "prefix": "global",
+      "name": "release",
+      "id": "3100"
+     }
+    ],
+    "meta": {
+     "hasMore": false
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages?space-id=2001&title=Release+notes+v1.4.2&limit=1",
+  "answer": {
+   "results": [
+    {
+     "id": "1201",
+     "status": "current",
+     "title": "Release notes v1.4.2",
+     "spaceId": "2001",
+     "parentId": "1200",
+     "parentType": "page",
+     "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+     "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+     "createdAt": "2026-09-27T10:00:00.000Z",
+     "version": {
+      "number": 3,
+      "message": "",
+      "minorEdit": false,
+      "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+      "createdAt": "2026-09-28T22:05:00.000Z"
+     },
+     "_links": {
+      "webui": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+      "editui": "/pages/resumedraft.action?draftId=1201",
+      "tinyui": "/x/sQQ",
+      "base": "https://contoso.atlassian.net/wiki"
+     }
+    }
+   ],
+   "_links": {}
+  },
+  "exact": [
+   "title"
+  ]
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages?space-id=2001&title=Runbook%3A+etl_nightly&limit=1",
+  "answer": {
+   "results": [
+    {
+     "id": "1101",
+     "status": "current",
+     "title": "Runbook: etl_nightly",
+     "spaceId": "2001",
+     "parentId": "1100",
+     "parentType": "page",
+     "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+     "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+     "createdAt": "2026-08-12T08:30:00.000Z",
+     "version": {
+      "number": 4,
+      "message": "",
+      "minorEdit": false,
+      "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+      "createdAt": "2026-09-25T14:02:11.000Z"
+     },
+     "_links": {
+      "webui": "/spaces/ENG/pages/1101/Runbook+etl_nightly",
+      "editui": "/pages/resumedraft.action?draftId=1101",
+      "tinyui": "/x/TQQ",
+      "base": "https://contoso.atlassian.net/wiki"
+     }
+    }
+   ],
+   "_links": {}
+  },
+  "exact": [
+   "title"
+  ]
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/spaces/2001/pages?depth=root&limit=250",
+  "answer": {
+   "results": [
+    {
+     "id": "1000",
+     "status": "current",
+     "title": "Engineering",
+     "spaceId": "2001",
+     "parentId": null,
+     "parentType": null,
+     "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+     "ownerId": "557058:00000000-0000-4000-8000-00000000a001",
+     "createdAt": "2026-03-02T09:00:00.000Z",
+     "version": {
+      "number": 2,
+      "message": "",
+      "minorEdit": false,
+      "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+      "createdAt": "2026-08-03T10:12:40.000Z"
+     },
+     "_links": {
+      "webui": "/spaces/ENG/pages/1000/Engineering",
+      "editui": "/pages/resumedraft.action?draftId=1000",
+      "tinyui": "/x/6AM",
+      "base": "https://contoso.atlassian.net/wiki"
+     }
+    }
+   ],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1000/descendants?depth=1&limit=250",
+  "answer": {
+   "results": [
+    {
+     "id": "1100",
+     "status": "current",
+     "title": "Runbooks",
+     "type": "page",
+     "parentId": "1000",
+     "depth": 1,
+     "childPosition": 1100,
+     "lastModified": "2026-03-02T09:05:00.000Z"
+    },
+    {
+     "id": "1200",
+     "status": "current",
+     "title": "Release notes",
+     "type": "page",
+     "parentId": "1000",
+     "depth": 1,
+     "childPosition": 1200,
+     "lastModified": "2026-03-02T09:06:00.000Z"
+    },
+    {
+     "id": "1300",
+     "status": "current",
+     "title": "Orders search",
+     "type": "page",
+     "parentId": "1000",
+     "depth": 1,
+     "childPosition": 1300,
+     "lastModified": "2026-09-10T15:30:00.000Z"
+    },
+    {
+     "id": "1400",
+     "status": "current",
+     "title": "Incidents",
+     "type": "page",
+     "parentId": "1000",
+     "depth": 1,
+     "childPosition": 1400,
+     "lastModified": "2026-03-02T09:07:00.000Z"
+    }
+   ],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1000/descendants?depth=2&limit=250",
+  "answer": {
+   "results": [
+    {
+     "id": "1100",
+     "status": "current",
+     "title": "Runbooks",
+     "type": "page",
+     "parentId": "1000",
+     "depth": 1,
+     "childPosition": 1100,
+     "lastModified": "2026-03-02T09:05:00.000Z"
+    },
+    {
+     "id": "1101",
+     "status": "current",
+     "title": "Runbook: etl_nightly",
+     "type": "page",
+     "parentId": "1100",
+     "depth": 2,
+     "childPosition": 1101,
+     "lastModified": "2026-09-25T14:02:11.000Z"
+    },
+    {
+     "id": "1102",
+     "status": "current",
+     "title": "Runbook: worker crash loop",
+     "type": "page",
+     "parentId": "1100",
+     "depth": 2,
+     "childPosition": 1102,
+     "lastModified": "2026-09-21T09:40:00.000Z"
+    },
+    {
+     "id": "1200",
+     "status": "current",
+     "title": "Release notes",
+     "type": "page",
+     "parentId": "1000",
+     "depth": 1,
+     "childPosition": 1200,
+     "lastModified": "2026-03-02T09:06:00.000Z"
+    },
+    {
+     "id": "1201",
+     "status": "current",
+     "title": "Release notes v1.4.2",
+     "type": "page",
+     "parentId": "1200",
+     "depth": 2,
+     "childPosition": 1201,
+     "lastModified": "2026-09-28T22:05:00.000Z"
+    },
+    {
+     "id": "1300",
+     "status": "current",
+     "title": "Orders search",
+     "type": "page",
+     "parentId": "1000",
+     "depth": 1,
+     "childPosition": 1300,
+     "lastModified": "2026-09-10T15:30:00.000Z"
+    },
+    {
+     "id": "1400",
+     "status": "current",
+     "title": "Incidents",
+     "type": "page",
+     "parentId": "1000",
+     "depth": 1,
+     "childPosition": 1400,
+     "lastModified": "2026-03-02T09:07:00.000Z"
+    }
+   ],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1100/descendants?depth=1&limit=250",
+  "answer": {
+   "results": [
+    {
+     "id": "1101",
+     "status": "current",
+     "title": "Runbook: etl_nightly",
+     "type": "page",
+     "parentId": "1100",
+     "depth": 1,
+     "childPosition": 1101,
+     "lastModified": "2026-09-25T14:02:11.000Z"
+    },
+    {
+     "id": "1102",
+     "status": "current",
+     "title": "Runbook: worker crash loop",
+     "type": "page",
+     "parentId": "1100",
+     "depth": 1,
+     "childPosition": 1102,
+     "lastModified": "2026-09-21T09:40:00.000Z"
+    }
+   ],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1100/descendants?depth=2&limit=250",
+  "answer": {
+   "results": [
+    {
+     "id": "1101",
+     "status": "current",
+     "title": "Runbook: etl_nightly",
+     "type": "page",
+     "parentId": "1100",
+     "depth": 1,
+     "childPosition": 1101,
+     "lastModified": "2026-09-25T14:02:11.000Z"
+    },
+    {
+     "id": "1102",
+     "status": "current",
+     "title": "Runbook: worker crash loop",
+     "type": "page",
+     "parentId": "1100",
+     "depth": 1,
+     "childPosition": 1102,
+     "lastModified": "2026-09-21T09:40:00.000Z"
+    }
+   ],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1200/descendants?depth=1&limit=250",
+  "answer": {
+   "results": [
+    {
+     "id": "1201",
+     "status": "current",
+     "title": "Release notes v1.4.2",
+     "type": "page",
+     "parentId": "1200",
+     "depth": 1,
+     "childPosition": 1201,
+     "lastModified": "2026-09-28T22:05:00.000Z"
+    }
+   ],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1200/descendants?depth=2&limit=250",
+  "answer": {
+   "results": [
+    {
+     "id": "1201",
+     "status": "current",
+     "title": "Release notes v1.4.2",
+     "type": "page",
+     "parentId": "1200",
+     "depth": 1,
+     "childPosition": 1201,
+     "lastModified": "2026-09-28T22:05:00.000Z"
+    }
+   ],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1300/descendants?depth=1&limit=250",
+  "answer": {
+   "results": [],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1300/descendants?depth=2&limit=250",
+  "answer": {
+   "results": [],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1400/descendants?depth=1&limit=250",
+  "answer": {
+   "results": [],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1400/descendants?depth=2&limit=250",
+  "answer": {
+   "results": [],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/rest/api/search?cql=siteSearch+~+%22runbook+etl_nightly%22+and+text+~+%22runbook+etl_nightly%22+and+type+in+%28page%2C+blogpost%29&expand=content.space%2Ccontent.version&limit=50",
+  "answer": {
+   "results": [
+    {
+     "content": {
+      "id": "1101",
+      "type": "page",
+      "status": "current",
+      "title": "Runbook: etl_nightly",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a002",
+        "displayName": "Sam Lee"
+       },
+       "when": "2026-09-25T14:02:11.000Z",
+       "number": 4
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1101/Runbook+etl_nightly",
+       "tinyui": "/x/TQQ"
+      }
+     },
+     "title": "Runbook: etl_nightly",
+     "excerpt": "Owner: the data team. Alert: the @@@hl@@@etl_nightly@@@endhl@@@ DAG failing in prod Airflow. First checks Open the failed run in Airflow",
+     "url": "/spaces/ENG/pages/1101/Runbook+etl_nightly",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-09-25T14:02:11.000Z"
+    },
+    {
+     "content": {
+      "id": "1102",
+      "type": "page",
+      "status": "current",
+      "title": "Runbook: worker crash loop",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a003",
+        "displayName": "Priya Patel"
+       },
+       "when": "2026-09-21T09:40:00.000Z",
+       "number": 2
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1102/Runbook+worker+crash+loop",
+       "tinyui": "/x/TgQ"
+      }
+     },
+     "title": "Runbook: worker crash loop",
+     "excerpt": "Alert: [prod] worker crash-looping in Datadog. Cause The worker cannot sign in to the orders database",
+     "url": "/spaces/ENG/pages/1102/Runbook+worker+crash+loop",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-09-21T09:40:00.000Z"
+    }
+   ],
+   "start": 0,
+   "limit": 50,
+   "size": 2,
+   "totalSize": 2,
+   "cqlQuery": "siteSearch ~ \"runbook etl_nightly\" and text ~ \"runbook etl_nightly\" and type in (page, blogpost)",
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki",
+    "context": "/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/rest/api/search?cql=type+in+%28page%2C+blogpost%29+and+label+%3D+%22runbook%22+order+by+lastmodified+desc&expand=content.space%2Ccontent.version&limit=50",
+  "answer": {
+   "results": [
+    {
+     "content": {
+      "id": "1101",
+      "type": "page",
+      "status": "current",
+      "title": "Runbook: etl_nightly",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a002",
+        "displayName": "Sam Lee"
+       },
+       "when": "2026-09-25T14:02:11.000Z",
+       "number": 4
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1101/Runbook+etl_nightly",
+       "tinyui": "/x/TQQ"
+      }
+     },
+     "title": "Runbook: etl_nightly",
+     "excerpt": "Owner: the data team. Alert: the etl_nightly DAG failing in prod Airflow.",
+     "url": "/spaces/ENG/pages/1101/Runbook+etl_nightly",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-09-25T14:02:11.000Z"
+    },
+    {
+     "content": {
+      "id": "1102",
+      "type": "page",
+      "status": "current",
+      "title": "Runbook: worker crash loop",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a003",
+        "displayName": "Priya Patel"
+       },
+       "when": "2026-09-21T09:40:00.000Z",
+       "number": 2
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1102/Runbook+worker+crash+loop",
+       "tinyui": "/x/TgQ"
+      }
+     },
+     "title": "Runbook: worker crash loop",
+     "excerpt": "Alert: [prod] worker crash-looping in Datadog.",
+     "url": "/spaces/ENG/pages/1102/Runbook+worker+crash+loop",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-09-21T09:40:00.000Z"
+    }
+   ],
+   "start": 0,
+   "limit": 50,
+   "size": 2,
+   "totalSize": 2,
+   "cqlQuery": "type in (page, blogpost) and label = \"runbook\" order by lastmodified desc",
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki",
+    "context": "/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/rest/api/search?cql=type+in+%28page%2C+blogpost%29+and+lastmodified+%3E%3D+now%28%22-10080m%22%29+order+by+lastmodified+desc&expand=content.space%2Ccontent.version&limit=50",
+  "answer": {
+   "results": [
+    {
+     "content": {
+      "id": "1201",
+      "type": "page",
+      "status": "current",
+      "title": "Release notes v1.4.2",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a001",
+        "displayName": "Jane Doe"
+       },
+       "when": "2026-09-28T22:05:00.000Z",
+       "number": 3
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+       "tinyui": "/x/sQQ"
+      }
+     },
+     "title": "Release notes v1.4.2",
+     "excerpt": "Released to prod on 2026-09-28. Changes Retry on 429 from the orders service: PR 431",
+     "url": "/spaces/ENG/pages/1201/Release+notes+v1.4.2",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-09-28T22:05:00.000Z"
+    },
+    {
+     "content": {
+      "id": "1101",
+      "type": "page",
+      "status": "current",
+      "title": "Runbook: etl_nightly",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a002",
+        "displayName": "Sam Lee"
+       },
+       "when": "2026-09-25T14:02:11.000Z",
+       "number": 4
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1101/Runbook+etl_nightly",
+       "tinyui": "/x/TQQ"
+      }
+     },
+     "title": "Runbook: etl_nightly",
+     "excerpt": "Owner: the data team. Alert: the etl_nightly DAG failing in prod Airflow.",
+     "url": "/spaces/ENG/pages/1101/Runbook+etl_nightly",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-09-25T14:02:11.000Z"
+    }
+   ],
+   "start": 0,
+   "limit": 50,
+   "size": 2,
+   "totalSize": 2,
+   "cqlQuery": "type in (page, blogpost) and lastmodified >= now(\"-10080m\") order by lastmodified desc",
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki",
+    "context": "/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/rest/api/search?cql=siteSearch+~+%22orders+search+indexer%22+and+text+~+%22orders+search+indexer%22+and+type+in+%28page%2C+blogpost%29&expand=content.space%2Ccontent.version&limit=50",
+  "answer": {
+   "results": [
+    {
+     "content": {
+      "id": "1300",
+      "type": "page",
+      "status": "current",
+      "title": "Orders search",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a002",
+        "displayName": "Sam Lee"
+       },
+       "when": "2026-09-10T15:30:00.000Z",
+       "number": 6
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1300/Orders+search",
+       "tinyui": "/x/FAU"
+      }
+     },
+     "title": "Orders search",
+     "excerpt": "An Azure AI Search index orders on srch-contoso-prod, filled every 15 minutes by the @@@hl@@@indexer@@@endhl@@@ orders-sql",
+     "url": "/spaces/ENG/pages/1300/Orders+search",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-09-10T15:30:00.000Z"
+    },
+    {
+     "content": {
+      "id": "1101",
+      "type": "page",
+      "status": "current",
+      "title": "Runbook: etl_nightly",
+      "space": {
+       "id": 2001,
+       "key": "ENG",
+       "name": "Engineering",
+       "type": "global"
+      },
+      "version": {
+       "by": {
+        "type": "known",
+        "accountId": "557058:00000000-0000-4000-8000-00000000a002",
+        "displayName": "Sam Lee"
+       },
+       "when": "2026-09-25T14:02:11.000Z",
+       "number": 4
+      },
+      "_links": {
+       "webui": "/spaces/ENG/pages/1101/Runbook+etl_nightly",
+       "tinyui": "/x/TQQ"
+      }
+     },
+     "title": "Runbook: etl_nightly",
+     "excerpt": "Re-run the search @@@hl@@@indexer@@@endhl@@@ orders-sql on srch-contoso-prod",
+     "url": "/spaces/ENG/pages/1101/Runbook+etl_nightly",
+     "resultGlobalContainer": {
+      "title": "Engineering",
+      "displayUrl": "/spaces/ENG"
+     },
+     "entityType": "content",
+     "lastModified": "2026-09-25T14:02:11.000Z"
+    }
+   ],
+   "start": 0,
+   "limit": 50,
+   "size": 2,
+   "totalSize": 2,
+   "cqlQuery": "siteSearch ~ \"orders search indexer\" and text ~ \"orders search indexer\" and type in (page, blogpost)",
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki",
+    "context": "/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/rest/api/content/search?cql=container+%3D+1101+and+type+%3D+comment+order+by+created+desc&expand=body.storage%2Cversion%2Cancestors%2Cextensions.inlineProperties&limit=50",
+  "answer": {
+   "results": [
+    {
+     "id": "5002",
+     "type": "comment",
+     "status": "current",
+     "title": "Re: page",
+     "body": {
+      "storage": {
+       "value": "<p>only once the CRM fix has synced</p>",
+       "representation": "storage"
+      }
+     },
+     "version": {
+      "by": {
+       "type": "known",
+       "accountId": "557058:00000000-0000-4000-8000-00000000a002",
+       "displayName": "Sam Lee"
+      },
+      "when": "2026-09-25T15:20:00.000Z",
+      "number": 1,
+      "minorEdit": false
+     },
+     "ancestors": [],
+     "extensions": {
+      "location": "inline",
+      "inlineProperties": {
+       "originalSelection": "retry the load",
+       "markerRef": "5d3e2f1a-0000-4000-8000-000000005002"
+      }
+     }
+    }
+   ],
+   "start": 0,
+   "limit": 50,
+   "size": 1,
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki",
+    "context": "/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/rest/api/content/search?cql=container+%3D+1201+and+type+%3D+comment+order+by+created+desc&expand=body.storage%2Cversion%2Cancestors%2Cextensions.inlineProperties&limit=50",
+  "answer": {
+   "results": [
+    {
+     "id": "5001",
+     "type": "comment",
+     "status": "current",
+     "title": "Re: page",
+     "body": {
+      "storage": {
+       "value": "<p>Rollout looked clean from the dashboards; error rate back under 1% by 21:58.</p>",
+       "representation": "storage"
+      }
+     },
+     "version": {
+      "by": {
+       "type": "known",
+       "accountId": "557058:00000000-0000-4000-8000-00000000a003",
+       "displayName": "Priya Patel"
+      },
+      "when": "2026-09-28T23:10:00.000Z",
+      "number": 1,
+      "minorEdit": false
+     },
+     "ancestors": [],
+     "extensions": {
+      "location": "footer"
+     }
+    }
+   ],
+   "start": 0,
+   "limit": 50,
+   "size": 1,
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki",
+    "context": "/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/rest/api/content/search?cql=container+%3D+1100+and+type+%3D+comment+order+by+created+desc&expand=body.storage%2Cversion%2Cancestors%2Cextensions.inlineProperties&limit=50",
+  "answer": {
+   "results": [],
+   "start": 0,
+   "limit": 50,
+   "size": 0,
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki",
+    "context": "/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/rest/api/content/search?cql=container+%3D+1102+and+type+%3D+comment+order+by+created+desc&expand=body.storage%2Cversion%2Cancestors%2Cextensions.inlineProperties&limit=50",
+  "answer": {
+   "results": [],
+   "start": 0,
+   "limit": 50,
+   "size": 0,
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki",
+    "context": "/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/rest/api/content/search?cql=container+%3D+1300+and+type+%3D+comment+order+by+created+desc&expand=body.storage%2Cversion%2Cancestors%2Cextensions.inlineProperties&limit=50",
+  "answer": {
+   "results": [],
+   "start": 0,
+   "limit": 50,
+   "size": 0,
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki",
+    "context": "/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1101/inline-comments?limit=250",
+  "answer": {
+   "results": [
+    {
+     "id": "5002",
+     "status": "current",
+     "pageId": "1101",
+     "resolutionStatus": "open",
+     "version": {
+      "number": 1,
+      "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+      "createdAt": "2026-09-25T15:20:00.000Z"
+     },
+     "properties": {
+      "inlineMarkerRef": "5d3e2f1a-0000-4000-8000-000000005002",
+      "inlineOriginalSelection": "retry the load"
+     },
+     "_links": {
+      "webui": "/spaces/ENG/pages/1101/Runbook+etl_nightly?focusedCommentId=5002"
+     }
+    }
+   ],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/inline-comments/5002?body-format=storage",
+  "answer": {
+   "id": "5002",
+   "status": "current",
+   "pageId": "1101",
+   "resolutionStatus": "open",
+   "version": {
+    "number": 1,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+    "createdAt": "2026-09-25T15:20:00.000Z"
+   },
+   "body": {
+    "storage": {
+     "representation": "storage",
+     "value": "<p>only once the CRM fix has synced</p>"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1201/attachments?sort=-created-date&limit=250",
+  "answer": {
+   "results": [
+    {
+     "id": "att7001",
+     "status": "current",
+     "title": "changes-v1.4.2.txt",
+     "createdAt": "2026-09-28T22:04:00.000Z",
+     "pageId": "1201",
+     "mediaType": "text/plain",
+     "comment": "The full changelog",
+     "fileId": "00000000-0000-4000-8000-00000000f001",
+     "fileSize": 130,
+     "webuiLink": "/pages/viewpageattachments.action?pageId=1201&preview=%2F1201%2F7001%2Fchanges-v1.4.2.txt",
+     "downloadLink": "/rest/api/content/1201/child/attachment/att7001/download",
+     "version": {
+      "number": 1,
+      "message": "",
+      "minorEdit": true,
+      "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+      "createdAt": "2026-09-28T22:04:00.000Z"
+     }
+    },
+    {
+     "id": "att7002",
+     "status": "current",
+     "title": "rollout.png",
+     "createdAt": "2026-09-28T16:01:00.000Z",
+     "pageId": "1201",
+     "mediaType": "image/png",
+     "comment": "",
+     "fileId": "00000000-0000-4000-8000-00000000f002",
+     "fileSize": 25,
+     "webuiLink": "/pages/viewpageattachments.action?pageId=1201&preview=%2F1201%2F7002%2Frollout.png",
+     "downloadLink": "/rest/api/content/1201/child/attachment/att7002/download",
+     "version": {
+      "number": 1,
+      "message": "",
+      "minorEdit": true,
+      "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+      "createdAt": "2026-09-28T16:01:00.000Z"
+     }
+    }
+   ],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1101/attachments?sort=-created-date&limit=250",
+  "answer": {
+   "results": [],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1102/attachments?sort=-created-date&limit=250",
+  "answer": {
+   "results": [],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1300/attachments?sort=-created-date&limit=250",
+  "answer": {
+   "results": [],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/attachments/att7001",
+  "answer": {
+   "id": "att7001",
+   "status": "current",
+   "title": "changes-v1.4.2.txt",
+   "createdAt": "2026-09-28T22:04:00.000Z",
+   "pageId": "1201",
+   "mediaType": "text/plain",
+   "comment": "The full changelog",
+   "fileId": "00000000-0000-4000-8000-00000000f001",
+   "fileSize": 130,
+   "webuiLink": "/pages/viewpageattachments.action?pageId=1201&preview=%2F1201%2F7001%2Fchanges-v1.4.2.txt",
+   "downloadLink": "/rest/api/content/1201/child/attachment/att7001/download",
+   "version": {
+    "number": 1,
+    "message": "",
+    "minorEdit": true,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-09-28T22:04:00.000Z"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/rest/api/content/1201/child/attachment/att7001/download",
+  "note": "a pre-signed media link, fetched without the token",
+  "status": 302,
+  "headers": {
+   "Location": "https://api.media.atlassian.com/file/00000000-0000-4000-8000-00000000f001/binary?token=stand-in-jwt&client=00000000-0000-4000-8000-0000000000c1&name=changes-v1.4.2.txt"
+  },
+  "text": ""
+ },
+ {
+  "request": "GET https://api.media.atlassian.com/file/00000000-0000-4000-8000-00000000f001/binary?token=stand-in-jwt&client=00000000-0000-4000-8000-0000000000c1&name=changes-v1.4.2.txt",
+  "text": "v1.4.2 (2026-09-28)\n\n- Retry on 429 from the orders service (PR 431)\n- Work items 1207 and 1210\n- Rolled out to prod at 21:34 UTC\n"
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/attachments/att7002",
+  "answer": {
+   "id": "att7002",
+   "status": "current",
+   "title": "rollout.png",
+   "createdAt": "2026-09-28T16:01:00.000Z",
+   "pageId": "1201",
+   "mediaType": "image/png",
+   "comment": "",
+   "fileId": "00000000-0000-4000-8000-00000000f002",
+   "fileSize": 25,
+   "webuiLink": "/pages/viewpageattachments.action?pageId=1201&preview=%2F1201%2F7002%2Frollout.png",
+   "downloadLink": "/rest/api/content/1201/child/attachment/att7002/download",
+   "version": {
+    "number": 1,
+    "message": "",
+    "minorEdit": true,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+    "createdAt": "2026-09-28T16:01:00.000Z"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/rest/api/content/1201/child/attachment/att7002/download",
+  "note": "a pre-signed media link, fetched without the token",
+  "status": 302,
+  "headers": {
+   "Location": "https://api.media.atlassian.com/file/00000000-0000-4000-8000-00000000f002/binary?token=stand-in-jwt&client=00000000-0000-4000-8000-0000000000c1&name=rollout.png"
+  },
+  "text": ""
+ },
+ {
+  "request": "GET https://api.media.atlassian.com/file/00000000-0000-4000-8000-00000000f002/binary?token=stand-in-jwt&client=00000000-0000-4000-8000-0000000000c1&name=rollout.png",
+  "text": "PNG\r\n\u001a\n\u0000\u0000\u0000\rIHDR\u0000\u0000\u0000\u0001\u0000\u0000\u0000\u0001"
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1201/versions?sort=-modified-date&limit=50",
+  "answer": {
+   "results": [
+    {
+     "number": 3,
+     "message": "v1.4.2 shipped",
+     "minorEdit": false,
+     "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+     "createdAt": "2026-09-28T22:05:00.000Z"
+    },
+    {
+     "number": 2,
+     "message": "rollout time",
+     "minorEdit": false,
+     "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+     "createdAt": "2026-09-28T16:00:00.000Z"
+    },
+    {
+     "number": 1,
+     "message": "",
+     "minorEdit": false,
+     "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+     "createdAt": "2026-09-27T10:00:00.000Z"
+    }
+   ],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "GET https://contoso.atlassian.net/wiki/api/v2/pages/1101/versions?sort=-modified-date&limit=50",
+  "answer": {
+   "results": [
+    {
+     "number": 4,
+     "message": "the indexer step",
+     "minorEdit": false,
+     "authorId": "557058:00000000-0000-4000-8000-00000000a002",
+     "createdAt": "2026-09-25T14:02:11.000Z"
+    },
+    {
+     "number": 3,
+     "message": "",
+     "minorEdit": true,
+     "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+     "createdAt": "2026-09-01T09:00:00.000Z"
+    },
+    {
+     "number": 2,
+     "message": "",
+     "minorEdit": false,
+     "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+     "createdAt": "2026-08-14T10:00:00.000Z"
+    },
+    {
+     "number": 1,
+     "message": "",
+     "minorEdit": false,
+     "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+     "createdAt": "2026-08-12T08:30:00.000Z"
+    }
+   ],
+   "_links": {
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "POST https://contoso.atlassian.net/wiki/api/v2/pages",
+  "note": "any new page: it is 1401",
+  "answer": {
+   "id": "1401",
+   "status": "current",
+   "title": "Postmortem",
+   "spaceId": "2001",
+   "parentId": "1400",
+   "version": {
+    "number": 1,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-09-29T11:55:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1401/Postmortem",
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "PUT https://contoso.atlassian.net/wiki/api/v2/pages/1101",
+  "answer": {
+   "id": "1101",
+   "status": "current",
+   "title": "Runbook: etl_nightly",
+   "spaceId": "2001",
+   "version": {
+    "number": 5,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-09-29T11:55:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1101/Runbook+etl_nightly",
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "PUT https://contoso.atlassian.net/wiki/api/v2/pages/1102",
+  "answer": {
+   "id": "1102",
+   "status": "current",
+   "title": "Runbook: worker crash loop",
+   "spaceId": "2001",
+   "version": {
+    "number": 3,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001",
+    "createdAt": "2026-09-29T11:55:00.000Z"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1102/Runbook+worker+crash+loop",
+    "base": "https://contoso.atlassian.net/wiki"
+   }
+  }
+ },
+ {
+  "request": "POST https://contoso.atlassian.net/wiki/api/v2/footer-comments",
+  "status": 201,
+  "answer": {
+   "id": "5010",
+   "status": "current",
+   "pageId": "1201",
+   "version": {
+    "number": 1,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001"
+   },
+   "_links": {
+    "webui": "/spaces/ENG/pages/1201/Release+notes+v1.4.2?focusedCommentId=5010"
+   }
+  }
+ },
+ {
+  "request": "PUT https://contoso.atlassian.net/wiki/api/v2/inline-comments/5002",
+  "answer": {
+   "id": "5002",
+   "status": "current",
+   "pageId": "1101",
+   "resolutionStatus": "resolved",
+   "version": {
+    "number": 2,
+    "authorId": "557058:00000000-0000-4000-8000-00000000a001"
+   }
+  }
+ }
+]

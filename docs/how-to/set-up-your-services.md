@@ -286,6 +286,43 @@ The credential row names where the credential came from, never its value; a
 failed connection row carries Datadog's own message. A refusal usually means
 the wrong `site` or a missing scope.
 
+## 9. Confluence (confluence)
+
+Confluence Cloud only: a site at `SITE.atlassian.net`. Data Center and
+Server are not supported.
+
+```sh
+agent-cli config example confluence
+```
+
+```toml
+[confluence]
+url = "https://contoso.atlassian.net/wiki"
+email = "jane@contoso.com"
+token_cmd = "pass show contoso/confluence-token"
+```
+
+Make an API token at
+https://id.atlassian.com/manage-profile/security/api-tokens ("Create API
+token") while signed in as the account in `email`; it is sent as Basic
+`email:token` to the site and nowhere else. Every token expires within a
+year, so make a note of when.
+
+A token made with "Create API token with scopes", or a service account's,
+works only through Atlassian's gateway: add the site's `cloud_id`, which
+`https://SITE.atlassian.net/_edge/tenant_info` prints with no sign-in. Calls
+then go to `api.atlassian.com`, as Bearer when there is no `email`. Give
+such a token the read scopes for pages, spaces, comments, attachments and
+users, and the write scopes only where agents may publish.
+
+```sh
+agent-cli doctor confluence
+```
+
+The connection row must say "signed in as" your name. A site that lets
+anyone read answers a wrong or expired token as the anonymous user instead
+of refusing it, and doctor reports that as a failure.
+
 ## WSL
 
 On WSL 2 under Windows 11, four things go wrong that do not on Linux.
