@@ -1,5 +1,5 @@
-//! Resource Graph: one query for every vault, registry and AKS cluster the
-//! login can reach, rather than one list call per provider per subscription.
+//! Resource Graph: one query for every vault, registry, AKS cluster and AI
+//! Search service the login can reach, rather than one list call per provider per subscription.
 //! Ported from az-tui's `graph::inventory`, with clusters and the
 //! subscription added, and cached for `[azure] refresh` seconds.
 
@@ -14,17 +14,26 @@ use crate::config::Azure;
 
 const URL: &str = "https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01";
 
-/// The three resource types the domains know, with what each needs projected
+/// The four resource types the domains know, with what each needs projected
 /// under one name. The sort names `id` too: a skip token paging over a
 /// non-unique sort column can hand a row back twice and miss another.
 const QUERY: &str = r"resources
-| where type in~ ('microsoft.keyvault/vaults', 'microsoft.containerregistry/registries', 'microsoft.containerservice/managedclusters')
+| where type in~ ('microsoft.keyvault/vaults', 'microsoft.containerregistry/registries', 'microsoft.containerservice/managedclusters', 'microsoft.search/searchservices')
 | project id, name, type, subscriptionId, resourceGroup, location,
           loginServer = tostring(properties.loginServer),
           vaultUri = tostring(properties.vaultUri),
           currentKubernetesVersion = tostring(properties.currentKubernetesVersion),
           kubernetesVersion = tostring(properties.kubernetesVersion),
-          powerState = tostring(properties.powerState.code)
+          powerState = tostring(properties.powerState.code),
+          endpoint = tostring(properties.endpoint),
+          sku = tostring(sku.name),
+          replicaCount = toint(properties.replicaCount),
+          partitionCount = toint(properties.partitionCount),
+          status = tostring(properties.status),
+          publicNetworkAccess = tostring(properties.publicNetworkAccess),
+          semanticSearch = tostring(properties.semanticSearch),
+          authOptions = properties.authOptions,
+          disableLocalAuth = tobool(properties.disableLocalAuth)
 | order by name asc, id asc";
 
 /// Resource Graph's own cap on one page.
@@ -65,11 +74,71 @@ pub struct Cluster {
     pub power_state: String,
 }
 
+/// One Azure AI Search service. Whether it takes a token or a key is in its
+/// own settings, kept here as found.
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct SearchService {
+    pub name: String,
+    pub subscription: String,
+    pub resource_group: String,
+    pub location: String,
+    /// `https://srch-contoso.search.windows.net/`, or empty when the row had
+    /// none (ARM is then asked).
+    pub endpoint: String,
+    pub sku: String,
+    pub replicas: Option<u32>,
+    pub partitions: Option<u32>,
+    pub status: String,
+    pub network: String,
+    pub semantic: String,
+    /// `aadOrApiKey` or `apiKeyOnly`, or empty when the row did not say.
+    pub auth_options: String,
+    pub local_auth_disabled: Option<bool>,
+}
+
+impl SearchService {
+    /// Whether the row says where to send a call and whether a token or a
+    /// key goes with it. It is unconfirmed that Resource Graph rows carry
+    /// either.
+    pub fn complete(&self) -> bool {
+        !self.endpoint.is_empty()
+            && (!self.auth_options.is_empty() || self.local_auth_disabled == Some(true))
+    }
+
+    /// Fills what the row lacked from the service's ARM `properties`.
+    pub fn fill(&mut self, properties: &Value) {
+        if self.endpoint.is_empty() {
+            self.endpoint = text(&properties["endpoint"]).unwrap_or_default();
+        }
+        if self.auth_options.is_empty() {
+            self.auth_options = auth_options(&properties["authOptions"]);
+        }
+        if self.local_auth_disabled.is_none() {
+            self.local_auth_disabled = properties["disableLocalAuth"].as_bool();
+        }
+    }
+}
+
+/// The one key of `{"aadOrApiKey": {…}}` or `{"apiKeyOnly": {}}`, whether
+/// Resource Graph sent the object or its text.
+fn auth_options(value: &Value) -> String {
+    let parsed = match value {
+        Value::String(raw) => serde_json::from_str::<Value>(raw).unwrap_or_default(),
+        other => other.clone(),
+    };
+    parsed
+        .as_object()
+        .and_then(|options| options.keys().next().cloned())
+        .unwrap_or_default()
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Inventory {
     pub vaults: Vec<Vault>,
     pub registries: Vec<Registry>,
     pub clusters: Vec<Cluster>,
+    #[serde(default)]
+    pub search_services: Vec<SearchService>,
 }
 
 /// Everything the login reaches in `[azure] subscriptions` (all of them when
@@ -77,14 +146,18 @@ pub struct Inventory {
 /// else from Resource Graph. The cache holds names and addresses only, and
 /// every address read back from it is checked again before a token goes to it.
 pub fn inventory(ctx: &Ctx, azure: &Azure) -> Result<Inventory> {
-    let key = format!("azure:inventory:{}", azure.subscriptions.join(","));
+    // Not `azure:inventory:`, whose entries predate search services.
+    let key = format!("azure:inventory2:{}", azure.subscriptions.join(","));
     if let Some(held) = ctx.cache().get::<Inventory>(&key) {
         return Ok(held);
     }
     let read = query(ctx, azure).map_err(explain)?;
     // A login with no subscription (a tenant-level one) gets an empty answer,
     // not a refusal: say so rather than report an empty Azure.
-    let empty = read.vaults.is_empty() && read.registries.is_empty() && read.clusters.is_empty();
+    let empty = read.vaults.is_empty()
+        && read.registries.is_empty()
+        && read.clusters.is_empty()
+        && read.search_services.is_empty();
     // The check is advice: if it cannot be made, the empty answer stands.
     if empty && azure.subscriptions.is_empty() && no_subscriptions(ctx).unwrap_or(false) {
         return Err(Failure::setup("the login can see no Azure subscriptions")
@@ -147,6 +220,24 @@ fn query(ctx: &Ctx, azure: &Azure) -> Result<Inventory> {
                         kubernetes_version: text(&row["currentKubernetesVersion"])
                             .unwrap_or_else(|| field("kubernetesVersion")),
                         power_state: field("powerState"),
+                    });
+                }
+                "microsoft.search/searchservices" => {
+                    let count = |key: &str| row[key].as_u64().and_then(|n| u32::try_from(n).ok());
+                    inventory.search_services.push(SearchService {
+                        name: field("name"),
+                        subscription: field("subscriptionId"),
+                        resource_group: field("resourceGroup"),
+                        location: field("location"),
+                        endpoint: field("endpoint"),
+                        sku: field("sku"),
+                        replicas: count("replicaCount"),
+                        partitions: count("partitionCount"),
+                        status: field("status"),
+                        network: field("publicNetworkAccess"),
+                        semantic: field("semanticSearch"),
+                        auth_options: auth_options(&row["authOptions"]),
+                        local_auth_disabled: row["disableLocalAuth"].as_bool(),
                     });
                 }
                 _ => {}
@@ -230,7 +321,10 @@ mod tests {
                     "data": [testing::vault("kv-contoso"), testing::cluster("aks-contoso")],
                     "$skipToken": "page-2",
                 })),
-                testing::inventory(vec![testing::registry("contosoacr")]),
+                testing::inventory(vec![
+                    testing::registry("contosoacr"),
+                    testing::search_service("srch-contoso", "aadOrApiKey"),
+                ]),
             ],
             "",
         );
@@ -245,6 +339,20 @@ mod tests {
         );
         assert_eq!(inventory.clusters[0].kubernetes_version, "1.30.4");
         assert_eq!(inventory.clusters[0].power_state, "Running");
+        let search = &inventory.search_services[0];
+        assert_eq!(
+            (
+                search.endpoint.as_str(),
+                search.auth_options.as_str(),
+                search.replicas
+            ),
+            (
+                "https://srch-contoso.search.windows.net/",
+                "aadOrApiKey",
+                Some(2)
+            )
+        );
+        assert!(search.complete());
         let sent = transport.sent();
         assert_eq!(sent.len(), 2);
         assert_eq!(

@@ -35,7 +35,7 @@ any key, for example `AGENT_CLI_ADO_PROJECT=web`.
 | Domain | Section | Sign-in |
 |---|---|---|
 | ado | `[ado]` org, project, team | `AZURE_DEVOPS_EXT_PAT`, else your `az login` |
-| kv, acr, aks | `[azure]` (optional allowlists) | your `az login` |
+| kv, acr, aks, aisearch | `[azure]` (optional allowlists) | your `az login` (aisearch: a token, or an admin key it fetches, per service) |
 | k8s | `[[k8s.scope]]` per cluster | your kubeconfig; `agent-cli aks cluster connect NAME` fetches it for AKS |
 | sql | `[[sql.connection]]` per database | `password_env` or `password_cmd` |
 | airflow | `[[airflow.instance]]` per server | username with `password_env`/`password_cmd`, or `token_env`/`token_cmd` |
@@ -93,6 +93,7 @@ can only read.
 | kv | Key Vault secrets and versions (metadata; values only with `--reveal`) | 4 |
 | acr | Container Registry repositories, tags, manifests | 4 |
 | aks | AKS clusters and their credentials | 2 |
+| aisearch | Azure AI Search services, indexes, documents (keyword, vector, hybrid, semantic), indexers | 16 |
 | k8s | Kubernetes pods, logs, events, deployments, config maps, secrets | 14 |
 | sql | SQL Server and Oracle queries and catalog | 6 |
 | airflow | Apache Airflow 2.9+ and 3 DAGs, runs, task instances, logs, import errors | 21 |

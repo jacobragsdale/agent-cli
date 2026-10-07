@@ -105,7 +105,7 @@ The credential row names where the token came from. A 401 means the token is
 wrong or expired; a project check that fails means a name under `project` is
 misspelled or belongs to another organization.
 
-## 4. Azure: Key Vault, Container Registry and AKS (kv, acr, aks)
+## 4. Azure: Key Vault, Container Registry, AKS and AI Search (kv, acr, aks, aisearch)
 
 These sign in with the Azure CLI's login. Install `az`, then:
 
@@ -120,18 +120,37 @@ az account list -o table
 ```
 
 The section may be empty; it must be there for doctor to check Azure. Lists
-of `subscriptions`, `vaults` and `registries` narrow what the commands see
-(`agent-cli config example azure` shows them).
+of `subscriptions`, `vaults`, `registries` and `search_services` narrow what
+the commands see (`agent-cli config example azure` shows them).
 
 ```sh
 agent-cli doctor kv
 agent-cli doctor acr
 agent-cli doctor aks
+agent-cli doctor aisearch
 ```
 
 A failed `az login` check means the login expired: run `az login` again. A
 vault check that fails while the inventory passes means your account can see
 the vault but has no data-plane role on it.
+
+AI Search is called the way each service's own settings allow, never as
+configured. A service that takes roles (`disableLocalAuth`, or API keys and
+roles both) gets your `az` token, and that needs these roles on the service:
+
+| Commands | Role |
+|---|---|
+| `document list`, `document get` | Search Index Data Reader |
+| `service get`, `index list`, `index get`, `indexer list`, `indexer get`, `indexer wait` | Reader, or Search Service Contributor |
+| `index create`, `index update`, `index delete`, `indexer run` | Search Service Contributor |
+| `document create`, `document update`, `document delete` | Search Index Data Contributor |
+
+A service that takes API keys only (the default for a new one) gets its
+admin key, which the CLI fetches from ARM for each run and never stores;
+fetching it needs Contributor or Search Service Contributor. Owner and
+Contributor give no data access by token. A role takes 5 to 10 minutes to
+apply. `agent-cli aisearch service list` shows which way each service is
+called (`auth`).
 
 ## 5. Kubernetes (k8s), through AKS
 

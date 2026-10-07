@@ -10,6 +10,7 @@ Every command also takes the globals `--fields a,b.c`, `--raw`, `--dry-run`, `--
 | [kv](kv.md) | Key Vault |
 | [acr](acr.md) | Container Registry |
 | [aks](aks.md) | AKS |
+| [aisearch](aisearch.md) | Azure AI Search |
 | [k8s](k8s.md) | Kubernetes |
 | [sql](sql.md) | SQL Server/Oracle |
 | [airflow](airflow.md) | Apache Airflow |

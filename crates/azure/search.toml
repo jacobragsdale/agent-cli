@@ -130,3 +130,145 @@ expect = "acr repo list"
 [[query]]
 text = "which key vault secrets have expired or expire within 30 days"
 expect = "kv secret list"
+
+# ---------- aisearch ----------
+
+[[query]]
+text = "which azure ai search services do we have"
+expect = "aisearch service list"
+
+[[query]]
+text = "list cognitive search services and their tier"
+expect = "aisearch service list"
+
+[[query]]
+text = "how much storage is left on the search service"
+expect = "aisearch service get"
+
+[[query]]
+text = "ai search quota usage for the tier"
+expect = "aisearch service get"
+
+[[query]]
+text = "list the indexes in azure ai search"
+expect = "aisearch index list"
+
+[[query]]
+text = "how many documents are in each search index"
+expect = "aisearch index list"
+
+[[query]]
+text = "show the schema of the orders search index"
+expect = "aisearch index get"
+
+[[query]]
+text = "which fields are filterable in the ai search index"
+expect = "aisearch index get"
+
+[[query]]
+text = "what vectorizer and semantic configuration does the index use"
+expect = "aisearch index get"
+
+[[query]]
+text = "create a new ai search index from a json definition"
+expect = "aisearch index create"
+
+[[query]]
+text = "create search index orders-v2"
+expect = "aisearch index create"
+
+[[query]]
+text = "add a field to the search index definition"
+expect = "aisearch index update"
+
+[[query]]
+text = "update the ai search index schema"
+expect = "aisearch index update"
+
+[[query]]
+text = "delete the old search index"
+expect = "aisearch index delete"
+
+[[query]]
+text = "drop the ai search index orders-v2"
+expect = "aisearch index delete"
+
+[[query]]
+text = "query the ai search index for late deliveries"
+expect = "aisearch document list"
+
+[[query]]
+text = "run a hybrid vector search against the orders index"
+expect = "aisearch document list"
+
+[[query]]
+text = "semantic search with an odata filter in azure search"
+expect = "aisearch document list"
+
+[[query]]
+text = "why doesn't this document come back from the retrieval query"
+expect = "aisearch document list"
+
+[[query]]
+text = "look up search document 88123 by key"
+expect = "aisearch document get"
+
+[[query]]
+text = "is order 88123 in the ai search index"
+expect = "aisearch document get"
+
+[[query]]
+text = "upload documents to the ai search index"
+expect = "aisearch document create"
+
+[[query]]
+text = "push a batch of json documents into azure search"
+expect = "aisearch document create"
+
+[[query]]
+text = "merge a field into existing search documents"
+expect = "aisearch document update"
+
+[[query]]
+text = "fix the customer_id of an indexed document"
+expect = "aisearch document update"
+
+[[query]]
+text = "delete documents from the search index by key"
+expect = "aisearch document delete"
+
+[[query]]
+text = "remove a stale document from ai search"
+expect = "aisearch document delete"
+
+[[query]]
+text = "which ai search indexers are failing"
+expect = "aisearch indexer list"
+
+[[query]]
+text = "list indexers and their last run"
+expect = "aisearch indexer list"
+
+[[query]]
+text = "why did the search indexer skip documents"
+expect = "aisearch indexer get"
+
+[[query]]
+text = "show the errors of the orders-sql indexer"
+expect = "aisearch indexer get"
+
+[[query]]
+text = "rerun the ai search indexer now"
+expect = "aisearch indexer run"
+
+[[query]]
+text = "reset the indexer and reindex everything"
+expect = "aisearch indexer run"
+
+[[query]]
+text = "wait for the indexer run to finish"
+expect = "aisearch indexer wait"
+
+[[query]]
+text = "block until the search indexer is done"
+expect = "aisearch indexer wait"

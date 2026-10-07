@@ -1,4 +1,4 @@
-//! Scrubbed answers the kv, acr and aks tests share.
+//! Scrubbed answers the kv, acr, aks and aisearch tests share.
 
 use agent_cli_core::testing::{Answer, FakeTransport, Outcome, Sent, run};
 use agent_cli_core::{Domain, Setup};
@@ -67,6 +67,31 @@ pub fn cluster(name: &str) -> Value {
         "Microsoft.ContainerService/managedClusters",
         name,
         json!({"currentKubernetesVersion": "1.30.4", "kubernetesVersion": "1.30", "powerState": "Running"}),
+    )
+}
+
+/// A search service whose `authOptions` is `{auth: {}}` (`aadOrApiKey` or
+/// `apiKeyOnly`), or absent when `auth` is empty.
+pub fn search_service(name: &str, auth: &str) -> Value {
+    let options = if auth.is_empty() {
+        Value::Null
+    } else {
+        json!({ auth: {} })
+    };
+    row(
+        "Microsoft.Search/searchServices",
+        name,
+        json!({"endpoint": format!("https://{name}.search.windows.net/"), "sku": "standard",
+            "replicaCount": 2, "partitionCount": 1, "status": "running",
+            "publicNetworkAccess": "Enabled", "semanticSearch": "standard",
+            "authOptions": options, "disableLocalAuth": if auth.is_empty() { Value::Null } else { json!(false) }}),
+    )
+}
+
+/// The ARM answer to `listAdminKeys`.
+pub fn admin_keys() -> Answer {
+    Answer::json(
+        &json!({"primaryKey": "fixture-admin-key-1", "secondaryKey": "fixture-admin-key-2"}),
     )
 }
 

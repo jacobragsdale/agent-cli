@@ -1,10 +1,10 @@
 [
  {
   "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
-  "note": "the Resource Graph inventory every kv, acr and aks command starts from; any body",
+  "note": "the Resource Graph inventory every kv, acr, aks and aisearch command starts from; any body",
   "answer": {
-   "totalRecords": 3,
-   "count": 3,
+   "totalRecords": 5,
+   "count": 5,
    "data": [
     {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod",
@@ -44,6 +44,56 @@
      "kubernetesVersion": "1.30",
      "currentKubernetesVersion": "1.30.4",
      "powerState": "Running"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-dev/providers/Microsoft.Search/searchServices/srch-contoso-dev",
+     "name": "srch-contoso-dev",
+     "type": "microsoft.search/searchservices",
+     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+     "resourceGroup": "rg-contoso-dev",
+     "location": "westeurope",
+     "loginServer": "",
+     "vaultUri": "",
+     "kubernetesVersion": "",
+     "currentKubernetesVersion": "",
+     "powerState": "",
+     "endpoint": "https://srch-contoso-dev.search.windows.net/",
+     "sku": "basic",
+     "replicaCount": 1,
+     "partitionCount": 1,
+     "status": "running",
+     "publicNetworkAccess": "Enabled",
+     "semanticSearch": "free",
+     "authOptions": {
+      "apiKeyOnly": {}
+     },
+     "disableLocalAuth": false
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Search/searchServices/srch-contoso-prod",
+     "name": "srch-contoso-prod",
+     "type": "microsoft.search/searchservices",
+     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "loginServer": "",
+     "vaultUri": "",
+     "kubernetesVersion": "",
+     "currentKubernetesVersion": "",
+     "powerState": "",
+     "endpoint": "https://srch-contoso-prod.search.windows.net/",
+     "sku": "standard",
+     "replicaCount": 2,
+     "partitionCount": 1,
+     "status": "running",
+     "publicNetworkAccess": "Enabled",
+     "semanticSearch": "standard",
+     "authOptions": {
+      "aadOrApiKey": {
+       "aadAuthFailureMode": "http401WithBearerChallenge"
+      }
+     },
+     "disableLocalAuth": false
     }
    ]
   }

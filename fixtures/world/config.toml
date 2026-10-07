@@ -11,6 +11,7 @@ team = "Fabrikam Team"
 subscriptions = ["00000000-0000-4000-8000-000000005b01"]
 vaults = ["kv-contoso-prod"]
 registries = ["contosoacr"]
+search_services = ["srch-contoso-prod", "srch-contoso-dev"]
 
 [[k8s.scope]]
 name = "prod"

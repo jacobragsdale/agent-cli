@@ -11,8 +11,8 @@ is the contract; `docs/how-to/` holds the procedures and
 ```
 crates/core/    the runtime every domain plugs into: registry, command!, Ctx
 crates/cli/     main() = core::run(DOMAINS), and the registry-wide gate tests
-crates/<name>/  one crate per domain group (ado, sql, azure = kv acr aks,
-                k8s, airflow, dd): its commands, tests and search.toml
+crates/<name>/  one crate per domain group (ado, sql, azure = kv acr aks
+                aisearch, k8s, airflow, dd): its commands, tests and search.toml
 docs/           tutorial, how-to/, explanation/, reference/ (generated)
 fixtures/world  the recorded contoso world agent trials run against
 scripts/        check.sh, new-command.sh, trial-env.sh, fake az/kubectl

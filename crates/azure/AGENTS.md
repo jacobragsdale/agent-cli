@@ -1,57 +1,54 @@
-# azure: kv, acr and aks
+# azure: kv, acr, aks and aisearch
 
-Three domains in one crate, `KV`, `ACR`, `AKS`, over plain HTTPS with `az`
-tokens; no Azure SDK. Key Vault https://learn.microsoft.com/rest/api/keyvault/,
-ACR https://learn.microsoft.com/rest/api/containerregistry/, Resource Graph
-https://learn.microsoft.com/rest/api/azureresourcegraph/.
+Four domains in one crate, `KV`, `ACR`, `AKS`, `AISEARCH`, over plain HTTPS
+with `az` tokens; no Azure SDK. Docs: https://learn.microsoft.com/rest/api/
+(keyvault, containerregistry, azureresourcegraph, searchservice).
 
 ## Config
-`[azure]`: `subscriptions`, `vaults`, `registries` (each one string or a
-list; empty means everything the login reaches, non-empty is an allowlist
-that also sets row order), `refresh` (cache seconds, default 300),
-`parallel` (default 8). No credential of its own: `az_token(ctx, resource,
-fresh)` per audience. Tokens go only to `management.azure.com`,
-`*.vault.azure.net` and `*.azurecr.io`, checked on every URL (`nextLink`s
-and cached addresses too).
+`[azure]`: `subscriptions`, `vaults`, `registries`, `search_services` (one
+string or a list; empty means all the login reaches, else an allowlist that
+sets row order), `refresh` (cache seconds, 300), `parallel` (8). No
+credential of its own: `az_token(ctx, resource, fresh)` per audience.
+Tokens go only to `management.azure.com`, `*.vault.azure.net`,
+`*.azurecr.io`, `*.search.windows.net`, checked on every URL.
 
 ## Ids
-- kv: `vault/name`, `vault/name/version`, or the secret URI.
-- acr: `loginserver/repo`, `loginserver/repo:tag` (or `@digest`); a bare
-  `repo:tag` finds its registry, and two holders is exit 2.
+- kv: `vault/name[/version]`, or the secret URI.
+- acr: `loginserver/repo[:tag|@digest]`; a bare `repo:tag` finds its registry.
 - aks: the cluster name; `k8s_scope` in its rows is the k8s scope id.
+- aisearch: `service`, `service/index`, `service/index/key`,
+  `service/indexer`; bare names with `--service`/`--index`; data-plane URLs
+  and portal links (`aisearch/refs.rs`). Two holders of a bare name is exit 2.
 
 ## Where things are (`src/`)
-A command is `<domain>/<resource>/<verb>.rs`: its args, rows, handler,
-`command!` and tests (`kv/secret/list.rs` is `kv secret list`).
-- `lib.rs`: `KV`, `ACR`, `AKS`, whose `commands` register every command
-  (their order is the listing's). `doctor.rs`: status and doctor of all
-  three. `config.rs`: `[azure]` (`Azure::load`). `testing.rs`: shared
-  scrubbed answers.
-- `client.rs`, what every domain shares: `az_token`, `bearer` (a `Mint`),
-  `ARM`, `VAULT`, `REGISTRY`, `allowed`, `missing`, `narrow` (allowlists),
-  `parallel` (bounded fan-out), `limited` (the `--limit` note), `stamp`,
-  `from_unix`, `text`, `refused_with`.
-- `graph.rs`: one Resource Graph query for every vault, registry and
-  cluster, cached for `refresh`.
-- `kv/mod.rs`: `get(ctx, vault, url)` and `pages` (the door), `holder`
-  (which vault has a name), `secret_ref`, `SecretRow`.
-- `acr/mod.rs`: a `Session` per registry exchanges the token and does
-  `get`; `holder`, `image_ref`, `registry_for`.
-- `aks/cluster/connect.rs` runs `az aks get-credentials` and `kubelogin`.
+A command is `<domain>/<resource>/<verb>.rs` (`kv/secret/list.rs`).
+- `lib.rs`: the four `Domain`s. `doctor.rs`: status and doctor of each.
+  `config.rs`: `Azure::load`. `testing.rs`: shared scrubbed answers.
+- `client.rs`: `bearer`, `ARM`, `VAULT`, `REGISTRY`, `SEARCH`, `narrow`
+  (allowlists), `parallel`, `limited` (the `--limit` note), `stamp`, `text`.
+- `graph.rs`: one Resource Graph query for every vault, registry, cluster
+  and search service, cached for `refresh`.
+- `kv/mod.rs`: `get` (the door), `holder`, `secret_ref`.
+- `acr/mod.rs`: a `Session` per registry trades the token; `holder`.
+- `aisearch/mod.rs`: `reach` (services, completed from ARM when a row lacks
+  endpoint or auth), `holder`, and `Search`, the door: a token when the
+  service takes roles, else an admin key from `listAdminKeys` held for the
+  run; never both; a refused token on `aadOrApiKey` retries with the key;
+  401/403 is exit 3 naming the role. `aisearch/shape.rs`: `bound` and
+  `scrub` (definitions).
 
 ## Fixtures
-`fixtures/world/http/azure.json`; facts `fixtures/world/facts/{kv,acr,aks}.md`;
-world checks `crates/cli/tests/world_{kv,acr,aks}.rs`; queries
-`crates/azure/search.toml`. Tests run `scripts/fake/az` and `kubelogin`
-(the token is `token@<resource>`).
+`fixtures/world/http/{azure,aisearch}.json`; facts in
+`fixtures/world/facts/{kv,acr,aks,aisearch}.md`;
+world checks `crates/cli/tests/world_{kv,acr,aks,aisearch}.rs`. Tests run
+`scripts/fake/az` and `kubelogin` (the token is `token@<resource>`).
 
 ## Quirks
 - An allowlist that reaches nothing is an error, never an empty answer.
-- A name found in two vaults or registries is exit 2, never a guess.
-- Only `kv secret get` (a `Reveal`) returns a value; no row type has a field
-  for one.
-- ACR wants a `containerregistry.azure.net` token, not ARM's: hardened
-  registries refuse ARM-scoped ones.
+- Only `kv secret get` (a `Reveal`) returns a value.
+- ACR wants a `containerregistry.azure.net` token, not ARM's.
+- AI Search: `status: running` is health (`ok`), not a run; a 429 is the
+  tier's quota; data plane `2026-04-01`, ARM `2025-05-01`, no previews.
 
 ## Never needed
 Other crates' sources, `docs/plans/`, `docs/reference/`.
