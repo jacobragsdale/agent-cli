@@ -9,7 +9,9 @@ skill's `references/design.md`), which measured the interface this tool
 ports; the last rounds' results are the baselines:
 [docs/trials/2026-09-30.md](../trials/2026-09-30.md) for every domain, and
 [docs/trials/chains-2-2026-09-30.md](../trials/chains-2-2026-09-30.md) for
-the flows that hop from a failure to its line and change.
+the flows that hop from a failure to its line and change, and
+[docs/trials/2026-10-07.md](../trials/2026-10-07.md) for confluence and
+aisearch.
 
 Prerequisites:
 
