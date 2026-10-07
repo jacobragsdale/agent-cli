@@ -573,4 +573,77 @@ mod tests {
             "contoso.atlassian.net"
         ));
     }
+
+    #[test]
+    fn a_cloud_id_sends_calls_and_next_links_through_the_gateway_as_bearer() {
+        use agent_cli_core::Setup;
+        use agent_cli_core::testing::{Answer, FakeTransport, run};
+
+        let gateway =
+            "https://api.atlassian.com/ex/confluence/11111111-2222-3333-4444-555555555555";
+        let config = "[confluence]\nurl = \"https://contoso.atlassian.net/wiki\"\ncloud_id = \"11111111-2222-3333-4444-555555555555\"\ntoken_env = \"SCOPED\"\n";
+        let transport = FakeTransport::answering([
+            Answer::json(&json!({"results": [{"key": "ENG"}],
+                "_links": {"next": "/wiki/api/v2/spaces?cursor=b", "base": "https://contoso.atlassian.net/wiki"}})),
+            Answer::json(&json!({"results": [{"key": "OPS"}], "_links": {}})),
+        ]);
+        let setup = Setup::fake(transport.clone())
+            .with_config(config)
+            .with_env("SCOPED", "scoped-token-1");
+        let outcome = run(&[crate::DOMAIN], &["confluence", "space", "list"], setup);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let sent = transport.sent();
+        assert!(
+            sent[0]
+                .url
+                .starts_with(&format!("{gateway}/wiki/api/v2/spaces?"))
+        );
+        assert_eq!(
+            sent[1].url,
+            format!("{gateway}/wiki/api/v2/spaces?cursor=b")
+        );
+        assert_eq!(
+            sent[0].authorization.as_deref(),
+            Some("Bearer scoped-token-1")
+        );
+        // Web links name the site, not the gateway.
+        assert_eq!(outcome.json()[0]["id"], "ENG");
+    }
+
+    #[test]
+    fn a_v1_next_link_is_under_wiki_and_gets_back_what_it_dropped() {
+        use crate::testing::{V1, confluence, urls};
+        use agent_cli_core::testing::Answer;
+
+        let first = json!({"results": [{"content": {"id": "1", "title": "a"}}], "totalSize": 9,
+            "_links": {"next": "/rest/api/search?next=true&cursor=c2&limit=1&cql=x"}});
+        let second = json!({"results": [{"content": {"id": "2", "title": "b"}}], "_links": {}});
+        let (outcome, transport) = confluence(
+            &["confluence", "page", "list", "--limit", "2"],
+            vec![Answer::json(&first), Answer::json(&second)],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            urls(&transport)[1],
+            format!(
+                "{V1}/search?next=true&cursor=c2&limit=1&cql=x&expand=content.space%2Ccontent.version"
+            )
+        );
+    }
+
+    #[test]
+    fn a_refused_token_names_where_tokens_are_made() {
+        use crate::testing::confluence;
+        use agent_cli_core::testing::Answer;
+
+        let (outcome, _) = confluence(
+            &["confluence", "space", "list"],
+            vec![
+                Answer::status(401, "Unauthorized"),
+                Answer::status(401, "Unauthorized"),
+            ],
+        );
+        assert_eq!(outcome.code, 3, "{outcome:?}");
+        assert!(outcome.stderr.contains(TOKEN_PAGE), "{}", outcome.stderr);
+    }
 }

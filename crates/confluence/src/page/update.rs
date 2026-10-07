@@ -293,7 +293,7 @@ command! {
     pub PAGE_UPDATE = ["confluence", "page", "update"], Write,
     "Edit a page: replace or append to its body or a section, retitle, move, relabel",
     keywords: ["edit", "change", "replace", "append", "section", "rename", "move", "label", "rollback"],
-    example: "confluence page update 1101 --section Rollback --body-file rollback.md",
+    example: "confluence page update 1101 --append-file rollback.md --message 'Add the rollback steps'",
     run: page_update,
 }
 

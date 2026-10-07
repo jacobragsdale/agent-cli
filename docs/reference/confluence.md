@@ -100,7 +100,7 @@ agent-cli confluence page update — Edit a page: replace or append to its body 
   --if-version int    Refuse unless the page is still at this version (page get prints it)
 Returns: {id,title,space,version,url}
 Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
-e.g. agent-cli confluence page update 1101 --section Rollback --body-file rollback.md
+e.g. agent-cli confluence page update 1101 --append-file rollback.md --message 'Add the rollback steps'
 ```
 
 ### confluence page comment
