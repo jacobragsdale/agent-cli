@@ -27,7 +27,8 @@ definitions, not whole files.
 ## HTTP and processes
 - `Request` (`get`, `query` = a POST that only reads, `.json`, `.form`,
   `.bytes`, `.header`, `.auth(Mint)`, `.keep_redirect()`: a 3xx is the
-  answer), `Response` (`bytes` when not UTF-8, `into_bytes`), `Method`,
+  answer, `.quota_429()`: a 429 is a spent quota, never waited out),
+  `Response` (`bytes` when not UTF-8, `into_bytes`), `Method`,
   `Body`, `Mint`.
 - `Transport`, `Https`: the seam tests fake, and the real one.
 - `host_under(url, suffix)` before any token goes out; `percent_encode`,

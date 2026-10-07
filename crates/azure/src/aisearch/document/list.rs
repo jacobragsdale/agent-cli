@@ -452,30 +452,17 @@ mod tests {
     }
 
     #[test]
-    fn a_quota_429_says_quota_and_names_the_usage_command() {
-        let (outcome, _) = azure(
+    fn a_quota_429_fails_at_once_saying_quota_and_naming_the_usage_command() {
+        let (outcome, transport) = azure(
             &[AISEARCH],
-            &[
-                "aisearch",
-                "document",
-                "list",
-                "srch-contoso-prod/orders",
-                "--timeout",
-                "3",
-            ],
+            &["aisearch", "document", "list", "srch-contoso-prod/orders"],
             vec![
                 one(),
                 definition(),
                 Answer::status(
                     429,
                     r#"{"error":{"code":"","message":"You are running low on storage."}}"#,
-                )
-                .with_header("Retry-After", "0"),
-                Answer::status(
-                    429,
-                    r#"{"error":{"code":"","message":"You are running low on storage."}}"#,
-                )
-                .with_header("Retry-After", "0"),
+                ),
             ],
         );
         assert_eq!(outcome.code, 1, "{outcome:?}");
@@ -487,5 +474,11 @@ mod tests {
             "{}",
             outcome.stderr
         );
+        let searches = transport
+            .sent()
+            .iter()
+            .filter(|sent| sent.url.contains("/docs/search"))
+            .count();
+        assert_eq!(searches, 1, "a quota is not waited out and asked again");
     }
 }

@@ -318,7 +318,7 @@ impl<'a> Search<'a> {
         }
         let mint = bearer(self.ctx, SEARCH);
         let attempt = |key: Option<&Secret>| {
-            let mut request = Request::new(method, url.clone());
+            let mut request = Request::new(method, url.clone()).quota_429();
             for (name, value) in headers {
                 request = request.header(*name, value.clone());
             }

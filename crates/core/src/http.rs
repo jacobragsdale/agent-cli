@@ -95,6 +95,9 @@ pub struct Request<'a> {
     /// A `3xx` is the answer rather than a failure: a form sign-in's `302`
     /// carries the session cookie in its `Set-Cookie`. Still never followed.
     pub keep_redirect: bool,
+    /// The service answers `429` for a spent quota, not a rate (AI Search's
+    /// object and storage limits), so one is final: nothing to wait out.
+    pub quota_429: bool,
 }
 
 impl<'a> Request<'a> {
@@ -107,6 +110,7 @@ impl<'a> Request<'a> {
             body: Body::None,
             auth: None,
             keep_redirect: false,
+            quota_429: false,
         }
     }
 
@@ -154,6 +158,12 @@ impl<'a> Request<'a> {
     #[must_use]
     pub fn keep_redirect(mut self) -> Self {
         self.keep_redirect = true;
+        self
+    }
+
+    #[must_use]
+    pub fn quota_429(mut self) -> Self {
+        self.quota_429 = true;
         self
     }
 }
@@ -414,7 +424,10 @@ impl Op for Request<'_> {
             }
             // A 429 refused the call unread; a 503 may come after a write
             // was made, so only a read is sent again after one.
-            let retry = response.status == 429 || self.method.is_read();
+            let retry = match response.status {
+                429 => !self.quota_429,
+                _ => self.method.is_read(),
+            };
             if THROTTLED.contains(&response.status) && retry && !waited {
                 waited = true;
                 let wait = throttle_wait(&response, OffsetDateTime::now_utc());
@@ -574,7 +587,7 @@ mod tests {
 
     use super::*;
     use crate::ctx::{Globals, Setup};
-    use crate::error::describe;
+    use crate::error::{describe, status_of};
     use crate::testing::{Answer, FakeTransport, ctx};
 
     fn fake(answers: Vec<Answer>) -> (Ctx, FakeTransport) {
@@ -714,6 +727,18 @@ mod tests {
         ctx.read(Request::get("https://h.example/x")).unwrap();
         assert!(started.elapsed() >= Duration::from_secs(1));
         assert_eq!(transport.sent().len(), 2);
+    }
+
+    #[test]
+    fn a_429_from_a_service_that_means_a_quota_fails_at_once() {
+        let (ctx, transport) = fake(vec![Answer::status(429, "{}")]);
+        let started = Instant::now();
+        let error = ctx
+            .read(Request::get("https://h.example/x").quota_429())
+            .unwrap_err();
+        assert!(started.elapsed() < Duration::from_secs(1), "nothing waited");
+        assert_eq!(transport.sent().len(), 1);
+        assert_eq!(status_of(&error), Some(429));
     }
 
     #[test]
