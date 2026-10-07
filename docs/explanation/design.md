@@ -57,6 +57,14 @@ reached the guard, over about 104 KB of stdout for 187 calls, and bounded
 defaults (`--limit 50`, `--tail 200`, rows that are already narrow) did most
 of that: Haiku used `--fields` on only 2 of its 81 calls.
 
+A document is the one answer the guard cannot cut, because it is a single
+string. `confluence page get` converts a page's storage XHTML to Markdown
+locally and cuts it at a line boundary to fit, with the page's outline and a
+note naming `--section`, `--line` and `--output FILE`; agent tools that passed
+whole pages through the model failed at about 18 KB. AI Search has the same
+problem in another shape: a vector field is 1,536 floats, so `aisearch
+document list` prints it as `[1536 floats]` and cuts long strings.
+
 ## Errors that name the next step
 
 An agent reads the exit code before the message, so the code says what kind
@@ -86,6 +94,18 @@ treatment: a value lives in a `Secret` that has no serializer, only a
 service's hosts. In design.md agents ran `--dry-run` unprompted before
 writes. This round, a restart without `--yes` and a secret read without
 `--reveal` each cost one refused call, and the refusal said what to add.
+
+A change to something people also edit asserts what was read: `ado workitem
+update --if-rev`, `confluence page update --if-version` and `aisearch index
+update --if-etag` exit 5 when it moved. Replacing a whole Confluence page
+requires it, because a blind "current + 1" is how other tools overwrote
+people's edits. A page update also never writes Markdown over what Markdown
+cannot carry (macros, layouts, inline comment anchors): it refuses and names
+`--section`, `--append` or a storage edit, and a section edit splices the
+stored bytes, so the rest of the page stays as it was. Keys get the same care:
+an AI Search service that takes only keys gets one from ARM for the run,
+held in memory and never printed, so no key sits in a config file or a
+transcript.
 
 ## Deadlines
 
@@ -145,6 +165,8 @@ Some words mean different things in different domains:
 | job | an ADO job, a k8s Job, an Airflow task | no synonym anywhere until a trial misses one |
 | deploy, deployment | a k8s deployment; an ADO deploy stage or approval | k8s owns the resource; "deploy" stays an ado keyword |
 | container | a pod; an image | phrases: "container image" is acr, "container logs" is `k8s pod logs` |
+| search | the built-in command search; Confluence's page search; an AI Search query | no domain takes the word: Confluence searches with `page list`, AI Search with `document list`, in the domain `aisearch` |
+| comment | a verb (`ado workitem comment`, `confluence page comment`); Confluence's resource (`comment list`) | the verb adds one, the resource reads them |
 
 A question that spans domains ("which build made prod's image") has no single
 right first command, so it belongs in a trial, not in `search.toml`.

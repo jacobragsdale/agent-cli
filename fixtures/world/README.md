@@ -57,6 +57,15 @@ agent-cli airflow task get etl_nightly/latest/load_orders --fields pod
 agent-cli k8s pod logs prod/web/etl-nightly-load-orders-q8x1k2vz --tail 20
 ```
 
+Why order 88123 is missing from the orders search, and what the runbook says:
+
+```sh
+agent-cli aisearch document get srch-contoso-prod/orders/88123               # exit 4; the hint names the failing indexers
+agent-cli aisearch indexer get srch-contoso-prod/orders-sql --fields errors  # key 88123: customer_id is null
+agent-cli confluence page list "runbook etl_nightly" --fields id,title       # 1101 Runbook: etl_nightly
+agent-cli confluence page get 1101 --section "An order without customer_id" --fields body
+```
+
 ## Files
 
 ```

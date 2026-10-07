@@ -5,13 +5,15 @@ Open work only. What is built is in the code, the crate cards and
 
 ## Live runs
 
-- [ ] Work through `docs/first-live-run.md`: sql, ado (a sandbox organization, 2026-10-02) and airflow (local 2.9.3 and 3.3.2, `scripts/airflow-up.sh`, 2026-10-03) have run against real services; kv, acr, aks, k8s and dd have not
+- [ ] Work through `docs/first-live-run.md`: sql, ado (a sandbox organization, 2026-10-02) and airflow (local 2.9.3 and 3.3.2, `scripts/airflow-up.sh`, 2026-10-03) have run against real services; confluence's reads have run against a public site; kv, acr, aks, aisearch, k8s and dd have not
 - [ ] Then the one-line global CLAUDE.md note that agent-cli exists (the README gives the line)
 
-## New domains
+## Confluence and AI Search (built 2026-10-07 from the API specs; no live service yet)
 
-- [ ] confluence: `docs/plans/confluence.md` (Cloud reads, then writes; Data Center only if work runs it). Live runs and trials need a free Cloud site
-- [ ] aisearch, in `crates/azure`: `docs/plans/aisearch.md` (several services through the `az login`; reads, then indexer, index and document writes). Live tests need a Free search service
+- [ ] confluence, live: a real Cloud site with a token (a free site works: 10 users, API tokens). Every read ran anonymously against a public Cloud site; the writes have run only against recordings: create, update with `--if-version`, section splices and the loss gate, inline comments and resolving one (does it need the body?), upload, move, labels. Record the v2 400 text for a duplicate title and for malformed storage, the 409 of a space that requires approval, and `users-bulk`'s cap (chunked at 100). Then a trial against curl (and `twg`, if its OAuth works in WSL): the plan's six tasks were find a runbook, what changed this week, open inline comments, save an attachment, publish a page, add a section without touching its macros
+- [ ] confluence, if work turns out to run Data Center: a v1 adapter (`/rest/api/content` with `expand=body.storage,version,space,ancestors`, `child/page`, `/rest/experimental/content/{id}/version`, `child/attachment`, `/rest/api/space`), a context path in the base, `username`/`userKey` people, a PAT as Bearer, and a doctor that treats an anonymous `user/current` as a failure. Live tests on `atlassian/confluence` with Atlassian's 3-hour timebomb licence
+- [ ] aisearch, live: a Free service (one per subscription, 50 MB, 3 indexes and indexers) and an opt-in `AGENT_CLI_TEST_AISEARCH` suite that makes its own index. Settle whether Resource Graph rows carry `endpoint` and `authOptions` (today an ARM GET fills them), 409 or 429 for a run already going, whether `"<unchanged>"` keeps a vectorizer's `apiKey` on an index PUT, and whether `If-None-Match: *` holds on index PUT
+- [ ] aisearch, when asked: knowledge bases (agentic retrieval, GA but extractive only), facets (`facet list INDEX --field F`), the analyzer, a bare alias in the bare-name lookup, query keys for identities that only search, sovereign clouds
 
 ## Phase 5: consolidate
 

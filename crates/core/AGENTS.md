@@ -1,7 +1,7 @@
 # agent-cli-core: the API a domain uses
 
-`src/lib.rs` re-exports all of it; each name below is one `pub use`. Jump to
-definitions, not whole files.
+`src/lib.rs` re-exports all of it; each name below is one `pub use`. Jump
+to definitions.
 
 ## Registry
 - `command!` makes a `Command` from `fn(&Ctx, Args) -> Result<Row>` (Args:
@@ -12,7 +12,7 @@ definitions, not whole files.
 - `VERBS`, `SHARED_WORDS`, `SYNONYM_FLAGS`, `GLOBAL_FLAGS`, `BUILTINS`: the
   closed vocabularies `check_registry` enforces. `check_layout`: each
   command in `src/<resource>/<verb>.rs` (its `source`, from `file!()`).
-- `run`, `run_with`: the program and its in-process form; `command_help`:
+- `run`, `run_with`: the program, in process too; `command_help`:
   one command's `--help`. `Quality`, `quality`: search over labeled queries.
 
 ## Ctx: every effect goes through it
@@ -27,9 +27,8 @@ definitions, not whole files.
 ## HTTP and processes
 - `Request` (`get`, `query` = a POST that only reads, `.json`, `.form`,
   `.bytes`, `.header`, `.auth(Mint)`, `.keep_redirect()`: a 3xx is the
-  answer, `.quota_429()`: a 429 is a spent quota, never waited out),
-  `Response` (`bytes` when not UTF-8, `into_bytes`), `Method`,
-  `Body`, `Mint`.
+  answer, `.quota_429()`: a 429 is final), `Response` (`bytes` when not
+  UTF-8, `into_bytes`), `Method`, `Body`, `Mint`.
 - `Transport`, `Https`: the seam tests fake, and the real one.
 - `host_under(url, suffix)` before any token goes out; `percent_encode`,
   `form_encode`, `base64`; `failure_message`: a refusal in the service's
@@ -49,7 +48,7 @@ definitions, not whole files.
   `now` (fixtures freeze it), `utc` (a service's stamp), `utc_time`.
 
 ## Re-exported crates
-`anyhow`, `clap`, `schemars`, `serde_json`, at the versions core uses.
+`anyhow`, `clap`, `schemars`, `serde_json`, at core's versions.
 
 ## Testing (`agent_cli_core::testing`)
 - `run(DOMAINS, argv, Setup::fake(FakeTransport::answering([Answer::json(&v)])))`

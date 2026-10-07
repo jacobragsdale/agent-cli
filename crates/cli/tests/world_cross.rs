@@ -458,3 +458,94 @@ fn a_new_build_is_waited_for_and_its_rollout_verified_by_notes() {
     assert_eq!(service["since"], "2026-09-28T21:34:40Z");
     assert_eq!(service["errors"], 212);
 }
+
+#[test]
+fn an_order_missing_from_search_leads_to_the_indexer_the_runbook_and_last_nights_load() {
+    let missing = agent_cli(&[
+        "aisearch",
+        "document",
+        "get",
+        "srch-contoso-prod/orders/88123",
+    ]);
+    assert_eq!(missing.code, 4, "{}{}", missing.stdout, missing.stderr);
+    assert!(
+        missing
+            .stderr
+            .contains("agent-cli aisearch indexer list --service srch-contoso-prod --failing"),
+        "{}",
+        missing.stderr
+    );
+    let failing = ok(&[
+        "aisearch",
+        "indexer",
+        "list",
+        "--service",
+        "srch-contoso-prod",
+        "--failing",
+        "--fields",
+        "id,failed",
+    ]);
+    assert_eq!(
+        failing,
+        json!([{"id": "srch-contoso-prod/orders-sql", "failed": 1}])
+    );
+    let indexer = ok(&[
+        "aisearch",
+        "indexer",
+        "get",
+        "srch-contoso-prod/orders-sql",
+        "--fields",
+        "errors",
+    ]);
+    assert_eq!(indexer["errors"][0]["key"], "88123");
+    assert!(
+        indexer["errors"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("customer_id"),
+        "{indexer}"
+    );
+
+    let runbooks = ok(&[
+        "confluence",
+        "page",
+        "list",
+        "runbook etl_nightly",
+        "--fields",
+        "id,title",
+    ]);
+    assert_eq!(runbooks[0]["id"], "1101", "{runbooks}");
+    let section = ok(&[
+        "confluence",
+        "page",
+        "get",
+        "1101",
+        "--section",
+        "An order without customer_id",
+        "--fields",
+        "body",
+    ]);
+    let steps = section["body"].as_str().unwrap();
+    assert!(
+        steps.contains("CRM") && steps.contains("orders-sql"),
+        "the runbook says to fix the order, retry the load and re-run the indexer: {steps}"
+    );
+
+    let log = ok(&[
+        "airflow",
+        "task",
+        "logs",
+        "etl_nightly/scheduled__2026-09-29T00:00:00+00:00/load_orders/2",
+        "--tail",
+        "20",
+        "--fields",
+        "error,text",
+    ]);
+    assert!(
+        log["error"]
+            .as_str()
+            .unwrap()
+            .contains("order 88123 has no customer_id"),
+        "the search miss and last night's failed load are the same order: {log}"
+    );
+}

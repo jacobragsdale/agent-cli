@@ -1,11 +1,11 @@
 # agent-cli
 
 One command-line tool that gives AI coding agents Azure DevOps, Confluence
-Cloud, Azure (Key Vault, Container Registry, AKS), Kubernetes, SQL Server and
-Oracle, Apache Airflow and Datadog. Its only users are agents: every command is `agent-cli
-<domain> <resource> <verb>`, output is compact JSON that `--fields` narrows,
-errors name the command to run next, and every change honours `--dry-run`,
-`--yes` and a read-only mode.
+Cloud, Azure (Key Vault, Container Registry, AKS, AI Search), Kubernetes, SQL
+Server and Oracle, Apache Airflow and Datadog. Its only users are agents: every
+command is `agent-cli <domain> <resource> <verb>`, output is compact JSON that
+`--fields` narrows, errors name the command to run next, and every change
+honours `--dry-run`, `--yes` and a read-only mode.
 
 ## Install
 
@@ -18,8 +18,8 @@ cargo install --git https://github.com/jacobragsdale/agent-cli agent-cli
 
 Oracle connections also need Oracle Instant Client at run time; nothing else
 does. To tell your agents the tool exists, one line in a global `CLAUDE.md` or
-`AGENTS.md` is enough: "agent-cli gives you Azure DevOps, Confluence, Azure,
-Kubernetes, SQL, Airflow and Datadog; start with `agent-cli`."
+`AGENTS.md` is enough: "agent-cli gives you Azure DevOps, Confluence, Azure
+(AI Search too), Kubernetes, SQL, Airflow and Datadog; start with `agent-cli`."
 
 ## Configure
 

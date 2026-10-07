@@ -106,9 +106,10 @@ start one fresh subagent per task and model, in parallel, with its model set
 to Sonnet 5.5 or Haiku 4.5, no skill, and this prompt:
 
 ```text
-You have a command-line tool for Azure DevOps, Azure (Key Vault, Container
-Registry, AKS), Kubernetes, SQL, Airflow and Datadog at PATH. It is already
-configured. Task: TASK. Use only that tool; don't read its files.
+You have a command-line tool for Azure DevOps, Confluence, Azure (Key Vault,
+Container Registry, AKS, AI Search), Kubernetes, SQL, Airflow and Datadog at
+PATH. It is already configured. Task: TASK. Use only that tool; don't read its
+files.
 ```
 
 Replace `PATH` with the run's wrapper (the path `wrapper.sh` printed) and
