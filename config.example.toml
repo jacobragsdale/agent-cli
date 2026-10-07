@@ -23,15 +23,23 @@
 # pat_cmd = "pass show contoso/ado-pat"  # or pat_env = "CONTOSO_ADO_PAT"
 
 # [azure]
-# kv, acr and aks sign in with your `az login`; nothing here is required. An
-# empty or missing list means everything the login reaches; a list is an
-# allowlist that also sets the order rows come in. Each takes a string or a
-# list. Add the section (even empty) for `agent-cli doctor` to check Azure.
+# kv, acr, aks and aisearch sign in with your `az login`; nothing here is
+# required. An empty or missing list means everything the login reaches; a
+# list is an allowlist that also sets the order rows come in. Each takes a
+# string or a list. Add the section (even empty) for `agent-cli doctor` to
+# check Azure.
 # subscriptions = ["00000000-0000-0000-0000-000000000000"]
 # vaults = ["kv-contoso-dev", "kv-contoso-prod"]
 # registries = "contosoacr"
-# refresh = 300                          # seconds the resource inventory and
-#                                        # registry counts are cached; 0 = never
+# search_services = ["srch-contoso-prod", "srch-contoso-dev"]
+# Each search service is called as its settings allow: a token when it takes
+# roles (Search Index Data Reader to query, Reader for definitions and
+# indexers, Search Service Contributor and Search Index Data Contributor to
+# change them), else an admin key fetched from ARM per run, which needs
+# Contributor or Search Service Contributor.
+# refresh = 300                          # seconds the resource inventory,
+#                                        # registry counts and index fields are
+#                                        # cached; 0 = never
 # parallel = 8                           # vaults, registries, repositories read at once
 
 # [[k8s.scope]]

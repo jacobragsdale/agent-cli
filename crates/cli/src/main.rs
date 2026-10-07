@@ -12,6 +12,7 @@ const DOMAINS: &[Domain] = &[
     agent_cli_azure::KV,
     agent_cli_azure::ACR,
     agent_cli_azure::AKS,
+    agent_cli_azure::AISEARCH,
     agent_cli_k8s::K8S,
     agent_cli_sql::DOMAIN,
     agent_cli_airflow::DOMAIN,
@@ -497,6 +498,7 @@ project = "Fabrikam Fiber Commerce"
 [azure]
 vaults = ["kv-contoso-prod-westeurope", "kv-contoso-staging-westeurope"]
 registries = "contosoacr"
+search_services = ["srch-contoso-prod-westeurope", "srch-contoso-dev-westeurope"]
 
 [[k8s.scope]]
 name = "prod"
@@ -557,6 +559,7 @@ token_cmd = "pup auth token"
             "ado contoso-engineeri\u{2026}",
             "kv 2 vaults",
             "acr 1 registry",
+            "aisearch 2 services",
             "k8s 2 scopes",
             "sql 2 connections",
             "airflow 2 instances",

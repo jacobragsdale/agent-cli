@@ -19,6 +19,7 @@ const DOMAINS: &[Domain] = &[
     agent_cli_azure::KV,
     agent_cli_azure::ACR,
     agent_cli_azure::AKS,
+    agent_cli_azure::AISEARCH,
     agent_cli_k8s::K8S,
     agent_cli_sql::DOMAIN,
     agent_cli_airflow::DOMAIN,

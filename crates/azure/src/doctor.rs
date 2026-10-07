@@ -1,4 +1,5 @@
-//! The overview's lines for kv, acr and aks, and `agent-cli doctor` for each.
+//! The overview's lines for kv, acr, aks and aisearch, and `agent-cli doctor`
+//! for each.
 
 use agent_cli_core::{Check, Config, Ctx};
 
@@ -239,6 +240,63 @@ pub(crate) fn aks_doctor(ctx: &Ctx) -> Vec<Check> {
     checks
 }
 
+// ---------- aisearch ----------
+
+pub(crate) fn aisearch_status(config: &Config) -> String {
+    allowlist_status(config, "aisearch", ("service", "services"), |azure| {
+        &azure.search_services
+    })
+}
+
+/// The login, the services in reach, and for the first three the auth they
+/// take and `GET /servicestats`: the cheapest call that proves it works.
+pub(crate) fn aisearch_doctor(ctx: &Ctx) -> Vec<Check> {
+    if !ctx.config().has_section("azure") {
+        return Vec::new();
+    }
+    let mut checks = Vec::new();
+    let Some(azure) = doctor_login(ctx, &mut checks, &[]) else {
+        return checks;
+    };
+    let services = match crate::aisearch::reach(ctx, &azure, &[]) {
+        Ok(services) => services,
+        Err(error) => {
+            checks.push(Check::failed(
+                "inventory",
+                format!("{error:#}"),
+                "az account list; check [azure] subscriptions and search_services",
+            ));
+            return checks;
+        }
+    };
+    checks.push(Check::ok(
+        "inventory",
+        format!("{} search services in reach", services.len()),
+    ));
+    for service in services.into_iter().take(3) {
+        let check = format!("service {}", service.name);
+        let auth = crate::aisearch::auth_mode(&service);
+        let started = std::time::Instant::now();
+        let probe = crate::aisearch::Search::new(ctx, service)
+            .and_then(|search| search.get("/servicestats", crate::aisearch::Role::Definitions));
+        checks.push(match probe {
+            Ok(_) => Check::ok(
+                check,
+                format!(
+                    "servicestats answered in {} ms (auth by {auth})",
+                    started.elapsed().as_millis()
+                ),
+            ),
+            Err(error) => Check::failed(
+                check,
+                format!("{error:#} (auth by {auth})"),
+                "a token needs Reader (definitions) and Search Index Data Reader (documents); a key needs Contributor or Search Service Contributor to fetch it",
+            ),
+        });
+    }
+    checks
+}
+
 #[cfg(test)]
 mod tests {
     use agent_cli_core::testing::Answer;
@@ -352,5 +410,63 @@ mod tests {
         );
         assert_eq!(checks[1].detail, "1 AKS clusters in reach");
         assert_eq!(checks[2].detail, "kubelogin version v0.1.4-fake");
+    }
+
+    #[test]
+    fn doctor_probes_each_search_service_with_the_auth_it_takes() {
+        let refused = || {
+            Answer::status(
+                403,
+                r#"{"error":{"code":"","message":"Authorization failed."}}"#,
+            )
+        };
+        let (ctx, transport) = testing::doctor_ctx(
+            vec![
+                testing::inventory(vec![
+                    testing::search_service("srch-contoso-dev", "apiKeyOnly"),
+                    testing::search_service("srch-contoso-prod", "aadOrApiKey"),
+                ]),
+                testing::admin_keys(),
+                Answer::json(&json!({"counters": {}})),
+                refused(),
+                testing::admin_keys(),
+                refused(),
+            ],
+            "[azure]\nparallel = 1\n",
+        );
+        let checks = aisearch_doctor(&ctx);
+        assert_eq!(
+            testing::rows(&checks),
+            [
+                ("az login".to_owned(), true),
+                ("inventory".to_owned(), true),
+                ("service srch-contoso-dev".to_owned(), true),
+                ("service srch-contoso-prod".to_owned(), false),
+            ]
+        );
+        assert!(
+            checks[2].detail.ends_with("(auth by key)"),
+            "{:?}",
+            checks[2]
+        );
+        assert!(
+            checks[3]
+                .detail
+                .contains("needs Reader or Search Service Contributor")
+                && checks[3].detail.contains("its admin key was refused too"),
+            "{:?}",
+            checks[3]
+        );
+        assert_eq!(
+            transport.sent().len(),
+            6,
+            "one fallback to the key, no more"
+        );
+        let config = |toml: &str| Config::parse("c.toml", Some(toml), Vec::new());
+        assert_eq!(
+            aisearch_status(&config("[azure]\nsearch_services = [\"a\", \"b\"]\n")),
+            "aisearch 2 services"
+        );
+        assert_eq!(aisearch_status(&config("")), "aisearch all services");
     }
 }

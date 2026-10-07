@@ -17,6 +17,8 @@ pub(crate) const VAULT: &str = "https://vault.azure.net";
 /// What `az acr` itself asks for. Not ARM's: a hardened registry turns off
 /// `azureADAuthenticationAsArmPolicy` and refuses an ARM-scoped token.
 pub(crate) const REGISTRY: &str = "https://containerregistry.azure.net";
+/// AI Search's data plane, without a trailing slash, as `az` asks for it.
+pub(crate) const SEARCH: &str = "https://search.azure.com";
 
 /// `az`'s token for `resource` (`Setup::with_token` stands in for it in tests).
 pub(crate) fn az_token(ctx: &Ctx, resource: &str, fresh: bool) -> Result<Secret> {

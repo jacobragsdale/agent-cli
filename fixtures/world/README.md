@@ -30,10 +30,12 @@ A release build ignores `AGENT_CLI_FIXTURES`: the feature is not in it.
 
 Each domain's facts are in `facts/`: [ado](facts/ado.md), [acr](facts/acr.md),
 [k8s](facts/k8s.md), [kv](facts/kv.md), [aks](facts/aks.md),
-[airflow](facts/airflow.md), [dd](facts/dd.md). They tie the domains together:
+[airflow](facts/airflow.md), [dd](facts/dd.md),
+[aisearch](facts/aisearch.md). They tie the domains together:
 the api image the cluster runs is the one the registry and the build hold, the
 worker crash-loops on the password Key Vault let expire, the nightly DAG's pod
-runs in the same namespace, and Datadog alerted at the rollout.
+runs in the same namespace, Datadog alerted at the rollout, and the order the
+DAG failed on is the one AI Search's indexer left out.
 
 The deploy trace, for example (see AGENTS.md):
 
@@ -59,6 +61,7 @@ agent-cli k8s pod logs prod/web/etl-nightly-load-orders-q8x1k2vz --tail 20
 config.toml       the config agent-cli reads
 http/ado.json     Azure DevOps answers
 http/azure.json   Resource Graph, Key Vault and ACR answers
+http/aisearch.json AI Search's data plane and its admin key (ARM)
 http/airflow.json Airflow's REST API (/api/v2 and /auth/token)
 http/dd.json      Datadog answers (api.datadoghq.eu)
 kubectl.json      what the fake kubectl knows: objects per context, and logs
