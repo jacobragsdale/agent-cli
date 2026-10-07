@@ -8,6 +8,11 @@ Open work only. What is built is in the code, the crate cards and
 - [ ] Work through `docs/first-live-run.md`: sql, ado (a sandbox organization, 2026-10-02) and airflow (local 2.9.3 and 3.3.2, `scripts/airflow-up.sh`, 2026-10-03) have run against real services; kv, acr, aks, k8s and dd have not
 - [ ] Then the one-line global CLAUDE.md note that agent-cli exists (the README gives the line)
 
+## New domains
+
+- [ ] confluence: `docs/plans/confluence.md` (Cloud reads, then writes; Data Center only if work runs it). Live runs and trials need a free Cloud site
+- [ ] aisearch, in `crates/azure`: `docs/plans/aisearch.md` (several services through the `az login`; reads, then indexer, index and document writes). Live tests need a Free search service
+
 ## Phase 5: consolidate
 
 - [ ] After the live runs, the TUIs depend on agent-cli's domain crates and delete their copies and their CLIs; each TUI's tests pass on the shared crates
