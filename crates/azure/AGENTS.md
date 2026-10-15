@@ -1,8 +1,8 @@
-# azure: kv, acr, aks and aisearch
+# azure: kv, acr, aks, aisearch and arm
 
-Four domains in one crate, `KV`, `ACR`, `AKS`, `AISEARCH`, over plain HTTPS
-with `az` tokens; no Azure SDK. Docs: https://learn.microsoft.com/rest/api/
-(keyvault, containerregistry, azureresourcegraph, searchservice).
+Five domains in one crate, `KV`, `ACR`, `AKS`, `AISEARCH`, `ARM`, over plain
+HTTPS with `az` tokens; no Azure SDK. Docs: https://learn.microsoft.com/rest/api/
+(keyvault, containerregistry, azureresourcegraph, searchservice, resources).
 
 ## Config
 `[azure]`: `subscriptions`, `vaults`, `registries`, `search_services` (one
@@ -19,28 +19,31 @@ Tokens go only to `management.azure.com`, `*.vault.azure.net`,
 - aisearch: `service`, `service/index`, `service/index/key`,
   `service/indexer`; bare names with `--service`/`--index`; data-plane URLs
   and portal links (`aisearch/refs.rs`). Two holders of a bare name is exit 2.
+- arm: the ARM id (a child collection too), a portal link, or a name with
+  `--type`/`--group`/`--subscription`.
 
 ## Where things are (`src/`)
 A command is `<domain>/<resource>/<verb>.rs` (`kv/secret/list.rs`).
-- `lib.rs`: the four `Domain`s. `doctor.rs`: status and doctor of each.
+- `lib.rs`: the five `Domain`s. `doctor.rs`: status and doctor of each.
   `config.rs`: `Azure::load`. `testing.rs`: shared scrubbed answers.
 - `client.rs`: `bearer`, `ARM`, `VAULT`, `REGISTRY`, `SEARCH`, `narrow`
   (allowlists), `parallel`, `limited` (the `--limit` note), `stamp`, `text`.
-- `graph.rs`: one Resource Graph query for every vault, registry, cluster
-  and search service, cached for `refresh`.
+- `graph.rs`: `rows` (any Resource Graph query, paged) and the inventory
+  of vaults, registries, clusters and search services, cached.
 - `kv/mod.rs`: `get` (the door), `holder`, `secret_ref`.
 - `acr/mod.rs`: a `Session` per registry trades the token; `holder`.
-- `aisearch/mod.rs`: `reach` (services, completed from ARM when a row lacks
-  endpoint or auth), `holder`, and `Search`, the door: a token when the
-  service takes roles, else an admin key from `listAdminKeys` held for the
-  run; never both; a refused token on `aadOrApiKey` retries with the key;
-  401/403 is exit 3 naming the role. `aisearch/shape.rs`: `bound` and
-  `scrub` (definitions).
+- `aisearch/mod.rs`: `reach`, `holder`, and `Search`, the door: a token
+  when the service takes roles, else an admin key from `listAdminKeys`;
+  never both; 401/403 is exit 3 naming the role. `aisearch/shape.rs`:
+  `bound` and `scrub` (definitions).
+- `arm/mod.rs`: `subscriptions` (cached), `scope` (`--subscription`),
+  `quote` (KQL), `scrub`. `arm/resource/get.rs`: ids, portal links, and
+  api-versions (the provider's newest stable, cached).
 
 ## Fixtures
 `fixtures/world/http/{azure,aisearch}.json`; facts in
-`fixtures/world/facts/{kv,acr,aks,aisearch}.md`;
-world checks `crates/cli/tests/world_{kv,acr,aks,aisearch}.rs`. Tests run
+`fixtures/world/facts/{kv,acr,aks,aisearch,arm}.md`; world checks
+`crates/cli/tests/world_{kv,acr,aks,aisearch,arm}.rs`. Tests run
 `scripts/fake/az` and `kubelogin` (the token is `token@<resource>`).
 
 ## Quirks

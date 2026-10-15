@@ -9,6 +9,7 @@
 use agent_cli_core::Failure;
 use anyhow::Result;
 
+use crate::client::decode;
 use crate::graph::SearchService;
 
 /// What an id names. `service` is a name or a data-plane host.
@@ -185,29 +186,6 @@ fn portal(raw: &str) -> Ref {
         }
     }
     found
-}
-
-/// One round of percent-decoding; a malformed escape stays as written.
-fn decode(raw: &str) -> String {
-    let bytes = raw.as_bytes();
-    let mut out = Vec::with_capacity(bytes.len());
-    let mut at = 0;
-    while at < bytes.len() {
-        let hex = |byte: u8| (byte as char).to_digit(16);
-        if bytes[at] == b'%'
-            && let (Some(high), Some(low)) = (
-                bytes.get(at + 1).and_then(|b| hex(*b)),
-                bytes.get(at + 2).and_then(|b| hex(*b)),
-            )
-        {
-            out.push(u8::try_from(high * 16 + low).unwrap_or(b'?'));
-            at += 3;
-        } else {
-            out.push(bytes[at]);
-            at += 1;
-        }
-    }
-    String::from_utf8_lossy(&out).into_owned()
 }
 
 /// The service a name, a data-plane host, its endpoint or its portal link

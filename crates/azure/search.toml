@@ -1,4 +1,4 @@
-# Labeled search queries for kv, acr and aks, written as tasks an agent would type.
+# Labeled search queries for kv, acr, aks, aisearch and arm, written as tasks an agent would type.
 # The search gate in crates/cli reads every crates/*/search.toml. Every new
 # command adds at least two, for example:
 #
@@ -283,3 +283,53 @@ expect = "aisearch document list"
 text = "index capacity of the dev search service"
 expect = "aisearch service get"
 
+
+# ---------- arm ----------
+
+[[query]]
+text = "list the azure subscriptions I can see"
+expect = "arm subscription list"
+
+[[query]]
+text = "which tenant is this subscription in"
+expect = "arm subscription list"
+
+[[query]]
+text = "list resource groups"
+expect = "arm group list"
+
+[[query]]
+text = "what tags does the rg have"
+expect = "arm group list"
+
+[[query]]
+text = "find all virtual networks in azure"
+expect = "arm resource list"
+
+[[query]]
+text = "list azure resources in a resource group"
+expect = "arm resource list"
+
+[[query]]
+text = "which azure resources are tagged env=prod"
+expect = "arm resource list"
+
+[[query]]
+text = "show the properties of an azure resource by its id"
+expect = "arm resource get"
+
+[[query]]
+text = "show the postgres server firewall rules"
+expect = "arm resource get"
+
+[[query]]
+text = "open this azure portal link"
+expect = "arm resource get"
+
+[[query]]
+text = "run a resource graph query"
+expect = "arm query run"
+
+[[query]]
+text = "count azure resources by type with kql"
+expect = "arm query run"

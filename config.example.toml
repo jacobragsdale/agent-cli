@@ -36,7 +36,7 @@
 #                                        # prints it); with no email, Bearer
 
 # [azure]
-# kv, acr, aks and aisearch sign in with your `az login`; nothing here is
+# kv, acr, aks, aisearch and arm sign in with your `az login`; nothing here is
 # required. An empty or missing list means everything the login reaches; a
 # list is an allowlist that also sets the order rows come in. Each takes a
 # string or a list. Add the section (even empty) for `agent-cli doctor` to
@@ -51,8 +51,9 @@
 # change them), else an admin key fetched from ARM per run, which needs
 # Contributor or Search Service Contributor.
 # refresh = 300                          # seconds the resource inventory,
-#                                        # registry counts and index fields are
-#                                        # cached; 0 = never
+#                                        # subscriptions, api-versions, registry
+#                                        # counts and index fields are cached;
+#                                        # 0 = never
 # parallel = 8                           # vaults, registries, repositories read at once
 
 # [[k8s.scope]]

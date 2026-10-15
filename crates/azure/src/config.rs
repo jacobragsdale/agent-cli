@@ -15,7 +15,7 @@ use serde::{Deserialize, Deserializer};
 /// vaults = ["kv-contoso-dev", "kv-contoso-prod"]
 /// registries = "contosoacr"
 /// search_services = ["srch-contoso-prod", "srch-contoso-dev"]
-/// refresh = 300    # seconds the Resource Graph inventory, ACR attributes and index fields are cached
+/// refresh = 300    # seconds the Resource Graph inventory, subscriptions, api-versions, ACR attributes and index fields are cached
 /// parallel = 8     # vaults, registries or repositories read at once
 /// ```
 #[derive(Debug, Default, Deserialize)]

@@ -1,5 +1,5 @@
-//! The overview's lines for kv, acr, aks and aisearch, and `agent-cli doctor`
-//! for each.
+//! The overview's lines for kv, acr, aks, aisearch and arm, and `agent-cli
+//! doctor` for each.
 
 use agent_cli_core::{Check, Config, Ctx};
 
@@ -240,6 +240,54 @@ pub(crate) fn aks_doctor(ctx: &Ctx) -> Vec<Check> {
     checks
 }
 
+// ---------- arm ----------
+
+/// Nothing when `[azure]` parses: the subscriptions scope every Azure
+/// domain, and the overview's config line has no room to say so for one.
+pub(crate) fn arm_status(config: &Config) -> String {
+    match config.section::<Azure>("azure") {
+        Ok(_) => String::new(),
+        Err(_) => "arm config broken".to_owned(),
+    }
+}
+
+/// The login, and the subscriptions it reaches within `[azure]
+/// subscriptions`: every arm command runs over them.
+pub(crate) fn arm_doctor(ctx: &Ctx) -> Vec<Check> {
+    if !ctx.config().has_section("azure") {
+        return Vec::new();
+    }
+    let mut checks = Vec::new();
+    let Some(azure) = doctor_login(ctx, &mut checks, &[]) else {
+        return checks;
+    };
+    let found = match crate::arm::subscriptions(ctx, &azure) {
+        Ok(found) => found,
+        Err(error) => {
+            checks.push(Check::failed(
+                "subscriptions",
+                format!("{error:#}"),
+                "az account list shows what the login sees",
+            ));
+            return checks;
+        }
+    };
+    let guid = crate::arm::Subscription::guid;
+    let kept = crate::client::allowed(&found, &azure.subscriptions, guid);
+    checks.push(Check::ok(
+        "subscriptions",
+        format!("{} subscriptions in reach", kept.len()),
+    ));
+    for name in crate::client::missing(&found, &azure.subscriptions, guid) {
+        checks.push(Check::failed(
+            format!("subscription {name}"),
+            "the login does not reach it",
+            "fix [azure] subscriptions; `agent-cli arm subscription list` shows what is there",
+        ));
+    }
+    checks
+}
+
 // ---------- aisearch ----------
 
 pub(crate) fn aisearch_status(config: &Config) -> String {
@@ -410,6 +458,29 @@ mod tests {
         );
         assert_eq!(checks[1].detail, "1 AKS clusters in reach");
         assert_eq!(checks[2].detail, "kubelogin version v0.1.4-fake");
+    }
+
+    #[test]
+    fn doctor_counts_the_subscriptions_in_reach_and_names_one_it_cannot_see() {
+        let (ctx, _) = testing::doctor_ctx(
+            vec![Answer::json(&json!({"value": [
+                {"subscriptionId": "00000000-0000-4000-8000-000000000001", "displayName": "contoso-prod",
+                 "state": "Enabled", "tenantId": "t"}]}))],
+            "[azure]\nsubscriptions = [\"00000000-0000-4000-8000-000000000001\", \"00000000-0000-4000-8000-0000000000ff\"]\n",
+        );
+        let checks = arm_doctor(&ctx);
+        assert_eq!(
+            testing::rows(&checks),
+            [
+                ("az login".to_owned(), true),
+                ("subscriptions".to_owned(), true),
+                (
+                    "subscription 00000000-0000-4000-8000-0000000000ff".to_owned(),
+                    false
+                ),
+            ]
+        );
+        assert_eq!(checks[1].detail, "1 subscriptions in reach");
     }
 
     #[test]

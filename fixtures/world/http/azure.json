@@ -354,5 +354,365 @@
     ]
    }
   }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions?api-version=2022-12-01",
+  "note": "arm subscription list, and --subscription by name",
+  "answer": {
+   "value": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01",
+     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+     "displayName": "contoso-prod",
+     "state": "Enabled",
+     "tenantId": "00000000-0000-4000-8000-00000000a001"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm group list",
+  "body": {
+   "query": "resourcecontainers\n| where type =~ 'microsoft.resources/subscriptions/resourcegroups'\n| project id, name, subscriptionId, location, tags\n| order by name asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 3,
+   "count": 3,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope",
+     "name": "MC_rg-contoso-prod_aks-contoso-prod_westeurope",
+     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+     "location": "westeurope",
+     "tags": {
+      "aks-managed-cluster-name": "aks-contoso-prod"
+     }
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-dev",
+     "name": "rg-contoso-dev",
+     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+     "location": "westeurope",
+     "tags": {
+      "env": "dev"
+     }
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod",
+     "name": "rg-contoso-prod",
+     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+     "location": "westeurope",
+     "tags": {
+      "env": "prod",
+      "owner": "platform"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm resource list, unfiltered",
+  "body": {
+   "query": "resources\n| project id, name, type, resourceGroup, location, sku = tostring(sku.name), provisioningState = tostring(properties.provisioningState)\n| order by name asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 6,
+   "count": 6,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod",
+     "name": "aks-contoso-prod",
+     "type": "microsoft.containerservice/managedclusters",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "Base",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr",
+     "name": "contosoacr",
+     "type": "microsoft.containerregistry/registries",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "Standard",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod",
+     "name": "kv-contoso-prod",
+     "type": "microsoft.keyvault/vaults",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "standard",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-dev/providers/Microsoft.Search/searchServices/srch-contoso-dev",
+     "name": "srch-contoso-dev",
+     "type": "microsoft.search/searchservices",
+     "resourceGroup": "rg-contoso-dev",
+     "location": "westeurope",
+     "sku": "basic",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Search/searchServices/srch-contoso-prod",
+     "name": "srch-contoso-prod",
+     "type": "microsoft.search/searchservices",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "standard",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod",
+     "name": "vnet-contoso-prod",
+     "type": "microsoft.network/virtualnetworks",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "",
+     "provisioningState": "Succeeded"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm resource list --type Microsoft.Network/virtualNetworks",
+  "body": {
+   "query": "resources\n| where type =~ 'Microsoft.Network/virtualNetworks'\n| project id, name, type, resourceGroup, location, sku = tostring(sku.name), provisioningState = tostring(properties.provisioningState)\n| order by name asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod",
+     "name": "vnet-contoso-prod",
+     "type": "microsoft.network/virtualnetworks",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "",
+     "provisioningState": "Succeeded"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm resource get aks-contoso-prod: the name, found",
+  "body": {
+   "query": "resources\n| where name =~ 'aks-contoso-prod'\n| project id\n| order by id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm query run, a count by type",
+  "body": {
+   "query": "resources | summarize count() by type",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 5,
+   "count": 5,
+   "data": [
+    {
+     "type": "microsoft.containerservice/managedclusters",
+     "count_": 1
+    },
+    {
+     "type": "microsoft.containerregistry/registries",
+     "count_": 1
+    },
+    {
+     "type": "microsoft.keyvault/vaults",
+     "count_": 1
+    },
+    {
+     "type": "microsoft.search/searchservices",
+     "count_": 2
+    },
+    {
+     "type": "microsoft.network/virtualnetworks",
+     "count_": 1
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.ContainerService?api-version=2021-04-01",
+  "note": "the api-versions arm resource get picks from: the newest without -preview",
+  "answer": {
+   "namespace": "Microsoft.ContainerService",
+   "resourceTypes": [
+    {
+     "resourceType": "managedClusters",
+     "apiVersions": [
+      "2025-02-02-preview",
+      "2025-01-01",
+      "2024-10-01",
+      "2024-09-02-preview"
+     ]
+    },
+    {
+     "resourceType": "managedClusters/agentPools",
+     "apiVersions": [
+      "2025-01-01",
+      "2024-10-01"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod?api-version=2025-01-01",
+  "note": "arm resource get on the cluster: ARM's own shape, trimmed",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod",
+   "name": "aks-contoso-prod",
+   "type": "Microsoft.ContainerService/ManagedClusters",
+   "location": "westeurope",
+   "sku": {
+    "name": "Base",
+    "tier": "Standard"
+   },
+   "identity": {
+    "type": "SystemAssigned",
+    "principalId": "00000000-0000-4000-8000-00000000c001",
+    "tenantId": "00000000-0000-4000-8000-00000000a001"
+   },
+   "properties": {
+    "provisioningState": "Succeeded",
+    "powerState": {
+     "code": "Running"
+    },
+    "kubernetesVersion": "1.30",
+    "currentKubernetesVersion": "1.30.4",
+    "dnsPrefix": "aks-contoso-prod",
+    "fqdn": "aks-contoso-prod-0a1b2c3d.hcp.westeurope.azmk8s.io",
+    "agentPoolProfiles": [
+     {
+      "name": "system",
+      "count": 3,
+      "vmSize": "Standard_D4s_v5",
+      "mode": "System",
+      "orchestratorVersion": "1.30.4",
+      "vnetSubnetID": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks",
+      "provisioningState": "Succeeded",
+      "powerState": {
+       "code": "Running"
+      }
+     }
+    ],
+    "nodeResourceGroup": "MC_rg-contoso-prod_aks-contoso-prod_westeurope",
+    "enableRBAC": true,
+    "networkProfile": {
+     "networkPlugin": "azure",
+     "networkPluginMode": "overlay",
+     "podCidr": "10.244.0.0/16",
+     "serviceCidr": "10.0.0.0/16",
+     "dnsServiceIP": "10.0.0.10",
+     "outboundType": "loadBalancer"
+    },
+    "oidcIssuerProfile": {
+     "enabled": true
+    },
+    "securityProfile": {
+     "workloadIdentity": {
+      "enabled": true
+     }
+    },
+    "addonProfiles": {
+     "azureKeyvaultSecretsProvider": {
+      "enabled": true,
+      "config": {
+       "enableSecretRotation": "true"
+      }
+     }
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Network?api-version=2021-04-01",
+  "note": "a nested type is matched by its full path",
+  "answer": {
+   "namespace": "Microsoft.Network",
+   "resourceTypes": [
+    {
+     "resourceType": "virtualNetworks",
+     "apiVersions": [
+      "2024-05-01",
+      "2024-03-01"
+     ]
+    },
+    {
+     "resourceType": "virtualNetworks/subnets",
+     "apiVersions": [
+      "2024-05-01",
+      "2024-03-01"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks?api-version=2024-05-01",
+  "note": "arm resource get on the AKS nodes' subnet",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks",
+   "name": "aks",
+   "type": "Microsoft.Network/virtualNetworks/subnets",
+   "properties": {
+    "provisioningState": "Succeeded",
+    "addressPrefix": "10.1.0.0/22",
+    "privateEndpointNetworkPolicies": "Disabled"
+   }
+  }
  }
 ]

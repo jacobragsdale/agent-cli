@@ -231,6 +231,30 @@ pub(crate) fn text(value: &serde_json::Value) -> Option<String> {
         .map(str::to_owned)
 }
 
+/// One round of percent-decoding, as portal links need; a malformed escape
+/// stays as written.
+pub(crate) fn decode(raw: &str) -> String {
+    let bytes = raw.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut at = 0;
+    while at < bytes.len() {
+        let hex = |byte: u8| (byte as char).to_digit(16);
+        if bytes[at] == b'%'
+            && let (Some(high), Some(low)) = (
+                bytes.get(at + 1).and_then(|b| hex(*b)),
+                bytes.get(at + 2).and_then(|b| hex(*b)),
+            )
+        {
+            out.push(u8::try_from(high * 16 + low).unwrap_or(b'?'));
+            at += 3;
+        } else {
+            out.push(bytes[at]);
+            at += 1;
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
 /// The HTTP status a refusal carried.
 pub(crate) fn refused_with(error: &anyhow::Error) -> Option<u16> {
     agent_cli_core::status_of(error)

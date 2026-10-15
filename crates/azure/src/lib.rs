@@ -1,6 +1,6 @@
 //! The Azure domains of agent-cli: Key Vault secrets (`kv`), container
-//! registry images (`acr`) and AKS clusters (`aks`), ported from az-tui, and
-//! Azure AI Search (`aisearch`).
+//! registry images (`acr`) and AKS clusters (`aks`), ported from az-tui,
+//! Azure AI Search (`aisearch`), and any ARM resource (`arm`).
 //!
 //! There is no Azure SDK and no credential of our own. Each plane gets an
 //! `az` token for its own audience (or, for an AI Search service that takes
@@ -19,6 +19,7 @@
 mod acr;
 mod aisearch;
 mod aks;
+mod arm;
 mod client;
 mod config;
 mod doctor;
@@ -136,6 +137,30 @@ pub const AISEARCH: Domain = Domain {
     doctor: doctor::aisearch_doctor,
 };
 
+pub const ARM: Domain = Domain {
+    name: "arm",
+    summary: "Azure Resource Manager",
+    commands: &[
+        arm::resource::list::RESOURCE_LIST,
+        arm::resource::get::RESOURCE_GET,
+        arm::query::run::QUERY_RUN,
+        arm::group::list::GROUP_LIST,
+        arm::subscription::list::SUBSCRIPTION_LIST,
+    ],
+    synonyms: &[
+        ("resource graph", &["query"]),
+        ("kusto", &["query"]),
+        ("resource group", &["group"]),
+        ("resource groups", &["group"]),
+        ("rg", &["group"]),
+        ("subscriptions", &["subscription"]),
+        ("azure resource", &["arm", "resource"]),
+        ("azure resources", &["arm", "resource"]),
+    ],
+    status: doctor::arm_status,
+    doctor: doctor::arm_doctor,
+};
+
 #[cfg(test)]
 mod tests {
     use agent_cli_core::{check_layout, check_registry};
@@ -145,11 +170,11 @@ mod tests {
     #[test]
     fn the_registry_keeps_every_rule() {
         assert_eq!(
-            check_registry(&[KV, ACR, AKS, AISEARCH]),
+            check_registry(&[KV, ACR, AKS, AISEARCH, ARM]),
             Vec::<String>::new()
         );
         assert_eq!(
-            check_layout(&[KV, ACR, AKS, AISEARCH]),
+            check_layout(&[KV, ACR, AKS, AISEARCH, ARM]),
             Vec::<String>::new()
         );
     }

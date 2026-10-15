@@ -14,6 +14,7 @@ const DOMAINS: &[Domain] = &[
     agent_cli_azure::ACR,
     agent_cli_azure::AKS,
     agent_cli_azure::AISEARCH,
+    agent_cli_azure::ARM,
     agent_cli_k8s::K8S,
     agent_cli_sql::DOMAIN,
     agent_cli_airflow::DOMAIN,
@@ -497,6 +498,7 @@ email = "jane.doe@contoso-engineering.com"
 token_env = "CONFLUENCE_TOKEN"
 
 [azure]
+subscriptions = "00000000-0000-4000-8000-000000000001"
 vaults = ["kv-contoso-prod-westeurope", "kv-contoso-staging-westeurope"]
 registries = "contosoacr"
 search_services = ["srch-contoso-prod-westeurope", "srch-contoso-dev-westeurope"]

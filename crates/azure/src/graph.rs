@@ -151,7 +151,7 @@ pub fn inventory(ctx: &Ctx, azure: &Azure) -> Result<Inventory> {
     if let Some(held) = ctx.cache().get::<Inventory>(&key) {
         return Ok(held);
     }
-    let read = query(ctx, azure).map_err(explain)?;
+    let read = query(ctx, azure)?;
     // A login with no subscription (a tenant-level one) gets an empty answer,
     // not a refusal: say so rather than report an empty Azure.
     let empty = read.vaults.is_empty()
@@ -180,85 +180,101 @@ fn no_subscriptions(ctx: &Ctx) -> Result<bool> {
 }
 
 fn query(ctx: &Ctx, azure: &Azure) -> Result<Inventory> {
+    let mut inventory = Inventory::default();
+    for row in rows(ctx, &azure.subscriptions, QUERY, usize::MAX)? {
+        let field = |key: &str| text(&row[key]).unwrap_or_default();
+        match field("type").to_ascii_lowercase().as_str() {
+            "microsoft.keyvault/vaults" => inventory.vaults.push(Vault {
+                name: field("name"),
+                subscription: field("subscriptionId"),
+                resource_group: field("resourceGroup"),
+                location: field("location"),
+                uri: field("vaultUri"),
+            }),
+            "microsoft.containerregistry/registries" => inventory.registries.push(Registry {
+                name: field("name"),
+                login_server: field("loginServer"),
+                subscription: field("subscriptionId"),
+                resource_group: field("resourceGroup"),
+                location: field("location"),
+            }),
+            "microsoft.containerservice/managedclusters" => {
+                inventory.clusters.push(Cluster {
+                    name: field("name"),
+                    resource_group: field("resourceGroup"),
+                    subscription: field("subscriptionId"),
+                    location: field("location"),
+                    kubernetes_version: text(&row["currentKubernetesVersion"])
+                        .unwrap_or_else(|| field("kubernetesVersion")),
+                    power_state: field("powerState"),
+                });
+            }
+            "microsoft.search/searchservices" => {
+                let count = |key: &str| row[key].as_u64().and_then(|n| u32::try_from(n).ok());
+                inventory.search_services.push(SearchService {
+                    name: field("name"),
+                    subscription: field("subscriptionId"),
+                    resource_group: field("resourceGroup"),
+                    location: field("location"),
+                    endpoint: field("endpoint"),
+                    sku: field("sku"),
+                    replicas: count("replicaCount"),
+                    partitions: count("partitionCount"),
+                    status: field("status"),
+                    network: field("publicNetworkAccess"),
+                    semantic: field("semanticSearch"),
+                    auth_options: auth_options(&row["authOptions"]),
+                    local_auth_disabled: row["disableLocalAuth"].as_bool(),
+                });
+            }
+            _ => {}
+        }
+    }
+    Ok(inventory)
+}
+
+/// The rows `kql` finds in `subscriptions` (every one the login reaches when
+/// none are named), paged by skip token until there are more than `limit`,
+/// then cut to `limit` with a note giving Resource Graph's own total. A 403
+/// reads as what it means: no rights on any subscription in scope.
+pub fn rows(ctx: &Ctx, subscriptions: &[String], kql: &str, limit: usize) -> Result<Vec<Value>> {
     // A constant, but the token's one rule is checked where it is attached.
     if !host_under(URL, "management.azure.com") {
         bail!("{URL} is not ARM; the ARM token is not sent there");
     }
     let mint = bearer(ctx, ARM);
-    let mut inventory = Inventory::default();
+    let top = limit.saturating_add(1).min(PAGE);
+    let mut rows: Vec<Value> = Vec::new();
     let mut skip: Option<String> = None;
     loop {
-        let answer = ctx
-            .read(Request::query(URL, body(azure, skip.as_deref())).auth(&mint))?
-            .json()?;
-        if !answer["data"].is_array() {
+        let sent = Request::query(URL, body(subscriptions, kql, top, skip.as_deref())).auth(&mint);
+        let answer = ctx.read(sent).map_err(explain)?.json()?;
+        let Some(page) = answer["data"].as_array() else {
             bail!("Resource Graph answered without a data array");
-        }
-        for row in answer["data"].as_array().into_iter().flatten() {
-            let field = |key: &str| text(&row[key]).unwrap_or_default();
-            match field("type").to_ascii_lowercase().as_str() {
-                "microsoft.keyvault/vaults" => inventory.vaults.push(Vault {
-                    name: field("name"),
-                    subscription: field("subscriptionId"),
-                    resource_group: field("resourceGroup"),
-                    location: field("location"),
-                    uri: field("vaultUri"),
-                }),
-                "microsoft.containerregistry/registries" => inventory.registries.push(Registry {
-                    name: field("name"),
-                    login_server: field("loginServer"),
-                    subscription: field("subscriptionId"),
-                    resource_group: field("resourceGroup"),
-                    location: field("location"),
-                }),
-                "microsoft.containerservice/managedclusters" => {
-                    inventory.clusters.push(Cluster {
-                        name: field("name"),
-                        resource_group: field("resourceGroup"),
-                        subscription: field("subscriptionId"),
-                        location: field("location"),
-                        kubernetes_version: text(&row["currentKubernetesVersion"])
-                            .unwrap_or_else(|| field("kubernetesVersion")),
-                        power_state: field("powerState"),
-                    });
-                }
-                "microsoft.search/searchservices" => {
-                    let count = |key: &str| row[key].as_u64().and_then(|n| u32::try_from(n).ok());
-                    inventory.search_services.push(SearchService {
-                        name: field("name"),
-                        subscription: field("subscriptionId"),
-                        resource_group: field("resourceGroup"),
-                        location: field("location"),
-                        endpoint: field("endpoint"),
-                        sku: field("sku"),
-                        replicas: count("replicaCount"),
-                        partitions: count("partitionCount"),
-                        status: field("status"),
-                        network: field("publicNetworkAccess"),
-                        semantic: field("semanticSearch"),
-                        auth_options: auth_options(&row["authOptions"]),
-                        local_auth_disabled: row["disableLocalAuth"].as_bool(),
-                    });
-                }
-                _ => {}
-            }
+        };
+        rows.extend(page.iter().cloned());
+        if rows.len() > limit {
+            let total = answer["totalRecords"]
+                .as_u64()
+                .map_or_else(|| "more".to_owned(), |total| total.to_string());
+            ctx.note(format!("[{limit} of {total}; --limit N]"));
+            rows.truncate(limit);
+            return Ok(rows);
         }
         // A truncated answer carries no skip token, so paging cannot recover
-        // the rest; the lists would be short and nobody would know why.
+        // the rest; the rows would be short and nobody would know why.
         if answer["resultTruncated"] == json!("true") || answer["resultTruncated"] == json!(true) {
             return Err(Failure::setup(format!(
-                "Resource Graph truncated the answer at {} vaults, {} registries and {} clusters",
-                inventory.vaults.len(),
-                inventory.registries.len(),
-                inventory.clusters.len()
+                "Resource Graph truncated the answer at {} rows",
+                rows.len()
             ))
-            .hint("name the subscriptions in [azure] subscriptions to narrow it")
+            .hint("name the subscriptions in [azure] subscriptions to narrow it, and project id: Resource Graph pages by it")
             .into());
         }
         let next = text(&answer["$skipToken"]);
         // A repeated token would page for ever.
         if next.is_none() || next == skip {
-            return Ok(inventory);
+            return Ok(rows);
         }
         skip = next;
     }
@@ -267,13 +283,12 @@ fn query(ctx: &Ctx, azure: &Azure) -> Result<Inventory> {
 /// `subscriptions` is left out when none are named: the query then runs over
 /// every subscription the login reaches. An empty array would mean the
 /// opposite and answer nothing.
-fn body(azure: &Azure, skip: Option<&str>) -> Value {
+fn body(subscriptions: &[String], kql: &str, top: usize, skip: Option<&str>) -> Value {
     let mut body = json!({
-        "query": QUERY,
-        "options": { "$top": PAGE, "resultFormat": "objectArray" },
+        "query": kql,
+        "options": { "$top": top, "resultFormat": "objectArray" },
     });
-    let named: Vec<&String> = azure
-        .subscriptions
+    let named: Vec<&String> = subscriptions
         .iter()
         .filter(|held| !held.trim().is_empty())
         .collect();
@@ -295,7 +310,7 @@ fn explain(error: anyhow::Error) -> anyhow::Error {
     if nothing {
         return error.context("the login can see no subscriptions in scope; run `az account list`");
     }
-    error.context("reading the Resource Graph inventory")
+    error.context("querying Resource Graph")
 }
 
 #[cfg(test)]

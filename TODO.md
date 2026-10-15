@@ -5,7 +5,7 @@ Open work only. What is built is in the code, the crate cards and
 
 ## Live runs
 
-- [ ] Work through `docs/first-live-run.md`: sql, ado (a sandbox organization, 2026-10-02) and airflow (local 2.9.3 and 3.3.2, `scripts/airflow-up.sh`, 2026-10-03) have run against real services; confluence's reads have run against a public site; kv, acr, aks, aisearch, k8s and dd have not
+- [ ] Work through `docs/first-live-run.md`: sql, ado (a sandbox organization, 2026-10-02) and airflow (local 2.9.3 and 3.3.2, `scripts/airflow-up.sh`, 2026-10-03) have run against real services; confluence's reads have run against a public site; kv, acr, aks, aisearch, arm, k8s and dd have not
 - [ ] Then the one-line global CLAUDE.md note that agent-cli exists (the README gives the line)
 
 ## Confluence and AI Search (built 2026-10-07 from the API specs; no live service yet)
@@ -27,7 +27,6 @@ Open work only. What is built is in the code, the crate cards and
 ## Small follow-ups
 
 - [ ] Time arithmetic in `--since`/`--until` (`T-2h`): Haiku tried `--until 2d-23h` and `--since 2d-2h` in the chains-2 trial (each an exit 2 it recovered from)
-- [ ] Fold `k8s context list` and the `aks` domain into one `k8s cluster list|connect` (a row per scope with its context, AKS name and namespaces)
 - [ ] The skill's `paths` hide it until a matching file is touched, so agents found it through `AGENTS.md` and read it with `cat`; drop `paths` if it should be offered from the first turn
 
 ## ADO query efficiency (after the work rollout)
