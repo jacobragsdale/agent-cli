@@ -1,4 +1,4 @@
-use agent_cli_core::{Ctx, command};
+use agent_cli_core::{Ctx, Effect, command};
 use anyhow::Result;
 
 use crate::kubectl::{At, Changed};
@@ -15,7 +15,11 @@ fn pod_delete(ctx: &Ctx, args: PodDeleteArgs) -> Result<Changed> {
     let (target, pod) = args.at.named(ctx, &args.pod)?;
     // --wait=false: the pod goes Terminating and a controller replaces it;
     // waiting for the grace period would spend the deadline on nothing.
-    let said = target.write(ctx, &["delete", "pod", &pod, "--wait=false"])?;
+    let said = target.write(
+        ctx,
+        Effect::Destructive,
+        &["delete", "pod", &pod, "--wait=false"],
+    )?;
     Ok(Changed::new(
         &target,
         format!("pod/{pod}"),

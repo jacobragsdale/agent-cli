@@ -105,7 +105,8 @@ Each `http/*.json` is a list of exchanges; the replayer reads every file in
 
 `kubectl.json` is `{"contexts": {"<context>": [objects]}, "logs": {...}}`.
 Objects are what `kubectl get -o json` prints (`kind`, `metadata.namespace`
-and `metadata.name` are what the fake filters on). Logs are keyed
+and `metadata.name` are what the fake filters on; a `CustomResourceDefinition`
+among them names its kind for `get` and `api-resources`). Logs are keyed
 `<context>/<namespace>/<pod>/<container>`, with `/previous` for `--previous`.
 
 ## Extend it

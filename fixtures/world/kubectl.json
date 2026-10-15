@@ -766,6 +766,115 @@
     "source": {
      "component": "kubelet"
     }
+   },
+   {
+    "kind": "CustomResourceDefinition",
+    "apiVersion": "apiextensions.k8s.io/v1",
+    "metadata": {
+     "name": "certificates.cert-manager.io",
+     "creationTimestamp": "2025-06-01T10:00:00Z"
+    },
+    "spec": {
+     "group": "cert-manager.io",
+     "scope": "Namespaced",
+     "names": {
+      "kind": "Certificate",
+      "plural": "certificates",
+      "singular": "certificate",
+      "shortNames": [
+       "cert",
+       "certs"
+      ]
+     },
+     "versions": [
+      {
+       "name": "v1",
+       "served": true,
+       "storage": true
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Certificate",
+    "apiVersion": "cert-manager.io/v1",
+    "metadata": {
+     "name": "api-tls",
+     "namespace": "web",
+     "creationTimestamp": "2025-06-02T11:00:00Z",
+     "labels": {
+      "app": "api"
+     },
+     "annotations": {
+      "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"cert-manager.io/v1\",\"kind\":\"Certificate\",\"metadata\":{\"name\":\"api-tls\",\"namespace\":\"web\"}}\n"
+     },
+     "managedFields": [
+      {
+       "manager": "kubectl-client-side-apply",
+       "operation": "Update",
+       "apiVersion": "cert-manager.io/v1",
+       "time": "2025-06-02T11:00:00Z",
+       "fieldsType": "FieldsV1",
+       "fieldsV1": {
+        "f:spec": {
+         "f:secretName": {}
+        }
+       }
+      }
+     ]
+    },
+    "spec": {
+     "secretName": "api-tls",
+     "dnsNames": [
+      "api.contoso.example"
+     ],
+     "issuerRef": {
+      "kind": "ClusterIssuer",
+      "name": "letsencrypt"
+     }
+    },
+    "status": {
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True",
+       "reason": "Ready",
+       "message": "Certificate is up to date and has not expired",
+       "lastTransitionTime": "2026-09-01T03:00:00Z"
+      }
+     ],
+     "notBefore": "2026-09-01T03:00:00Z",
+     "notAfter": "2026-11-30T03:00:00Z",
+     "renewalTime": "2026-10-31T03:00:00Z"
+    }
+   },
+   {
+    "kind": "Node",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "aks-system-31415926-vmss000001",
+     "creationTimestamp": "2026-09-20T04:00:00Z",
+     "labels": {
+      "agentpool": "system",
+      "kubernetes.azure.com/agentpool": "system"
+     }
+    },
+    "spec": {
+     "providerID": "azure:///subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/1"
+    },
+    "status": {
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True",
+       "reason": "KubeletReady",
+       "message": "kubelet is posting ready status"
+      }
+     ],
+     "nodeInfo": {
+      "kubeletVersion": "v1.30.4"
+     }
+    }
    }
   ]
  },

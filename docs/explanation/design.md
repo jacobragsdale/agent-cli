@@ -276,7 +276,9 @@ itself. There are no `next` links in stdout, no mode that changes behaviour
 when it detects an agent (design.md cites the bugs that caused elsewhere),
 and no one-to-one wrapper of `kubectl` or `az` verbs without a bound or a
 join: agents already know those tools, and a command earns its place by what
-it adds.
+it adds. The generic `k8s object` and `arm resource` commands keep the rule:
+they still add the bound (trimmed manifests, `--limit`), the ids and the
+scopes.
 
 To apply these rules to a new command, see
 [How to add a command](../how-to/add-a-command.md); for a new service,

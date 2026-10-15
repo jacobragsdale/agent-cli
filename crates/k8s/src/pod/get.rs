@@ -7,6 +7,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::kubectl::{At, Target, non_empty};
+use crate::shape::{EventRow, events_for};
 
 use super::{
     ContainerRow, PodRow, containers, csi_classes, key_vault_ids, previous_logs, row, status_word,
@@ -41,6 +42,8 @@ pub struct PodDetail {
     /// The secrets it reads: names and keys only, never values.
     secret_refs: Vec<SecretRef>,
     conditions: Vec<Condition>,
+    /// The five newest events about it, newest first.
+    events: Vec<EventRow>,
     labels: BTreeMap<String, String>,
     /// The manifest, with --yaml.
     text: Option<String>,
@@ -102,6 +105,7 @@ fn pod_get(ctx: &Ctx, args: PodGetArgs) -> Result<PodDetail> {
     }
     Ok(PodDetail {
         secret_refs: secret_refs(ctx, &target, &item),
+        events: events_for(ctx, &target, &item),
         id,
         name: summary.name,
         namespace,
@@ -249,6 +253,13 @@ mod tests {
             json!({"type": "Ready", "status": "False"})
         );
         assert_eq!(pod["labels"]["app"], "orders-worker");
+        assert_eq!(
+            pod["events"],
+            json!([{"type": "Warning", "reason": "BackOff", "object": "Pod/orders-worker-5c4d3e-q8zt",
+                "message": "Back-off restarting failed container api in pod orders-worker-5c4d3e-q8zt",
+                "count": 17, "last_seen": "2026-09-12T12:30:00Z"}]),
+            "its own events, matched by uid"
+        );
         assert!(
             outcome.stderr.contains(
                 "[next: agent-cli k8s pod logs qa/dev/orders-worker-5c4d3e-q8zt --previous --tail 50]"

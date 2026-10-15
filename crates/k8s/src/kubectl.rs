@@ -93,6 +93,8 @@ pub(crate) struct Target {
     pub(crate) context: String,
     /// `None` is every namespace, for a listing in a scope that names none.
     pub(crate) namespace: Option<String>,
+    /// A node, a PV, a CRD: no namespace flag, and ids are `cluster/name`.
+    pub(crate) cluster_scoped: bool,
 }
 
 impl At {
@@ -137,7 +139,72 @@ impl At {
         Ok((at.one(ctx)?, name.to_owned()))
     }
 
-    fn resolve(&self, ctx: &Ctx, single: bool) -> Result<Target> {
+    /// For a cluster-scoped kind (node, pv, a cluster-scoped CRD): the scope
+    /// alone. `--namespace` is ignored, as kubectl ignores `-n` for them.
+    pub(crate) fn cluster_wide(&self, ctx: &Ctx) -> Result<Target> {
+        let scope = self.scope(ctx)?;
+        Ok(Target {
+            scope: scope.name.clone(),
+            context: scope.context().to_owned(),
+            namespace: None,
+            cluster_scoped: true,
+        })
+    }
+
+    /// One cluster-scoped object by its id (`cluster/name`) or name, so a
+    /// two-part ref is never read as `namespace/name`.
+    pub(crate) fn named_cluster(&self, ctx: &Ctx, raw: &str) -> Result<(Target, String)> {
+        let (cluster, name) = match raw.trim().split('/').collect::<Vec<_>>().as_slice() {
+            [name] => (None, *name),
+            [cluster, name] => (Some(*cluster), *name),
+            _ => (None, ""),
+        };
+        if name.is_empty() || cluster == Some("") {
+            return Err(Failure::usage(format!(
+                "{raw:?} is not NAME or CLUSTER/NAME (the kind is cluster-scoped)"
+            ))
+            .into());
+        }
+        let cluster = match (cluster, &self.cluster) {
+            (Some(held), Some(flag)) if held != flag => {
+                return Err(Failure::usage(format!(
+                    "{raw} is in cluster {held}, and --cluster says {flag}"
+                ))
+                .into());
+            }
+            (held, flag) => held.map(str::to_owned).or_else(|| flag.clone()),
+        };
+        let at = Self {
+            cluster,
+            namespace: None,
+        };
+        Ok((at.cluster_wide(ctx)?, name.to_owned()))
+    }
+
+    /// The cluster a ref is in, to read which kinds it serves before the ref
+    /// can be read as namespaced or not: `cluster/namespace/name` names it,
+    /// and so may the first part of `cluster/name`; else `--cluster` or the
+    /// only scope.
+    // ponytail: a namespace/name whose namespace is also a scope's name reads
+    // that scope's kinds; only a kind served by one of the two would tell.
+    pub(crate) fn cluster_of(&self, ctx: &Ctx, raw: &str) -> Result<Target> {
+        let named = |cluster: &str| {
+            Self {
+                cluster: Some(cluster.to_owned()),
+                namespace: None,
+            }
+            .cluster_wide(ctx)
+        };
+        match raw.trim().split('/').collect::<Vec<_>>().as_slice() {
+            [cluster, _, _] if self.cluster.is_none() => named(cluster),
+            [first, _] if self.cluster.is_none() => {
+                named(first).or_else(|_| self.cluster_wide(ctx))
+            }
+            _ => self.cluster_wide(ctx),
+        }
+    }
+
+    fn scope(&self, ctx: &Ctx) -> Result<Scope> {
         let scopes = scopes(ctx.config())?;
         if scopes.is_empty() {
             return Err(Failure::setup(format!("no [[k8s.scope]] in {}", ctx.config().path().display()))
@@ -159,6 +226,11 @@ impl At {
                 _ => failure,
             },
         )?;
+        Ok(scope.clone())
+    }
+
+    fn resolve(&self, ctx: &Ctx, single: bool) -> Result<Target> {
+        let scope = self.scope(ctx)?;
         let listed = &scope.namespaces;
         let namespace = match (&self.namespace, listed.as_slice()) {
             (Some(wanted), []) => Some(wanted.clone()),
@@ -197,6 +269,7 @@ impl At {
             scope: scope.name.clone(),
             context: scope.context().to_owned(),
             namespace,
+            cluster_scoped: false,
         })
     }
 }
@@ -210,6 +283,7 @@ impl Target {
             .args(["--context", &self.context, REQUEST_TIMEOUT])
             .args(args);
         match &self.namespace {
+            _ if self.cluster_scoped => &mut command,
             Some(namespace) => command.args(["-n", namespace]),
             None => command.arg("--all-namespaces"),
         };
@@ -228,10 +302,10 @@ impl Target {
         serde_json::from_str(&text).context("kubectl answered with something other than JSON")
     }
 
-    /// Every change k8s makes (delete, restart, scale) is destructive: it
+    /// A change under `effect`, which core enforces: a destructive one
     /// needs --yes.
-    pub(crate) fn write(&self, ctx: &Ctx, args: &[&str]) -> Result<String> {
-        finished(ctx.write(Effect::Destructive, self.kubectl(args))?)
+    pub(crate) fn write(&self, ctx: &Ctx, effect: Effect, args: &[&str]) -> Result<String> {
+        finished(ctx.write(effect, self.kubectl(args))?)
     }
 
     /// The namespace a row carries: only when the listing spans several, where
@@ -243,9 +317,14 @@ impl Target {
             .flatten()
     }
 
-    /// An object's id, `cluster/namespace/name`: what every k8s command that
-    /// takes one object accepts, with no other flag.
+    /// An object's id, `cluster/namespace/name` (`cluster/name` for a
+    /// cluster-scoped kind): what every k8s command that takes one object
+    /// accepts, with no other flag.
     pub(crate) fn id(&self, item: &Value) -> String {
+        if self.cluster_scoped {
+            let name = item["metadata"]["name"].as_str().unwrap_or_default();
+            return format!("{}/{name}", self.scope);
+        }
         let namespace = item["metadata"]["namespace"]
             .as_str()
             .or(self.namespace.as_deref())
@@ -279,16 +358,8 @@ pub(crate) fn finished(output: Output) -> Result<String> {
     let message = kubectl_error(&output.stderr);
     let lower = message.to_ascii_lowercase();
     let failure = if message.contains("(NotFound)") || lower.ends_with(" not found") {
-        // `pods "x" not found`, `deployments.apps "x" not found`: the listing
-        // that shows what is there.
-        let listed = ["pod", "deployment", "configmap", "secret"]
-            .into_iter()
-            .find(|kind| {
-                message.contains(&format!("{kind}s \""))
-                    || message.contains(&format!("{kind}s.apps \""))
-            });
-        match listed {
-            Some(kind) => Failure::not_found(message).hint(format!("agent-cli k8s {kind} list")),
+        match crate::shape::listing_for(&message) {
+            Some(listing) => Failure::not_found(message).hint(listing),
             None => Failure::not_found(message),
         }
     } else if message.contains("context \"") && message.contains("does not exist") {

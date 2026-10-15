@@ -1,4 +1,4 @@
-# k8s — Kubernetes (14 commands)
+# k8s — Kubernetes (17 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -16,6 +16,9 @@
 | [`k8s secret list`](#k8s-secret-list) | read | List Kubernetes secrets: type, key names and sizes (never values) |
 | [`k8s secret get`](#k8s-secret-get) | reveal | Decode one key of a Kubernetes secret (needs --reveal, or --output FILE) |
 | [`k8s context list`](#k8s-context-list) | read | List the configured cluster scopes and whether kubectl knows each context |
+| [`k8s kind list`](#k8s-kind-list) | read | List the kinds a cluster serves, CRDs included: names, short names, API group |
+| [`k8s object list`](#k8s-object-list) | read | List objects of any kind, custom resources (CRDs) too: id, age, ready, status |
+| [`k8s object get`](#k8s-object-get) | read | Show one object of any kind, a custom resource (CRD) too: manifest and status |
 
 ### k8s pod list
 
@@ -40,7 +43,7 @@ agent-cli k8s pod get — Describe a pod: containers, images, states, last termi
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --yaml           The manifest as YAML text instead
-Returns: {id,name,namespace,status,ready,restarts,age,node,ip,owner,containers[{name,image,digest,ready,restarts,state,last_termination}],secret_refs[{via,secret,keys[],class,kv[]}],conditions[{type,status,reason,message}],labels,text}
+Returns: {id,name,namespace,status,ready,restarts,age,node,ip,owner,containers[{name,image,digest,ready,restarts,state,last_termination}],secret_refs[{via,secret,keys[],class,kv[]}],conditions[{type,status,reason,message}],events[{type,reason,object,message,count,last_seen,namespace}],labels,text}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s pod get qa/dev/orders-api-7d9f5b-abc12 --fields status,containers,secret_refs
 ```
@@ -198,4 +201,46 @@ agent-cli k8s context list — List the configured cluster scopes and whether ku
 Returns: [{name,context,namespaces[],known}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s context list --fields name,context,namespaces,known
+```
+
+### k8s kind list
+
+```text
+agent-cli k8s kind list — List the kinds a cluster serves, CRDs included: names, short names, API group
+  <name> str       Part of the name, kind or API group: cert, gateway, keda.sh
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{name,short_names[],api_version,namespaced,kind,verbs[]}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s kind list cert --cluster qa --fields name,kind,api_version,namespaced
+```
+
+### k8s object list
+
+```text
+agent-cli k8s object list — List objects of any kind, custom resources (CRDs) too: id, age, ready, status
+ *<kind> str       The kind, as `k8s kind list` names it: certificates, cert, Certificate, certificates.cert-manager.io
+  <name> str       Part of the object's name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --label str[]    Only objects with this label: app=api, or a key alone (repeatable, all must hold)
+  --limit int      (default 50)
+Returns: [{id,kind,namespace,age,ready,status}]
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s object list certificates --cluster qa --namespace dev --fields id,ready,status
+```
+
+### k8s object get
+
+```text
+agent-cli k8s object get — Show one object of any kind, a custom resource (CRD) too: manifest and status
+ *<kind> str       The kind, as `k8s kind list` names it: certificates, cert, node
+ *<object> str     The object: its id from object list (cluster/namespace/name, or cluster/name for a cluster-scoped kind), namespace/name, or name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --yaml           The manifest as kubectl's YAML text instead
+Returns: {id,manifest,text}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s object get certificate qa/dev/orders-tls --fields manifest
 ```

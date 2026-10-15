@@ -1,4 +1,4 @@
-use agent_cli_core::{Ctx, Failure, command};
+use agent_cli_core::{Ctx, Effect, Failure, command};
 use anyhow::Result;
 use serde_json::json;
 
@@ -50,6 +50,7 @@ fn deployment_scale(ctx: &Ctx, args: ScaleArgs) -> Result<Changed> {
     }
     let said = target.write(
         ctx,
+        Effect::Destructive,
         &["scale", &object, &format!("--replicas={}", args.replicas)],
     )?;
     Ok(Changed::new(

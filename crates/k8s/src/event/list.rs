@@ -1,12 +1,8 @@
 use agent_cli_core::{Ctx, When, command};
 use anyhow::Result;
-use schemars::JsonSchema;
-use serde::Serialize;
-use serde_json::Value;
-use time::OffsetDateTime;
-use time::format_description::well_known::Rfc3339;
 
 use crate::kubectl::{At, items, limited};
+use crate::shape::{EventRow, event_row};
 
 #[derive(clap::Args)]
 pub struct EventListArgs {
@@ -22,22 +18,6 @@ pub struct EventListArgs {
     limit: usize,
 }
 
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct EventRow {
-    /// Normal or Warning.
-    #[serde(rename = "type")]
-    kind: String,
-    reason: String,
-    /// What it is about: Pod/orders-api-7d9f5b-abc12.
-    object: String,
-    message: String,
-    count: i64,
-    /// RFC 3339.
-    last_seen: Option<String>,
-    /// Only when the listing spans namespaces.
-    namespace: Option<String>,
-}
-
 fn event_list(ctx: &Ctx, args: EventListArgs) -> Result<Vec<EventRow>> {
     // A pod's id names its namespace; a bare name keeps the listing's.
     let (target, pod) = match args.pod.as_deref() {
@@ -48,46 +28,12 @@ fn event_list(ctx: &Ctx, args: EventListArgs) -> Result<Vec<EventRow>> {
         other => (args.at.listing(ctx)?, other.map(str::to_owned)),
     };
     let listed = target.json(ctx, &["get", "events", "-o", "json"])?;
-    let stamp = |value: &Value| {
-        value
-            .as_str()
-            .and_then(|raw| OffsetDateTime::parse(raw, &Rfc3339).ok())
-    };
-    let mut rows: Vec<(Option<OffsetDateTime>, EventRow)> = items(&listed)
+    let mut rows: Vec<_> = items(&listed)
         .filter(|item| {
             pod.as_deref()
                 .is_none_or(|pod| item["involvedObject"]["name"].as_str() == Some(pod))
         })
-        .map(|item| {
-            // Newer event APIs write eventTime and series in place of the
-            // old stamps and count.
-            let last = stamp(&item["lastTimestamp"])
-                .or_else(|| stamp(&item["series"]["lastObservedTime"]))
-                .or_else(|| stamp(&item["eventTime"]))
-                .or_else(|| stamp(&item["metadata"]["creationTimestamp"]));
-            let involved = &item["involvedObject"];
-            let row = EventRow {
-                kind: item["type"].as_str().unwrap_or("Normal").to_owned(),
-                reason: item["reason"].as_str().unwrap_or_default().to_owned(),
-                object: format!(
-                    "{}/{}",
-                    involved["kind"].as_str().unwrap_or_default(),
-                    involved["name"].as_str().unwrap_or_default()
-                ),
-                message: item["message"]
-                    .as_str()
-                    .unwrap_or_default()
-                    .trim()
-                    .to_owned(),
-                count: item["count"]
-                    .as_i64()
-                    .or_else(|| item["series"]["count"].as_i64())
-                    .unwrap_or(1),
-                last_seen: last.map(agent_cli_core::utc_time),
-                namespace: target.row_namespace(item),
-            };
-            (last, row)
-        })
+        .map(|item| event_row(&target, item))
         .collect();
     if let Some(since) = args.since {
         rows.retain(|(last, _)| last.is_some_and(|last| last >= since.0));

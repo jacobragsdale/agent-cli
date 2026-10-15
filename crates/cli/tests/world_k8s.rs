@@ -23,6 +23,7 @@ fn the_world_answers_what_a_trial_asks_of_k8s() {
         &["k8s", "event", "list"],
         &["k8s", "configmap", "get", "prod/web/api-config"],
         &["k8s", "secret", "list"],
+        &["k8s", "kind", "list"],
     ] {
         ok(args);
     }
@@ -113,5 +114,60 @@ fn a_finished_rollout_names_the_service_to_check_since_it_and_a_failed_one_exits
         ),
         "{}",
         worker.stderr
+    );
+}
+
+#[test]
+fn a_custom_resource_and_a_node_read_through_the_generic_floor_by_the_ids_it_lists() {
+    let kinds = ok(&[
+        "k8s",
+        "kind",
+        "list",
+        "cert",
+        "--fields",
+        "name,api_version,namespaced",
+    ]);
+    assert_eq!(
+        kinds,
+        json!([{"name": "certificates", "api_version": "cert-manager.io/v1", "namespaced": true}])
+    );
+    let listed = ok(&[
+        "k8s",
+        "object",
+        "list",
+        "certificates",
+        "--fields",
+        "id,age,ready,status",
+    ]);
+    assert_eq!(
+        listed,
+        json!([{"id": "prod/web/api-tls", "age": "1y", "ready": true, "status": "Ready"}])
+    );
+    let got = ok(&["k8s", "object", "get", "cert", "prod/web/api-tls"]);
+    let manifest = &got["manifest"];
+    assert_eq!(manifest["status"]["notAfter"], "2026-11-30T03:00:00Z");
+    assert!(
+        manifest["metadata"].get("annotations").is_none()
+            && manifest["metadata"].get("managedFields").is_none(),
+        "{manifest}"
+    );
+
+    let nodes = ok(&["k8s", "object", "list", "nodes", "--fields", "id,ready"]);
+    assert_eq!(
+        nodes,
+        json!([{"id": "prod/aks-system-31415926-vmss000001", "ready": true}])
+    );
+    let node = ok(&[
+        "k8s",
+        "object",
+        "get",
+        "node",
+        "prod/aks-system-31415926-vmss000001",
+    ]);
+    assert!(
+        node["manifest"]["spec"]["providerID"]
+            .as_str()
+            .is_some_and(|id| id.ends_with("/virtualMachines/1")),
+        "{node}"
     );
 }

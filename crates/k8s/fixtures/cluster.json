@@ -1,0 +1,1557 @@
+{
+ "contexts": {
+  "aks-qa": [
+   {
+    "kind": "Pod",
+    "metadata": {
+     "name": "orders-api-7d9f5b-abc12",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-10T08:00:00Z",
+     "labels": {
+      "app": "orders-api",
+      "pod-template-hash": "7d9f5b"
+     },
+     "ownerReferences": [
+      {
+       "kind": "ReplicaSet",
+       "name": "orders-api-7d9f5b",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "containers": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/orders-api:1.2.3",
+       "env": [
+        {
+         "name": "DB_PASSWORD",
+         "valueFrom": {
+          "secretKeyRef": {
+           "name": "orders-db",
+           "key": "password"
+          }
+         }
+        },
+        {
+         "name": "DB_USER",
+         "valueFrom": {
+          "secretKeyRef": {
+           "name": "orders-db",
+           "key": "username"
+          }
+         }
+        },
+        {
+         "name": "LOG_LEVEL",
+         "valueFrom": {
+          "configMapKeyRef": {
+           "name": "orders-config",
+           "key": "LOG_LEVEL"
+          }
+         }
+        }
+       ],
+       "envFrom": [
+        {
+         "secretRef": {
+          "name": "orders-env"
+         }
+        }
+       ]
+      }
+     ],
+     "imagePullSecrets": [
+      {
+       "name": "acr-pull"
+      }
+     ],
+     "volumes": [
+      {
+       "name": "kv",
+       "csi": {
+        "driver": "secrets-store.csi.k8s.io",
+        "readOnly": true,
+        "volumeAttributes": {
+         "secretProviderClass": "orders-kv"
+        }
+       }
+      },
+      {
+       "name": "tls",
+       "secret": {
+        "secretName": "orders-tls"
+       }
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.0.7",
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/orders-api:1.2.3",
+       "ready": true,
+       "restartCount": 2,
+       "imageID": "contosoacr.azurecr.io/team/orders-api@sha256:7f361af0fba5b2240abf4d78b24b30ae1ee06d320e9f0cdbabbcde359ae1a61b",
+       "state": {
+        "running": {
+         "startedAt": "2026-09-12T09:00:00Z"
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "metadata": {
+     "name": "orders-api-7d9f5b-k9x2p",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-10T08:00:00Z",
+     "labels": {
+      "app": "orders-api",
+      "pod-template-hash": "7d9f5b"
+     },
+     "ownerReferences": [
+      {
+       "kind": "ReplicaSet",
+       "name": "orders-api-7d9f5b",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "containers": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/orders-api:1.2.3"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.0.7",
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/orders-api:1.2.3",
+       "ready": true,
+       "restartCount": 0,
+       "imageID": "contosoacr.azurecr.io/team/orders-api@sha256:7f361af0fba5b2240abf4d78b24b30ae1ee06d320e9f0cdbabbcde359ae1a61b",
+       "state": {
+        "running": {
+         "startedAt": "2026-09-12T09:00:00Z"
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "metadata": {
+     "name": "orders-worker-5c4d3e-q8zt",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-10T08:00:00Z",
+     "labels": {
+      "app": "orders-worker",
+      "pod-template-hash": "5c4d3e"
+     },
+     "ownerReferences": [
+      {
+       "kind": "ReplicaSet",
+       "name": "orders-worker-5c4d3e",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "containers": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/orders-worker:1.2.3"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.0.7",
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/orders-worker:1.2.3",
+       "ready": false,
+       "restartCount": 17,
+       "imageID": "contosoacr.azurecr.io/team/orders-worker@sha256:656e536a8d9d94acc380c0e37def06fffd0fcd9d8639b7d8caced4c537ab29b1",
+       "state": {
+        "waiting": {
+         "reason": "CrashLoopBackOff",
+         "message": "back-off 5m0s"
+        }
+       },
+       "lastState": {
+        "terminated": {
+         "reason": "Error",
+         "exitCode": 1
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "False"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "metadata": {
+     "name": "billing-api-1a2b3c-qq111",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-10T08:00:00Z",
+     "labels": {
+      "app": "billing-api",
+      "pod-template-hash": "1a2b3c"
+     },
+     "ownerReferences": [
+      {
+       "kind": "ReplicaSet",
+       "name": "billing-api-1a2b3c",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "containers": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/billing-api:0.9.0"
+      },
+      {
+       "name": "proxy",
+       "image": "mcr.microsoft.com/oss/envoy:1.28"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.0.7",
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/billing-api:0.9.0",
+       "ready": true,
+       "restartCount": 0,
+       "imageID": "contosoacr.azurecr.io/team/billing-api@sha256:34326c9855ac383b0557425250f3e7d2afa7ac487ea4206c59b96c9162cb950c",
+       "state": {
+        "running": {
+         "startedAt": "2026-09-12T09:00:00Z"
+        }
+       }
+      },
+      {
+       "name": "proxy",
+       "image": "mcr.microsoft.com/oss/envoy:1.28",
+       "ready": true,
+       "restartCount": 0,
+       "imageID": "mcr.microsoft.com/oss/envoy@sha256:ace0ffd49728506e02d2ac00fafe34a46060b8efafed6bde2592c3991dba729c",
+       "state": {
+        "running": {
+         "startedAt": "2026-09-12T09:00:00Z"
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "metadata": {
+     "name": "redis-0",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-10T08:00:00Z",
+     "labels": {
+      "app": "redis",
+      "pod-template-hash": "7d9f5b"
+     },
+     "ownerReferences": [
+      {
+       "kind": "StatefulSet",
+       "name": "redis",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "containers": [
+      {
+       "name": "api",
+       "image": "redis:7"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.0.7",
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "redis:7",
+       "ready": true,
+       "restartCount": 0,
+       "imageID": "redis@sha256:00ed341fa17da659b63730e405322fbaa9be1e0edc43f9a46d6c173037feabce",
+       "state": {
+        "running": {
+         "startedAt": "2026-09-12T09:00:00Z"
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "metadata": {
+     "name": "orders-api-7d9f5b-zz901",
+     "namespace": "qa",
+     "creationTimestamp": "2026-09-10T08:00:00Z",
+     "labels": {
+      "app": "orders-api",
+      "pod-template-hash": "7d9f5b"
+     },
+     "ownerReferences": [
+      {
+       "kind": "ReplicaSet",
+       "name": "orders-api-7d9f5b",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "containers": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/orders-api:1.2.2"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.0.7",
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/orders-api:1.2.2",
+       "ready": true,
+       "restartCount": 0,
+       "imageID": "contosoacr.azurecr.io/team/orders-api@sha256:a425225a628e03f72062e46b21b6c607a2bd42a9e714d0a6b2c9668525bf6786",
+       "state": {
+        "running": {
+         "startedAt": "2026-09-12T09:00:00Z"
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "metadata": {
+     "name": "billing-api-1a2b3c-zz902",
+     "namespace": "qa",
+     "creationTimestamp": "2026-09-10T08:00:00Z",
+     "labels": {
+      "app": "billing-api",
+      "pod-template-hash": "1a2b3c"
+     },
+     "ownerReferences": [
+      {
+       "kind": "ReplicaSet",
+       "name": "billing-api-1a2b3c",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "containers": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/billing-api:0.9.0"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.0.7",
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/billing-api:0.9.0",
+       "ready": true,
+       "restartCount": 0,
+       "imageID": "contosoacr.azurecr.io/team/billing-api@sha256:34326c9855ac383b0557425250f3e7d2afa7ac487ea4206c59b96c9162cb950c",
+       "state": {
+        "running": {
+         "startedAt": "2026-09-12T09:00:00Z"
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "metadata": {
+     "name": "nightly-report-29-k8s7f",
+     "namespace": "qa",
+     "creationTimestamp": "2026-09-10T08:00:00Z",
+     "labels": {
+      "app": "nightly-report",
+      "pod-template-hash": "29"
+     },
+     "ownerReferences": [
+      {
+       "kind": "Job",
+       "name": "nightly-report",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "containers": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/nightly-report:3"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Succeeded",
+     "podIP": "10.244.0.7",
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/nightly-report:3",
+       "ready": false,
+       "restartCount": 0,
+       "imageID": "contosoacr.azurecr.io/team/nightly-report@sha256:edeba16d5f172a6dfd7132e24bd6060e15c93f39524cd96b4bc06e2bf81ff14d",
+       "state": {
+        "terminated": {
+         "reason": "Completed",
+         "exitCode": 0
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "False"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "metadata": {
+     "name": "orders-api-8e0a6c-uat01",
+     "namespace": "uat",
+     "creationTimestamp": "2026-09-10T08:00:00Z",
+     "labels": {
+      "app": "orders-api",
+      "pod-template-hash": "8e0a6c"
+     },
+     "ownerReferences": [
+      {
+       "kind": "ReplicaSet",
+       "name": "orders-api-8e0a6c",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "containers": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/orders-api:1.3.0-rc1"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Pending",
+     "podIP": "10.244.0.7",
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/orders-api:1.3.0-rc1",
+       "ready": false,
+       "restartCount": 0,
+       "state": {
+        "waiting": {
+         "reason": "ContainerCreating"
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "False"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "metadata": {
+     "name": "billing-api-9f1b7d-uat02",
+     "namespace": "uat",
+     "creationTimestamp": "2026-09-10T08:00:00Z",
+     "labels": {
+      "app": "billing-api",
+      "pod-template-hash": "9f1b7d"
+     },
+     "ownerReferences": [
+      {
+       "kind": "ReplicaSet",
+       "name": "billing-api-9f1b7d",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "containers": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/billing-api:0.10.0"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.0.7",
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/billing-api:0.10.0",
+       "ready": false,
+       "restartCount": 0,
+       "state": {
+        "waiting": {
+         "reason": "ImagePullBackOff"
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "False"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Deployment",
+    "metadata": {
+     "name": "orders-api",
+     "namespace": "dev",
+     "creationTimestamp": "2026-08-01T00:00:00Z"
+    },
+    "spec": {
+     "replicas": 2,
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "api",
+         "image": "contosoacr.azurecr.io/team/orders-api:1.2.3",
+         "env": [
+          {
+           "name": "DB_PASSWORD",
+           "valueFrom": {
+            "secretKeyRef": {
+             "name": "orders-db",
+             "key": "password"
+            }
+           }
+          },
+          {
+           "name": "DB_USER",
+           "valueFrom": {
+            "secretKeyRef": {
+             "name": "orders-db",
+             "key": "username"
+            }
+           }
+          },
+          {
+           "name": "LOG_LEVEL",
+           "valueFrom": {
+            "configMapKeyRef": {
+             "name": "orders-config",
+             "key": "LOG_LEVEL"
+            }
+           }
+          }
+         ],
+         "envFrom": [
+          {
+           "secretRef": {
+            "name": "orders-env"
+           }
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "replicas": 2,
+     "readyReplicas": 2,
+     "conditions": [
+      {
+       "type": "Progressing",
+       "status": "True",
+       "reason": "NewReplicaSetAvailable",
+       "lastUpdateTime": "2026-09-10T08:00:00Z"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Deployment",
+    "metadata": {
+     "name": "orders-worker",
+     "namespace": "dev",
+     "creationTimestamp": "2026-08-01T00:00:00Z"
+    },
+    "spec": {
+     "replicas": 1,
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "api",
+         "image": "contosoacr.azurecr.io/team/orders-worker:1.2.3"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "replicas": 1,
+     "readyReplicas": 0,
+     "conditions": [
+      {
+       "type": "Progressing",
+       "status": "False",
+       "reason": "ProgressDeadlineExceeded",
+       "lastUpdateTime": "2026-09-10T08:00:00Z"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Deployment",
+    "metadata": {
+     "name": "billing-api",
+     "namespace": "dev",
+     "creationTimestamp": "2026-08-01T00:00:00Z"
+    },
+    "spec": {
+     "replicas": 1,
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "api",
+         "image": "contosoacr.azurecr.io/team/billing-api:0.9.0"
+        },
+        {
+         "name": "proxy",
+         "image": "mcr.microsoft.com/oss/envoy:1.28"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "replicas": 1,
+     "readyReplicas": 1,
+     "conditions": [
+      {
+       "type": "Progressing",
+       "status": "True",
+       "reason": "NewReplicaSetAvailable",
+       "lastUpdateTime": "2026-09-10T08:00:00Z"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Deployment",
+    "metadata": {
+     "name": "orders-api",
+     "namespace": "qa",
+     "creationTimestamp": "2026-08-01T00:00:00Z"
+    },
+    "spec": {
+     "replicas": 1,
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "api",
+         "image": "contosoacr.azurecr.io/team/orders-api:1.2.2"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "replicas": 1,
+     "readyReplicas": 1,
+     "conditions": [
+      {
+       "type": "Progressing",
+       "status": "True",
+       "reason": "NewReplicaSetAvailable",
+       "lastUpdateTime": "2026-09-10T08:00:00Z"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Deployment",
+    "metadata": {
+     "name": "billing-api",
+     "namespace": "qa",
+     "creationTimestamp": "2026-08-01T00:00:00Z"
+    },
+    "spec": {
+     "replicas": 1,
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "api",
+         "image": "contosoacr.azurecr.io/team/billing-api:0.9.0"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "replicas": 1,
+     "readyReplicas": 1,
+     "conditions": [
+      {
+       "type": "Progressing",
+       "status": "True",
+       "reason": "NewReplicaSetAvailable",
+       "lastUpdateTime": "2026-09-10T08:00:00Z"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Deployment",
+    "metadata": {
+     "name": "orders-api",
+     "namespace": "uat",
+     "creationTimestamp": "2026-08-01T00:00:00Z"
+    },
+    "spec": {
+     "replicas": 1,
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "api",
+         "image": "contosoacr.azurecr.io/team/orders-api:1.3.0-rc1"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "replicas": 1,
+     "readyReplicas": 0,
+     "conditions": [
+      {
+       "type": "Progressing",
+       "status": "True",
+       "reason": "NewReplicaSetAvailable",
+       "lastUpdateTime": "2026-09-10T08:00:00Z"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Deployment",
+    "metadata": {
+     "name": "billing-api",
+     "namespace": "uat",
+     "creationTimestamp": "2026-08-01T00:00:00Z"
+    },
+    "spec": {
+     "replicas": 1,
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "api",
+         "image": "contosoacr.azurecr.io/team/billing-api:0.10.0"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "replicas": 1,
+     "readyReplicas": 0,
+     "conditions": [
+      {
+       "type": "Progressing",
+       "status": "True",
+       "reason": "NewReplicaSetAvailable",
+       "lastUpdateTime": "2026-09-10T08:00:00Z"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Event",
+    "metadata": {
+     "name": "orders-worker.1",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-12T11:00:00Z"
+    },
+    "type": "Warning",
+    "reason": "BackOff",
+    "count": 17,
+    "message": "Back-off restarting failed container api in pod orders-worker-5c4d3e-q8zt",
+    "firstTimestamp": "2026-09-12T11:00:00Z",
+    "lastTimestamp": "2026-09-12T12:30:00Z",
+    "involvedObject": {
+     "kind": "Pod",
+     "name": "orders-worker-5c4d3e-q8zt",
+     "namespace": "dev"
+    },
+    "source": {
+     "component": "kubelet"
+    }
+   },
+   {
+    "kind": "Event",
+    "metadata": {
+     "name": "orders-api.1",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-12T11:00:00Z"
+    },
+    "type": "Normal",
+    "reason": "Pulled",
+    "count": 1,
+    "message": "Container image already present on machine",
+    "firstTimestamp": "2026-09-12T11:00:00Z",
+    "lastTimestamp": "2026-09-12T12:00:00Z",
+    "involvedObject": {
+     "kind": "Pod",
+     "name": "orders-api-7d9f5b-abc12",
+     "namespace": "dev"
+    },
+    "source": {
+     "component": "kubelet"
+    }
+   },
+   {
+    "kind": "Event",
+    "metadata": {
+     "name": "orders-api.2",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-12T11:00:00Z"
+    },
+    "type": "Normal",
+    "reason": "ScalingReplicaSet",
+    "count": 1,
+    "message": "Scaled up replica set orders-api-7d9f5b to 2",
+    "firstTimestamp": "2026-09-12T11:00:00Z",
+    "lastTimestamp": "2026-09-12T10:00:00Z",
+    "involvedObject": {
+     "kind": "Deployment",
+     "name": "orders-api",
+     "namespace": "dev"
+    },
+    "source": {
+     "component": "kubelet"
+    }
+   },
+   {
+    "kind": "Event",
+    "metadata": {
+     "name": "billing.1",
+     "namespace": "uat",
+     "creationTimestamp": "2026-09-12T11:00:00Z"
+    },
+    "type": "Warning",
+    "reason": "Failed",
+    "count": 40,
+    "message": "Failed to pull image \"contosoacr.azurecr.io/team/billing-api:0.10.0\": not found",
+    "firstTimestamp": "2026-09-12T11:00:00Z",
+    "lastTimestamp": "2026-09-12T12:00:00Z",
+    "involvedObject": {
+     "kind": "Pod",
+     "name": "billing-api-9f1b7d-uat02",
+     "namespace": "uat"
+    },
+    "source": {
+     "component": "kubelet"
+    }
+   },
+   {
+    "kind": "ConfigMap",
+    "metadata": {
+     "name": "orders-config",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z"
+    },
+    "data": {
+     "LOG_LEVEL": "info",
+     "FEATURES": "a=1\nb=2\nc=3\n",
+     "DB_HOST": "orders-db.dev.svc"
+    }
+   },
+   {
+    "kind": "ConfigMap",
+    "metadata": {
+     "name": "kube-root-ca.crt",
+     "namespace": "dev",
+     "creationTimestamp": "2026-01-01T00:00:00Z"
+    },
+    "data": {
+     "ca.crt": "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n"
+    }
+   },
+   {
+    "kind": "Secret",
+    "metadata": {
+     "name": "orders-db",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z"
+    },
+    "type": "Opaque",
+    "data": {
+     "password": "aHVudGVyMg==",
+     "username": "b3JkZXJz"
+    }
+   },
+   {
+    "kind": "Secret",
+    "metadata": {
+     "name": "orders-tls",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z"
+    },
+    "type": "kubernetes.io/tls",
+    "data": {
+     "tls.crt": "LS0tLS1CRUdJTg==",
+     "tls.key": "LS0tLS1CRUdJTg=="
+    }
+   },
+   {
+    "kind": "SecretProviderClass",
+    "apiVersion": "secrets-store.csi.x-k8s.io/v1",
+    "metadata": {
+     "name": "orders-kv",
+     "namespace": "dev"
+    },
+    "spec": {
+     "provider": "azure",
+     "parameters": {
+      "keyvaultName": "kv-contoso-dev",
+      "tenantId": "00000000-0000-0000-0000-000000000000",
+      "objects": "array:\n  - |\n    objectName: db-password\n    objectType: secret\n  - |\n    objectName: \"orders-signing\"\n    objectType: key\n  - |\n    objectName: api-cert\n    objectType: cert\n"
+     }
+    }
+   },
+   {
+    "kind": "Node",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "aks-np1-vmss000000",
+     "creationTimestamp": "2026-08-01T00:00:00Z",
+     "labels": {
+      "agentpool": "np1",
+      "kubernetes.io/os": "linux"
+     }
+    },
+    "spec": {
+     "providerID": "azure:///subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/mc_contoso-qa/providers/Microsoft.Compute/virtualMachineScaleSets/aks-np1-vmss/virtualMachines/0"
+    },
+    "status": {
+     "conditions": [
+      {
+       "type": "MemoryPressure",
+       "status": "False",
+       "reason": "KubeletHasSufficientMemory"
+      },
+      {
+       "type": "Ready",
+       "status": "True",
+       "reason": "KubeletReady",
+       "message": "kubelet is posting ready status"
+      }
+     ],
+     "nodeInfo": {
+      "kubeletVersion": "v1.30.4"
+     }
+    }
+   },
+   {
+    "kind": "Node",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "aks-np1-vmss000001",
+     "creationTimestamp": "2026-08-01T00:00:00Z",
+     "labels": {
+      "agentpool": "np1",
+      "kubernetes.io/os": "linux"
+     }
+    },
+    "spec": {
+     "providerID": "azure:///subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/mc_contoso-qa/providers/Microsoft.Compute/virtualMachineScaleSets/aks-np1-vmss/virtualMachines/1"
+    },
+    "status": {
+     "conditions": [
+      {
+       "type": "MemoryPressure",
+       "status": "False",
+       "reason": "KubeletHasSufficientMemory"
+      },
+      {
+       "type": "Ready",
+       "status": "Unknown",
+       "reason": "NodeStatusUnknown",
+       "message": "Kubelet stopped posting node status."
+      }
+     ],
+     "nodeInfo": {
+      "kubeletVersion": "v1.30.4"
+     }
+    }
+   },
+   {
+    "kind": "CustomResourceDefinition",
+    "apiVersion": "apiextensions.k8s.io/v1",
+    "metadata": {
+     "name": "certificates.cert-manager.io",
+     "creationTimestamp": "2026-01-01T00:00:00Z"
+    },
+    "spec": {
+     "group": "cert-manager.io",
+     "scope": "Namespaced",
+     "names": {
+      "kind": "Certificate",
+      "plural": "certificates",
+      "singular": "certificate",
+      "shortNames": [
+       "cert",
+       "certs"
+      ]
+     },
+     "versions": [
+      {
+       "name": "v1",
+       "served": true,
+       "storage": true
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Certificate",
+    "apiVersion": "cert-manager.io/v1",
+    "metadata": {
+     "name": "orders-tls",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z",
+     "labels": {
+      "app": "orders"
+     },
+     "annotations": {
+      "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"cert-manager.io/v1\",\"kind\":\"Certificate\"}\n",
+      "cert-manager.io/issue-temporary-certificate": "false"
+     },
+     "managedFields": [
+      {
+       "manager": "kubectl-client-side-apply",
+       "operation": "Update",
+       "apiVersion": "cert-manager.io/v1",
+       "fieldsType": "FieldsV1",
+       "fieldsV1": {
+        "f:spec": {
+         "f:secretName": {}
+        }
+       }
+      }
+     ]
+    },
+    "spec": {
+     "secretName": "orders-tls",
+     "dnsNames": [
+      "orders.contoso.example"
+     ],
+     "issuerRef": {
+      "kind": "ClusterIssuer",
+      "name": "letsencrypt"
+     }
+    },
+    "status": {
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True",
+       "reason": "Ready",
+       "message": "Certificate is up to date and has not expired",
+       "lastTransitionTime": "2026-09-01T00:05:00Z"
+      }
+     ],
+     "notAfter": "2026-11-30T00:00:00Z"
+    }
+   },
+   {
+    "kind": "Certificate",
+    "apiVersion": "cert-manager.io/v1",
+    "metadata": {
+     "name": "billing-tls",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z",
+     "labels": {
+      "app": "billing"
+     }
+    },
+    "spec": {
+     "secretName": "billing-tls",
+     "dnsNames": [
+      "billing.contoso.example"
+     ],
+     "issuerRef": {
+      "kind": "ClusterIssuer",
+      "name": "letsencrypt"
+     }
+    },
+    "status": {
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "False",
+       "reason": "DoesNotExist",
+       "message": "Issuing certificate as Secret does not exist",
+       "lastTransitionTime": "2026-09-01T00:05:00Z"
+      }
+     ],
+     "notAfter": "2026-11-30T00:00:00Z"
+    }
+   }
+  ],
+  "aks-prod": [
+   {
+    "kind": "Pod",
+    "metadata": {
+     "name": "orders-api-7d9f5b-prd01",
+     "namespace": "prod",
+     "creationTimestamp": "2026-09-10T08:00:00Z",
+     "labels": {
+      "app": "orders-api",
+      "pod-template-hash": "7d9f5b"
+     },
+     "ownerReferences": [
+      {
+       "kind": "ReplicaSet",
+       "name": "orders-api-7d9f5b",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "containers": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/orders-api:1.2.2"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.0.7",
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/orders-api:1.2.2",
+       "ready": true,
+       "restartCount": 0,
+       "imageID": "contosoacr.azurecr.io/team/orders-api@sha256:a425225a628e03f72062e46b21b6c607a2bd42a9e714d0a6b2c9668525bf6786",
+       "state": {
+        "running": {
+         "startedAt": "2026-09-12T09:00:00Z"
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "metadata": {
+     "name": "orders-api-7d9f5b-prd02",
+     "namespace": "prod",
+     "creationTimestamp": "2026-09-10T08:00:00Z",
+     "labels": {
+      "app": "orders-api",
+      "pod-template-hash": "7d9f5b"
+     },
+     "ownerReferences": [
+      {
+       "kind": "ReplicaSet",
+       "name": "orders-api-7d9f5b",
+       "controller": true
+      }
+     ],
+     "deletionTimestamp": "2026-09-12T12:00:00Z"
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "containers": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/orders-api:1.2.2"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.0.7",
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/orders-api:1.2.2",
+       "ready": true,
+       "restartCount": 0,
+       "imageID": "contosoacr.azurecr.io/team/orders-api@sha256:a425225a628e03f72062e46b21b6c607a2bd42a9e714d0a6b2c9668525bf6786",
+       "state": {
+        "running": {
+         "startedAt": "2026-09-12T09:00:00Z"
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "metadata": {
+     "name": "orders-api-7d9f5b-prd03",
+     "namespace": "prod",
+     "creationTimestamp": "2026-09-10T08:00:00Z",
+     "labels": {
+      "app": "orders-api",
+      "pod-template-hash": "7d9f5b"
+     },
+     "ownerReferences": [
+      {
+       "kind": "ReplicaSet",
+       "name": "orders-api-7d9f5b",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "containers": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/orders-api:1.2.2"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.0.7",
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/orders-api:1.2.2",
+       "ready": true,
+       "restartCount": 0,
+       "imageID": "contosoacr.azurecr.io/team/orders-api@sha256:a425225a628e03f72062e46b21b6c607a2bd42a9e714d0a6b2c9668525bf6786",
+       "state": {
+        "running": {
+         "startedAt": "2026-09-12T09:00:00Z"
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "metadata": {
+     "name": "billing-api-1a2b3c-prd77",
+     "namespace": "prod",
+     "creationTimestamp": "2026-09-10T08:00:00Z",
+     "labels": {
+      "app": "billing-api",
+      "pod-template-hash": "1a2b3c"
+     },
+     "ownerReferences": [
+      {
+       "kind": "ReplicaSet",
+       "name": "billing-api-1a2b3c",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "containers": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/billing-api:0.9.0"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.0.7",
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "contosoacr.azurecr.io/team/billing-api:0.9.0",
+       "ready": true,
+       "restartCount": 0,
+       "imageID": "contosoacr.azurecr.io/team/billing-api@sha256:34326c9855ac383b0557425250f3e7d2afa7ac487ea4206c59b96c9162cb950c",
+       "state": {
+        "running": {
+         "startedAt": "2026-09-12T09:00:00Z"
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "metadata": {
+     "name": "redis-0",
+     "namespace": "prod",
+     "creationTimestamp": "2026-09-10T08:00:00Z",
+     "labels": {
+      "app": "redis",
+      "pod-template-hash": "7d9f5b"
+     },
+     "ownerReferences": [
+      {
+       "kind": "StatefulSet",
+       "name": "redis",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "containers": [
+      {
+       "name": "api",
+       "image": "redis:7"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.0.7",
+     "containerStatuses": [
+      {
+       "name": "api",
+       "image": "redis:7",
+       "ready": true,
+       "restartCount": 0,
+       "imageID": "redis@sha256:00ed341fa17da659b63730e405322fbaa9be1e0edc43f9a46d6c173037feabce",
+       "state": {
+        "running": {
+         "startedAt": "2026-09-12T09:00:00Z"
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Deployment",
+    "metadata": {
+     "name": "orders-api",
+     "namespace": "prod",
+     "creationTimestamp": "2026-08-01T00:00:00Z"
+    },
+    "spec": {
+     "replicas": 3,
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "api",
+         "image": "contosoacr.azurecr.io/team/orders-api:1.2.2"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "replicas": 3,
+     "readyReplicas": 3,
+     "conditions": [
+      {
+       "type": "Progressing",
+       "status": "True",
+       "reason": "NewReplicaSetAvailable",
+       "lastUpdateTime": "2026-09-10T08:00:00Z"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Deployment",
+    "metadata": {
+     "name": "billing-api",
+     "namespace": "prod",
+     "creationTimestamp": "2026-08-01T00:00:00Z"
+    },
+    "spec": {
+     "replicas": 1,
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "api",
+         "image": "contosoacr.azurecr.io/team/billing-api:0.9.0"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "replicas": 1,
+     "readyReplicas": 1,
+     "conditions": [
+      {
+       "type": "Progressing",
+       "status": "True",
+       "reason": "NewReplicaSetAvailable",
+       "lastUpdateTime": "2026-09-10T08:00:00Z"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "ConfigMap",
+    "metadata": {
+     "name": "orders-config",
+     "namespace": "prod",
+     "creationTimestamp": "2026-09-01T00:00:00Z"
+    },
+    "data": {
+     "LOG_LEVEL": "warn",
+     "DB_HOST": "orders-db.prod.svc"
+    }
+   }
+  ]
+ },
+ "forbidden": {
+  "aks-prod": [
+   "Secret"
+  ]
+ }
+}

@@ -1,4 +1,4 @@
-use agent_cli_core::{Ctx, command};
+use agent_cli_core::{Ctx, Effect, command};
 use anyhow::Result;
 
 use crate::kubectl::{At, Changed};
@@ -20,7 +20,7 @@ fn deployment_restart(ctx: &Ctx, args: RestartArgs) -> Result<Changed> {
     let (target, name) = deployment_at(ctx, &args.at, &args.name)?;
     let object = workload(&name, ROLLABLE, "restarted")?;
     refuse_paused(ctx, &target, &object)?;
-    let said = target.write(ctx, &["rollout", "restart", &object])?;
+    let said = target.write(ctx, Effect::Destructive, &["rollout", "restart", &object])?;
     Ok(Changed::new(&target, object, &said, None, None))
 }
 

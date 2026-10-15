@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""A kubectl that answers from fixtures, for testing the k8s domain without a
+"""A kubectl that answers from a file, for testing the k8s domain without a
 cluster. Ported from az-tui's scripts/fake-kubectl.
 
-Put this directory first on PATH. Built in: two contexts, aks-qa with the
-namespaces dev, qa and uat, and aks-prod with prod. With AGENT_CLI_FIXTURES
-set to a directory holding kubectl.json (a recorded world, see
-fixtures/world/README.md), that file's contexts, objects and logs replace
-them. Set FAKE_KUBECTL_LOG to a directory and every call is appended to
-calls.log there; set FAKE_KUBECTL_DOWN to a context name and that cluster
-cannot be reached.
+Put this directory first on PATH. It reads crates/k8s/fixtures/cluster.json
+(two contexts: aks-qa with the namespaces dev, qa and uat, and aks-prod with
+prod), or, with AGENT_CLI_FIXTURES set to a directory holding kubectl.json (a
+recorded world, see fixtures/world/README.md), that file. Either is
+{"contexts": {CONTEXT: [objects]}, "logs": {...}, "forbidden": {CONTEXT:
+[kinds]}}; without "logs", a pod's log is made up. `get KIND` answers for the
+standard kinds and every kind the file holds (a CustomResourceDefinition
+there names its kind's plural and short names), and `api-resources` lists
+them. An object without a uid gets one from its context, kind, namespace and
+name, and so does an event's involvedObject. Set FAKE_KUBECTL_LOG to a
+directory and every call is appended to calls.log there; set
+FAKE_KUBECTL_DOWN to a context name and that cluster cannot be reached.
 """
 import hashlib
 import json
@@ -16,6 +21,7 @@ import os
 import signal
 import sys
 import time
+import uuid
 
 args = sys.argv[1:]
 
@@ -29,201 +35,100 @@ def take(flag):
     return None
 
 
-# ---------- the objects: built in, or a recorded world ----------
-
-
-def pod(name, ns, owner, image, status, ready=True, restarts=0, containers=None,
-        deleting=False, hash_="7d9f5b", kind="ReplicaSet", node="aks-np1-vmss000000", spec_extra=None):
-    cs = containers or [("api", image)]
-    statuses = []
-    for cname, cimage in cs:
-        repo = cimage.split(":")[0]
-        st = {"name": cname, "image": cimage, "ready": ready, "restartCount": restarts,
-              "imageID": f"{repo}@sha256:{hashlib.sha256(cimage.encode()).hexdigest()}"}
-        if status == "CrashLoopBackOff":
-            st["state"] = {"waiting": {"reason": "CrashLoopBackOff", "message": "back-off 5m0s"}}
-            st["lastState"] = {"terminated": {"reason": "Error", "exitCode": 1}}
-            st["ready"] = False
-        elif status == "ImagePullBackOff":
-            st["state"] = {"waiting": {"reason": "ImagePullBackOff"}}
-            st["ready"] = False
-            del st["imageID"]
-        elif status == "Completed":
-            st["state"] = {"terminated": {"reason": "Completed", "exitCode": 0}}
-            st["ready"] = False
-        elif status == "Pending":
-            st["state"] = {"waiting": {"reason": "ContainerCreating"}}
-            st["ready"] = False
-            del st["imageID"]
-        else:
-            st["state"] = {"running": {"startedAt": "2026-09-12T09:00:00Z"}}
-        statuses.append(st)
-    phase = {"Completed": "Succeeded", "Pending": "Pending"}.get(status, "Running")
-    owner_name = f"{owner}-{hash_}" if kind == "ReplicaSet" else owner
-    spec = {"nodeName": node, "containers": [{"name": c, "image": i} for c, i in cs]}
-    spec.update(spec_extra or {})
-    item = {
-        "kind": "Pod",
-        "metadata": {
-            "name": name,
-            "namespace": ns,
-            "creationTimestamp": "2026-09-10T08:00:00Z",
-            "labels": {"app": owner, "pod-template-hash": hash_},
-            "ownerReferences": [{"kind": kind, "name": owner_name, "controller": True}],
-        },
-        "spec": spec,
-        "status": {"phase": phase, "podIP": "10.244.0.7", "containerStatuses": statuses,
-                   "conditions": [{"type": "Ready", "status": "True" if ready and status == "Running" else "False"}]},
-    }
-    if deleting:
-        item["metadata"]["deletionTimestamp"] = "2026-09-12T12:00:00Z"
-    return item
-
-
-def event(name, ns, kind, obj, reason, message, typ="Normal", count=1, last="2026-09-12T12:00:00Z"):
-    return {
-        "kind": "Event",
-        "metadata": {"name": name, "namespace": ns, "creationTimestamp": "2026-09-12T11:00:00Z"},
-        "type": typ, "reason": reason, "count": count, "message": message,
-        "firstTimestamp": "2026-09-12T11:00:00Z", "lastTimestamp": last,
-        "involvedObject": {"kind": kind, "name": obj, "namespace": ns},
-        "source": {"component": "kubelet"},
-    }
-
-
-def deployments_of(pods):
-    """A Deployment for every ReplicaSet-owned group of pods, as the API has it."""
-    found = {}
-    for p in pods:
-        owner = p["metadata"]["ownerReferences"][0]
-        if owner["kind"] != "ReplicaSet":
-            continue
-        name = owner["name"].rsplit("-", 1)[0]
-        key = (p["metadata"]["namespace"], name)
-        found.setdefault(key, []).append(p)
-    out = []
-    for (ns, name), group in found.items():
-        out.append({
-            "kind": "Deployment",
-            "metadata": {"name": name, "namespace": ns, "creationTimestamp": "2026-08-01T00:00:00Z"},
-            "spec": {"replicas": len(group),
-                     "template": {"spec": {"containers": group[0]["spec"]["containers"]}}},
-            "status": {"replicas": len(group),
-                       "readyReplicas": sum(1 for p in group if p["status"]["conditions"][0]["status"] == "True"),
-                       "conditions": [{"type": "Progressing", "status": "True", "reason": "NewReplicaSetAvailable",
-                                       "lastUpdateTime": "2026-09-10T08:00:00Z"}]},
-        })
-    return out
-
-
-ACR = "contosoacr.azurecr.io/team"
-CSI_AND_ENV = {
-    "imagePullSecrets": [{"name": "acr-pull"}],
-    "volumes": [
-        {"name": "kv", "csi": {"driver": "secrets-store.csi.k8s.io", "readOnly": True,
-                               "volumeAttributes": {"secretProviderClass": "orders-kv"}}},
-        {"name": "tls", "secret": {"secretName": "orders-tls"}},
-    ],
-}
-BUILT_IN_PODS = {
-    "qa": [
-        pod("orders-api-7d9f5b-abc12", "dev", "orders-api", f"{ACR}/orders-api:1.2.3", "Running", restarts=2,
-            spec_extra=CSI_AND_ENV),
-        pod("orders-api-7d9f5b-k9x2p", "dev", "orders-api", f"{ACR}/orders-api:1.2.3", "Running"),
-        pod("orders-worker-5c4d3e-q8zt", "dev", "orders-worker", f"{ACR}/orders-worker:1.2.3",
-            "CrashLoopBackOff", restarts=17, hash_="5c4d3e"),
-        pod("billing-api-1a2b3c-qq111", "dev", "billing-api", f"{ACR}/billing-api:0.9.0", "Running",
-            containers=[("api", f"{ACR}/billing-api:0.9.0"), ("proxy", "mcr.microsoft.com/oss/envoy:1.28")],
-            hash_="1a2b3c"),
-        pod("redis-0", "dev", "redis", "redis:7", "Running", kind="StatefulSet"),
-        pod("orders-api-7d9f5b-zz901", "qa", "orders-api", f"{ACR}/orders-api:1.2.2", "Running"),
-        pod("billing-api-1a2b3c-zz902", "qa", "billing-api", f"{ACR}/billing-api:0.9.0", "Running", hash_="1a2b3c"),
-        pod("nightly-report-29-k8s7f", "qa", "nightly-report", f"{ACR}/nightly-report:3", "Completed",
-            hash_="29", kind="Job"),
-        pod("orders-api-8e0a6c-uat01", "uat", "orders-api", f"{ACR}/orders-api:1.3.0-rc1", "Pending", hash_="8e0a6c"),
-        pod("billing-api-9f1b7d-uat02", "uat", "billing-api", f"{ACR}/billing-api:0.10.0", "ImagePullBackOff",
-            hash_="9f1b7d"),
-    ],
-    "prod": [
-        pod("orders-api-7d9f5b-prd01", "prod", "orders-api", f"{ACR}/orders-api:1.2.2", "Running"),
-        pod("orders-api-7d9f5b-prd02", "prod", "orders-api", f"{ACR}/orders-api:1.2.2", "Running", deleting=True),
-        pod("orders-api-7d9f5b-prd03", "prod", "orders-api", f"{ACR}/orders-api:1.2.2", "Running"),
-        pod("billing-api-1a2b3c-prd77", "prod", "billing-api", f"{ACR}/billing-api:0.9.0", "Running", hash_="1a2b3c"),
-        pod("redis-0", "prod", "redis", "redis:7", "Running", kind="StatefulSet"),
-    ],
-}
-# The first pod reads a secret by env, and one wholesale.
-BUILT_IN_PODS["qa"][0]["spec"]["containers"][0]["env"] = [
-    {"name": "DB_PASSWORD", "valueFrom": {"secretKeyRef": {"name": "orders-db", "key": "password"}}},
-    {"name": "DB_USER", "valueFrom": {"secretKeyRef": {"name": "orders-db", "key": "username"}}},
-    {"name": "LOG_LEVEL", "valueFrom": {"configMapKeyRef": {"name": "orders-config", "key": "LOG_LEVEL"}}},
-]
-BUILT_IN_PODS["qa"][0]["spec"]["containers"][0]["envFrom"] = [{"secretRef": {"name": "orders-env"}}]
-
-BUILT_IN_DEPLOYMENTS = deployments_of(BUILT_IN_PODS["qa"])
-# Kubernetes gave up on the crash-looping worker's rollout; uat's billing-api
-# still pulls, so a rollout status on it waits.
-for d in BUILT_IN_DEPLOYMENTS:
-    if (d["metadata"]["namespace"], d["metadata"]["name"]) == ("dev", "orders-worker"):
-        d["status"]["conditions"][0].update(status="False", reason="ProgressDeadlineExceeded")
-
-BUILT_IN = {
-    "qa": BUILT_IN_PODS["qa"] + BUILT_IN_DEPLOYMENTS + [
-        event("orders-worker.1", "dev", "Pod", "orders-worker-5c4d3e-q8zt", "BackOff",
-              "Back-off restarting failed container api in pod orders-worker-5c4d3e-q8zt", "Warning", 17,
-              "2026-09-12T12:30:00Z"),
-        event("orders-api.1", "dev", "Pod", "orders-api-7d9f5b-abc12", "Pulled",
-              "Container image already present on machine"),
-        event("orders-api.2", "dev", "Deployment", "orders-api", "ScalingReplicaSet",
-              "Scaled up replica set orders-api-7d9f5b to 2", last="2026-09-12T10:00:00Z"),
-        event("billing.1", "uat", "Pod", "billing-api-9f1b7d-uat02", "Failed",
-              'Failed to pull image "contosoacr.azurecr.io/team/billing-api:0.10.0": not found', "Warning", 40),
-        {"kind": "ConfigMap", "metadata": {"name": "orders-config", "namespace": "dev", "creationTimestamp": "2026-09-01T00:00:00Z"},
-         "data": {"LOG_LEVEL": "info", "FEATURES": "a=1\nb=2\nc=3\n", "DB_HOST": "orders-db.dev.svc"}},
-        {"kind": "ConfigMap", "metadata": {"name": "kube-root-ca.crt", "namespace": "dev", "creationTimestamp": "2026-01-01T00:00:00Z"},
-         "data": {"ca.crt": "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n"}},
-        {"kind": "Secret", "metadata": {"name": "orders-db", "namespace": "dev", "creationTimestamp": "2026-09-01T00:00:00Z"},
-         "type": "Opaque", "data": {"password": "aHVudGVyMg==", "username": "b3JkZXJz"}},
-        {"kind": "Secret", "metadata": {"name": "orders-tls", "namespace": "dev", "creationTimestamp": "2026-09-01T00:00:00Z"},
-         "type": "kubernetes.io/tls", "data": {"tls.crt": "LS0tLS1CRUdJTg==", "tls.key": "LS0tLS1CRUdJTg=="}},
-        {"kind": "SecretProviderClass", "apiVersion": "secrets-store.csi.x-k8s.io/v1",
-         "metadata": {"name": "orders-kv", "namespace": "dev"},
-         "spec": {"provider": "azure", "parameters": {
-             "keyvaultName": "kv-contoso-dev", "tenantId": "00000000-0000-0000-0000-000000000000",
-             "objects": "array:\n  - |\n    objectName: db-password\n    objectType: secret\n"
-                        "  - |\n    objectName: \"orders-signing\"\n    objectType: key\n"
-                        "  - |\n    objectName: api-cert\n    objectType: cert\n"}}},
-    ],
-    "prod": BUILT_IN_PODS["prod"] + deployments_of(BUILT_IN_PODS["prod"]) + [
-        {"kind": "ConfigMap", "metadata": {"name": "orders-config", "namespace": "prod", "creationTimestamp": "2026-09-01T00:00:00Z"},
-         "data": {"LOG_LEVEL": "warn", "DB_HOST": "orders-db.prod.svc"}},
-    ],
-}
+# ---------- the objects ----------
 
 WORLD = os.environ.get("AGENT_CLI_FIXTURES", "")
 WORLD_FILE = os.path.join(WORLD, "kubectl.json") if WORLD else ""
-if WORLD_FILE and os.path.exists(WORLD_FILE):
-    with open(WORLD_FILE) as f:
-        world = json.load(f)
-    CONTEXTS = {name: name for name in world["contexts"]}
-    OBJECTS = world["contexts"]
-    LOGS = world.get("logs", {})
-    NAMESPACES = {name: sorted({o["metadata"].get("namespace", "default") for o in objects} | {"default", "kube-system"})
-                  for name, objects in OBJECTS.items()}
-    FORBIDDEN = set()
-else:
-    CONTEXTS = {"aks-qa": "qa", "aks-prod": "prod"}
-    OBJECTS = BUILT_IN
-    LOGS = None
-    NAMESPACES = {"qa": ["default", "kube-system", "dev", "qa", "uat"], "prod": ["default", "kube-system", "prod"]}
-    FORBIDDEN = {("prod", "Secret")}
+if not (WORLD_FILE and os.path.exists(WORLD_FILE)):
+    WORLD_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../crates/k8s/fixtures/cluster.json")
+with open(WORLD_FILE) as f:
+    world = json.load(f)
+OBJECTS = world["contexts"]
+LOGS = world.get("logs")
+FORBIDDEN = {(context, kind) for context, kinds in world.get("forbidden", {}).items() for kind in kinds}
+NAMESPACES = {name: sorted({o["metadata"]["namespace"] for o in objects if "namespace" in o["metadata"]}
+                           | {"default", "kube-system"})
+              for name, objects in OBJECTS.items()}
 
-KINDS = {
-    "pod": "Pod", "pods": "Pod", "event": "Event", "events": "Event",
-    "configmap": "ConfigMap", "configmaps": "ConfigMap", "secret": "Secret", "secrets": "Secret",
-    "deployment": "Deployment", "deployments": "Deployment",
-    "secretproviderclass": "SecretProviderClass", "secretproviderclasses": "SecretProviderClass",
-}
+
+def uid(context, kind, namespace, name):
+    return str(uuid.UUID(hashlib.md5(f"{context}/{kind}/{namespace}/{name}".encode()).hexdigest()))
+
+
+for context, objects in OBJECTS.items():
+    objects.extend({"kind": "Namespace", "apiVersion": "v1",
+                    "metadata": {"name": n, "creationTimestamp": "2026-01-01T00:00:00Z"},
+                    "status": {"phase": "Active"}} for n in NAMESPACES[context])
+    for o in objects:
+        meta = o["metadata"]
+        meta.setdefault("uid", uid(context, o["kind"], meta.get("namespace"), meta["name"]))
+        involved = o.get("involvedObject")
+        if involved:
+            involved.setdefault("uid", uid(context, involved.get("kind"), involved.get("namespace"),
+                                           involved.get("name")))
+
+# NAME, SHORTNAMES, APIVERSION, NAMESPACED, KIND: what every cluster serves.
+STANDARD = [
+    ("pods", "po", "v1", True, "Pod"),
+    ("events", "ev", "v1", True, "Event"),
+    ("configmaps", "cm", "v1", True, "ConfigMap"),
+    ("secrets", "", "v1", True, "Secret"),
+    ("services", "svc", "v1", True, "Service"),
+    ("serviceaccounts", "sa", "v1", True, "ServiceAccount"),
+    ("persistentvolumeclaims", "pvc", "v1", True, "PersistentVolumeClaim"),
+    ("persistentvolumes", "pv", "v1", False, "PersistentVolume"),
+    ("nodes", "no", "v1", False, "Node"),
+    ("namespaces", "ns", "v1", False, "Namespace"),
+    ("deployments", "deploy", "apps/v1", True, "Deployment"),
+    ("replicasets", "rs", "apps/v1", True, "ReplicaSet"),
+    ("statefulsets", "sts", "apps/v1", True, "StatefulSet"),
+    ("daemonsets", "ds", "apps/v1", True, "DaemonSet"),
+    ("jobs", "", "batch/v1", True, "Job"),
+    ("cronjobs", "cj", "batch/v1", True, "CronJob"),
+    ("ingresses", "ing", "networking.k8s.io/v1", True, "Ingress"),
+    ("networkpolicies", "netpol", "networking.k8s.io/v1", True, "NetworkPolicy"),
+    ("storageclasses", "sc", "storage.k8s.io/v1", False, "StorageClass"),
+    ("customresourcedefinitions", "crd,crds", "apiextensions.k8s.io/v1", False, "CustomResourceDefinition"),
+]
+
+
+def resources(context):
+    """What the API server serves: the standard kinds, every CRD's, and any
+    other kind the file holds (a plural guessed from its name)."""
+    found = list(STANDARD)
+    kinds = {row[4] for row in found}
+    objects = OBJECTS.get(context, [])
+    for o in objects:
+        if o["kind"] == "CustomResourceDefinition" and o["spec"]["names"]["kind"] not in kinds:
+            names, spec = o["spec"]["names"], o["spec"]
+            found.append((names["plural"], ",".join(names.get("shortNames", [])),
+                          f"{spec['group']}/{spec['versions'][0]['name']}", spec["scope"] == "Namespaced",
+                          names["kind"]))
+            kinds.add(names["kind"])
+    for o in objects:
+        if o["kind"] not in kinds:
+            lower = o["kind"].lower()
+            plural = lower + "es" if lower.endswith("s") else lower[:-1] + "ies" if lower.endswith("y") else lower + "s"
+            found.append((plural, "", o.get("apiVersion", "v1"), "namespace" in o["metadata"], o["kind"]))
+            kinds.add(o["kind"])
+    return found
+
+
+def resource(context, word):
+    """The resource a word names, as kubectl reads it: plural, singular,
+    short name or kind, with an optional `.group`."""
+    base, _, group = word.lower().partition(".")
+    for row in resources(context):
+        if base in (row[0], row[4].lower(), *row[1].split(",")) and group in ("", row[2].rpartition("/")[0]):
+            return row
+    return None
+
+
+def grouped(row):
+    """`pods`, `deployments.apps`: how kubectl names a resource in errors."""
+    group = row[2].rpartition("/")[0]
+    return f"{row[0]}.{group}" if group else row[0]
+
 
 # ---------- the call ----------
 
@@ -232,7 +137,7 @@ if args[:2] == ["version", "--client"]:
     sys.exit(0)
 
 if args[:2] == ["config", "get-contexts"]:
-    print("\n".join(CONTEXTS))
+    print("\n".join(OBJECTS))
     sys.exit(0)
 
 context = take("--context")
@@ -240,6 +145,7 @@ args[:] = [a for a in args if not a.startswith("--request-timeout")]
 ns = take("-n")
 container = take("-c")
 selector = take("-l")
+fields = take("--field-selector")
 all_ns = "--all-namespaces" in args or "-A" in args
 args[:] = [a for a in args if a not in ("--all-namespaces", "-A")]
 
@@ -248,7 +154,7 @@ if log_dir:
     with open(os.path.join(log_dir, "calls.log"), "a") as f:
         f.write(" ".join(sys.argv[1:]) + "\n")
 
-if context not in CONTEXTS:
+if context not in OBJECTS:
     sys.stderr.write(f'error: context "{context}" does not exist\n')
     sys.exit(1)
 if os.environ.get("FAKE_KUBECTL_DOWN") == context:
@@ -257,7 +163,6 @@ if os.environ.get("FAKE_KUBECTL_DOWN") == context:
         "Unable to connect to the server: dial tcp 10.0.0.1:443: i/o timeout\n"
     )
     sys.exit(1)
-cluster = CONTEXTS[context]
 
 
 def labelled(o):
@@ -270,9 +175,23 @@ def labelled(o):
     return True
 
 
+def fielded(o):
+    """What `--field-selector a.b=c` selects: every dotted path equal."""
+    for term in (fields or "").split(","):
+        path, _, value = term.partition("=")
+        held = o
+        for part in path.split(".") if term else []:
+            held = held.get(part, {}) if isinstance(held, dict) else {}
+        if term and held != value:
+            return False
+    return True
+
+
 def here(kind):
-    return [o for o in OBJECTS.get(cluster, [])
-            if o["kind"] == kind and (all_ns or o["metadata"].get("namespace") == ns) and labelled(o)]
+    namespaced = next((row[3] for row in resources(context) if row[4] == kind), True)
+    return [o for o in OBJECTS.get(context, [])
+            if o["kind"] == kind and (all_ns or not namespaced or o["metadata"].get("namespace") == ns)
+            and labelled(o) and fielded(o)]
 
 
 def forbidden(kind):
@@ -282,49 +201,62 @@ def forbidden(kind):
     sys.exit(1)
 
 
-def find(kind, name):
-    for o in here(kind):
-        if o["metadata"]["name"] == name:
-            return o
-    sys.stderr.write(f'Error from server (NotFound): {kind.lower()}s "{name}" not found\n')
+def unknown(word):
+    sys.stderr.write(f'error: the server doesn\'t have a resource type "{word}"\n')
     sys.exit(1)
 
 
-if args[:2] == ["get", "namespaces"]:
-    print("\n".join(f"namespace/{n}" for n in NAMESPACES[cluster]))
+def find(row, name):
+    for o in here(row[4]):
+        if o["metadata"]["name"] == name:
+            return o
+    sys.stderr.write(f'Error from server (NotFound): {grouped(row)} "{name}" not found\n')
+    sys.exit(1)
+
+
+if args[:1] == ["api-resources"]:
+    table = [("NAME", "SHORTNAMES", "APIVERSION", "NAMESPACED", "KIND", "VERBS", "CATEGORIES")] + [
+        (name, short, api, str(namespaced).lower(), kind,
+         "[create delete deletecollection get list patch update watch]", "")
+        for name, short, api, namespaced, kind in resources(context)]
+    widths = [max(len(row[i]) for row in table) + 3 for i in range(6)]
+    for row in table:
+        print("".join(cell.ljust(width) for cell, width in zip(row, widths)) + row[6])
     sys.exit(0)
 
-if args[:1] == ["get"] and len(args) >= 2 and all(k in KINDS for k in args[1].split(",")) \
-        and (len(args) == 2 or args[2].startswith("-")):
+if args[:2] == ["get", "namespaces"] and "name" in args:
+    print("\n".join(f"namespace/{n}" for n in NAMESPACES[context]))
+    sys.exit(0)
+
+if args[:1] == ["get"] and len(args) >= 2 and "/" not in args[1] and (len(args) == 2 or args[2].startswith("-")):
     # As kubectl itself does: `get` has no --limit, and a fake that took it
     # hid a doctor that failed every scope on a real cluster.
     if any(a.startswith("--limit") for a in args):
         sys.stderr.write("error: unknown flag: --limit\nSee 'kubectl get --help' for usage.\n")
         sys.exit(1)
-    kinds = [KINDS[k] for k in args[1].split(",")]
+    rows = []
+    for word in args[1].split(","):
+        rows.append(resource(context, word) or unknown(word))
     if ns == "forbidden":
-        forbidden(kinds[0])
-    for kind in kinds:
-        if (cluster, kind) in FORBIDDEN:
-            forbidden(kind)
-    items = [o for kind in kinds for o in here(kind)]
+        forbidden(rows[0][4])
+    for row in rows:
+        if (context, row[4]) in FORBIDDEN:
+            forbidden(row[4])
+    items = [o for row in rows for o in here(row[4])]
     if "name" in args and "-o" in args:
         print("\n".join(f"{o['kind'].lower()}/{o['metadata']['name']}" for o in items[:1]))
         sys.exit(0)
     print(json.dumps({"apiVersion": "v1", "kind": "List", "items": items}))
     sys.exit(0)
 
-if args[:1] == ["get"] and len(args) >= 3 and args[1] in KINDS and "json" in args:
-    kind = KINDS[args[1]]
-    if kind == "SecretProviderClass" and not any(o["kind"] == kind for o in OBJECTS.get(cluster, [])):
-        sys.stderr.write('error: the server doesn\'t have a resource type "secretproviderclass"\n')
-        sys.exit(1)
-    print(json.dumps(find(kind, args[2])))
+if args[:1] == ["get"] and len(args) >= 3 and "/" not in args[1] and "json" in args:
+    row = resource(context, args[1]) or unknown(args[1])
+    print(json.dumps(find(row, args[2])))
     sys.exit(0)
 
 if args[:1] == ["logs"]:
     name = args[1]
-    find("Pod", name)
+    find(resource(context, "pod"), name)
     previous = "-p" in args
     tag = f"{container or 'api'}{' previous' if previous else ''}"
     if LOGS is not None:
@@ -412,7 +344,8 @@ if args[:1] == ["scale"]:
 
 if args[:1] == ["get"] and "/" in args[1] and "-o" in args and "json" in args:
     kind, name = args[1].split("/", 1)
-    found = [o for o in here(KINDS.get(kind, kind.capitalize())) if o["metadata"]["name"] == name]
+    row = resource(context, kind)
+    found = [o for o in here(row[4] if row else kind.capitalize()) if o["metadata"]["name"] == name]
     # A ReplicaSet named DEPLOYMENT-HASH is that Deployment's, as the API has it.
     base = name.rsplit("-", 1)[0]
     owners = [{"kind": "Deployment", "name": base, "controller": True}] \

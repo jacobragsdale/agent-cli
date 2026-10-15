@@ -14,9 +14,12 @@ mod context;
 mod deployment;
 mod doctor;
 mod event;
+mod kind;
 mod kubectl;
+mod object;
 mod pod;
 mod secret;
+mod shape;
 #[cfg(test)]
 mod testing;
 
@@ -40,6 +43,9 @@ pub const K8S: Domain = Domain {
         secret::list::SECRET_LIST,
         secret::get::SECRET_GET,
         context::list::CONTEXT_LIST,
+        kind::list::KIND_LIST,
+        object::list::OBJECT_LIST,
+        object::get::OBJECT_GET,
     ],
     synonyms: &[
         ("container", &["pod"]),

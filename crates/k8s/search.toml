@@ -215,3 +215,39 @@ expect = "k8s pod list"
 [[query]]
 text = "pods using secret prod/web/worker-db"
 expect = "k8s pod list"
+
+[[query]]
+text = "which CRDs are installed on the cluster"
+expect = "k8s kind list"
+
+[[query]]
+text = "what custom resource types does the cluster serve"
+expect = "k8s kind list"
+
+[[query]]
+text = "kubectl api-resources"
+expect = "k8s kind list"
+
+[[query]]
+text = "list the cert-manager certificates in dev"
+expect = "k8s object list"
+
+[[query]]
+text = "list custom resources of a CRD kind"
+expect = "k8s object list"
+
+[[query]]
+text = "which gateway objects are not ready"
+expect = "k8s object list"
+
+[[query]]
+text = "show the manifest of a custom resource"
+expect = "k8s object get"
+
+[[query]]
+text = "get one cert-manager certificate and its status"
+expect = "k8s object get"
+
+[[query]]
+text = "read any kubernetes object by kind and name"
+expect = "k8s object get"

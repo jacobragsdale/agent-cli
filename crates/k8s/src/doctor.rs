@@ -61,6 +61,7 @@ pub(crate) fn doctor(ctx: &Ctx) -> Vec<Check> {
                 scope: scope.name.clone(),
                 context: scope.context().to_owned(),
                 namespace,
+                cluster_scoped: false,
             };
             if ctx.remaining().is_err() {
                 return Check::failed(check, "not checked: --timeout ran out", "agent-cli doctor k8s --timeout 120");
