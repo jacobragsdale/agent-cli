@@ -15,7 +15,7 @@ use crate::config::Config;
 use crate::ctx::{Ctx, Globals, Setup, locked};
 use crate::dispatch::run_with;
 use crate::http::{Body, Method, Request, Response, Transport};
-use crate::registry::{Domain, Effect};
+use crate::registry::Domain;
 use crate::search::quality;
 use crate::secret::Secret;
 
@@ -160,14 +160,13 @@ impl Transport for FakeTransport {
 }
 
 impl Setup {
-    /// No config, no cache, not read-only, an empty environment, nothing on
-    /// stdin and stand-in `az` tokens (`token@<resource>`), over `transport`.
+    /// No config, no cache, an empty environment, nothing on stdin and
+    /// stand-in `az` tokens (`token@<resource>`), over `transport`.
     #[must_use]
     pub fn fake(transport: impl Transport + 'static) -> Self {
         Self {
             config: Config::empty(),
             transport: Box::new(transport),
-            read_only: false,
             cache_dir: None,
             env: Some(Vec::new()),
             token: Some("token".to_owned()),
@@ -203,12 +202,6 @@ impl Setup {
     #[must_use]
     pub fn with_config(mut self, toml: &str) -> Self {
         self.config = Config::parse("config.toml", Some(toml), Vec::new());
-        self
-    }
-
-    #[must_use]
-    pub fn read_only(mut self) -> Self {
-        self.read_only = true;
         self
     }
 }
@@ -346,36 +339,6 @@ pub fn assert_dry_run(domains: &[Domain], argv: &[&str], answers: Vec<Answer>) -
         "the command finished without reaching ctx.write: {outcome:?}"
     );
     printed["would"].as_array().cloned().unwrap_or_default()
-}
-
-/// Asserts that under `AGENT_CLI_READ_ONLY` every write, destructive and
-/// reveal command is refused with exit 2 before anything is sent.
-///
-/// # Panics
-/// On the first command that is not refused.
-pub fn assert_read_only_refuses(domains: &[Domain]) {
-    for command in domains.iter().flat_map(|domain| domain.commands) {
-        if !matches!(
-            command.effect,
-            Effect::Write | Effect::Destructive | Effect::Reveal
-        ) {
-            continue;
-        }
-        let transport = FakeTransport::default();
-        let argv: Vec<String> = crate::dispatch::shell_words(command.example).unwrap_or_default();
-        let argv: Vec<&str> = argv.iter().map(String::as_str).collect();
-        let outcome = run(domains, &argv, Setup::fake(transport.clone()).read_only());
-        assert_eq!(outcome.code, 2, "{}: {outcome:?}", command.path.join(" "));
-        assert!(
-            outcome.stderr.contains("AGENT_CLI_READ_ONLY"),
-            "{outcome:?}"
-        );
-        assert!(
-            !outcome.stderr.contains("unset"),
-            "the guard is the operator's, never lifted by a hint: {outcome:?}"
-        );
-        assert!(transport.sent().is_empty(), "{}", command.path.join(" "));
-    }
 }
 
 /// Runs the labeled queries in `labeled` (TOML `[[query]] text expect`) and

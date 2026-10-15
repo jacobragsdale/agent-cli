@@ -29,15 +29,15 @@ pub(crate) const BIG_LISTING: usize = 40;
 const SHAPE_DEPTH: usize = 3;
 const WRAP: usize = 100;
 
-pub(crate) fn overview(domains: &[Domain], config: &Config, read_only: bool) -> String {
+pub(crate) fn overview(domains: &[Domain], config: &Config) -> String {
     let mut statuses: Vec<String> = domains
         .iter()
         .map(|domain| status_line(&(domain.status)(config)))
         .filter(|status| !status.is_empty())
         .collect();
-    let guard = read_only.then(|| "read-only (writes refused)".to_owned());
-    let unreadable = config.problem().map(|_| "config file unreadable".into());
-    statuses.splice(0..0, guard.into_iter().chain(unreadable));
+    if config.problem().is_some() {
+        statuses.insert(0, "config file unreadable".into());
+    }
     render_overview(domains, statuses)
 }
 
@@ -770,12 +770,10 @@ mod tests {
 
     #[test]
     fn the_empty_overview_is_small_and_names_the_basics() {
-        let text = overview(&[], &Config::empty(), false);
+        let text = overview(&[], &Config::empty());
         assert!(text.len() < 1024, "{}", text.len());
         assert!(text.starts_with("agent-cli: tools for coding agents"));
         assert!(text.contains("Domains:     none yet"));
         assert!(text.contains("Config:      nothing to set up"));
-        let guarded = overview(&[], &Config::empty(), true);
-        assert!(guarded.contains("Config:      read-only (writes refused)    Check:"));
     }
 }

@@ -83,9 +83,4 @@ mod tests {
         assert_eq!(check_registry(&[K8S]), Vec::<String>::new());
         assert_eq!(check_layout(&[K8S]), Vec::<String>::new());
     }
-
-    #[test]
-    fn read_only_mode_refuses_every_change_before_kubectl_runs() {
-        agent_cli_core::testing::assert_read_only_refuses(&[K8S]);
-    }
 }

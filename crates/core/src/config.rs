@@ -587,7 +587,7 @@ mod tests {
             env(&[
                 ("AGENT_CLI_ADO_PROJECT", "web-from-env"),
                 ("AGENT_CLI_DD_API_KEY", "key-from-env"),
-                ("AGENT_CLI_READ_ONLY", "1"),
+                ("AGENT_CLI_FIXTURES", "/tmp/world"),
             ]),
         );
         let described = config.describe();
@@ -604,7 +604,7 @@ mod tests {
             json!([
                 {"variable": "AGENT_CLI_ADO_PROJECT", "section": "ado", "key": "project"},
                 {"variable": "AGENT_CLI_DD_API_KEY", "section": "dd", "key": "api_key"},
-                {"variable": "AGENT_CLI_READ_ONLY"},
+                {"variable": "AGENT_CLI_FIXTURES"},
             ])
         );
     }

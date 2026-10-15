@@ -5,7 +5,7 @@
 #   scripts/check.sh --all     # exactly CI's five checks
 #
 # The gates are crates/cli's tests with the fixtures feature: the registry
-# rules, the search gate, read-only refusal, the reference and the world.
+# rules, the search gate, the reference and the world.
 # Stops at the first failure, exiting non-zero.
 set -eu
 cd "$(dirname "$0")/.."

@@ -3,8 +3,8 @@
 //!
 //! Every effect a command has goes through [`Ctx::read`] or [`Ctx::write`],
 //! whether it is an HTTP request, a child process or a SQL batch. That makes
-//! `write` the one place `--dry-run`, `AGENT_CLI_READ_ONLY` and `--yes` are
-//! enforced, so a handler cannot forget them.
+//! `write` the one place `--dry-run` and `--yes` are enforced, so a handler
+//! cannot forget them.
 
 use std::collections::HashMap;
 use std::io::{IsTerminal as _, Read};
@@ -47,7 +47,6 @@ pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 pub struct Setup {
     pub config: Config,
     pub transport: Box<dyn Transport>,
-    pub read_only: bool,
     /// `None` turns the cache off.
     pub cache_dir: Option<PathBuf>,
     /// The environment [`Ctx::env`] reads: `None` is the process's own; tests
@@ -61,24 +60,12 @@ pub struct Setup {
     pub stdin: Option<String>,
 }
 
-/// A guard set to an unfamiliar word (`on`, `enabled`) is still a guard:
-/// only an explicit off leaves `AGENT_CLI_READ_ONLY` off.
-fn read_only_on(value: &str) -> bool {
-    !matches!(
-        value.trim().to_ascii_lowercase().as_str(),
-        "" | "0" | "false" | "no" | "off"
-    )
-}
-
 impl Setup {
     #[must_use]
     pub fn from_env() -> Self {
-        let read_only =
-            std::env::var("AGENT_CLI_READ_ONLY").is_ok_and(|value| read_only_on(&value));
         let setup = Self {
             config: Config::load(),
             transport: Box::new(Https::default()),
-            read_only,
             cache_dir: crate::cache::default_dir(),
             env: None,
             token: None,
@@ -128,7 +115,6 @@ pub struct Ctx {
     config: Config,
     cache: Cache,
     transport: Box<dyn Transport>,
-    read_only: bool,
     env: Option<Vec<(String, String)>>,
     pub(crate) token: Option<String>,
     stdin: Mutex<Option<String>>,
@@ -152,7 +138,6 @@ impl Ctx {
             config: setup.config,
             cache,
             transport: setup.transport,
-            read_only: setup.read_only,
             env: setup.env,
             token: setup.token,
             stdin: Mutex::new(setup.stdin),
@@ -167,10 +152,6 @@ impl Ctx {
     #[must_use]
     pub fn globals(&self) -> &Globals {
         &self.globals
-    }
-
-    pub(crate) fn read_only(&self) -> bool {
-        self.read_only
     }
 
     #[must_use]
@@ -336,17 +317,10 @@ impl Ctx {
     }
 
     /// Performs an op that changes something, after the checks every change
-    /// gets: refused under `AGENT_CLI_READ_ONLY`, recorded and stopped under
-    /// `--dry-run` (reads before it have run), and refused without `--yes`
-    /// when `effect` is [`Effect::Destructive`].
+    /// gets: recorded and stopped under `--dry-run` (reads before it have
+    /// run), and refused without `--yes` when `effect` is
+    /// [`Effect::Destructive`].
     pub fn write<O: Op>(&self, effect: Effect, op: O) -> Result<O::Output> {
-        if self.read_only {
-            return Err(
-                Failure::usage("AGENT_CLI_READ_ONLY is set, so this change was refused")
-                    .hint(READ_ONLY_HINT)
-                    .into(),
-            );
-        }
         if self.globals.dry_run {
             locked(&self.plans).push(redact_value(op.plan()));
             return Err(DryRun.into());
@@ -400,10 +374,6 @@ impl Ctx {
     }
 }
 
-/// The guard is set for the agent, not by it: the hint never says to lift it.
-pub(crate) const READ_ONLY_HINT: &str =
-    "read-only is the choice of whoever runs you: ask them for this change, or keep to reads";
-
 /// A long text past its limit, wherever it came from.
 fn too_long(what: &str, from: &str, limit: usize) -> anyhow::Error {
     Failure::usage(format!(
@@ -447,16 +417,6 @@ mod tests {
             .unwrap_err();
         assert!(started.elapsed() < std::time::Duration::from_secs(3));
         assert!(format!("{error:#}").contains("was still open at the --timeout deadline"));
-    }
-
-    #[test]
-    fn read_only_is_on_for_any_value_but_an_explicit_off() {
-        for value in ["1", "TRUE", "yes", "on", "y", " 1", "enabled"] {
-            assert!(super::read_only_on(value), "{value:?}");
-        }
-        for value in ["", "0", "false", "No", " off "] {
-            assert!(!super::read_only_on(value), "{value:?}");
-        }
     }
 
     use std::path::Path;

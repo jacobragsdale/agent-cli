@@ -10,8 +10,6 @@ editing it (a new domain) is the only routine change here.
 - `search_finds_the_labeled_command`: every `crates/*/search.toml`, top-1 at
   least 80%, top-5 at least 95%. Misses print `want` and the top three:
   `cargo test -p agent-cli --bin agent-cli search_finds -- --nocapture`.
-- `read_only_mode_refuses_every_change`: each non-read example under
-  `AGENT_CLI_READ_ONLY` is refused before anything is sent.
 - `the_overview_fits_with_every_domain_configured`: under 1 KB.
 - `every_domain_has_a_config_example`: doctor's hint for a domain not set up.
 - `the_command_reference_matches_the_registry`: `docs/reference/`, a page

@@ -100,7 +100,7 @@ fn query_run(ctx: &Ctx, args: RunArgs) -> Result<QueryResult> {
             Ok(results)
         },
     };
-    let results = door(ctx, spec, op)?;
+    let results = door(ctx, op)?;
     let short = results
         .iter()
         .find(|set| set.truncated && (set.rows.len() as u64) < args.max_rows);
@@ -156,32 +156,7 @@ mod tests {
     use crate::testing::{setup, sql};
 
     #[test]
-    fn a_read_only_connection_refuses_a_write_even_with_yes_or_dry_run() {
-        for extra in ["--yes", "--dry-run"] {
-            let outcome = sql(
-                &[
-                    "sql",
-                    "query",
-                    "run",
-                    "--conn",
-                    "ora",
-                    "select 1 from t for update",
-                    extra,
-                ],
-                setup(),
-            );
-            assert_eq!(outcome.code, 2, "{outcome:?}");
-            assert!(
-                outcome.stderr.contains("connection \"ora\" is read_only"),
-                "{}",
-                outcome.stderr
-            );
-            assert!(outcome.stderr.contains("hint: "), "{}", outcome.stderr);
-        }
-    }
-
-    #[test]
-    fn a_read_is_never_refused_by_read_only_mode_and_goes_to_the_server() {
+    fn a_read_goes_to_the_server() {
         let outcome = sql(
             &[
                 "sql",
@@ -193,10 +168,9 @@ mod tests {
                 "--timeout",
                 "5",
             ],
-            setup().read_only(),
+            setup(),
         );
         assert_eq!(outcome.code, 1, "port 9 does not answer: {outcome:?}");
-        assert!(!outcome.stderr.contains("READ_ONLY"), "{}", outcome.stderr);
         assert!(
             outcome
                 .stderr

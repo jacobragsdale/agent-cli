@@ -96,7 +96,7 @@ pub(crate) struct Section {
 A credential is three keys, `KEY` (in the file; discouraged, and dd refuses
 it), `KEY_env` and `KEY_cmd`, handed to `Credential::from_keys("token", value,
 env, cmd)`. Resolve it with `credential.resolve(ctx)` only when the first
-request goes out, so `--dry-run` and read-only refusals never run a
+request goes out, so `--dry-run` and `--yes` refusals never run a
 `token_cmd`. `credential.source()` names where it comes from for doctor,
 never its value.
 

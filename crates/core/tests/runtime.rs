@@ -5,9 +5,7 @@ mod common;
 
 use std::io::Write;
 
-use agent_cli_core::testing::{
-    Answer, FakeTransport, assert_dry_run, assert_read_only_refuses, assert_search_quality, run,
-};
+use agent_cli_core::testing::{Answer, FakeTransport, assert_dry_run, assert_search_quality, run};
 use agent_cli_core::{Ctx, Domain, Exit, Failure, Setup, When, check_registry, command, run_with};
 use anyhow::Result;
 use common::{DOMAINS, LABELED};
@@ -470,22 +468,10 @@ fn search_refuses_the_globals_it_would_ignore() {
 }
 
 #[test]
-fn read_only_shows_in_the_overview_and_doctor_and_doctor_names_the_version() {
-    let read_only = || fake(Vec::new()).0.read_only();
-    let overview = run(DOMAINS, &[], read_only());
-    assert!(
-        overview
-            .stdout
-            .contains("Config:      read-only (writes refused) \u{b7} tracker not set up"),
-        "{}",
-        overview.stdout
-    );
-    let rows = run(DOMAINS, &["doctor"], read_only()).json();
-    assert_eq!(rows[1]["check"], "read-only");
-    assert_eq!(rows[1]["ok"], true);
+fn doctor_names_the_version() {
+    let rows = go(&["doctor"]).json();
     let version = format!("agent-cli {} \u{b7} ", env!("CARGO_PKG_VERSION"));
     assert!(rows[0]["detail"].as_str().unwrap().starts_with(&version));
-    assert_ne!(go(&["doctor"]).json()[1]["check"], "read-only");
 }
 
 #[test]
@@ -535,32 +521,6 @@ fn a_command_whose_effect_varies_is_checked_at_the_write() {
         "--yes",
     ]);
     assert_eq!(done.json()["rows_affected"], 3);
-
-    let read_only = |argv: &[&str]| run(DOMAINS, argv, fake(Vec::new()).0.read_only());
-    assert_eq!(
-        read_only(&["db", "query", "run", "--conn", "local", "select 1"]).code,
-        0
-    );
-    let refused = read_only(&[
-        "db",
-        "query",
-        "run",
-        "--conn",
-        "local",
-        "delete from t",
-        "--yes",
-    ]);
-    assert_eq!(refused.code, 2);
-    assert!(
-        refused
-            .stderr
-            .starts_with("error: AGENT_CLI_READ_ONLY is set, so this change was refused")
-    );
-}
-
-#[test]
-fn read_only_refuses_every_non_read_command_before_it_runs() {
-    assert_read_only_refuses(DOMAINS);
 }
 
 #[test]

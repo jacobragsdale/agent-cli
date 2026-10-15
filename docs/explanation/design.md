@@ -84,11 +84,12 @@ changes, because a failed lookup is rarely a request to delete something.
 
 Every HTTP request, child process and SQL batch goes through `ctx.read` or
 `ctx.write`. `write` is the one place `--dry-run` stops before the first
-change, `AGENT_CLI_READ_ONLY` refuses it, and a destructive command without
-`--yes` is refused with the exact command to re-run. A handler cannot forget
-a check it never makes, and two tests prove it for every command: nothing
-that writes reaches the transport under `--dry-run`, and read-only mode
-refuses every non-read command before anything is sent. Secrets get the same
+change and a destructive command without `--yes` is refused with the exact
+command to re-run. A handler cannot forget a check it never makes, and every
+write command's tests prove that nothing that writes reaches the transport
+under `--dry-run`. There is no read-only mode: an environment variable or a
+config key that refuses writes is a guard the agent's own config can lift,
+and a credential that can only read is one it cannot. Secrets get the same
 treatment: a value lives in a `Secret` that has no serializer, only a
 `reveal` command prints one, and a token is attached only to its own
 service's hosts. In design.md agents ran `--dry-run` unprompted before
@@ -247,8 +248,8 @@ changed; an agent would rather have a correct answer than one 300 ms sooner.
 
 The crates are never published to crates.io, where the name is taken;
 `cargo install --git` installs the binary. The repository is not split
-either: the registry-wide checks (`check_registry`, the search gate,
-read-only refusal, the overview budget) are what hold every command to the
+either: the registry-wide checks (`check_registry`, the search gate, the
+overview budget) are what hold every command to the
 same rules, and they need every domain in one workspace.
 
 ## Past hand-written commands
@@ -257,7 +258,7 @@ Hand-written commands stop somewhere in the low hundreds; the rest of the
 1,000 would come from API specs (Azure DevOps, ARM and Datadog publish
 OpenAPI). Generated commands would be data, a catalogue entry each, run by
 one generic HTTP runner beside the hand-written handlers, so they get search,
-help, `--fields`, the guard, dry-run and read-only from core, and compile
+help, `--fields`, the guard and dry-run from core, and compile
 time stays flat. The runner is not built before the first spec domain needs
 it, and nothing in the registry has to change for it to fit. The generator
 renames a spec's time, limit and identity params (Datadog's `from`/`to`,

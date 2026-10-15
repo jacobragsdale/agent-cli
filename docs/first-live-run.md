@@ -145,8 +145,6 @@ server names never go into this public repository. Replace them with `contoso`-s
      exist".
    - An unplugged network should give exit 1 with "Unable to connect", well
      inside `--timeout`.
-   - `AGENT_CLI_READ_ONLY=1` should refuse every change and both
-     `secret get` commands.
 
 ### Open questions (k8s)
 
@@ -165,8 +163,8 @@ server names never go into this public repository. Replace them with `contoso`-s
 
 ## Azure DevOps
 
-Use a personal organization, never an employer's, and read only: set
-`AGENT_CLI_READ_ONLY=1` for the whole section.
+Use a personal organization, never an employer's, and only the reads until
+step 4.
 
 1. **Config.** Put `[ado]` with `org` and `project` in config.toml, then run
    `agent-cli doctor ado`. A 203 sign-in page should be exit 3, not a parse
@@ -222,9 +220,8 @@ Use a personal organization, never an employer's, and read only: set
    - **Code Search:** `includeSnippet` filling `matches.content[].line` and
      `codeSnippet`; a repository filter needing a project; the
      `*.visualstudio.com` host; an organization without the extension.
-4. **The work item suite** writes, so it runs on a sandbox project instead,
-   and skips while `AGENT_CLI_READ_ONLY` is on. Seed the project once with
-   `scripts/ado-sandbox.py` (sprints around today with capacity, a tagged
+4. **The work item suite** writes, so it runs on a sandbox project instead.
+   Seed the project once with `scripts/ado-sandbox.py` (sprints around today with capacity, a tagged
    tree, a shared query), give it a config file of its own, then:
 
    ```sh
@@ -245,7 +242,7 @@ Use a personal organization, never an employer's, and read only: set
 
 ## Airflow
 
-Use an instance with `read_only = true` until the reads pass.
+Use a Viewer login until the reads pass.
 
 1. **Doctor.** Run `agent-cli doctor airflow`. Expect the metadatabase,
    scheduler, triggerer and dag-processor rows.

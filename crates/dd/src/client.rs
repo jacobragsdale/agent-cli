@@ -154,7 +154,7 @@ pub(crate) struct Dd {
     /// `--env` when a command is not given one: `[datadog] env`.
     pub(crate) env: Option<String>,
     auth: Option<Auth>,
-    /// Resolved on the first request, so `--dry-run` and read-only refusals
+    /// Resolved on the first request, so `--dry-run` and `--yes` refusals
     /// never run a `token_cmd`.
     resolved: Mutex<Option<Resolved>>,
 }
@@ -290,8 +290,7 @@ impl Dd {
             .json()
     }
 
-    /// A change, checked by core against `--dry-run`, read-only mode and
-    /// `--yes`. An empty answer (a `204`) reads as `null`.
+    /// A change, checked by core against `--dry-run` and `--yes`. An empty answer (a `204`) reads as `null`.
     pub(crate) fn change(
         &self,
         ctx: &Ctx,
@@ -383,7 +382,7 @@ impl Dd {
 }
 
 /// One request with the Datadog credential, attached when it is performed:
-/// after core's read-only and `--dry-run` checks, and only to `api.<site>`.
+/// after core's `--dry-run` and `--yes` checks, and only to `api.<site>`.
 struct Call<'a> {
     dd: &'a Dd,
     method: Method,

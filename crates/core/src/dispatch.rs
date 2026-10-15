@@ -15,7 +15,6 @@ use clap::ArgMatches;
 use serde_json::{Value, json};
 
 use crate::config::{self, Config};
-use crate::ctx::READ_ONLY_HINT;
 use crate::ctx::{Ctx, Globals, Setup};
 use crate::discover::{self, did_you_mean};
 use crate::error::{Exit, Failure, data_of, describe};
@@ -103,7 +102,7 @@ fn dispatch(
         words = &words[1..];
     }
     let Some(first) = words.first() else {
-        let overview = discover::overview(domains, &setup.config, setup.read_only);
+        let overview = discover::overview(domains, &setup.config);
         writeln!(out, "{overview}")?;
         return Ok(Exit::Ok);
     };
@@ -200,7 +199,7 @@ fn dispatch(
         return Ok(Exit::Ok);
     }
     let matches: ArgMatches = parse_leaf(command, &words[3..])?;
-    precheck(command, &globals, setup.read_only, &command_line)?;
+    precheck(command, &globals, &command_line)?;
     if let Some(path) = &globals.output {
         output::check_output(path)?;
     }
@@ -314,20 +313,11 @@ pub(crate) fn split_globals(argv: &[String]) -> Result<(Globals, Vec<String>), F
     Ok((globals, rest))
 }
 
-/// The effect checks that need no handler: read-only mode, `--yes` for a
-/// destructive command, `--reveal` or `--output` for a secret.
-fn precheck(
-    command: &Command,
-    globals: &Globals,
-    read_only: bool,
-    command_line: &str,
-) -> Result<(), Failure> {
+/// The effect checks that need no handler: `--yes` for a destructive
+/// command, `--reveal` or `--output` for a secret.
+fn precheck(command: &Command, globals: &Globals, command_line: &str) -> Result<(), Failure> {
     let path = command.path.join(" ");
     match command.effect {
-        Effect::Write | Effect::Destructive | Effect::Reveal if read_only => Err(Failure::usage(
-            format!("AGENT_CLI_READ_ONLY is set, so `{path}`{} was refused", command.effect.tag()),
-        )
-        .hint(READ_ONLY_HINT)),
         Effect::Destructive if !globals.yes && !globals.dry_run => {
             Err(Failure::usage(format!("`{path}` is destructive; confirm it with --yes"))
                 .hint(format!("{}   (or --dry-run to see it first)", with_flag(command_line, "--yes"))))
@@ -485,10 +475,6 @@ fn doctor_builtin(
         _ => return Err(Failure::usage("usage: agent-cli doctor [domain]").into()),
     };
     let mut rows = vec![config_row(ctx.config())];
-    if ctx.read_only() {
-        let detail = "AGENT_CLI_READ_ONLY is set: every write is refused before anything is sent";
-        rows.push(json!({"domain": "core", "check": "read-only", "ok": true, "detail": detail}));
-    }
     let named = !args.is_empty();
     for domain in selected {
         let checks = (domain.doctor)(ctx);

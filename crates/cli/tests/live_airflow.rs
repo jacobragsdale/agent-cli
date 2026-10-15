@@ -6,9 +6,8 @@
 //! and `_PASSWORD` (default admin, admin) point it elsewhere. It writes (triggers, clears, pauses): point it only
 //! at a throwaway server seeded by `scripts/airflow/seed.sh`.
 //!
-//! The config holds two instances on the one server, `dev` and a
-//! `read_only` `prod`, so `--instance` picking and read-only refusal run
-//! too. Its writes make runs of their own, leaving the seeded runs (one per
+//! The config holds two instances on the one server, `dev` and `prod`, so
+//! `--instance` picking runs too. Its writes make runs of their own, leaving the seeded runs (one per
 //! state) as they are.
 
 use std::process::Command;
@@ -69,7 +68,7 @@ impl Live {
              [[sql.connection]]\nname = \"warehouse\"\nkind = \"oracle\"\nhost = \"oracle.contoso.example\"\n\
              database = \"FREEPDB1\"\nuser = \"etl\"\npassword_cmd = \"echo stand-in\"\n",
             instance("dev", ""),
-            instance("prod", "read_only = true"),
+            instance("prod", ""),
         );
         std::fs::write(dir.path().join("config.toml"), config).unwrap();
         Some(Self {
@@ -88,7 +87,6 @@ impl Live {
             .env("AGENT_CLI_CONFIG", self.dir.path().join("config.toml"))
             .env("XDG_CACHE_HOME", self.dir.path().join("cache"))
             .env("AGENT_CLI_TEST_AIRFLOW_PASSWORD", password)
-            .env_remove("AGENT_CLI_READ_ONLY")
             .output()
             .unwrap();
         Ran {
@@ -143,7 +141,7 @@ impl Live {
             .to_owned()
     }
 
-    /// doctor, the instances, picking one, read-only, a wrong password; true
+    /// doctor, the instances, picking one, a wrong password; true
     /// when the server takes only session sign-in.
     fn setup(&self) -> bool {
         let ran = self.run_as(&self.password, &["doctor", "airflow"]);
@@ -160,34 +158,15 @@ impl Live {
         eprintln!("live airflow: {detail}");
 
         let instances = self.run_as(&self.password, &["airflow", "instance", "list"]);
-        assert_eq!(instances.json()[1]["read_only"], true);
+        assert_eq!(instances.json()[1]["name"], "prod");
         let unnamed = self.run_as(&self.password, &["airflow", "dag", "list"]);
         assert_eq!(unnamed.code, 2, "{}", unnamed.stderr);
         assert!(unnamed.stderr.contains("dev, prod"), "{}", unnamed.stderr);
-        let refused = self.run_as(
-            &self.password,
-            &[
-                "airflow",
-                "dag",
-                "update",
-                "e2e_etl",
-                "--paused",
-                "true",
-                "--instance",
-                "prod",
-            ],
-        );
-        assert_eq!(refused.code, 2, "{}", refused.stderr);
-        assert!(refused.stderr.contains("read_only"), "{}", refused.stderr);
         let reads = self.run_as(
             &self.password,
             &["airflow", "pool", "list", "--instance", "prod"],
         );
-        assert_eq!(
-            reads.code, 0,
-            "a read_only instance still reads: {}",
-            reads.stderr
-        );
+        assert_eq!(reads.code, 0, "{}", reads.stderr);
 
         let wrong = self.run_as(
             "not-the-password",

@@ -26,7 +26,6 @@ port = 9
 service = "FREEPDB1"
 user = "bench"
 password_cmd = "pass show contoso/ora"
-read_only = true
 
 [[sql.connection]]
 name = "env"

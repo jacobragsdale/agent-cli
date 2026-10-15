@@ -15,8 +15,8 @@
   one command's `--help`. `Quality`, `quality`: search over labeled queries.
 
 ## Ctx: every effect goes through it
-- `Ctx`: `read(op)`, `write(effect, op)` (where --dry-run, read-only and
-  --yes are enforced), `note`, `env`, `section`, `config`, `cache`,
+- `Ctx`: `read(op)`, `write(effect, op)` (where --dry-run and --yes are
+  enforced), `note`, `env`, `section`, `config`, `cache`,
   `deadline`, `remaining`, `long_text` (a `LongText`), `save` (bytes
   to `--output`; the row then prints). `Op`: what read and write perform.
 - `Globals`, `Setup`, `DEFAULT_TIMEOUT`: the run's surroundings.
@@ -52,7 +52,7 @@
 ## Testing (`agent_cli_core::testing`)
 - `run(DOMAINS, argv, Setup::fake(FakeTransport::answering([Answer::json(&v)])))`
   gives an `Outcome` (`code`, `.json()`); `transport.sent()` is what went out.
-- `Setup::with_env`, `with_stdin`, `with_config`, `read_only`.
-- `assert_dry_run`, `assert_read_only_refuses`, `assert_search_quality`,
+- `Setup::with_env`, `with_stdin`, `with_config`.
+- `assert_dry_run`, `assert_search_quality`,
   `printed_command_problems`, `non_utc_times`, `next_command` (the argv a
   `[next: agent-cli …]` note names; world tests' `follow` walks them).

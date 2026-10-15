@@ -53,7 +53,6 @@ fn run_create(ctx: &Ctx, args: RunCreateArgs) -> Result<RunCreated> {
         None,
         None,
     )?;
-    client.writable()?;
     let conf = match ctx.long_text(
         "conf",
         args.conf.as_deref(),

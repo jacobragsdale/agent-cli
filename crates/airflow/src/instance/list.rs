@@ -15,8 +15,6 @@ pub struct InstanceRow {
     base_url: String,
     /// The kind of credential and where it comes from, never its value.
     auth: String,
-    /// Every change on it is refused.
-    read_only: bool,
     /// The [[k8s.scope]] its task pods run in.
     k8s_scope: Option<String>,
     k8s_namespace: Option<String>,
@@ -31,7 +29,6 @@ fn instance_list(ctx: &Ctx, _: NoArgs) -> Result<Vec<InstanceRow>> {
             name: instance.name.clone(),
             base_url: instance.base_url.clone(),
             auth: instance.auth_source(),
-            read_only: instance.read_only,
             k8s_scope: instance.k8s_scope.clone(),
             k8s_namespace: instance
                 .k8s_scope
@@ -45,7 +42,7 @@ command! {
     pub INSTANCE_LIST = ["airflow", "instance", "list"], Read,
     "List the configured Airflow instances (from config, no network)",
     keywords: ["environment", "environments", "server", "deployment", "configured", "astro", "composer", "mwaa"],
-    example: "airflow instance list --fields name,base_url,read_only",
+    example: "airflow instance list --fields name,base_url,auth",
     run: instance_list,
 }
 
@@ -59,7 +56,7 @@ mod tests {
     fn instance_list_shows_the_auth_kind_and_never_the_secret() {
         let config = format!(
             "{CONFIG}\n[[airflow.instance]]\nname = \"dev\"\nbase_url = \"http://localhost:8080/\"\n\
-             username = \"agent\"\npassword = \"in-file-password-1\"\nread_only = true\n"
+             username = \"agent\"\npassword = \"in-file-password-1\"\n"
         );
         let (outcome, transport) = airflow_with(&config, &["airflow", "instance", "list"], vec![]);
         assert_eq!(outcome.code, 0, "{outcome:?}");
@@ -67,10 +64,10 @@ mod tests {
             outcome.json(),
             json!([
                 {"name": "prod", "base_url": "https://airflow.contoso.example",
-                 "auth": "token (token_env AIRFLOW_TOKEN)", "read_only": false,
+                 "auth": "token (token_env AIRFLOW_TOKEN)",
                  "k8s_scope": "prod", "k8s_namespace": "web"},
                 {"name": "dev", "base_url": "http://localhost:8080",
-                 "auth": "password for agent (password (in the config file))", "read_only": true}
+                 "auth": "password for agent (password (in the config file))"}
             ])
         );
         assert!(!outcome.stdout.contains("in-file-password-1"));

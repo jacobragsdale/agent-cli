@@ -85,8 +85,8 @@ impl Ado {
             .json()
     }
 
-    /// A change, which core checks against `--dry-run`, read-only mode and
-    /// `--yes`. Some changes answer with no body; that reads as `null`.
+    /// A change, which core checks against `--dry-run` and `--yes`. Some
+    /// changes answer with no body; that reads as `null`.
     pub(crate) fn change(
         &self,
         ctx: &Ctx,

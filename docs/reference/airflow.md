@@ -28,9 +28,9 @@
 
 ```text
 agent-cli airflow instance list — List the configured Airflow instances (from config, no network)
-Returns: [{name,base_url,auth,read_only,k8s_scope,k8s_namespace}]
+Returns: [{name,base_url,auth,k8s_scope,k8s_namespace}]
 Read. Globals: --fields --raw --timeout --output
-e.g. agent-cli airflow instance list --fields name,base_url,read_only
+e.g. agent-cli airflow instance list --fields name,base_url,auth
 ```
 
 ### airflow pool list

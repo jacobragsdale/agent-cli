@@ -15,7 +15,6 @@
 //! password_env = "VAR"   # or password = "...", or password_cmd = "pass show x"
 //! trust_cert = true      # mssql only, default false
 //! encrypt = true         # mssql only, default true
-//! read_only = true       # refuse every write on this connection, default false
 //! ```
 //!
 //! Everything is checked when a sql command reads the section, except the
@@ -69,7 +68,6 @@ pub struct Connection {
     pub password: Option<Credential>,
     pub trust_cert: bool,
     pub encrypt: bool,
-    pub read_only: bool,
 }
 
 /// The whole `[sql]` section, checked.
@@ -109,8 +107,6 @@ struct Raw {
     password_cmd: Option<String>,
     trust_cert: Option<bool>,
     encrypt: Option<bool>,
-    #[serde(default)]
-    read_only: bool,
 }
 
 impl Sql {
@@ -225,7 +221,6 @@ impl Raw {
             password,
             trust_cert: self.trust_cert.unwrap_or(false),
             encrypt: self.encrypt.unwrap_or(true),
-            read_only: self.read_only,
         })
     }
 }
@@ -280,17 +275,14 @@ trust_cert = true
         let sql = load(MSSQL).unwrap();
         let spec = sql.connection(Some("local-mssql")).unwrap();
         assert_eq!((spec.kind, spec.port), (Kind::Mssql, 1433));
-        assert!(spec.trust_cert && spec.encrypt && !spec.read_only);
+        assert!(spec.trust_cert && spec.encrypt);
         assert_eq!(sql.client_dir, None);
         let oracle = load(
-            "[sql]\noracle_client_dir = \"/opt/ic\"\n[[sql.connection]]\nname = \"o\"\nkind = \"oracle\"\nhost = \"h\"\nservice = \"FREEPDB1\"\nuser = \"u\"\nread_only = true\n",
+            "[sql]\noracle_client_dir = \"/opt/ic\"\n[[sql.connection]]\nname = \"o\"\nkind = \"oracle\"\nhost = \"h\"\nservice = \"FREEPDB1\"\nuser = \"u\"\n",
         )
         .unwrap();
         let spec = oracle.connection(Some("o")).unwrap();
-        assert_eq!(
-            (spec.kind, spec.port, spec.read_only),
-            (Kind::Oracle, 1521, true)
-        );
+        assert_eq!((spec.kind, spec.port), (Kind::Oracle, 1521));
         assert_eq!(oracle.client_dir, Some(PathBuf::from("/opt/ic")));
     }
 

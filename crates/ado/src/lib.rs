@@ -162,9 +162,4 @@ mod tests {
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(DOMAIN.commands.len(), 57);
     }
-
-    #[test]
-    fn read_only_mode_refuses_every_change_before_any_request() {
-        agent_cli_core::testing::assert_read_only_refuses(&[DOMAIN]);
-    }
 }

@@ -172,8 +172,6 @@ fn last_nights_failed_dag_run_leads_to_its_exception_and_its_pod() {
         broken,
         json!([{"file": "customer_sync.py", "error": "ModuleNotFoundError: No module named 'contoso_crm'"}])
     );
-    let refused = agent_cli(&["airflow", "run", "retry", &run]);
-    assert_eq!(refused.code, 2, "prod is read_only: {}", refused.stderr);
 }
 
 #[test]

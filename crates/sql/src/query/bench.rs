@@ -131,7 +131,7 @@ fn query_bench(ctx: &Ctx, args: BenchArgs) -> Result<Bench> {
             Ok((session.connect, first_row, total, rows))
         },
     };
-    let (connect, mut first_row, mut total, rows) = door(ctx, spec, op)?;
+    let (connect, mut first_row, mut total, rows) = door(ctx, op)?;
     let runs = u32::try_from(total.len()).unwrap_or(u32::MAX);
     if runs < args.runs {
         ctx.note(format!(

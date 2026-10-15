@@ -76,7 +76,7 @@ e.g. agent-cli sql schema list --conn local-mssql
 
 ```text
 agent-cli sql connection list — List the configured database connections (never their passwords)
-Returns: [{name,kind,host,port,database,service,user,read_only}]
+Returns: [{name,kind,host,port,database,service,user}]
 Read. Globals: --fields --raw --timeout --output
-e.g. agent-cli sql connection list --fields name,kind,host,read_only
+e.g. agent-cli sql connection list --fields name,kind,host,database,service
 ```

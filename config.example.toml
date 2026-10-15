@@ -85,7 +85,6 @@
 #                                        # password = "..." (throwaway only)
 # trust_cert = false                     # mssql only: accept a self-signed certificate
 # encrypt = true                         # mssql only
-# read_only = true                       # refuse every write on this connection
 #
 # [[sql.connection]]
 # name = "ledger"
@@ -95,8 +94,7 @@
 # user = "app_reader"
 # password_cmd = "pass show contoso/ledger"
 #
-# read_only is a second line of defence; the real guard is a login that can
-# only read.
+# Where an agent must not write, give it a login that can only read.
 
 # [[airflow.instance]]
 # One per Apache Airflow server, 2.9+ or 3: which API it speaks (/api/v1 or
@@ -135,8 +133,6 @@
 # base_url = "https://airflow.contoso.example"
 # username = "agent"
 # password_cmd = "pass show airflow/prod"
-# read_only = true                       # refuse every change here: trigger,
-#                                        # pause, retry
 # k8s_scope = "prod"
 
 # [[controlm.instance]]
@@ -156,7 +152,6 @@
 # utc_offset = "-05:00"                  # the Control-M/Servers' clock, which
 #                                        # every time the API prints and takes
 #                                        # is on; default +00:00
-# read_only = true                       # refuse every change here: rerun, order
 # [datadog]
 # Also read as [dd]. The credential is a Datadog personal access token (sent
 # as Authorization: Bearer), else the API + application key pair. Name where

@@ -318,9 +318,8 @@ and `kubelogin` from `scripts/fake`.
 
 ## 8. If the command changes something
 
-A change goes through `ctx.write(effect, op)`, which is where `--dry-run`,
-`AGENT_CLI_READ_ONLY` and `--yes` are enforced; the handler never checks those
-flags itself. With the ado client that is `ado.change`, here in `answer`, which
+A change goes through `ctx.write(effect, op)`, which is where `--dry-run` and
+`--yes` are enforced; the handler never checks those flags itself. With the ado client that is `ado.change`, here in `answer`, which
 approve and reject share from `approval/mod.rs`:
 
 ```rust
@@ -392,10 +391,6 @@ argv, answers_for_the_reads)`. The rest of the test from step 7:
     let (outcome, _) = ado(&["ado", "approval", "approve", "a-1"], vec![]);
     assert_eq!(outcome.code, 2, "a gate needs --yes: {outcome:?}");
 ```
-
-The registry test in `crates/cli` also runs every non-read command's example
-under `AGENT_CLI_READ_ONLY` and fails if one is not refused before anything is
-sent.
 
 ## 9. Record it in the contoso world
 
@@ -485,7 +480,7 @@ same rules as the contract.
 | Long text | A description, comment, SQL or JSON argument reads stdin when it is `-` and has a `--NAME-file` flag of type `PathBuf`; read both with `ctx.long_text(name, value, file, limit)`, one `-` per command. A cap (comments: 64 KiB) goes in the help | R |
 | Scopes | A scope flag defaults to the only configured one, else exit 2 naming them: `agent_cli_core::pick` | review |
 | People | A flag naming a person (`--assignee`, `--author` …) says in its help that `@me` works | R |
-| Effects | Only through `ctx.read` / `ctx.write`; a `POST` that only reads is `Request::query` | read-only and dry-run tests |
+| Effects | Only through `ctx.read` / `ctx.write`; a `POST` that only reads is `Request::query` | dry-run tests |
 | Environment | `ctx.env(name)`, never `std::env`, so tests set it with `Setup::with_env` | review |
 | Secrets | Values live in `Secret`; no list or row type has a field that could hold one; only `Reveal` commands return one | review |
 | Credentials | Resolved by the domain client from `KEY_env` or `KEY_cmd`, sent only to hosts that pass `host_under` | review |

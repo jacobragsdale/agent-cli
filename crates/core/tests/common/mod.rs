@@ -943,7 +943,6 @@ pub struct Connection {
     name: String,
     kind: String,
     host: String,
-    read_only: bool,
 }
 
 fn connection_list(_: &Ctx, _: NoArgs) -> Result<Vec<Connection>> {
@@ -951,7 +950,6 @@ fn connection_list(_: &Ctx, _: NoArgs) -> Result<Vec<Connection>> {
         name: "local".into(),
         kind: "mssql".into(),
         host: "localhost".into(),
-        read_only: true,
     }])
 }
 

@@ -2,9 +2,8 @@
 //!
 //! The SQL is split ([`split`]) and every statement classified before
 //! anything connects. A batch holding any write goes through `ctx.write` as
-//! destructive (so `--yes`, `--dry-run` and `AGENT_CLI_READ_ONLY` apply),
-//! and a `read_only` connection refuses it outright; a pure read goes
-//! through `ctx.read`.
+//! destructive (so `--yes` and `--dry-run` apply); a pure read goes through
+//! `ctx.read`.
 //!
 //! Every statement commits as it runs, on both servers. When one fails the
 //! command stops there: stdout stays empty, as for any failure, and the
@@ -65,34 +64,10 @@ fn plan(spec: &Connection, statements: &[Statement], runs: Option<u32>) -> serde
     plan
 }
 
-/// `ctx.read` for a pure read; for a write, the connection's own
-/// `read_only` first, then `ctx.write` as destructive.
-fn door<T, F: FnOnce(&mut Session) -> Result<T>>(
-    ctx: &Ctx,
-    spec: &Connection,
-    op: OnConnection<'_, F>,
-) -> Result<T> {
+/// `ctx.read` for a pure read, `ctx.write` as destructive for a write.
+fn door<T, F: FnOnce(&mut Session) -> Result<T>>(ctx: &Ctx, op: OnConnection<'_, F>) -> Result<T> {
     if !op.writes {
         return ctx.read(op);
-    }
-    if spec.read_only {
-        let writes: Vec<&str> = op.plan["statements"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter(|statement| statement["writes"] == true)
-            .filter_map(|statement| statement["sql"].as_str())
-            .collect();
-        let first = writes.first().copied().unwrap_or_default();
-        let first: String = first.chars().take(60).collect();
-        return Err(Failure::usage(format!(
-            "connection {:?} is read_only, and {first:?} may write (only a statement starting \
-             with select or with, and holding no insert, update, delete, into, exec … counts \
-             as a read)",
-            spec.name
-        ))
-        .hint("run only reads here, or use a connection without read_only = true")
-        .into());
     }
     ctx.write(Effect::Destructive, op)
 }
@@ -298,7 +273,7 @@ mod tests {
     }
 
     #[test]
-    fn a_write_needs_yes_and_read_only_mode_refuses_it() {
+    fn a_write_needs_yes() {
         let outcome = sql(
             &["sql", "query", "run", "--conn", "ms", "drop table t"],
             setup(),
@@ -306,26 +281,5 @@ mod tests {
         assert_eq!(outcome.code, 2, "{outcome:?}");
         assert!(outcome.stdout.is_empty());
         assert!(outcome.stderr.contains("--yes"), "{}", outcome.stderr);
-
-        for verb in ["run", "bench"] {
-            let outcome = sql(
-                &[
-                    "sql",
-                    "query",
-                    verb,
-                    "--conn",
-                    "ms",
-                    "insert into t values (1)",
-                    "--yes",
-                ],
-                setup().read_only(),
-            );
-            assert_eq!(outcome.code, 2, "{outcome:?}");
-            assert!(
-                outcome.stderr.contains("AGENT_CLI_READ_ONLY"),
-                "{}",
-                outcome.stderr
-            );
-        }
     }
 }

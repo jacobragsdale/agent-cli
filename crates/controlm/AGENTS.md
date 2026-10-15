@@ -9,7 +9,7 @@ assumption, and `docs/plans/controlm.md` is the order to check them in.
 
 ## Config
 `[[controlm.instance]]`: `name` (`--instance`, `pick`), `base_url` (core's
-`check_base_url`), `read_only`, `utc_offset` (the servers' clock; default
+`check_base_url`), `utc_offset` (the servers' clock; default
 UTC). Credential: `username` with `password`, `password_env` or
 `password_cmd` (a session token from `POST /session/login`, `Bearer`, once
 per command and again after a 401), or `token`, `token_env`, `token_cmd`
@@ -24,7 +24,7 @@ A run: `SERVER:ORDER_ID` (`job_id`; words get a hint naming `job list
 - `lib.rs`: `DOMAIN`. `doctor.rs`: status, and doctor's one live call
   (`config/servers`).
 - `client.rs`: `ControlM::load`, `open` for a `Client`: `get`, `text`,
-  `change` (checks `writable`); `Call`, the door attaching the credential;
+  `change`; `Call`, the door attaching the credential;
   `refused`; `with_query`, `compact` (a time as the API takes it); row
   helpers `text`, `stamp`, `order_date`, `note_more`.
 - `job/mod.rs`: `JobRow`, `JobIdArgs`, `Status`, `FAILED`.

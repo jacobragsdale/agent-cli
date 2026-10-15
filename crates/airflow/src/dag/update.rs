@@ -34,7 +34,6 @@ fn dag_update(ctx: &Ctx, args: DagUpdateArgs) -> Result<DagUpdated> {
         None,
         None,
     )?;
-    client.writable()?;
     let dag = super::details(&client, &id)?;
     if !args.paused && dag["catchup"].as_bool() == Some(true) {
         ctx.note(format!(
@@ -69,7 +68,7 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{CONFIG, airflow, airflow_with, dag, dry_run};
+    use crate::testing::{airflow, dag, dry_run};
 
     #[test]
     fn unpausing_patches_is_paused_and_notes_catchup() {
@@ -114,30 +113,6 @@ mod tests {
             json!({"id": "etl_nightly", "paused": true, "next_run": "2026-09-30T00:00:00Z"})
         );
         assert_eq!(transport.sent()[1].body, Some(json!({"is_paused": true})));
-    }
-
-    #[test]
-    fn a_read_only_instance_refuses_a_change_even_as_a_dry_run() {
-        let config = format!("{CONFIG}read_only = true\n");
-        for extra in [None, Some("--dry-run")] {
-            let mut argv = vec![
-                "airflow",
-                "dag",
-                "update",
-                "etl_nightly",
-                "--paused",
-                "true",
-            ];
-            argv.extend(extra);
-            let (outcome, transport) = airflow_with(&config, &argv, vec![]);
-            assert_eq!(outcome.code, 2, "{outcome:?}");
-            assert!(
-                outcome.stderr.contains("instance \"prod\" is read_only"),
-                "{}",
-                outcome.stderr
-            );
-            assert!(transport.sent().is_empty());
-        }
     }
 
     #[test]

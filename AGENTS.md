@@ -43,9 +43,9 @@ when you work there): config, ids, where things are, fixtures, quirks.
   messages. Use `contoso`-style placeholders. `config.toml` is never
   committed.
 - **Every effect goes through `Ctx`.** HTTP, child processes and SQL run
-  only via `ctx.read(op)` or `ctx.write(effect, op)`, where `--dry-run`,
-  `AGENT_CLI_READ_ONLY` and `--yes` are enforced; a handler never checks
-  those flags. A POST that only reads uses `Request::query`.
+  only via `ctx.read(op)` or `ctx.write(effect, op)`, where `--dry-run`
+  and `--yes` are enforced; a handler never checks those flags. A POST
+  that only reads uses `Request::query`.
 - **stdout is data only.** Handlers return values; notes such as
   `[50 of 312; --limit N]` go through `ctx.note`.
 - **Secrets** live in `Secret` (no `Serialize`). Check `host_under(url,
@@ -146,12 +146,12 @@ cargo test --workspace --features agent-cli/fixtures
 ```
 
 They include `check_registry`, the search gate (top-1 80%, top-5 95%),
-read-only refusal, the overview budget, the 1,000-command perf gates, the
-reference (`UPDATE_DOCS=1 cargo test -p agent-cli reference` rewrites it)
-and the docs' command lines. The `fixtures` feature (never in a release)
-replays `fixtures/world`; `eval "$(scripts/trial-env.sh)"` sets up a shell
-for it. The sql database tests need `scripts/db-up.sh` and
-`AGENT_CLI_TEST_DBS=1`. The live ado suite (`crates/cli/tests/live_ado.rs`)
-needs `AGENT_CLI_TEST_ADO=1`, `AGENT_CLI_READ_ONLY` off and
-`AGENT_CLI_TEST_ADO_CONFIG` naming the config of a sandbox seeded by
-`scripts/ado-sandbox.py` (a second after a colon); never your own config.
+the overview budget, the 1,000-command perf gates, the reference
+(`UPDATE_DOCS=1 cargo test -p agent-cli reference` rewrites it) and the
+docs' command lines. The `fixtures` feature (never in a release) replays
+`fixtures/world`; `eval "$(scripts/trial-env.sh)"` sets up a shell for it.
+The sql database tests need `scripts/db-up.sh` and `AGENT_CLI_TEST_DBS=1`.
+The live ado suite (`crates/cli/tests/live_ado.rs`) needs
+`AGENT_CLI_TEST_ADO=1` and `AGENT_CLI_TEST_ADO_CONFIG` naming the config of
+a sandbox seeded by `scripts/ado-sandbox.py` (a second after a colon); never
+your own config.

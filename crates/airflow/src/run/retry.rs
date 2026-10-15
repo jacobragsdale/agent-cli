@@ -19,7 +19,6 @@ pub struct Retried {
 fn run_retry(ctx: &Ctx, args: RunIdArgs) -> Result<Retried> {
     let airflow = Airflow::load(ctx.config())?;
     let (client, id) = args.locate(&airflow, ctx)?;
-    client.writable()?;
     // Airflow 2's run clear takes no only_failed and resets every task, so
     // there the DAG's clearTaskInstances clears the run's failed ones.
     let (path, body) = if client.v1()? {

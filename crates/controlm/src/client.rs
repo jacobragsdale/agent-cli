@@ -38,8 +38,6 @@ struct Raw {
     token: Option<String>,
     token_env: Option<String>,
     token_cmd: Option<String>,
-    #[serde(default)]
-    read_only: bool,
     utc_offset: Option<String>,
 }
 
@@ -63,7 +61,6 @@ pub(crate) struct Instance {
     /// no trailing slash.
     pub(crate) base_url: String,
     pub(crate) auth: Auth,
-    pub(crate) read_only: bool,
     /// The clock of the Control-M/Servers, which every time the API prints
     /// and takes is on.
     pub(crate) offset: UtcOffset,
@@ -122,7 +119,6 @@ impl Raw {
             name: self.name,
             base_url,
             auth,
-            read_only: self.read_only,
             offset,
         })
     }
@@ -224,19 +220,6 @@ impl<'a> Client<'a> {
         }
     }
 
-    /// Exit 2 on an instance marked `read_only`, before anything is sent.
-    pub(crate) fn writable(&self) -> Result<()> {
-        if self.instance.read_only {
-            return Err(Failure::usage(format!(
-                "instance {:?} is read_only, so this change was refused",
-                self.instance.name
-            ))
-            .hint("read here, or make the change on an instance without read_only = true")
-            .into());
-        }
-        Ok(())
-    }
-
     pub(crate) fn get(&self, path: &str) -> Result<Value> {
         self.send(Method::Get, path, None, None, "application/json")?
             .json()
@@ -251,9 +234,8 @@ impl<'a> Client<'a> {
     }
 
     /// A `POST` that changes something, which core checks against
-    /// `--dry-run`, read-only mode and `--yes`.
+    /// `--dry-run` and `--yes`.
     pub(crate) fn change(&self, effect: Effect, path: &str, body: Value) -> Result<Value> {
-        self.writable()?;
         self.send(
             Method::Post,
             path,
@@ -300,8 +282,7 @@ impl<'a> Client<'a> {
 
     /// `Bearer …` from `POST /session/login`: once, and again after a 401
     /// (a session idles out after 30 minutes by default). A read, as the
-    /// login changes nothing, so it also works under `--dry-run` and
-    /// `AGENT_CLI_READ_ONLY`.
+    /// login changes nothing, so it also works under `--dry-run`.
     // VERIFY(work): each command logs in once and never logs out, so a
     // session lives until it idles out. If the Enterprise Manager caps
     // sessions per user, send `POST /session/logout` when a command ends, or
@@ -348,7 +329,7 @@ impl<'a> Client<'a> {
 }
 
 /// One request, its credential attached when it is performed: after core's
-/// read-only and `--dry-run` checks, and only under `base_url`.
+/// `--dry-run` check, and only under `base_url`.
 struct Call<'c, 'a> {
     client: &'c Client<'a>,
     method: Method,

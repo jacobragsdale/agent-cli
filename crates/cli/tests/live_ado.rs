@@ -1,11 +1,11 @@
 //! The ado work item commands against a live Azure DevOps project, through
-//! the built binary. Off unless `AGENT_CLI_TEST_ADO=1`, and skipped while
-//! `AGENT_CLI_READ_ONLY` is on; the credential is the usual one
-//! (`AZURE_DEVOPS_EXT_PAT`, else `az login`). It writes, so it runs only on
-//! the config.toml `AGENT_CLI_TEST_ADO_CONFIG` names, never the user's own
-//! (which may name a team's real organization): one path, or two joined as
-//! PATH is (`basic.toml:agile.toml`), the second a project of another
-//! process. Point them at sandboxes seeded by `scripts/ado-sandbox.py`.
+//! the built binary. Off unless `AGENT_CLI_TEST_ADO=1`; the credential is
+//! the usual one (`AZURE_DEVOPS_EXT_PAT`, else `az login`). It writes, so it
+//! runs only on the config.toml `AGENT_CLI_TEST_ADO_CONFIG` names, never the
+//! user's own (which may name a team's real organization): one path, or two
+//! joined as PATH is (`basic.toml:agile.toml`), the second a project of
+//! another process. Point them at sandboxes seeded by
+//! `scripts/ado-sandbox.py`.
 //!
 //! Every work item it makes is tagged `agent-cli-e2e-run` and ends in its
 //! type's Removed state (else a Completed one); a run ends what an earlier,
@@ -42,16 +42,6 @@ fn config(n: usize) -> Option<PathBuf> {
         skip(
             "live ado",
             "set AGENT_CLI_TEST_ADO=1 on a sandbox project (scripts/ado-sandbox.py)",
-        );
-        return None;
-    }
-    // Core's rule: only an explicit off leaves the guard off.
-    if std::env::var("AGENT_CLI_READ_ONLY").is_ok_and(|value| {
-        !["", "0", "false", "no", "off"].contains(&value.trim().to_ascii_lowercase().as_str())
-    }) {
-        skip(
-            "live ado",
-            "AGENT_CLI_READ_ONLY is on, and the suite writes",
         );
         return None;
     }

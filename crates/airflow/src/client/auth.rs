@@ -72,7 +72,7 @@ impl Client<'_> {
     /// `GET /login/` for its CSRF token and cookie, then the form. A good
     /// password is a 302 away from `/login/` whose `Set-Cookie` is the
     /// signed-in session; a bad one is a 302 back to it. Reads (they change
-    /// nothing), so `--dry-run` and read-only mode still sign in.
+    /// nothing), so `--dry-run` still signs in.
     pub(super) fn sign_in_form(&self) -> Result<()> {
         let Auth::Password { username, password } = &self.instance.auth else {
             return Ok(());
@@ -159,7 +159,7 @@ impl Client<'_> {
     }
 
     /// A JWT from `/auth/token`. A read (the POST changes nothing), so it
-    /// also works under `--dry-run` and `AGENT_CLI_READ_ONLY`.
+    /// also works under `--dry-run`.
     fn sign_in(&self, username: &str, password: &Secret) -> Result<Secret> {
         let url = format!("{}/auth/token", self.instance.base_url);
         let request = Request::query(

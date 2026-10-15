@@ -40,7 +40,7 @@ pub(crate) struct Confluence {
     email: Option<String>,
     token: Option<Credential>,
     /// The `Authorization` value, made on the first request so `--dry-run`
-    /// and read-only refusals never run a `token_cmd`.
+    /// and `--yes` refusals never run a `token_cmd`.
     authorization: Mutex<Option<Secret>>,
 }
 
@@ -469,7 +469,7 @@ impl Call {
 }
 
 /// A call with the credential, attached when it is performed: after core's
-/// read-only and `--dry-run` checks, and only to the base's own host.
+/// `--dry-run` and `--yes` checks, and only to the base's own host.
 struct Signed<'a> {
     confluence: &'a Confluence,
     call: Call,

@@ -125,21 +125,4 @@ mod tests {
         );
         assert_eq!(would[0]["body"]["jobs"], "*");
     }
-
-    #[test]
-    fn a_read_only_instance_refuses_before_anything_is_sent() {
-        let config = format!("{}read_only = true\n", crate::testing::CONFIG);
-        let (outcome, transport) = crate::testing::controlm_with(
-            &config,
-            &[
-                "controlm",
-                "job",
-                "run",
-                "ctm-prod/NightlyLoads/load_orders",
-            ],
-            vec![],
-        );
-        assert_eq!(outcome.code, 2, "{outcome:?}");
-        assert!(transport.sent().is_empty());
-    }
 }

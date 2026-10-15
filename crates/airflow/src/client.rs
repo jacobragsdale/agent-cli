@@ -68,8 +68,6 @@ struct Raw {
     token: Option<String>,
     token_env: Option<String>,
     token_cmd: Option<String>,
-    #[serde(default)]
-    read_only: bool,
     k8s_scope: Option<String>,
     k8s_namespace: Option<String>,
     dags_repo: Option<String>,
@@ -94,7 +92,6 @@ pub(crate) struct Instance {
     /// The API `api` names; otherwise asked of the server.
     pub(crate) api: Option<Api>,
     pub(crate) auth: Auth,
-    pub(crate) read_only: bool,
     /// The `[[k8s.scope]]` its KubernetesExecutor pods run in.
     pub(crate) k8s_scope: Option<String>,
     pub(crate) k8s_namespace: String,
@@ -347,7 +344,6 @@ impl Raw {
             base_url,
             api: self.api,
             auth,
-            read_only: self.read_only,
             k8s_scope,
             k8s_namespace: self
                 .k8s_namespace
@@ -421,20 +417,6 @@ impl<'a> Client<'a> {
         }
     }
 
-    /// Exit 2 on an instance marked `read_only`, before anything is sent;
-    /// every change checks it first, `--dry-run` included.
-    pub(crate) fn writable(&self) -> Result<()> {
-        if self.instance.read_only {
-            return Err(Failure::usage(format!(
-                "instance {:?} is read_only, so this change was refused",
-                self.instance.name
-            ))
-            .hint("read here, or make the change on an instance without read_only = true")
-            .into());
-        }
-        Ok(())
-    }
-
     /// True on Airflow 2, whose `/api/v1` names some paths, parameters and
     /// fields differently and lacks a few.
     pub(crate) fn v1(&self) -> Result<bool> {
@@ -486,8 +468,7 @@ impl<'a> Client<'a> {
             .json()
     }
 
-    /// A change, which core checks against `--dry-run`, read-only mode and
-    /// `--yes`.
+    /// A change, which core checks against `--dry-run` and `--yes`.
     pub(crate) fn change(
         &self,
         effect: Effect,

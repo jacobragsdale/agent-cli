@@ -66,7 +66,6 @@ pub const DOMAIN: Domain = Domain {
 
 #[cfg(test)]
 mod tests {
-    use agent_cli_core::testing::assert_read_only_refuses;
     use agent_cli_core::{check_layout, check_registry};
 
     use super::*;
@@ -76,10 +75,5 @@ mod tests {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(DOMAIN.commands.len(), 14);
-    }
-
-    #[test]
-    fn read_only_mode_refuses_every_change_before_any_request() {
-        assert_read_only_refuses(&[DOMAIN]);
     }
 }

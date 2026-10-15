@@ -20,8 +20,6 @@ pub struct ConnectionRow {
     /// Oracle's service name.
     service: Option<String>,
     user: String,
-    /// Writes are refused on it.
-    read_only: bool,
 }
 
 fn connection_list(ctx: &Ctx, _: NoArgs) -> Result<Vec<ConnectionRow>> {
@@ -36,7 +34,6 @@ fn connection_list(ctx: &Ctx, _: NoArgs) -> Result<Vec<ConnectionRow>> {
             database: spec.database,
             service: spec.service,
             user: spec.user,
-            read_only: spec.read_only,
         })
         .collect())
 }
@@ -45,7 +42,7 @@ command! {
     pub CONNECTION_LIST = ["sql", "connection", "list"], Read,
     "List the configured database connections (never their passwords)",
     keywords: ["databases", "servers", "configured", "conn", "names"],
-    example: "sql connection list --fields name,kind,host,read_only",
+    example: "sql connection list --fields name,kind,host,database,service",
     run: connection_list,
 }
 
@@ -61,7 +58,6 @@ mod tests {
         let listed = outcome.json();
         assert_eq!(listed[0]["name"], "ms");
         assert_eq!(listed[1]["service"], "FREEPDB1");
-        assert_eq!(listed[1]["read_only"], true);
         for secret in [
             "s3cret-literal",
             "pass show",

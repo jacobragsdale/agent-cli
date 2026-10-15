@@ -31,8 +31,7 @@ mod tests {
     use std::path::{Path, PathBuf};
 
     use agent_cli_core::testing::{
-        FakeTransport, assert_read_only_refuses, assert_search_quality, printed_command_problems,
-        run,
+        FakeTransport, assert_search_quality, printed_command_problems, run,
     };
     use agent_cli_core::{BUILTINS, Effect, Setup, command_help};
 
@@ -464,11 +463,6 @@ mod tests {
         assert_search_quality(DOMAINS, &queries);
     }
 
-    #[test]
-    fn read_only_mode_refuses_every_change() {
-        assert_read_only_refuses(DOMAINS);
-    }
-
     /// Doctor names `agent-cli config example DOMAIN` for a domain that is
     /// not set up, so every domain has a section in `config.example.toml`.
     #[test]
@@ -541,7 +535,6 @@ name = "prod"
 base_url = "https://airflow.contoso.example"
 username = "agent"
 password_env = "AIRFLOW_PROD_PASSWORD"
-read_only = true
 k8s_scope = "prod"
 
 [[controlm.instance]]

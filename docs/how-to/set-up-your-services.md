@@ -48,14 +48,11 @@ agent-cli doctor sql
 naming a domain exits 1 if any of its checks failed, and each failed row's
 `hint` is the next step.
 
-Turn on read-only mode for the first week, so nothing an agent runs can change
-a service while you learn what it does:
-
-```sh
-echo 'export AGENT_CLI_READ_ONLY=1' >> ~/.bashrc
-```
-
-Every write is then refused before it is sent. Any key in the file can also be
+For the first week, give each service a credential that can only read (a
+Reader role, a read-only database login, an Airflow Viewer), so nothing an
+agent runs can change a service while you learn what it does. A destructive
+command already needs `--yes`, and any change can be previewed with
+`--dry-run`. Any key in the file can also be
 set from the environment as `AGENT_CLI_<SECTION>_<KEY>`, for example
 `AGENT_CLI_ADO_PROJECT=web`.
 
@@ -169,8 +166,7 @@ namespaces = ["web", "jobs"]
 ```
 
 It runs `az aks get-credentials` (then `kubelogin convert-kubeconfig`), which
-changes your kubeconfig, so it is a write: run it before turning on read-only
-mode, or with `AGENT_CLI_READ_ONLY=0` for that one call. k8s needs `kubectl`
+changes your kubeconfig, so it is a write. k8s needs `kubectl`
 on `PATH`, and a cluster that uses Entra ID sign-in also needs `kubelogin`.
 
 ```sh
@@ -197,7 +193,6 @@ host = "sql.contoso.example"
 database = "reporting"
 user = "app_reader"
 password_cmd = "pass show contoso/reporting"
-read_only = true
 
 [[sql.connection]]
 name = "ledger"
@@ -207,7 +202,6 @@ port = 1521
 service = "LEDGER"
 user = "app_reader"
 password_cmd = "pass show contoso/ledger"
-read_only = true
 ```
 
 One `[[sql.connection]]` per database; `--conn` takes its `name`. SQL Server
@@ -242,7 +236,6 @@ name = "prod"
 base_url = "https://airflow.contoso.example"
 username = "agent"
 password_cmd = "pass show airflow/prod"
-read_only = true
 ```
 
 One block per environment; `--instance` takes its `name`. Airflow 2.9
@@ -339,7 +332,6 @@ base_url = "https://ctm-em.contoso.example:8443/automation-api"
 username = "agent"
 password_cmd = "pass show controlm/prod"
 utc_offset = "-05:00"
-read_only = true
 ```
 
 The username and password are the ones Control-M's web client takes; each

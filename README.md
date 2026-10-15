@@ -5,7 +5,7 @@ Cloud, Azure (Key Vault, Container Registry, AKS, AI Search), Kubernetes, SQL
 Server and Oracle, Apache Airflow, BMC Control-M and Datadog. Its only users
 are agents: every command is `agent-cli <domain> <resource> <verb>`, output is
 compact JSON that `--fields` narrows, errors name the command to run next, and
-every change honours `--dry-run`, `--yes` and a read-only mode.
+every change honours `--dry-run` and `--yes`.
 
 ## Install
 
@@ -81,12 +81,9 @@ Every command declares an effect, shown in search and help:
 | reveals a secret | Refused without `--reveal`, or `--output FILE`, which writes the value to a 0600 file and prints only the path. |
 | read or write | Decided by the input, as for SQL: a write follows the rules above. |
 
-`AGENT_CLI_READ_ONLY=1` refuses every write, destructive and reveal command
-before anything is sent; the overview's `Config:` line and `agent-cli doctor`
-say when it is on. A SQL connection or Airflow instance marked
-`read_only = true` refuses changes on its own. Tokens and passwords never
-appear in output, plans or errors. The real guard is still a credential that
-can only read.
+Tokens and passwords never appear in output, plans or errors. Where an agent
+must not change something, give it a credential that can only read: a Reader
+role, a read-only database login, an Airflow Viewer.
 
 ## Domains
 

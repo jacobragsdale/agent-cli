@@ -4,7 +4,7 @@
 //! A domain crate exports `pub const DOMAIN: Domain` listing its commands,
 //! each made with [`command!`]. Everything an agent relies on across domains
 //! — the three-word paths, search, help, `--fields`, the output guard,
-//! `--dry-run`, read-only mode, exit codes, redaction — lives here, so a new
+//! `--dry-run`, `--yes`, exit codes, redaction — lives here, so a new
 //! command gets all of it by being registered.
 
 mod az;

@@ -9,7 +9,7 @@ Instant Client (https://docs.rs/oracle).
 overrides it). `[[sql.connection]]`: `name` (what `--conn` takes; defaults
 to the only one through `pick`), `kind` (`mssql` or `oracle`), `host`,
 `port`, `database` (mssql), `service` (oracle), `user`, `trust_cert`,
-`encrypt`, `read_only`. Credential: `password`, `password_env` or
+`encrypt`. Credential: `password`, `password_env` or
 `password_cmd`, resolved only when a connection opens. No HTTP, so no host
 rule: the password goes only to the connection's own server.
 
@@ -41,7 +41,7 @@ without the variable they skip. Queries `crates/sql/search.toml`.
 
 ## Quirks
 - The classifier decides the effect: a batch holding any write goes through
-  `ctx.write` as destructive, and a `read_only` connection refuses it.
+  `ctx.write` as destructive.
 - `panic = "unwind"` stays in the release profile: tiberius panics on some
   column types (`sql_variant`) and `mssql.rs` catches that as a failed query.
 - ODPI-C `dlopen`s the Instant Client on the first Oracle connection, so

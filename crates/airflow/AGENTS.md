@@ -9,7 +9,7 @@ variables, connections over Airflow 3's REST API (`/api/v2`) or 2.9's
 `pick`), `base_url`, `api` (`v1` or `v2`; else `probe` asks
 `/api/v2/version` with no credential, a 404 being Airflow 2, cached an
 hour: cheaper than a failing call naming the fix, and a wrong password
-never reads as a wrong version), `read_only`, `k8s_scope` and
+never reads as a wrong version), `k8s_scope` and
 `k8s_namespace` (a row's `pod` is a k8s id), `dags_repo` (`REPO[:FOLDER]`:
 `source get` prints `repo_file`). Credential: `username` with `password`,
 `password_env` or `password_cmd`, or `token`, `token_env`, `token_cmd`.
@@ -30,7 +30,7 @@ tests. Copy a sibling.
 - `lib.rs`: `DOMAIN`. `doctor.rs`: status and doctor.
 - `client.rs`: `Airflow::load`, `open`, `locate` for a `Client`: `get`,
   `text`, `public`, `health`, `preview` (a POST that reads), `change`,
-  `list`, `list_like`, `writable`, `resolve`, `v1`, `newest_first`; row
+  `list`, `list_like`, `resolve`, `v1`, `newest_first`; row
   helpers `text`, `stamp`, `seconds`, `note_more`, `Instance::pod`.
   `client/auth.rs`: which API, and sign-in. `client/id.rs`: `Ref`, `ti_id`.
 - `dag_run.rs`: `RUN_STATES`, `cleared_ids`; `instance/mod.rs`:

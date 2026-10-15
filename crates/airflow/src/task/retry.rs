@@ -58,7 +58,6 @@ fn task_retry(ctx: &Ctx, args: TaskRetryArgs) -> Result<TasksRetried> {
         .hint("run it once per run")
         .into());
     }
-    client.writable()?;
     if let Some(mapped) = ids.iter().find(|id| id.map.is_some())
         && client.v1()?
     {

@@ -55,7 +55,6 @@ pub fn agent_cli(args: &[&str]) -> Ran {
         .env("AZURE_CONFIG_DIR", format!("{world}/.azure-unused"))
         .env_remove("AGENT_CLI_FIXTURES_MATCH")
         .env_remove("AZURE_DEVOPS_EXT_PAT")
-        .env_remove("AGENT_CLI_READ_ONLY")
         .output()
         .unwrap();
     let ran = Ran {
