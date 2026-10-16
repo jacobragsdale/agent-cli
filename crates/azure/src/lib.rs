@@ -1,7 +1,7 @@
-//! The Azure domains of agent-cli: Key Vault secrets (`kv`), container
-//! registry images (`acr`) and AKS clusters (`aks`), ported from az-tui,
-//! Azure AI Search (`aisearch`), any ARM resource (`arm`), and virtual
-//! networks (`net`).
+//! The Azure domains of agent-cli: Key Vault secrets, keys and
+//! certificates (`kv`), container registry images and builds (`acr`) and
+//! AKS clusters (`aks`), ported from az-tui, Azure AI Search (`aisearch`),
+//! any ARM resource (`arm`), and virtual networks (`net`).
 //!
 //! There is no Azure SDK and no credential of our own. Each plane gets an
 //! `az` token for its own audience (or, for an AI Search service that takes
@@ -38,8 +38,14 @@ pub const KV: Domain = Domain {
     commands: &[
         kv::secret::list::SECRET_LIST,
         kv::secret::get::SECRET_GET,
+        kv::secret::update::SECRET_UPDATE,
         kv::version::list::VERSION_LIST,
+        kv::certificate::list::CERTIFICATE_LIST,
+        kv::certificate::get::CERTIFICATE_GET,
+        kv::key::list::KEY_LIST,
+        kv::key::get::KEY_GET,
         kv::vault::list::VAULT_LIST,
+        kv::vault::get::VAULT_GET,
     ],
     synonyms: &[
         ("password", &["secret"]),
@@ -64,8 +70,13 @@ pub const ACR: Domain = Domain {
     commands: &[
         acr::repo::list::REPO_LIST,
         acr::tag::list::TAG_LIST,
+        acr::tag::delete::TAG_DELETE,
         acr::manifest::get::MANIFEST_GET,
+        acr::run::list::RUN_LIST,
+        acr::run::get::RUN_GET,
+        acr::run::logs::RUN_LOGS,
         acr::registry::list::REGISTRY_LIST,
+        acr::registry::get::REGISTRY_GET,
     ],
     synonyms: &[
         ("image", &["repo", "tag"]),

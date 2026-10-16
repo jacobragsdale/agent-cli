@@ -5,10 +5,9 @@ use std::collections::BTreeMap;
 use agent_cli_core::{Ctx, Span, command};
 use anyhow::Result;
 
-use crate::client::{limited, narrow, parallel};
+use crate::client::limited;
 use crate::config::Azure;
-use crate::graph::{Vault, inventory};
-use crate::kv::{SecretRow, VAULTS, secret_ref, secrets};
+use crate::kv::{SecretRow, Wanted, across, expiring, secrets, vaults};
 
 #[derive(clap::Args)]
 pub struct SecretListArgs {
@@ -35,6 +34,9 @@ pub struct SecretListArgs {
     /// True for certificates' backing secrets only, false for none of them
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     managed: Option<bool>,
+    /// The deleted secrets instead: when each was deleted and will be purged
+    #[arg(long)]
+    deleted: bool,
     #[arg(long, default_value_t = 50)]
     limit: usize,
 }
@@ -52,41 +54,16 @@ fn tagged(tags: &BTreeMap<String, String>, wanted: &str) -> bool {
 }
 
 fn secret_list(ctx: &Ctx, args: SecretListArgs) -> Result<Vec<SecretRow>> {
-    let within = args.expires_within.map(|span| span.0);
+    let wanted = Wanted::new(args.name.as_deref(), "secrets", &args.vault)?;
     let content_type = args.content_type.as_deref().map(str::to_ascii_lowercase);
-    // A secret's id reads its one vault and matches its name exactly.
-    let (only, exact) = match args.name.as_deref().map(|raw| secret_ref(raw, None, None)) {
-        Some(Ok(found)) if found.vault.is_some() => (found.vault.into_iter().collect(), true),
-        Some(Err(error)) => return Err(error),
-        _ => (args.vault.clone(), false),
-    };
-    let wanted = match args.name.as_deref() {
-        Some(raw) if exact => Some(secret_ref(raw, None, None)?.name.to_ascii_lowercase()),
-        other => other.map(str::to_ascii_lowercase),
-    };
     let azure = Azure::load(ctx)?;
-    let vaults = narrow(
-        &inventory(ctx, &azure)?.vaults,
-        &azure.vaults,
-        &only,
-        VAULTS,
-        |v| &v.name,
-    )?;
-    let rows = read_all(ctx, &azure, &vaults)?;
-    let now = agent_cli_core::now();
-    let expiry = |row: &SecretRow| row.expires.as_deref().and_then(crate::client::parse_stamp);
+    let vaults = vaults(ctx, &azure, &wanted.only)?;
+    let rows = across(ctx, &azure, &vaults, |vault| {
+        secrets(ctx, vault, args.deleted)
+    })?;
     let rows = rows
         .into_iter()
-        .filter(|row| {
-            wanted.as_deref().is_none_or(|wanted| {
-                let name = row.name.to_ascii_lowercase();
-                if exact {
-                    name == wanted
-                } else {
-                    name.contains(wanted)
-                }
-            })
-        })
+        .filter(|row| wanted.matches(&row.name))
         .filter(|row| !args.disabled || !row.enabled)
         .filter(|row| args.tag.iter().all(|tag| tagged(&row.tags, tag)))
         .filter(|row| {
@@ -97,34 +74,9 @@ fn secret_list(ctx: &Ctx, args: SecretListArgs) -> Result<Vec<SecretRow>> {
             })
         })
         .filter(|row| args.managed.is_none_or(|managed| row.managed == managed))
-        .filter(|row| !args.expired || expiry(row).is_some_and(|at| at < now))
-        .filter(|row| {
-            // Something already expired is inside every window.
-            within.is_none_or(|within| expiry(row).is_some_and(|at| at <= now + within))
-        })
+        .filter(|row| expiring(row.expires.as_deref(), args.expired, args.expires_within))
         .collect();
     Ok(limited(ctx, rows, args.limit))
-}
-
-/// Every secret in `vaults`, read side by side. A vault that does not answer
-/// is named on stderr and the rest still print; when none answers, the first
-/// refusal is the answer.
-fn read_all(ctx: &Ctx, azure: &Azure, vaults: &[Vault]) -> Result<Vec<SecretRow>> {
-    let mut rows = Vec::new();
-    let mut failed = Vec::new();
-    for listing in parallel(vaults, azure.parallel(), |vault| secrets(ctx, vault)) {
-        match listing {
-            Ok(found) => rows.extend(found),
-            Err(error) => failed.push(error),
-        }
-    }
-    if !failed.is_empty() && failed.len() == vaults.len() {
-        return Err(failed.remove(0));
-    }
-    for error in failed {
-        ctx.note(format!("[not read: {error:#}]"));
-    }
-    Ok(rows)
 }
 
 command! {

@@ -118,6 +118,38 @@
      }
     },
     {
+     "id": "https://kv-contoso-prod.vault.azure.net/secrets/internal-contoso-example",
+     "contentType": "application/x-pkcs12",
+     "managed": true,
+     "kid": "https://kv-contoso-prod.vault.azure.net/keys/internal-contoso-example",
+     "tags": {
+      "owner": "web"
+     },
+     "attributes": {
+      "enabled": true,
+      "nbf": 1780300200,
+      "exp": 1811836200,
+      "created": 1780300800,
+      "updated": 1780300800
+     }
+    },
+    {
+     "id": "https://kv-contoso-prod.vault.azure.net/secrets/www-contoso-example",
+     "contentType": "application/x-pkcs12",
+     "managed": true,
+     "kid": "https://kv-contoso-prod.vault.azure.net/keys/www-contoso-example",
+     "tags": {
+      "owner": "web"
+     },
+     "attributes": {
+      "enabled": true,
+      "nbf": 1759881600,
+      "exp": 1791417600,
+      "created": 1759915800,
+      "updated": 1759915800
+     }
+    },
+    {
      "id": "https://kv-contoso-prod.vault.azure.net/secrets/api-key",
      "contentType": "text/plain",
      "tags": {
@@ -187,6 +219,412 @@
   }
  },
  {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod?api-version=2023-07-01",
+  "note": "kv vault get kv-contoso-prod: RBAC, firewall default Deny, its private endpoint (trace 1)",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod",
+   "name": "kv-contoso-prod",
+   "type": "Microsoft.KeyVault/vaults",
+   "location": "westeurope",
+   "tags": {
+    "owner": "platform"
+   },
+   "properties": {
+    "sku": {
+     "family": "A",
+     "name": "standard"
+    },
+    "tenantId": "00000000-0000-4000-8000-00000000a001",
+    "accessPolicies": [],
+    "enabledForDeployment": false,
+    "enabledForDiskEncryption": false,
+    "enabledForTemplateDeployment": false,
+    "enableSoftDelete": true,
+    "softDeleteRetentionInDays": 90,
+    "enableRbacAuthorization": true,
+    "enablePurgeProtection": true,
+    "vaultUri": "https://kv-contoso-prod.vault.azure.net/",
+    "provisioningState": "Succeeded",
+    "publicNetworkAccess": "Enabled",
+    "networkAcls": {
+     "bypass": "AzureServices",
+     "defaultAction": "Deny",
+     "ipRules": [],
+     "virtualNetworkRules": []
+    },
+    "privateEndpointConnections": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/privateEndpointConnections/pe-kv-contoso-prod.4f6a2b1c-0d9e-4f8a-b7c6-d5e4f3a2b1c0",
+      "etag": "\"0b005e6f-0000-0d00-0000-66f7a1c30000\"",
+      "properties": {
+       "privateEndpoint": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod"
+       },
+       "privateLinkServiceConnectionState": {
+        "status": "Approved",
+        "description": "Auto-Approved",
+        "actionsRequired": "None"
+       },
+       "provisioningState": "Succeeded"
+      }
+     }
+    ]
+   }
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-prod.vault.azure.net/keys?api-version=7.4&maxresults=25",
+  "note": "orders-cmk, and the two certificates' keys, which the vault manages",
+  "answer": {
+   "value": [
+    {
+     "kid": "https://kv-contoso-prod.vault.azure.net/keys/internal-contoso-example",
+     "managed": true,
+     "tags": {
+      "owner": "web"
+     },
+     "attributes": {
+      "enabled": true,
+      "nbf": 1780300200,
+      "exp": 1811836200,
+      "created": 1780300800,
+      "updated": 1780300800,
+      "recoveryLevel": "Recoverable"
+     }
+    },
+    {
+     "kid": "https://kv-contoso-prod.vault.azure.net/keys/orders-cmk",
+     "tags": {
+      "owner": "platform"
+     },
+     "attributes": {
+      "enabled": true,
+      "exp": 1815638400,
+      "created": 1784102400,
+      "updated": 1784102400,
+      "recoveryLevel": "Recoverable"
+     }
+    },
+    {
+     "kid": "https://kv-contoso-prod.vault.azure.net/keys/www-contoso-example",
+     "managed": true,
+     "tags": {
+      "owner": "web"
+     },
+     "attributes": {
+      "enabled": true,
+      "nbf": 1759881600,
+      "exp": 1791417600,
+      "created": 1759915800,
+      "updated": 1759915800,
+      "recoveryLevel": "Recoverable"
+     }
+    }
+   ],
+   "nextLink": null
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-prod.vault.azure.net/keys/orders-cmk?api-version=7.4",
+  "answer": {
+   "key": {
+    "kid": "https://kv-contoso-prod.vault.azure.net/keys/orders-cmk/5b7e0c1d9a2f4e6b8c3d1a0f9e8d7c6b",
+    "kty": "RSA",
+    "key_ops": [
+     "encrypt",
+     "decrypt",
+     "wrapKey",
+     "unwrapKey"
+    ],
+    "n": "CAzOcmSq9GCNmVJUj9j6IzSO2c9NE1RJQFY_yrzsWrrNfvK0BmX_E75ivnhZxe8IB8QB-MVA9WPhV-ET1MyhyYd13F421dSgHXO4SunJ0n1taVtBXI6txOthZkyZzKAlHSNkz_cGTTvSt7jYLrFoFJyRr_CZ_C46Wgs2bFg8ZwweYEN7Rxtl5pg2d3QqEtGqrdjGoB_ooY38AnVmy0ax6BAHC6kbOfjXjzPG4LUZ6aiWCnXpocKLKp4gWRWnXswgtz0W7VYSgyvAjh6-etP5XuSYmlAU0vo6pNQfIpNTjbrg7Yi9_NHf5ZUyaGZghbQCnrodb6UjxccGthaZvjqw3w",
+    "e": "AQAB"
+   },
+   "attributes": {
+    "enabled": true,
+    "exp": 1815638400,
+    "created": 1784102400,
+    "updated": 1784102400,
+    "recoveryLevel": "Recoverable"
+   },
+   "tags": {
+    "owner": "platform"
+   }
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-prod.vault.azure.net/keys/orders-cmk/rotationpolicy?api-version=7.4",
+  "answer": {
+   "id": "https://kv-contoso-prod.vault.azure.net/keys/orders-cmk/rotationpolicy",
+   "lifetimeActions": [
+    {
+     "trigger": {
+      "timeAfterCreate": "P90D"
+     },
+     "action": {
+      "type": "Rotate"
+     }
+    },
+    {
+     "trigger": {
+      "timeBeforeExpiry": "P30D"
+     },
+     "action": {
+      "type": "Notify"
+     }
+    }
+   ],
+   "attributes": {
+    "expiryTime": "P1Y",
+    "created": 1776326400,
+    "updated": 1776326400
+   }
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-prod.vault.azure.net/certificates?api-version=7.4&maxresults=25",
+  "note": "www-contoso-example (agw-contoso-prod's www.contoso.example) expires within 14 days of AGENT_CLI_NOW and does not renew itself",
+  "answer": {
+   "value": [
+    {
+     "id": "https://kv-contoso-prod.vault.azure.net/certificates/internal-contoso-example",
+     "x5t": "olDQONGiXfYJln4OAFmBX7thedA",
+     "tags": {
+      "owner": "web"
+     },
+     "attributes": {
+      "enabled": true,
+      "nbf": 1780300200,
+      "exp": 1811836200,
+      "created": 1780300800,
+      "updated": 1780300800,
+      "recoveryLevel": "Recoverable"
+     }
+    },
+    {
+     "id": "https://kv-contoso-prod.vault.azure.net/certificates/www-contoso-example",
+     "x5t": "B6RF3lKY7t5p5WclJy7lOcusCgg",
+     "tags": {
+      "owner": "web"
+     },
+     "attributes": {
+      "enabled": true,
+      "nbf": 1759881600,
+      "exp": 1791417600,
+      "created": 1759915800,
+      "updated": 1759915800,
+      "recoveryLevel": "Recoverable"
+     }
+    }
+   ],
+   "nextLink": null
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-prod.vault.azure.net/certificates/internal-contoso-example?api-version=7.4",
+  "answer": {
+   "id": "https://kv-contoso-prod.vault.azure.net/certificates/internal-contoso-example/3a1f0e9d8c7b4a6e9f2d1c0b9a8e7d6c",
+   "kid": "https://kv-contoso-prod.vault.azure.net/keys/internal-contoso-example/3a1f0e9d8c7b4a6e9f2d1c0b9a8e7d6c",
+   "sid": "https://kv-contoso-prod.vault.azure.net/secrets/internal-contoso-example/3a1f0e9d8c7b4a6e9f2d1c0b9a8e7d6c",
+   "x5t": "olDQONGiXfYJln4OAFmBX7thedA",
+   "cer": "MIIDstand-in-certificate-bytes",
+   "tags": {
+    "owner": "web"
+   },
+   "attributes": {
+    "enabled": true,
+    "nbf": 1780300200,
+    "exp": 1811836200,
+    "created": 1780300800,
+    "updated": 1780300800,
+    "recoveryLevel": "Recoverable"
+   },
+   "policy": {
+    "id": "https://kv-contoso-prod.vault.azure.net/certificates/internal-contoso-example/policy",
+    "key_props": {
+     "exportable": true,
+     "kty": "RSA",
+     "key_size": 2048,
+     "reuse_key": false
+    },
+    "secret_props": {
+     "contentType": "application/x-pkcs12"
+    },
+    "x509_props": {
+     "subject": "CN=internal.contoso.example",
+     "sans": {
+      "dns_names": [
+       "internal.contoso.example"
+      ]
+     },
+     "ekus": [
+      "1.3.6.1.5.5.7.3.1",
+      "1.3.6.1.5.5.7.3.2"
+     ],
+     "key_usage": [
+      "digitalSignature",
+      "keyEncipherment"
+     ],
+     "validity_months": 12
+    },
+    "lifetime_actions": [
+     {
+      "trigger": {
+       "lifetime_percentage": 80
+      },
+      "action": {
+       "action_type": "AutoRenew"
+      }
+     }
+    ],
+    "issuer": {
+     "name": "Self"
+    },
+    "attributes": {
+     "enabled": true,
+     "created": 1780300800,
+     "updated": 1780300800
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-prod.vault.azure.net/certificates/internal-contoso-example/pending?api-version=7.4",
+  "note": "no renewal under way",
+  "status": 404,
+  "answer": {
+   "error": {
+    "code": "PendingCertificateNotFound",
+    "message": "Pending certificate not found: internal-contoso-example"
+   }
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-prod.vault.azure.net/certificates/www-contoso-example?api-version=7.4",
+  "answer": {
+   "id": "https://kv-contoso-prod.vault.azure.net/certificates/www-contoso-example/9c2e4b7a1d3f4e5a8b6c0d1e2f3a4b5c",
+   "kid": "https://kv-contoso-prod.vault.azure.net/keys/www-contoso-example/9c2e4b7a1d3f4e5a8b6c0d1e2f3a4b5c",
+   "sid": "https://kv-contoso-prod.vault.azure.net/secrets/www-contoso-example/9c2e4b7a1d3f4e5a8b6c0d1e2f3a4b5c",
+   "x5t": "B6RF3lKY7t5p5WclJy7lOcusCgg",
+   "cer": "MIIDstand-in-certificate-bytes",
+   "tags": {
+    "owner": "web"
+   },
+   "attributes": {
+    "enabled": true,
+    "nbf": 1759881600,
+    "exp": 1791417600,
+    "created": 1759915800,
+    "updated": 1759915800,
+    "recoveryLevel": "Recoverable"
+   },
+   "policy": {
+    "id": "https://kv-contoso-prod.vault.azure.net/certificates/www-contoso-example/policy",
+    "key_props": {
+     "exportable": true,
+     "kty": "RSA",
+     "key_size": 2048,
+     "reuse_key": false
+    },
+    "secret_props": {
+     "contentType": "application/x-pkcs12"
+    },
+    "x509_props": {
+     "subject": "CN=www.contoso.example",
+     "sans": {
+      "dns_names": [
+       "www.contoso.example",
+       "contoso.example"
+      ]
+     },
+     "ekus": [
+      "1.3.6.1.5.5.7.3.1",
+      "1.3.6.1.5.5.7.3.2"
+     ],
+     "key_usage": [
+      "digitalSignature",
+      "keyEncipherment"
+     ],
+     "validity_months": 12
+    },
+    "lifetime_actions": [
+     {
+      "trigger": {
+       "days_before_expiry": 30
+      },
+      "action": {
+       "action_type": "EmailContacts"
+      }
+     }
+    ],
+    "issuer": {
+     "name": "Unknown"
+    },
+    "attributes": {
+     "enabled": true,
+     "created": 1759915800,
+     "updated": 1759915800
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-prod.vault.azure.net/certificates/www-contoso-example/pending?api-version=7.4",
+  "note": "no renewal under way",
+  "status": 404,
+  "answer": {
+   "error": {
+    "code": "PendingCertificateNotFound",
+    "message": "Pending certificate not found: www-contoso-example"
+   }
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-prod.vault.azure.net/secrets/www-contoso-example/versions?api-version=7.4&maxresults=25",
+  "note": "kv certificate get's next note: one version, so no renewal has landed",
+  "answer": {
+   "value": [
+    {
+     "id": "https://kv-contoso-prod.vault.azure.net/secrets/www-contoso-example/9c2e4b7a1d3f4e5a8b6c0d1e2f3a4b5c",
+     "contentType": "application/x-pkcs12",
+     "managed": true,
+     "attributes": {
+      "enabled": true,
+      "nbf": 1759881600,
+      "exp": 1791417600,
+      "created": 1759915800,
+      "updated": 1759915800,
+      "recoveryLevel": "Recoverable"
+     }
+    }
+   ],
+   "nextLink": null
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-prod.vault.azure.net/deletedsecrets?api-version=7.4&maxresults=25",
+  "answer": {
+   "value": [
+    {
+     "recoveryId": "https://kv-contoso-prod.vault.azure.net/deletedsecrets/orders-api-key-old",
+     "deletedDate": 1789899300,
+     "scheduledPurgeDate": 1797675300,
+     "id": "https://kv-contoso-prod.vault.azure.net/secrets/orders-api-key-old",
+     "contentType": "text/plain",
+     "tags": {
+      "owner": "api"
+     },
+     "attributes": {
+      "enabled": true,
+      "created": 1762072200,
+      "updated": 1762072200,
+      "recoveryLevel": "Recoverable"
+     }
+    }
+   ],
+   "nextLink": null
+  }
+ },
+ {
   "request": "POST https://contosoacr.azurecr.io/oauth2/exchange",
   "note": "the registry's token chain; any body",
   "answer": {
@@ -204,6 +642,7 @@
   "answer": {
    "repositories": [
     "api",
+    "reports",
     "worker"
    ]
   }
@@ -351,6 +790,397 @@
     "os": "linux",
     "tags": [
      "v1.4.2"
+    ]
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr?api-version=2023-07-01",
+  "note": "acr registry get contosoacr: Standard, so no replications, network rules or retention",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr",
+   "name": "contosoacr",
+   "type": "Microsoft.ContainerRegistry/registries",
+   "location": "westeurope",
+   "tags": {
+    "owner": "platform"
+   },
+   "sku": {
+    "name": "Standard",
+    "tier": "Standard"
+   },
+   "properties": {
+    "loginServer": "contosoacr.azurecr.io",
+    "creationDate": "2025-06-02T09:58:11.4471923Z",
+    "provisioningState": "Succeeded",
+    "adminUserEnabled": false,
+    "policies": {
+     "quarantinePolicy": {
+      "status": "disabled"
+     },
+     "trustPolicy": {
+      "type": "Notary",
+      "status": "disabled"
+     },
+     "retentionPolicy": {
+      "days": 7,
+      "status": "disabled"
+     },
+     "exportPolicy": {
+      "status": "enabled"
+     },
+     "azureADAuthenticationAsArmPolicy": {
+      "status": "enabled"
+     }
+    },
+    "encryption": {
+     "status": "disabled"
+    },
+    "dataEndpointEnabled": false,
+    "dataEndpointHostNames": [],
+    "privateEndpointConnections": [],
+    "publicNetworkAccess": "Enabled",
+    "networkRuleBypassOptions": "AzureServices",
+    "zoneRedundancy": "Disabled",
+    "anonymousPullEnabled": false
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr/webhooks?api-version=2023-07-01",
+  "answer": {
+   "value": []
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr/runs?api-version=2019-06-01-preview&$top=51",
+  "note": "api-ci run 8812 built api and worker v1.4.2 with az acr build (ca1e, ca1f); ca1g, reports v0.9.4, failed its tests",
+  "answer": {
+   "value": [
+    {
+     "type": "Microsoft.ContainerRegistry/registries/runs",
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr/runs/ca1g",
+     "name": "ca1g",
+     "properties": {
+      "runId": "ca1g",
+      "status": "Failed",
+      "lastUpdatedTime": "2026-09-29T09:12:44.8850000+00:00",
+      "runType": "QuickRun",
+      "createTime": "2026-09-29T09:12:01.4410000+00:00",
+      "startTime": "2026-09-29T09:12:03.0310000+00:00",
+      "finishTime": "2026-09-29T09:12:44.8850000+00:00",
+      "outputImages": [],
+      "platform": {
+       "os": "linux",
+       "architecture": "amd64"
+      },
+      "agentConfiguration": {
+       "cpu": 2
+      },
+      "provisioningState": "Succeeded",
+      "isArchiveEnabled": false,
+      "runErrorMessage": "failed during run, err: exit status 1"
+     }
+    },
+    {
+     "type": "Microsoft.ContainerRegistry/registries/runs",
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr/runs/ca1f",
+     "name": "ca1f",
+     "properties": {
+      "runId": "ca1f",
+      "status": "Succeeded",
+      "lastUpdatedTime": "2026-09-28T21:02:59.2030000+00:00",
+      "runType": "QuickRun",
+      "createTime": "2026-09-28T21:01:05.1120000+00:00",
+      "startTime": "2026-09-28T21:01:06.7710000+00:00",
+      "finishTime": "2026-09-28T21:02:59.2030000+00:00",
+      "outputImages": [
+       {
+        "registry": "contosoacr.azurecr.io",
+        "repository": "worker",
+        "tag": "v1.4.2",
+        "digest": "sha256:0bdbdea4bfb8c2015fac6e1b5d750e6ed21374b592b8ed275cb1650230c8c7ff"
+       }
+      ],
+      "platform": {
+       "os": "linux",
+       "architecture": "amd64"
+      },
+      "agentConfiguration": {
+       "cpu": 2
+      },
+      "provisioningState": "Succeeded",
+      "isArchiveEnabled": false
+     }
+    },
+    {
+     "type": "Microsoft.ContainerRegistry/registries/runs",
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr/runs/ca1e",
+     "name": "ca1e",
+     "properties": {
+      "runId": "ca1e",
+      "status": "Succeeded",
+      "lastUpdatedTime": "2026-09-28T21:02:41.0940000+00:00",
+      "runType": "QuickRun",
+      "createTime": "2026-09-28T21:00:51.2120000+00:00",
+      "startTime": "2026-09-28T21:00:52.6600000+00:00",
+      "finishTime": "2026-09-28T21:02:41.0940000+00:00",
+      "outputImages": [
+       {
+        "registry": "contosoacr.azurecr.io",
+        "repository": "api",
+        "tag": "v1.4.2",
+        "digest": "sha256:7a72fa7948c3b5e299c40bdb1ebeb125e313c32d4262e130a8206115054663d3"
+       }
+      ],
+      "platform": {
+       "os": "linux",
+       "architecture": "amd64"
+      },
+      "agentConfiguration": {
+       "cpu": 2
+      },
+      "provisioningState": "Succeeded",
+      "isArchiveEnabled": false
+     }
+    },
+    {
+     "type": "Microsoft.ContainerRegistry/registries/runs",
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr/runs/ca1d",
+     "name": "ca1d",
+     "properties": {
+      "runId": "ca1d",
+      "status": "Succeeded",
+      "lastUpdatedTime": "2026-09-26T14:10:12.3000000+00:00",
+      "runType": "QuickRun",
+      "createTime": "2026-09-26T14:08:30.5000000+00:00",
+      "startTime": "2026-09-26T14:08:31.9000000+00:00",
+      "finishTime": "2026-09-26T14:10:12.3000000+00:00",
+      "outputImages": [
+       {
+        "registry": "contosoacr.azurecr.io",
+        "repository": "reports",
+        "tag": "v0.9.3",
+        "digest": "sha256:2e58b2e4d87ee504cea6763e12eecb53f28833e7315a33b7ca1263184de970f3"
+       }
+      ],
+      "platform": {
+       "os": "linux",
+       "architecture": "amd64"
+      },
+      "agentConfiguration": {
+       "cpu": 2
+      },
+      "provisioningState": "Succeeded",
+      "isArchiveEnabled": false
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr/runs/ca1g?api-version=2019-06-01-preview",
+  "answer": {
+   "type": "Microsoft.ContainerRegistry/registries/runs",
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr/runs/ca1g",
+   "name": "ca1g",
+   "properties": {
+    "runId": "ca1g",
+    "status": "Failed",
+    "lastUpdatedTime": "2026-09-29T09:12:44.8850000+00:00",
+    "runType": "QuickRun",
+    "createTime": "2026-09-29T09:12:01.4410000+00:00",
+    "startTime": "2026-09-29T09:12:03.0310000+00:00",
+    "finishTime": "2026-09-29T09:12:44.8850000+00:00",
+    "outputImages": [],
+    "platform": {
+     "os": "linux",
+     "architecture": "amd64"
+    },
+    "agentConfiguration": {
+     "cpu": 2
+    },
+    "provisioningState": "Succeeded",
+    "isArchiveEnabled": false,
+    "runErrorMessage": "failed during run, err: exit status 1"
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr/runs/ca1f?api-version=2019-06-01-preview",
+  "answer": {
+   "type": "Microsoft.ContainerRegistry/registries/runs",
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr/runs/ca1f",
+   "name": "ca1f",
+   "properties": {
+    "runId": "ca1f",
+    "status": "Succeeded",
+    "lastUpdatedTime": "2026-09-28T21:02:59.2030000+00:00",
+    "runType": "QuickRun",
+    "createTime": "2026-09-28T21:01:05.1120000+00:00",
+    "startTime": "2026-09-28T21:01:06.7710000+00:00",
+    "finishTime": "2026-09-28T21:02:59.2030000+00:00",
+    "outputImages": [
+     {
+      "registry": "contosoacr.azurecr.io",
+      "repository": "worker",
+      "tag": "v1.4.2",
+      "digest": "sha256:0bdbdea4bfb8c2015fac6e1b5d750e6ed21374b592b8ed275cb1650230c8c7ff"
+     }
+    ],
+    "platform": {
+     "os": "linux",
+     "architecture": "amd64"
+    },
+    "agentConfiguration": {
+     "cpu": 2
+    },
+    "provisioningState": "Succeeded",
+    "isArchiveEnabled": false
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr/runs/ca1e?api-version=2019-06-01-preview",
+  "answer": {
+   "type": "Microsoft.ContainerRegistry/registries/runs",
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr/runs/ca1e",
+   "name": "ca1e",
+   "properties": {
+    "runId": "ca1e",
+    "status": "Succeeded",
+    "lastUpdatedTime": "2026-09-28T21:02:41.0940000+00:00",
+    "runType": "QuickRun",
+    "createTime": "2026-09-28T21:00:51.2120000+00:00",
+    "startTime": "2026-09-28T21:00:52.6600000+00:00",
+    "finishTime": "2026-09-28T21:02:41.0940000+00:00",
+    "outputImages": [
+     {
+      "registry": "contosoacr.azurecr.io",
+      "repository": "api",
+      "tag": "v1.4.2",
+      "digest": "sha256:7a72fa7948c3b5e299c40bdb1ebeb125e313c32d4262e130a8206115054663d3"
+     }
+    ],
+    "platform": {
+     "os": "linux",
+     "architecture": "amd64"
+    },
+    "agentConfiguration": {
+     "cpu": 2
+    },
+    "provisioningState": "Succeeded",
+    "isArchiveEnabled": false
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr/runs/ca1d?api-version=2019-06-01-preview",
+  "answer": {
+   "type": "Microsoft.ContainerRegistry/registries/runs",
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr/runs/ca1d",
+   "name": "ca1d",
+   "properties": {
+    "runId": "ca1d",
+    "status": "Succeeded",
+    "lastUpdatedTime": "2026-09-26T14:10:12.3000000+00:00",
+    "runType": "QuickRun",
+    "createTime": "2026-09-26T14:08:30.5000000+00:00",
+    "startTime": "2026-09-26T14:08:31.9000000+00:00",
+    "finishTime": "2026-09-26T14:10:12.3000000+00:00",
+    "outputImages": [
+     {
+      "registry": "contosoacr.azurecr.io",
+      "repository": "reports",
+      "tag": "v0.9.3",
+      "digest": "sha256:2e58b2e4d87ee504cea6763e12eecb53f28833e7315a33b7ca1263184de970f3"
+     }
+    ],
+    "platform": {
+     "os": "linux",
+     "architecture": "amd64"
+    },
+    "agentConfiguration": {
+     "cpu": 2
+    },
+    "provisioningState": "Succeeded",
+    "isArchiveEnabled": false
+   }
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr/runs/ca1g/listLogSasUrl?api-version=2019-06-01-preview",
+  "note": "acr run logs contosoacr/ca1g: a read-only SAS link to the log blob",
+  "answer": {
+   "logLink": "https://weuacrtasklogs.blob.core.windows.net/contosoacr/logs/ca1g/rawtext.log?sv=2021-08-06&se=2026-09-29T13%3A00%3A00Z&sr=b&sp=r&sig=fixture-sas-signature-stand-in"
+  }
+ },
+ {
+  "request": "GET https://weuacrtasklogs.blob.core.windows.net/contosoacr/logs/ca1g/rawtext.log?sv=2021-08-06&se=2026-09-29T13%3A00%3A00Z&sr=b&sp=r&sig=fixture-sas-signature-stand-in",
+  "note": "the log blob, fetched with no token: the SAS is the credential",
+  "text": "2026/09/29 09:12:03 Downloading source code...\n2026/09/29 09:12:05 Finished downloading source code\n2026/09/29 09:12:05 Using acb_vol_5d1c2a for source\n2026/09/29 09:12:06 Launching container with name: build\nSending build context to Docker daemon  1.912MB\nStep 1/9 : FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build\n ---> 3c9f2a1b0d4e\nStep 2/9 : WORKDIR /src\n ---> Using cache\nStep 3/9 : COPY . .\n ---> 8e1d0c2b3a4f\nStep 4/9 : RUN dotnet test tests/Reports.Tests --configuration Release\n ---> Running in 2f7a9c1e4b6d\n  Determining projects to restore...\n  Reports.Tests -> /src/tests/Reports.Tests/bin/Release/net8.0/Reports.Tests.dll\n  Failed Reports.Tests.MonthlyReportTests.TotalsMatchOrders [41 ms]\n  Error Message:\n   Assert.Equal() Failure: Expected: 412, Actual: 411\n  Stack Trace:\n     at Reports.Tests.MonthlyReportTests.TotalsMatchOrders() in /src/tests/Reports.Tests/MonthlyReportTests.cs:line 27\nFailed!  - Failed:     1, Passed:    37, Skipped:     0, Total:    38, Duration: 2 s - Reports.Tests.dll (net8.0)\nThe command '/bin/sh -c dotnet test tests/Reports.Tests --configuration Release' returned a non-zero code: 1\n2026/09/29 09:12:44 Container failed during run: build. No retries remaining.\nfailed to run step ID: build: exit status 1\n\nRun ID: ca1g failed after 41s. Error: failed during run, err: exit status 1\n"
+ },
+ {
+  "request": "GET https://contosoacr.azurecr.io/acr/v1/reports",
+  "answer": {
+   "registry": "contosoacr.azurecr.io",
+   "imageName": "reports",
+   "tagCount": 1,
+   "manifestCount": 1,
+   "createdTime": "2026-03-10T11:20:00.0000000Z",
+   "lastUpdateTime": "2026-09-26T14:10:11.8000000Z"
+  }
+ },
+ {
+  "request": "GET https://contosoacr.azurecr.io/acr/v1/reports/_tags?n=100&orderby=timedesc",
+  "answer": {
+   "registry": "contosoacr.azurecr.io",
+   "imageName": "reports",
+   "tags": [
+    {
+     "name": "v0.9.3",
+     "digest": "sha256:2e58b2e4d87ee504cea6763e12eecb53f28833e7315a33b7ca1263184de970f3",
+     "createdTime": "2026-09-26T14:10:11.8000000Z",
+     "lastUpdateTime": "2026-09-26T14:10:11.8000000Z",
+     "signed": false
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosoacr.azurecr.io/acr/v1/reports/_manifests/v0.9.3",
+  "answer": {
+   "registry": "contosoacr.azurecr.io",
+   "imageName": "reports",
+   "manifest": {
+    "digest": "sha256:2e58b2e4d87ee504cea6763e12eecb53f28833e7315a33b7ca1263184de970f3",
+    "imageSize": 112408221,
+    "createdTime": "2026-09-26T14:10:11.8000000Z",
+    "lastUpdateTime": "2026-09-26T14:10:11.8000000Z",
+    "architecture": "amd64",
+    "os": "linux",
+    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+    "tags": [
+     "v0.9.3"
+    ]
+   }
+  }
+ },
+ {
+  "request": "GET https://contosoacr.azurecr.io/acr/v1/reports/_manifests/sha256:2e58b2e4d87ee504cea6763e12eecb53f28833e7315a33b7ca1263184de970f3",
+  "answer": {
+   "registry": "contosoacr.azurecr.io",
+   "imageName": "reports",
+   "manifest": {
+    "digest": "sha256:2e58b2e4d87ee504cea6763e12eecb53f28833e7315a33b7ca1263184de970f3",
+    "imageSize": 112408221,
+    "createdTime": "2026-09-26T14:10:11.8000000Z",
+    "lastUpdateTime": "2026-09-26T14:10:11.8000000Z",
+    "architecture": "amd64",
+    "os": "linux",
+    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+    "tags": [
+     "v0.9.3"
     ]
    }
   }

@@ -42,6 +42,8 @@ const PAGE: usize = 1000;
 /// One key vault.
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 pub struct Vault {
+    /// Its name: what `kv vault get` and `--vault` take.
+    pub id: String,
     pub name: String,
     pub subscription: String,
     pub resource_group: String,
@@ -53,6 +55,8 @@ pub struct Vault {
 /// One container registry.
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 pub struct Registry {
+    /// Its name: what `acr registry get` and `--registry` take.
+    pub id: String,
     pub name: String,
     /// The data-plane host, `contosoacr.azurecr.io`, which `docker pull` takes.
     pub login_server: String,
@@ -146,8 +150,8 @@ pub struct Inventory {
 /// else from Resource Graph. The cache holds names and addresses only, and
 /// every address read back from it is checked again before a token goes to it.
 pub fn inventory(ctx: &Ctx, azure: &Azure) -> Result<Inventory> {
-    // Not `azure:inventory:`, whose entries predate search services.
-    let key = format!("azure:inventory2:{}", azure.subscriptions.join(","));
+    // Not `azure:inventory2:`, whose vaults and registries have no `id`.
+    let key = format!("azure:inventory3:{}", azure.subscriptions.join(","));
     if let Some(held) = ctx.cache().get::<Inventory>(&key) {
         return Ok(held);
     }
@@ -185,6 +189,7 @@ fn query(ctx: &Ctx, azure: &Azure) -> Result<Inventory> {
         let field = |key: &str| text(&row[key]).unwrap_or_default();
         match field("type").to_ascii_lowercase().as_str() {
             "microsoft.keyvault/vaults" => inventory.vaults.push(Vault {
+                id: field("name"),
                 name: field("name"),
                 subscription: field("subscriptionId"),
                 resource_group: field("resourceGroup"),
@@ -192,6 +197,7 @@ fn query(ctx: &Ctx, azure: &Azure) -> Result<Inventory> {
                 uri: field("vaultUri"),
             }),
             "microsoft.containerregistry/registries" => inventory.registries.push(Registry {
+                id: field("name"),
                 name: field("name"),
                 login_server: field("loginServer"),
                 subscription: field("subscriptionId"),

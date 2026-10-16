@@ -11,8 +11,8 @@ string or list; empty is all the login reaches, else an allowlist in row
 order), `refresh` (cache seconds, 300), `parallel` (8). No credential of
 its own: `az_token(ctx, resource, fresh)` per audience. Tokens go only to
 `management.azure.com`, `*.vault.azure.net`, `*.azurecr.io`,
-`*.search.windows.net`, checked on every URL. An allowlist that reaches
-nothing is an error, never an empty answer.
+`*.search.windows.net`, checked on every URL (a run log's SAS link gets
+none). An allowlist that reaches nothing is an error, never an empty answer.
 
 ## Where things are (`src/`)
 A command is `<domain>/<resource>/<verb>.rs` (`kv/secret/list.rs`). Each
@@ -25,8 +25,10 @@ domain's module doc (`kv/mod.rs` …) gives its ids, helpers and quirks.
   polled under the deadline).
 - `graph.rs`: `rows` (any Resource Graph query, paged); the cached
   inventory of vaults, registries, clusters, search services.
-- `kv/mod.rs`: ids `vault/name[/version]`; `get`, the door.
-- `acr/mod.rs`: ids `loginserver/repo[:tag|@digest]`; `Session`.
+- `kv/mod.rs`: ids `vault/name[/version]`; `get`, `found`, `put`, the
+  doors; `item_ref`, `holder`, `across`. `kv/certificate/mod.rs`: the row.
+- `acr/mod.rs`: ids `loginserver/repo[:tag|@digest]`; `Session` (`delete`);
+  `named`, `arm_id`. `acr/run/mod.rs`: runs, ids `registry/runid`.
 - `aks/mod.rs`: a cluster's name, ARM id or portal link, a pool
   `cluster/pool`; `locate`, `Located`. `aks/nodepool/mod.rs`: `pool`.
 - `aisearch/mod.rs`: `Search`, the door; ids in `aisearch/refs.rs`.

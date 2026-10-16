@@ -6,7 +6,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::client::{from_unix, limited};
-use crate::kv::{API_VERSION, PAGE, base, holder, last_segment, pages, secret_ref, segment};
+use crate::kv::{API_VERSION, PAGE, base, holder, item_ref, last_segment, pages, segment};
 
 #[derive(clap::Args)]
 pub struct VersionListArgs {
@@ -32,7 +32,7 @@ pub struct VersionRow {
 }
 
 fn version_list(ctx: &Ctx, args: VersionListArgs) -> Result<Vec<VersionRow>> {
-    let secret = secret_ref(&args.secret, args.vault.as_deref(), None)?;
+    let secret = item_ref(&args.secret, "secrets", args.vault.as_deref(), None)?;
     if secret.version.is_some() {
         return Err(Failure::usage(format!(
             "{} names one version; version list takes the secret (vault/name)",
@@ -40,7 +40,7 @@ fn version_list(ctx: &Ctx, args: VersionListArgs) -> Result<Vec<VersionRow>> {
         ))
         .into());
     }
-    let vault = holder(ctx, &secret.name, secret.vault.as_deref())?;
+    let vault = holder(ctx, "secrets", &secret.name, secret.vault.as_deref())?;
     let first = format!(
         "{}secrets/{}/versions?api-version={API_VERSION}&maxresults={PAGE}",
         base(&vault),

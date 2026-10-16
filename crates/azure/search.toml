@@ -686,3 +686,121 @@ expect = "arm metric list"
 [[query]]
 text = "which metrics does this azure resource have"
 expect = "arm metric list"
+
+# ---------- kv and acr, phase 10 ----------
+
+[[query]]
+text = "key vault firewall default action"
+expect = "kv vault get"
+
+[[query]]
+text = "is the key vault using rbac or access policies"
+expect = "kv vault get"
+
+[[query]]
+text = "does kv-contoso-prod have a private endpoint"
+expect = "kv vault get"
+
+[[query]]
+text = "is purge protection enabled on the vault"
+expect = "kv vault get"
+
+[[query]]
+text = "list keys in key vault"
+expect = "kv key list"
+
+[[query]]
+text = "which encryption keys expire soon"
+expect = "kv key list"
+
+[[query]]
+text = "key vault key rotation policy"
+expect = "kv key get"
+
+[[query]]
+text = "what size is the rsa key orders-cmk"
+expect = "kv key get"
+
+[[query]]
+text = "certificate expiring in key vault"
+expect = "kv certificate list"
+
+[[query]]
+text = "list tls certificates in the vault"
+expect = "kv certificate list"
+
+[[query]]
+text = "which certs expire in the next 14 days"
+expect = "kv certificate list"
+
+[[query]]
+text = "is the certificate set to autorenew"
+expect = "kv certificate get"
+
+[[query]]
+text = "show the subject and SANs of the www certificate"
+expect = "kv certificate get"
+
+[[query]]
+text = "certificate renewal pending and failed"
+expect = "kv certificate get"
+
+[[query]]
+text = "rotate a key vault secret value"
+expect = "kv secret update"
+
+[[query]]
+text = "set a new password in key vault"
+expect = "kv secret update"
+
+[[query]]
+text = "deleted secrets in key vault scheduled for purge"
+expect = "kv secret list"
+
+[[query]]
+text = "is the acr admin user enabled"
+expect = "acr registry get"
+
+[[query]]
+text = "acr retention policy for untagged manifests"
+expect = "acr registry get"
+
+[[query]]
+text = "container registry network rules and public access"
+expect = "acr registry get"
+
+[[query]]
+text = "acr build history"
+expect = "acr run list"
+
+[[query]]
+text = "list failed acr task runs"
+expect = "acr run list"
+
+[[query]]
+text = "which acr task built api v1.4.2"
+expect = "acr run list"
+
+[[query]]
+text = "why did acr run ca1g fail"
+expect = "acr run get"
+
+[[query]]
+text = "status of an acr build run"
+expect = "acr run get"
+
+[[query]]
+text = "acr build logs"
+expect = "acr run logs"
+
+[[query]]
+text = "show the output of the failed acr task run"
+expect = "acr run logs"
+
+[[query]]
+text = "delete an image tag"
+expect = "acr tag delete"
+
+[[query]]
+text = "untag an image in the container registry"
+expect = "acr tag delete"

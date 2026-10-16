@@ -188,6 +188,19 @@ pub(crate) fn resolve(ctx: &Ctx, azure: &Azure, raw: &str, lookup: &Lookup) -> R
     Ok(target)
 }
 
+/// The name `raw` gives a resource of `lookup`'s one kind: itself when it is
+/// a bare name, else the last segment of the ARM id, URL or portal link it
+/// is, checked as `resolve` checks it. For kv and acr, which find a vault or
+/// registry by name in the inventory, within its allowlist.
+pub(crate) fn name_in(ctx: &Ctx, azure: &Azure, raw: &str, lookup: &Lookup) -> Result<String> {
+    let raw = raw.trim();
+    if !raw.is_empty() && !raw.contains('/') {
+        return Ok(raw.to_owned());
+    }
+    let target = resolve(ctx, azure, raw, lookup)?;
+    Ok(target.id.rsplit('/').next().unwrap_or_default().to_owned())
+}
+
 /// Any resource `raw` names, as a `--resource` or `--scope` flag takes it:
 /// an id, a portal link, or a name within `group`.
 pub(crate) fn any(ctx: &Ctx, azure: &Azure, raw: &str, group: Option<&str>) -> Result<Target> {

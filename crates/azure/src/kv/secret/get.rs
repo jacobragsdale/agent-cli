@@ -6,7 +6,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::client::text;
-use crate::kv::{API_VERSION, base, get, holder, last_segment, secret_ref, segment};
+use crate::kv::{API_VERSION, base, get, holder, item_ref, last_segment, segment};
 
 #[derive(clap::Args)]
 pub struct SecretGetArgs {
@@ -31,13 +31,18 @@ pub struct SecretValue {
 }
 
 fn secret_get(ctx: &Ctx, args: SecretGetArgs) -> Result<SecretValue> {
-    let secret = secret_ref(&args.name, args.vault.as_deref(), args.version.as_deref())?;
+    let secret = item_ref(
+        &args.name,
+        "secrets",
+        args.vault.as_deref(),
+        args.version.as_deref(),
+    )?;
     let args = SecretGetArgs {
         name: secret.name,
         vault: secret.vault,
         version: secret.version,
     };
-    let vault = holder(ctx, &args.name, args.vault.as_deref())?;
+    let vault = holder(ctx, "secrets", &args.name, args.vault.as_deref())?;
     let url = match &args.version {
         Some(version) => format!(
             "{}secrets/{}/{}?api-version={API_VERSION}",

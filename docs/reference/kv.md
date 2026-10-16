@@ -1,11 +1,17 @@
-# kv — Key Vault (4 commands)
+# kv — Key Vault (10 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
 | [`kv secret list`](#kv-secret-list) | read | List Key Vault secrets with expiry and tags (names and metadata, never values) |
 | [`kv secret get`](#kv-secret-get) | reveal | Get a Key Vault secret's value (needs --reveal, or --output FILE) |
+| [`kv secret update`](#kv-secret-update) | write | Set a Key Vault secret's new value (a new version) from stdin or a file |
 | [`kv version list`](#kv-version-list) | read | List a secret's versions, newest first (when it was rotated; never values) |
+| [`kv certificate list`](#kv-certificate-list) | read | List Key Vault certificates with subject, SANs, issuer, expiry and autorenew |
+| [`kv certificate get`](#kv-certificate-get) | read | Show a Key Vault certificate with its policy and any pending renewal |
+| [`kv key list`](#kv-key-list) | read | List Key Vault keys with expiry and tags (never key material) |
+| [`kv key get`](#kv-key-get) | read | Show a Key Vault key's type, size, operations, expiry and rotation policy |
 | [`kv vault list`](#kv-vault-list) | read | List the key vaults the az login reaches (within [azure] vaults) |
+| [`kv vault get`](#kv-vault-get) | read | Show a key vault's access model, network rules, endpoints and soft delete |
 
 ### kv secret list
 
@@ -19,9 +25,10 @@ agent-cli kv secret list — List Key Vault secrets with expiry and tags (names 
   --tag str[]                Only secrets tagged key, or key=value, any case (repeatable)
   --content-type str         Only secrets whose content type contains this, any case
   --managed true|false       True for certificates' backing secrets only, false for none of them
+  --deleted                  The deleted secrets instead: when each was deleted and will be purged
   --limit int                (default 50)
 A duration is 500ms, 30s, 15m, 2h, 7d, 1w.
-Returns: [{id,vault,name,enabled,content_type,expires,created,updated,managed,tags}]
+Returns: [{id,vault,name,enabled,content_type,expires,created,updated,managed,tags,deleted,purge}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli kv secret list db --expires-within 30d --fields id,expires
 ```
@@ -38,6 +45,21 @@ Reveals a secret: --reveal prints it; --output FILE saves it (0600) and prints o
 e.g. agent-cli kv secret get kv-contoso-dev/db-password --fields value --output db-password.txt
 ```
 
+### kv secret update
+
+```text
+agent-cli kv secret update — Set a Key Vault secret's new value (a new version) from stdin or a file
+ *<secret> str        The secret: its name, its id (vault/name) or its URI
+  <value> str         - reads the new value from stdin (at most 25 KiB); never the value itself
+  --value-file path   Read the new value from this file instead
+  --vault str         The vault that holds it; needed when more than one does
+  --content-type str  The new version's content type (text/plain …); the current one's when left out
+  --expires str       When the new version expires: a length from now (90d) or a date or RFC 3339 time
+Returns: {id,vault,name,version,content_type,expires,tags}
+Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli kv secret update kv-contoso-prod/db-password --value-file new-password.txt --expires 90d
+```
+
 ### kv version list
 
 ```text
@@ -50,12 +72,76 @@ Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli kv version list kv-contoso-dev/db-password --fields id,created,enabled
 ```
 
+### kv certificate list
+
+```text
+agent-cli kv certificate list — List Key Vault certificates with subject, SANs, issuer, expiry and autorenew
+  <name> str                 Part of the certificate name, any case; or a certificate's id (vault/name), exactly
+  --vault str[]              Only this vault (repeatable; within [azure] vaults)
+  --expires-within duration  Only certificates expiring within this long, or already expired
+  --expired                  Only certificates whose expiry has passed
+  --limit int                (default 50)
+A duration is 500ms, 30s, 15m, 2h, 7d, 1w.
+Returns: [{id,vault,name,subject,sans[],issuer,thumbprint,enabled,expires,not_before,updated,autorenew,tags}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli kv certificate list --expires-within 30d --fields id,subject,expires,autorenew
+```
+
+### kv certificate get
+
+```text
+agent-cli kv certificate get — Show a Key Vault certificate with its policy and any pending renewal
+ *<certificate> str  The certificate: its name, its id (vault/name[/version]) or its URI
+  --vault str        The vault that holds it; needed when more than one does
+  --version str      A version id; the current one when left out
+Returns: {id,vault,name,subject,sans[],issuer,thumbprint,enabled,expires,not_before,updated,autorenew,tags,version,policy{key_type,key_size,curve,reuse_key,exportable,content_type,validity_months,key_usage[],lifetime_actions[{action,lifetime_percentage,days_before_expiry}]},pending{state,details,error,request_id}}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli kv certificate get kv-contoso-prod/www-contoso-example --fields subject,expires,autorenew,pending
+```
+
+### kv key list
+
+```text
+agent-cli kv key list — List Key Vault keys with expiry and tags (never key material)
+  <name> str                 Part of the key name, any case; or a key's id (vault/name), exactly
+  --vault str[]              Only this vault (repeatable; within [azure] vaults)
+  --expires-within duration  Only keys expiring within this long, or already expired
+  --expired                  Only keys whose expiry has passed
+  --limit int                (default 50)
+A duration is 500ms, 30s, 15m, 2h, 7d, 1w.
+Returns: [{id,vault,name,enabled,expires,created,updated,managed,tags}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli kv key list --expires-within 30d --fields id,expires
+```
+
+### kv key get
+
+```text
+agent-cli kv key get — Show a Key Vault key's type, size, operations, expiry and rotation policy
+ *<key> str      The key: its name, its id (vault/name[/version]) or its URI
+  --vault str    The vault that holds it; needed when more than one does
+  --version str  A version id; the current one when left out
+Returns: {id,vault,name,version,key_type,size,curve,operations[],enabled,expires,not_before,created,updated,managed,tags,rotation{expires_after,actions[{action,after_create,before_expiry}]}}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli kv key get kv-contoso-prod/orders-cmk --fields key_type,size,rotation
+```
+
 ### kv vault list
 
 ```text
 agent-cli kv vault list — List the key vaults the az login reaches (within [azure] vaults)
   --limit int  (default 50)
-Returns: [{name,subscription,resource_group,location,uri}]
+Returns: [{id,name,subscription,resource_group,location,uri}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli kv vault list --fields name,resource_group,uri
+```
+
+### kv vault get
+
+```text
+agent-cli kv vault get — Show a key vault's access model, network rules, endpoints and soft delete
+ *<vault> str  The vault: its name, URI, ARM id or portal link
+Returns: {id,arm_id,uri,location,sku,authorization,access_policies[{object_id,secrets[],keys[],certificates[]}],soft_delete,soft_delete_days,purge_protection,public_network_access,network{default_action,bypass,allowed_ranges[],vnet_rules[]},endpoints[{id,status}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli kv vault get kv-contoso-prod --fields authorization,network,endpoints
 ```

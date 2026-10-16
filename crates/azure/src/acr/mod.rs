@@ -12,25 +12,35 @@
 //!
 //! An image's id is `loginserver/repo[:tag|@digest]`; a bare `repo:tag`
 //! finds its registry through `holder`. A [`Session`] per registry holds
-//! its tokens.
+//! its tokens; `delete` is its one change (`acr tag delete`). A registry's
+//! id is its name (`named` reads any ref to one, `arm_id` its ARM id), and
+//! `registry get` and the ACR Tasks runs (`run/mod.rs`, ids
+//! `registry/runid`) read ARM with the ARM token instead.
 
 pub(crate) mod manifest;
 pub(crate) mod registry;
 pub(crate) mod repo;
+pub(crate) mod run;
 pub(crate) mod tag;
 
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use agent_cli_core::{Ctx, Failure, Method, Request, Secret, host_under, percent_encode};
+use agent_cli_core::{Ctx, Effect, Failure, Method, Request, Secret, host_under, percent_encode};
 use anyhow::{Context, Result, bail};
 use serde_json::Value;
 
+use crate::arm::resource::{Lookup, name_in};
 use crate::client::{Kind, REGISTRY, az_token, narrow, parallel, text};
 use crate::config::Azure;
 use crate::graph::{Registry, inventory};
 
 pub(crate) const CATALOG_SCOPE: &str = "registry:catalog:*";
+/// The roles a read needs.
+const PULL: &str = "AcrPull, or Container Registry Repository Reader on an ABAC registry";
+/// A stable Microsoft.ContainerRegistry api-version for the registry, its
+/// replications and webhooks.
+pub(crate) const API: &str = "2023-07-01";
 /// A short page is how a listing's end announces itself.
 const PAGE: usize = 100;
 
@@ -80,8 +90,26 @@ impl<'a> Session<'a> {
         let mint = |fresh: bool| self.bearer(scope, fresh);
         self.ctx
             .read(Request::get(url).auth(&mint))
-            .map_err(|error| self.explain(error))?
+            .map_err(|error| self.explain(error, PULL))?
             .json()
+    }
+
+    /// One signed DELETE of `/acr/v1/{path}`, a destructive change.
+    pub(crate) fn delete(&self, scope: &str, path: &str) -> Result<()> {
+        let url = format!("https://{}/acr/v1/{path}", self.registry.login_server);
+        let mint = |fresh: bool| self.bearer(scope, fresh);
+        self.ctx
+            .write(
+                Effect::Destructive,
+                Request::new(Method::Delete, url).auth(&mint),
+            )
+            .map_err(|error| {
+                self.explain(
+                    error,
+                    "AcrDelete, or Container Registry Repository Contributor on an ABAC registry",
+                )
+            })?;
+        Ok(())
     }
 
     /// `Bearer <access token>` for `scope`. After a 401 (`fresh`) the whole
@@ -132,7 +160,7 @@ impl<'a> Session<'a> {
             }
             first => first,
         }
-        .map_err(|error| self.explain(error))?;
+        .map_err(|error| self.explain(error, PULL))?;
         let refresh = Secret::new(text(&exchanged["refresh_token"]).with_context(|| {
             format!(
                 "{} answered the exchange without a token",
@@ -172,10 +200,10 @@ impl<'a> Session<'a> {
     /// A 401 or 403 that survived the retry is a login with no role here, which
     /// no retry fixes. Anything else, `az` not signed in included, keeps its
     /// own words.
-    fn explain(&self, error: anyhow::Error) -> anyhow::Error {
+    fn explain(&self, error: anyhow::Error, needs: &str) -> anyhow::Error {
         if matches!(crate::client::refused_with(&error), Some(401 | 403)) {
             return error.context(format!(
-                "{}: no permission (needs AcrPull, or Container Registry Repository Reader on an ABAC registry)",
+                "{}: no permission (needs {needs})",
                 self.registry.login_server
             ));
         }
@@ -378,6 +406,59 @@ fn holder(ctx: &Ctx, azure: &Azure, repo: &str, only: Option<&str>) -> Result<Re
         ))
         .into()),
     }
+}
+
+/// The registry `raw` names, within `[azure] registries`: its name, login
+/// server (with `https://` or not), ARM id or portal link.
+pub(crate) fn named(ctx: &Ctx, azure: &Azure, raw: &str) -> Result<Registry> {
+    let raw = raw.trim();
+    let host = raw.strip_prefix("https://").unwrap_or(raw);
+    let host = host
+        .split('/')
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let found = inventory(ctx, azure)?.registries;
+    let name = if host.ends_with(".azurecr.io") {
+        found
+            .iter()
+            .find(|registry| registry.login_server.eq_ignore_ascii_case(&host))
+            .map_or_else(|| host.clone(), |registry| registry.name.clone())
+    } else {
+        name_in(
+            ctx,
+            azure,
+            raw,
+            &Lookup {
+                kinds: &["Microsoft.ContainerRegistry/registries"],
+                group: None,
+                subscription: None,
+                list: "acr registry list",
+                get: "acr registry get",
+            },
+        )?
+    };
+    let mut kept = narrow(&found, &azure.registries, &[name], REGISTRIES, |r| &r.name)?;
+    Ok(kept.remove(0))
+}
+
+/// The registries a command reads: `[azure] registries`, then `only`.
+pub(crate) fn registries(ctx: &Ctx, azure: &Azure, only: &[String]) -> Result<Vec<Registry>> {
+    narrow(
+        &inventory(ctx, azure)?.registries,
+        &azure.registries,
+        only,
+        REGISTRIES,
+        |r| &r.name,
+    )
+}
+
+/// A registry's ARM id.
+pub(crate) fn arm_id(registry: &Registry) -> String {
+    format!(
+        "/subscriptions/{}/resourceGroups/{}/providers/Microsoft.ContainerRegistry/registries/{}",
+        registry.subscription, registry.resource_group, registry.name
+    )
 }
 
 #[cfg(test)]
