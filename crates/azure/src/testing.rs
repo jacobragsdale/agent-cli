@@ -1,4 +1,4 @@
-//! Scrubbed answers the kv, acr, aks and aisearch tests share.
+//! Scrubbed answers the Azure domains' tests share.
 
 use agent_cli_core::testing::{Answer, FakeTransport, Outcome, Sent, run};
 use agent_cli_core::{Domain, Setup};
@@ -69,6 +69,10 @@ pub fn cluster(name: &str) -> Value {
         json!({"currentKubernetesVersion": "1.30.4", "kubernetesVersion": "1.30", "powerState": "Running"}),
     )
 }
+
+/// The resource group every row above is in, as an ARM id.
+pub const RG: &str =
+    "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-contoso";
 
 /// The ARM id of `cluster("aks-contoso-dev")`.
 pub const AKS_ID: &str = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-contoso/providers/Microsoft.ContainerService/managedClusters/aks-contoso-dev";

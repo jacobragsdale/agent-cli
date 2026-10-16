@@ -13,6 +13,7 @@ Every command also takes the globals `--fields a,b.c`, `--raw`, `--dry-run`, `--
 | [aks](aks.md) | AKS |
 | [aisearch](aisearch.md) | Azure AI Search |
 | [arm](arm.md) | Azure Resource Manager |
+| [net](net.md) | Azure networking |
 | [k8s](k8s.md) | Kubernetes |
 | [sql](sql.md) | SQL Server/Oracle |
 | [airflow](airflow.md) | Apache Airflow |

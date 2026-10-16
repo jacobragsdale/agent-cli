@@ -4,22 +4,17 @@
 //! machine, such as a WSL shell off the VPN, cannot. The answer is polled
 //! from `commandResults` until it ends or the deadline does.
 
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use agent_cli_core::{Ctx, Effect, Exit, Failure, Method, Request, command};
-use anyhow::{Result, bail};
+use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Value, json};
 
-use crate::aks::{Place, arm_only, locate};
-use crate::client::{ARM, bearer, stamp, text};
+use crate::aks::{Place, locate};
+use crate::client::{ARM, bearer, settle, stamp, text};
 use crate::config::Azure;
-
-/// What a poll waits when ARM sends no `Retry-After`.
-const POLL: Duration = Duration::from_secs(5);
-/// What the wait leaves of the deadline for its last poll and its answer.
-const MARGIN: Duration = Duration::from_secs(2);
 
 #[derive(clap::Args)]
 pub struct CommandRunArgs {
@@ -95,41 +90,16 @@ fn command_run(ctx: &Ctx, args: CommandRunArgs) -> Result<CommandResult> {
     // VERIFY(work): a 202 with a Location of
     // `…/commandResults/ID?api-version=…`, which answers 202 while the pod
     // runs and 200 with the result after, as the REST reference shows.
-    let mut answer = ctx.write(Effect::Destructive, request)?;
-    let mut location = answer.header("location").map(str::to_owned);
+    let answer = ctx.write(Effect::Destructive, request)?;
     let begun = Instant::now();
-    let result = loop {
-        if answer.status != 202 {
-            let result = answer.json()?;
-            if ended(&result) {
-                break result;
-            }
-        }
-        let Some(poll) = &location else {
-            bail!(
-                "ARM answered runCommand with {} and no Location to poll",
-                answer.status
-            );
-        };
-        let left = ctx.deadline().saturating_duration_since(Instant::now());
-        if left <= MARGIN {
-            return Err(Failure::timed_out(format!(
-                "`{line}` on {} has not ended after {}s; it keeps running in the cluster",
-                located.name,
-                begun.elapsed().as_secs()
-            ))
-            .hint("give it longer with --timeout SECONDS, after checking what it already changed")
-            .into());
-        }
-        let wait = answer
-            .header("retry-after")
-            .and_then(|seconds| seconds.trim().parse().ok())
-            .map_or(POLL, |seconds: u64| Duration::from_secs(seconds.max(1)));
-        std::thread::sleep(wait.min(left - MARGIN));
-        answer = ctx.read(Request::get(arm_only(poll)?).auth(&mint))?;
-        if let Some(next) = answer.header("location") {
-            location = Some(next.to_owned());
-        }
+    let Some(result) = settle(ctx, answer, &mint, ended)? else {
+        return Err(Failure::timed_out(format!(
+            "`{line}` on {} has not ended after {}s; it keeps running in the cluster",
+            located.name,
+            begun.elapsed().as_secs()
+        ))
+        .hint("give it longer with --timeout SECONDS, after checking what it already changed")
+        .into());
     };
     let props = &result["properties"];
     // VERIFY(work): how long an output AKS keeps, and whether it cuts the

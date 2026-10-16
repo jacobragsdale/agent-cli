@@ -37,7 +37,7 @@ any key, for example `AGENT_CLI_ADO_PROJECT=web`.
 |---|---|---|
 | ado | `[ado]` org, project, team | `AZURE_DEVOPS_EXT_PAT`, else your `az login` |
 | confluence | `[confluence]` url, email | an API token: `token_env`/`token_cmd` |
-| kv, acr, aks, aisearch, arm | `[azure]` (optional allowlists) | your `az login` (aisearch: a token, or an admin key it fetches, per service) |
+| kv, acr, aks, aisearch, arm, net | `[azure]` (optional allowlists) | your `az login` (aisearch: a token, or an admin key it fetches, per service) |
 | k8s | `[[k8s.scope]]` per cluster | your kubeconfig; `agent-cli aks cluster connect NAME` fetches it for AKS |
 | sql | `[[sql.connection]]` per database | `password_env` or `password_cmd` |
 | airflow | `[[airflow.instance]]` per server | username with `password_env`/`password_cmd`, or `token_env`/`token_cmd` |
@@ -93,9 +93,10 @@ role, a read-only database login, an Airflow Viewer.
 | confluence | Confluence Cloud pages as Markdown, page trees, comments, attachments, versions | 14 |
 | kv | Key Vault secrets and versions (metadata; values only with `--reveal`) | 4 |
 | acr | Container Registry repositories, tags, manifests | 4 |
-| aks | AKS clusters and their credentials | 2 |
+| aks | AKS clusters, node pools, upgrades, credentials, kubectl through ARM | 8 |
 | aisearch | Azure AI Search services, indexes, documents (keyword, vector, hybrid, semantic), indexers | 16 |
 | arm | Any Azure resource: Resource Graph lists and queries, ARM reads by id, groups, subscriptions | 5 |
+| net | Azure vnets, subnets and their free IPs, NSG rules, NICs' effective rules and routes, route tables | 7 |
 | k8s | Kubernetes pods, logs, events, deployments, config maps, secrets | 14 |
 | sql | SQL Server and Oracle queries and catalog | 6 |
 | airflow | Apache Airflow 2.9+ and 3 DAGs, runs, task instances, logs, import errors | 21 |

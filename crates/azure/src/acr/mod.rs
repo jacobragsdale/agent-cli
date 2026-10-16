@@ -7,7 +7,12 @@
 //! about to be read (`/oauth2/token`). Both are form posts that only read, and
 //! neither is sent anywhere but an `https://` host under `.azurecr.io`. The
 //! `/acr/v1/` endpoints are used because they carry attributes; `/v2/` carries
-//! names only.
+//! names only. The `az` token is for `containerregistry.azure.net`, not ARM:
+//! a hardened registry refuses an ARM one.
+//!
+//! An image's id is `loginserver/repo[:tag|@digest]`; a bare `repo:tag`
+//! finds its registry through `holder`. A [`Session`] per registry holds
+//! its tokens.
 
 pub(crate) mod manifest;
 pub(crate) mod registry;

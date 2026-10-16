@@ -36,7 +36,7 @@
 #                                        # prints it); with no email, Bearer
 
 # [azure]
-# kv, acr, aks, aisearch and arm sign in with your `az login`; nothing here is
+# kv, acr, aks, aisearch, arm and net sign in with your `az login`; nothing is
 # required. An empty or missing list means everything the login reaches; a
 # list is an allowlist that also sets the order rows come in. Each takes a
 # string or a list. Add the section (even empty) for `agent-cli doctor` to

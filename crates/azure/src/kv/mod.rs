@@ -6,6 +6,10 @@
 //! The vault token goes to no host but an `https://` one under
 //! `.vault.azure.net`, checked on every call: the first page, each
 //! `nextLink`, and vault addresses read back from the cache.
+//!
+//! A secret's id is `vault/name[/version]`, or its URI; `holder` finds the
+//! vault of a bare name, `secret_ref` reads an id, and [`get`] is the one
+//! door to the data plane.
 
 pub(crate) mod secret;
 pub(crate) mod vault;

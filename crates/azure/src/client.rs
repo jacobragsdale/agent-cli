@@ -4,9 +4,11 @@
 use std::process::Command;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::{Duration, Instant};
 
-use agent_cli_core::{Ctx, Failure, Secret};
-use anyhow::Result;
+use agent_cli_core::{Ctx, Failure, Mint, Request, Response, Secret, host_under};
+use anyhow::{Result, bail};
+use serde_json::Value;
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
@@ -253,6 +255,61 @@ pub(crate) fn decode(raw: &str) -> String {
         }
     }
     String::from_utf8_lossy(&out).into_owned()
+}
+
+/// A URL ARM handed back (a `Location` to poll), refused unless it is
+/// ARM's: the token goes nowhere else.
+pub(crate) fn arm_only(url: &str) -> Result<&str> {
+    if !host_under(url, "management.azure.com") {
+        bail!("{url} is not ARM; the ARM token is not sent there");
+    }
+    Ok(url)
+}
+
+/// What a poll waits when ARM sends no `Retry-After`.
+const POLL: Duration = Duration::from_secs(5);
+/// What a wait leaves of the deadline for its last poll and its answer.
+const MARGIN: Duration = Duration::from_secs(2);
+
+/// A long-running ARM call's result: `answer`'s body when it is no 202 and
+/// `done` holds for it, else its `Location` polled (the token only on ARM)
+/// until that is so, as often as `Retry-After` says. `None` when the
+/// deadline comes first; the operation goes on in Azure.
+pub(crate) fn settle(
+    ctx: &Ctx,
+    mut answer: Response,
+    mint: Mint,
+    done: impl Fn(&Value) -> bool,
+) -> Result<Option<Value>> {
+    let mut location = answer.header("location").map(str::to_owned);
+    loop {
+        if answer.status != 202 {
+            let body = answer.json()?;
+            if done(&body) {
+                return Ok(Some(body));
+            }
+        }
+        let Some(poll) = &location else {
+            bail!(
+                "ARM answered {} with {} and no Location to poll",
+                answer.url,
+                answer.status
+            );
+        };
+        let left = ctx.deadline().saturating_duration_since(Instant::now());
+        if left <= MARGIN {
+            return Ok(None);
+        }
+        let wait = answer
+            .header("retry-after")
+            .and_then(|seconds| seconds.trim().parse().ok())
+            .map_or(POLL, |seconds: u64| Duration::from_secs(seconds.max(1)));
+        std::thread::sleep(wait.min(left - MARGIN));
+        answer = ctx.read(Request::get(arm_only(poll)?).auth(mint))?;
+        if let Some(next) = answer.header("location") {
+            location = Some(next.to_owned());
+        }
+    }
 }
 
 /// The HTTP status a refusal carried.

@@ -1,6 +1,7 @@
 //! The Azure domains of agent-cli: Key Vault secrets (`kv`), container
 //! registry images (`acr`) and AKS clusters (`aks`), ported from az-tui,
-//! Azure AI Search (`aisearch`), and any ARM resource (`arm`).
+//! Azure AI Search (`aisearch`), any ARM resource (`arm`), and virtual
+//! networks (`net`).
 //!
 //! There is no Azure SDK and no credential of our own. Each plane gets an
 //! `az` token for its own audience (or, for an AI Search service that takes
@@ -25,6 +26,7 @@ mod config;
 mod doctor;
 mod graph;
 mod kv;
+mod net;
 #[cfg(test)]
 mod testing;
 
@@ -167,6 +169,35 @@ pub const ARM: Domain = Domain {
     doctor: doctor::arm_doctor,
 };
 
+pub const NET: Domain = Domain {
+    name: "net",
+    summary: "Azure networking",
+    commands: &[
+        net::vnet::list::VNET_LIST,
+        net::vnet::get::VNET_GET,
+        net::subnet::get::SUBNET_GET,
+        net::nsg::list::NSG_LIST,
+        net::nsg::get::NSG_GET,
+        net::nic::get::NIC_GET,
+        net::route::list::ROUTE_LIST,
+    ],
+    synonyms: &[
+        ("virtual network", &["vnet"]),
+        ("vnets", &["vnet"]),
+        ("network security group", &["nsg"]),
+        ("security rules", &["nsg", "rules"]),
+        ("network interface", &["nic"]),
+        ("route table", &["route"]),
+        ("routes", &["route"]),
+        ("udr", &["route"]),
+        ("peering", &["vnet", "peerings"]),
+        ("ip addresses", &["subnet", "ips"]),
+        ("exhaustion", &["subnet", "free_ips"]),
+    ],
+    status: doctor::net_status,
+    doctor: doctor::arm_doctor,
+};
+
 #[cfg(test)]
 mod tests {
     use agent_cli_core::{check_layout, check_registry};
@@ -176,11 +207,11 @@ mod tests {
     #[test]
     fn the_registry_keeps_every_rule() {
         assert_eq!(
-            check_registry(&[KV, ACR, AKS, AISEARCH, ARM]),
+            check_registry(&[KV, ACR, AKS, AISEARCH, ARM, NET]),
             Vec::<String>::new()
         );
         assert_eq!(
-            check_layout(&[KV, ACR, AKS, AISEARCH, ARM]),
+            check_layout(&[KV, ACR, AKS, AISEARCH, ARM, NET]),
             Vec::<String>::new()
         );
     }

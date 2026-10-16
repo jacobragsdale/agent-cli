@@ -1,4 +1,4 @@
-# Labeled search queries for kv, acr, aks, aisearch and arm, written as tasks an agent would type.
+# Labeled search queries for kv, acr, aks, aisearch, arm and net, written as tasks an agent would type.
 # The search gate in crates/cli reads every crates/*/search.toml. Every new
 # command adds at least two, for example:
 #
@@ -304,7 +304,7 @@ expect = "arm group list"
 
 [[query]]
 text = "find all virtual networks in azure"
-expect = "arm resource list"
+expect = "net vnet list"
 
 [[query]]
 text = "list azure resources in a resource group"
@@ -389,3 +389,99 @@ expect = "aks command run"
 [[query]]
 text = "run kubectl on an aks cluster i cannot reach from wsl"
 expect = "aks command run"
+
+[[query]]
+text = "list the virtual networks and their address spaces"
+expect = "net vnet list"
+
+[[query]]
+text = "vnet peering state"
+expect = "net vnet get"
+
+[[query]]
+text = "which vnet peerings are not connected"
+expect = "net vnet list"
+
+[[query]]
+text = "which vnets are peered with the hub"
+expect = "net vnet list"
+
+[[query]]
+text = "what dns servers does the vnet use"
+expect = "net vnet get"
+
+[[query]]
+text = "how many free ips are left in each subnet of the vnet"
+expect = "net vnet get"
+
+[[query]]
+text = "show the subnets of vnet-contoso-prod with their nsgs and route tables"
+expect = "net vnet get"
+
+[[query]]
+text = "is the vnet peering disconnected"
+expect = "net vnet get"
+
+[[query]]
+text = "subnet out of ips"
+expect = "net subnet get"
+
+[[query]]
+text = "who is using the ip addresses in the aks subnet"
+expect = "net subnet get"
+
+[[query]]
+text = "is the subnet full"
+expect = "net subnet get"
+
+[[query]]
+text = "which private endpoints and delegations does the subnet have"
+expect = "net subnet get"
+
+[[query]]
+text = "list network security groups"
+expect = "net nsg list"
+
+[[query]]
+text = "which nsg is attached to the aks subnet"
+expect = "net nsg list"
+
+[[query]]
+text = "nsg rules blocking port 443"
+expect = "net nsg get"
+
+[[query]]
+text = "show the inbound security rules of the nsg"
+expect = "net nsg get"
+
+[[query]]
+text = "does a deny rule shadow the allow rule by priority"
+expect = "net nsg get"
+
+[[query]]
+text = "effective routes"
+expect = "net nic get"
+
+[[query]]
+text = "effective security rules on the node's network interface"
+expect = "net nic get"
+
+[[query]]
+text = "what ip address does the nic have"
+expect = "net nic get"
+
+[[query]]
+text = "is traffic from the aks node blocked by an nsg"
+expect = "net nic get"
+
+[[query]]
+text = "list route tables and udrs"
+expect = "net route list"
+
+[[query]]
+text = "does the default route go to the firewall ip"
+expect = "net route list"
+
+[[query]]
+text = "which next hop does the subnet's route table send traffic to"
+expect = "net route list"

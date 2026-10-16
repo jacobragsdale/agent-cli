@@ -432,8 +432,8 @@
    }
   },
   "answer": {
-   "totalRecords": 6,
-   "count": 6,
+   "totalRecords": 10,
+   "count": 10,
    "data": [
     {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod",
@@ -460,6 +460,42 @@
      "resourceGroup": "rg-contoso-prod",
      "location": "westeurope",
      "sku": "standard",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks",
+     "name": "nsg-contoso-aks",
+     "type": "microsoft.network/networksecuritygroups",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod",
+     "name": "pe-kv-contoso-prod",
+     "type": "microsoft.network/privateendpoints",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-prod.nic.00000000-0000-4000-8000-00000000e0e1",
+     "name": "pe-kv-contoso-prod.nic.00000000-0000-4000-8000-00000000e0e1",
+     "type": "microsoft.network/networkinterfaces",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/routeTables/rt-contoso-aks",
+     "name": "rt-contoso-aks",
+     "type": "microsoft.network/routetables",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "",
      "provisioningState": "Succeeded"
     },
     {
@@ -558,8 +594,8 @@
    }
   },
   "answer": {
-   "totalRecords": 5,
-   "count": 5,
+   "totalRecords": 9,
+   "count": 9,
    "data": [
     {
      "type": "microsoft.containerservice/managedclusters",
@@ -579,6 +615,22 @@
     },
     {
      "type": "microsoft.network/virtualnetworks",
+     "count_": 1
+    },
+    {
+     "type": "microsoft.network/networksecuritygroups",
+     "count_": 1
+    },
+    {
+     "type": "microsoft.network/privateendpoints",
+     "count_": 1
+    },
+    {
+     "type": "microsoft.network/networkinterfaces",
+     "count_": 1
+    },
+    {
+     "type": "microsoft.network/routetables",
      "count_": 1
     }
    ]
@@ -1125,7 +1177,7 @@
  },
  {
   "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks?api-version=2024-05-01",
-  "note": "arm resource get on the AKS nodes' subnet",
+  "note": "arm resource get and net subnet get on the AKS nodes' subnet",
   "answer": {
    "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks",
    "name": "aks",
@@ -1133,7 +1185,836 @@
    "properties": {
     "provisioningState": "Succeeded",
     "addressPrefix": "10.1.0.0/22",
-    "privateEndpointNetworkPolicies": "Disabled"
+    "networkSecurityGroup": {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks"
+    },
+    "routeTable": {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/routeTables/rt-contoso-aks"
+    },
+    "ipConfigurations": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/0/networkInterfaces/aks-system-31415926-vmss/ipConfigurations/ipconfig1"
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/1/networkInterfaces/aks-system-31415926-vmss/ipConfigurations/ipconfig1"
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/2/networkInterfaces/aks-system-31415926-vmss/ipConfigurations/ipconfig1"
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/0/networkInterfaces/aks-user-27182818-vmss/ipConfigurations/ipconfig1"
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/1/networkInterfaces/aks-user-27182818-vmss/ipConfigurations/ipconfig1"
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/2/networkInterfaces/aks-user-27182818-vmss/ipConfigurations/ipconfig1"
+     }
+    ],
+    "privateEndpointNetworkPolicies": "Disabled",
+    "privateLinkServiceNetworkPolicies": "Enabled"
+   }
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net vnet list",
+  "body": {
+   "query": "resources\n| where type =~ 'Microsoft.Network/virtualNetworks'\n| project id, name, resourceGroup, location, addressSpace = properties.addressSpace.addressPrefixes, subnets = properties.subnets, peerings = properties.virtualNetworkPeerings, dnsServers = properties.dhcpOptions.dnsServers\n| order by name asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod",
+     "name": "vnet-contoso-prod",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "addressSpace": [
+      "10.1.0.0/16"
+     ],
+     "subnets": [
+      {
+       "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks",
+       "name": "aks",
+       "type": "Microsoft.Network/virtualNetworks/subnets",
+       "properties": {
+        "provisioningState": "Succeeded",
+        "addressPrefix": "10.1.0.0/22",
+        "networkSecurityGroup": {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks"
+        },
+        "routeTable": {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/routeTables/rt-contoso-aks"
+        },
+        "ipConfigurations": [
+         {
+          "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/0/networkInterfaces/aks-system-31415926-vmss/ipConfigurations/ipconfig1"
+         },
+         {
+          "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/1/networkInterfaces/aks-system-31415926-vmss/ipConfigurations/ipconfig1"
+         },
+         {
+          "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/2/networkInterfaces/aks-system-31415926-vmss/ipConfigurations/ipconfig1"
+         },
+         {
+          "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/0/networkInterfaces/aks-user-27182818-vmss/ipConfigurations/ipconfig1"
+         },
+         {
+          "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/1/networkInterfaces/aks-user-27182818-vmss/ipConfigurations/ipconfig1"
+         },
+         {
+          "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/2/networkInterfaces/aks-user-27182818-vmss/ipConfigurations/ipconfig1"
+         }
+        ],
+        "privateEndpointNetworkPolicies": "Disabled",
+        "privateLinkServiceNetworkPolicies": "Enabled"
+       }
+      },
+      {
+       "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/private-endpoints",
+       "name": "private-endpoints",
+       "type": "Microsoft.Network/virtualNetworks/subnets",
+       "properties": {
+        "provisioningState": "Succeeded",
+        "addressPrefix": "10.1.4.0/27",
+        "ipConfigurations": [
+         {
+          "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-prod.nic.00000000-0000-4000-8000-00000000e0e1/ipConfigurations/privateEndpointIpConfig.00000000-0000-4000-8000-00000000e0e2"
+         }
+        ],
+        "privateEndpoints": [
+         {
+          "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod"
+         }
+        ],
+        "privateEndpointNetworkPolicies": "Disabled",
+        "privateLinkServiceNetworkPolicies": "Enabled"
+       }
+      }
+     ],
+     "peerings": [
+      {
+       "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/virtualNetworkPeerings/to-hub",
+       "name": "to-hub",
+       "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+       "properties": {
+        "provisioningState": "Succeeded",
+        "peeringState": "Connected",
+        "peeringSyncLevel": "FullyInSync",
+        "remoteVirtualNetwork": {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b02/resourceGroups/rg-contoso-hub/providers/Microsoft.Network/virtualNetworks/vnet-contoso-hub"
+        },
+        "remoteAddressSpace": {
+         "addressPrefixes": [
+          "10.100.0.0/16"
+         ]
+        },
+        "allowVirtualNetworkAccess": true,
+        "allowForwardedTraffic": true,
+        "allowGatewayTransit": false,
+        "useRemoteGateways": false
+       }
+      }
+     ],
+     "dnsServers": []
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net vnet get vnet-contoso-prod: the name, found",
+  "body": {
+   "query": "resources\n| where name =~ 'vnet-contoso-prod'\n| where type =~ 'Microsoft.Network/virtualNetworks'\n| project id\n| order by id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net subnet get vnet-contoso-prod/aks --group rg-contoso-prod: the vnet, found",
+  "body": {
+   "query": "resources\n| where name =~ 'vnet-contoso-prod'\n| where type =~ 'Microsoft.Network/virtualNetworks'\n| where resourceGroup =~ 'rg-contoso-prod'\n| project id\n| order by id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod?api-version=2024-05-01",
+  "note": "net vnet get, and arm resource get on the vnet",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod",
+   "name": "vnet-contoso-prod",
+   "type": "Microsoft.Network/virtualNetworks",
+   "location": "westeurope",
+   "tags": {
+    "env": "prod"
+   },
+   "properties": {
+    "provisioningState": "Succeeded",
+    "resourceGuid": "00000000-0000-4000-8000-00000000f001",
+    "addressSpace": {
+     "addressPrefixes": [
+      "10.1.0.0/16"
+     ]
+    },
+    "dhcpOptions": {
+     "dnsServers": []
+    },
+    "subnets": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks",
+      "name": "aks",
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "addressPrefix": "10.1.0.0/22",
+       "networkSecurityGroup": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks"
+       },
+       "routeTable": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/routeTables/rt-contoso-aks"
+       },
+       "ipConfigurations": [
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/0/networkInterfaces/aks-system-31415926-vmss/ipConfigurations/ipconfig1"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/1/networkInterfaces/aks-system-31415926-vmss/ipConfigurations/ipconfig1"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/2/networkInterfaces/aks-system-31415926-vmss/ipConfigurations/ipconfig1"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/0/networkInterfaces/aks-user-27182818-vmss/ipConfigurations/ipconfig1"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/1/networkInterfaces/aks-user-27182818-vmss/ipConfigurations/ipconfig1"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/2/networkInterfaces/aks-user-27182818-vmss/ipConfigurations/ipconfig1"
+        }
+       ],
+       "privateEndpointNetworkPolicies": "Disabled",
+       "privateLinkServiceNetworkPolicies": "Enabled"
+      }
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/private-endpoints",
+      "name": "private-endpoints",
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "addressPrefix": "10.1.4.0/27",
+       "ipConfigurations": [
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-prod.nic.00000000-0000-4000-8000-00000000e0e1/ipConfigurations/privateEndpointIpConfig.00000000-0000-4000-8000-00000000e0e2"
+        }
+       ],
+       "privateEndpoints": [
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod"
+        }
+       ],
+       "privateEndpointNetworkPolicies": "Disabled",
+       "privateLinkServiceNetworkPolicies": "Enabled"
+      }
+     }
+    ],
+    "virtualNetworkPeerings": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/virtualNetworkPeerings/to-hub",
+      "name": "to-hub",
+      "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "peeringState": "Connected",
+       "peeringSyncLevel": "FullyInSync",
+       "remoteVirtualNetwork": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b02/resourceGroups/rg-contoso-hub/providers/Microsoft.Network/virtualNetworks/vnet-contoso-hub"
+       },
+       "remoteAddressSpace": {
+        "addressPrefixes": [
+         "10.100.0.0/16"
+        ]
+       },
+       "allowVirtualNetworkAccess": true,
+       "allowForwardedTraffic": true,
+       "allowGatewayTransit": false,
+       "useRemoteGateways": false
+      }
+     }
+    ],
+    "enableDdosProtection": false
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/usages?api-version=2024-05-01",
+  "note": "net vnet get and net subnet get: used and free IPs per subnet",
+  "answer": {
+   "value": [
+    {
+     "currentValue": 6,
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks",
+     "limit": 1019,
+     "name": {
+      "localizedValue": "Subnet size and usage",
+      "value": "Subnet size and usage"
+     },
+     "unit": "Count"
+    },
+    {
+     "currentValue": 1,
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/private-endpoints",
+     "limit": 27,
+     "name": {
+      "localizedValue": "Subnet size and usage",
+      "value": "Subnet size and usage"
+     },
+     "unit": "Count"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/private-endpoints?api-version=2024-05-01",
+  "note": "net subnet get on the private endpoints' subnet",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/private-endpoints",
+   "name": "private-endpoints",
+   "type": "Microsoft.Network/virtualNetworks/subnets",
+   "properties": {
+    "provisioningState": "Succeeded",
+    "addressPrefix": "10.1.4.0/27",
+    "ipConfigurations": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-prod.nic.00000000-0000-4000-8000-00000000e0e1/ipConfigurations/privateEndpointIpConfig.00000000-0000-4000-8000-00000000e0e2"
+     }
+    ],
+    "privateEndpoints": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod"
+     }
+    ],
+    "privateEndpointNetworkPolicies": "Disabled",
+    "privateLinkServiceNetworkPolicies": "Enabled"
+   }
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net subnet get …/aks: NICs holding IPs (an AKS node's NIC is no resource of its own)",
+  "body": {
+   "query": "resources\n| where type =~ 'microsoft.network/networkinterfaces'\n| mv-expand ip = properties.ipConfigurations\n| where tostring(ip.properties.subnet.id) =~ '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks'\n| summarize ips = count() by holder = coalesce(tostring(properties.privateEndpoint.id), tostring(properties.virtualMachine.id), id)\n| order by holder asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 0,
+   "count": 0,
+   "data": []
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net subnet get …/aks: the node pools' scale sets",
+  "body": {
+   "query": "resources\n| where type =~ 'microsoft.compute/virtualmachinescalesets'\n| mv-expand nic = properties.virtualMachineProfile.networkProfile.networkInterfaceConfigurations\n| mv-expand ip = nic.properties.ipConfigurations\n| where tostring(ip.properties.subnet.id) =~ '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks'\n| summarize per_node = count() by holder = id, nodes = toint(sku.capacity), pool = tostring(tags['aks-managed-poolName']), nodeGroup = tolower(resourceGroup)\n| join kind=leftouter (resources | where type =~ 'microsoft.containerservice/managedclusters' | project cluster = name, nodeGroup = tolower(tostring(properties.nodeResourceGroup))) on nodeGroup\n| project holder, nodes, per_node, pool, cluster\n| order by holder asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 2,
+   "count": 2,
+   "data": [
+    {
+     "holder": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss",
+     "nodes": 3,
+     "per_node": 1,
+     "pool": "system",
+     "cluster": "aks-contoso-prod"
+    },
+    {
+     "holder": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss",
+     "nodes": 3,
+     "per_node": 1,
+     "pool": "user",
+     "cluster": "aks-contoso-prod"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net subnet get …/private-endpoints: the Key Vault endpoint's NIC",
+  "body": {
+   "query": "resources\n| where type =~ 'microsoft.network/networkinterfaces'\n| mv-expand ip = properties.ipConfigurations\n| where tostring(ip.properties.subnet.id) =~ '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/private-endpoints'\n| summarize ips = count() by holder = coalesce(tostring(properties.privateEndpoint.id), tostring(properties.virtualMachine.id), id)\n| order by holder asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "holder": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod",
+     "ips": 1
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net subnet get …/private-endpoints: no scale sets",
+  "body": {
+   "query": "resources\n| where type =~ 'microsoft.compute/virtualmachinescalesets'\n| mv-expand nic = properties.virtualMachineProfile.networkProfile.networkInterfaceConfigurations\n| mv-expand ip = nic.properties.ipConfigurations\n| where tostring(ip.properties.subnet.id) =~ '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/private-endpoints'\n| summarize per_node = count() by holder = id, nodes = toint(sku.capacity), pool = tostring(tags['aks-managed-poolName']), nodeGroup = tolower(resourceGroup)\n| join kind=leftouter (resources | where type =~ 'microsoft.containerservice/managedclusters' | project cluster = name, nodeGroup = tolower(tostring(properties.nodeResourceGroup))) on nodeGroup\n| project holder, nodes, per_node, pool, cluster\n| order by holder asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 0,
+   "count": 0,
+   "data": []
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net nsg list",
+  "body": {
+   "query": "resources\n| where type =~ 'Microsoft.Network/networkSecurityGroups'\n| project id, name, resourceGroup, location, rules = array_length(properties.securityRules), subnets = properties.subnets, nics = properties.networkInterfaces\n| order by name asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks",
+     "name": "nsg-contoso-aks",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "rules": 2,
+     "subnets": [
+      {
+       "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks"
+      }
+     ],
+     "nics": null
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net nsg get nsg-contoso-aks: the name, found",
+  "body": {
+   "query": "resources\n| where name =~ 'nsg-contoso-aks'\n| where type =~ 'Microsoft.Network/networkSecurityGroups'\n| project id\n| order by id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks?api-version=2024-05-01",
+  "note": "net nsg get, and the subnet's rules net nic get falls back on",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks",
+   "name": "nsg-contoso-aks",
+   "type": "Microsoft.Network/networkSecurityGroups",
+   "location": "westeurope",
+   "properties": {
+    "provisioningState": "Succeeded",
+    "resourceGuid": "00000000-0000-4000-8000-00000000f002",
+    "securityRules": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks/securityRules/allow-https-inbound",
+      "name": "allow-https-inbound",
+      "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "protocol": "Tcp",
+       "sourcePortRange": "*",
+       "destinationPortRange": "443",
+       "sourceAddressPrefix": "Internet",
+       "destinationAddressPrefix": "*",
+       "access": "Allow",
+       "priority": 100,
+       "direction": "Inbound",
+       "sourcePortRanges": [],
+       "destinationPortRanges": [],
+       "sourceAddressPrefixes": [],
+       "destinationAddressPrefixes": []
+      }
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks/securityRules/deny-ssh-inbound",
+      "name": "deny-ssh-inbound",
+      "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "protocol": "Tcp",
+       "sourcePortRange": "*",
+       "destinationPortRange": "22",
+       "sourceAddressPrefix": "Internet",
+       "destinationAddressPrefix": "*",
+       "access": "Deny",
+       "priority": 200,
+       "direction": "Inbound",
+       "sourcePortRanges": [],
+       "destinationPortRanges": [],
+       "sourceAddressPrefixes": [],
+       "destinationAddressPrefixes": [],
+       "description": "No SSH to nodes from the internet"
+      }
+     }
+    ],
+    "defaultSecurityRules": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks/defaultSecurityRules/AllowVnetInBound",
+      "name": "AllowVnetInBound",
+      "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "protocol": "*",
+       "sourcePortRange": "*",
+       "destinationPortRange": "*",
+       "sourceAddressPrefix": "VirtualNetwork",
+       "destinationAddressPrefix": "VirtualNetwork",
+       "access": "Allow",
+       "priority": 65000,
+       "direction": "Inbound",
+       "sourcePortRanges": [],
+       "destinationPortRanges": [],
+       "sourceAddressPrefixes": [],
+       "destinationAddressPrefixes": [],
+       "description": "Allow inbound traffic from all VMs in VNET"
+      }
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks/defaultSecurityRules/AllowAzureLoadBalancerInBound",
+      "name": "AllowAzureLoadBalancerInBound",
+      "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "protocol": "*",
+       "sourcePortRange": "*",
+       "destinationPortRange": "*",
+       "sourceAddressPrefix": "AzureLoadBalancer",
+       "destinationAddressPrefix": "*",
+       "access": "Allow",
+       "priority": 65001,
+       "direction": "Inbound",
+       "sourcePortRanges": [],
+       "destinationPortRanges": [],
+       "sourceAddressPrefixes": [],
+       "destinationAddressPrefixes": [],
+       "description": "Allow inbound traffic from azure load balancer"
+      }
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks/defaultSecurityRules/DenyAllInBound",
+      "name": "DenyAllInBound",
+      "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "protocol": "*",
+       "sourcePortRange": "*",
+       "destinationPortRange": "*",
+       "sourceAddressPrefix": "*",
+       "destinationAddressPrefix": "*",
+       "access": "Deny",
+       "priority": 65500,
+       "direction": "Inbound",
+       "sourcePortRanges": [],
+       "destinationPortRanges": [],
+       "sourceAddressPrefixes": [],
+       "destinationAddressPrefixes": [],
+       "description": "Deny all inbound traffic"
+      }
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks/defaultSecurityRules/AllowVnetOutBound",
+      "name": "AllowVnetOutBound",
+      "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "protocol": "*",
+       "sourcePortRange": "*",
+       "destinationPortRange": "*",
+       "sourceAddressPrefix": "VirtualNetwork",
+       "destinationAddressPrefix": "VirtualNetwork",
+       "access": "Allow",
+       "priority": 65000,
+       "direction": "Outbound",
+       "sourcePortRanges": [],
+       "destinationPortRanges": [],
+       "sourceAddressPrefixes": [],
+       "destinationAddressPrefixes": [],
+       "description": "Allow outbound traffic from all VMs to all VMs in VNET"
+      }
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks/defaultSecurityRules/AllowInternetOutBound",
+      "name": "AllowInternetOutBound",
+      "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "protocol": "*",
+       "sourcePortRange": "*",
+       "destinationPortRange": "*",
+       "sourceAddressPrefix": "*",
+       "destinationAddressPrefix": "Internet",
+       "access": "Allow",
+       "priority": 65001,
+       "direction": "Outbound",
+       "sourcePortRanges": [],
+       "destinationPortRanges": [],
+       "sourceAddressPrefixes": [],
+       "destinationAddressPrefixes": [],
+       "description": "Allow outbound traffic from all VMs to Internet"
+      }
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks/defaultSecurityRules/DenyAllOutBound",
+      "name": "DenyAllOutBound",
+      "type": "Microsoft.Network/networkSecurityGroups/defaultSecurityRules",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "protocol": "*",
+       "sourcePortRange": "*",
+       "destinationPortRange": "*",
+       "sourceAddressPrefix": "*",
+       "destinationAddressPrefix": "*",
+       "access": "Deny",
+       "priority": 65500,
+       "direction": "Outbound",
+       "sourcePortRanges": [],
+       "destinationPortRanges": [],
+       "sourceAddressPrefixes": [],
+       "destinationAddressPrefixes": [],
+       "description": "Deny all outbound traffic"
+      }
+     }
+    ],
+    "subnets": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks"
+     }
+    ]
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/routeTables/rt-contoso-aks?api-version=2024-05-01",
+  "note": "net nic get's fallback: the subnet's route table",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/routeTables/rt-contoso-aks",
+   "name": "rt-contoso-aks",
+   "type": "Microsoft.Network/routeTables",
+   "location": "westeurope",
+   "properties": {
+    "provisioningState": "Succeeded",
+    "disableBgpRoutePropagation": true,
+    "routes": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/routeTables/rt-contoso-aks/routes/default-to-firewall",
+      "name": "default-to-firewall",
+      "type": "Microsoft.Network/routeTables/routes",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "addressPrefix": "0.0.0.0/0",
+       "nextHopType": "VirtualAppliance",
+       "nextHopIpAddress": "10.100.1.4",
+       "hasBgpOverride": false
+      }
+     }
+    ],
+    "subnets": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks"
+     }
+    ]
+   }
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net route list",
+  "body": {
+   "query": "resources\n| where type =~ 'Microsoft.Network/routeTables'\n| project id, name, routes = properties.routes, subnets = properties.subnets, disableBgp = tobool(properties.disableBgpRoutePropagation)\n| order by name asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/routeTables/rt-contoso-aks",
+     "name": "rt-contoso-aks",
+     "routes": [
+      {
+       "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/routeTables/rt-contoso-aks/routes/default-to-firewall",
+       "name": "default-to-firewall",
+       "type": "Microsoft.Network/routeTables/routes",
+       "properties": {
+        "provisioningState": "Succeeded",
+        "addressPrefix": "0.0.0.0/0",
+        "nextHopType": "VirtualAppliance",
+        "nextHopIpAddress": "10.100.1.4",
+        "hasBgpOverride": false
+       }
+      }
+     ],
+     "subnets": [
+      {
+       "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks"
+      }
+     ],
+     "disableBgp": true
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/1/networkInterfaces/aks-system-31415926-vmss?api-version=2018-10-01",
+  "note": "net nic get on node aks-system-31415926-vmss000001's NIC, at Compute's version",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/1/networkInterfaces/aks-system-31415926-vmss",
+   "name": "aks-system-31415926-vmss",
+   "properties": {
+    "provisioningState": "Succeeded",
+    "ipConfigurations": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/1/networkInterfaces/aks-system-31415926-vmss/ipConfigurations/ipconfig1",
+      "name": "ipconfig1",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "privateIPAddress": "10.1.0.5",
+       "privateIPAllocationMethod": "Dynamic",
+       "subnet": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks"
+       },
+       "primary": true,
+       "privateIPAddressVersion": "IPv4"
+      }
+     }
+    ],
+    "dnsSettings": {
+     "dnsServers": [],
+     "appliedDnsServers": []
+    },
+    "macAddress": "00-0D-3A-00-00-05",
+    "enableAcceleratedNetworking": true,
+    "enableIPForwarding": false,
+    "primary": true,
+    "virtualMachine": {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/1"
+    }
+   }
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/1/networkInterfaces/aks-system-31415926-vmss/effectiveNetworkSecurityGroups?api-version=2018-10-01",
+  "note": "net nic get on an AKS node's NIC: a stand-in refusal until work shows what Azure answers (VERIFY(work))",
+  "status": 404,
+  "answer": {
+   "error": {
+    "code": "InvalidResourceType",
+    "message": "The resource type 'virtualMachineScaleSets/virtualMachines/networkInterfaces/effectiveNetworkSecurityGroups' could not be found in the namespace 'Microsoft.Compute' for api version '2018-10-01'."
+   }
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/1/networkInterfaces/aks-system-31415926-vmss/effectiveRouteTable?api-version=2018-10-01",
+  "note": "net nic get on an AKS node's NIC: a stand-in refusal until work shows what Azure answers (VERIFY(work))",
+  "status": 404,
+  "answer": {
+   "error": {
+    "code": "InvalidResourceType",
+    "message": "The resource type 'virtualMachineScaleSets/virtualMachines/networkInterfaces/effectiveRouteTable' could not be found in the namespace 'Microsoft.Compute' for api version '2018-10-01'."
    }
   }
  }

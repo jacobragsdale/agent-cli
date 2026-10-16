@@ -1,5 +1,10 @@
 //! What the arm commands share: the subscriptions the login reaches (the
 //! scope every Resource Graph query runs in), and KQL string literals.
+//!
+//! Every row's id is an ARM id (a child collection too), which `arm resource
+//! get` takes, as it takes a portal link or a name with `--type`, `--group`
+//! and `--subscription` (`resource/mod.rs`, which net shares). Reads pick
+//! the provider's newest stable api-version, cached (`resource/get.rs`).
 
 pub(crate) mod group;
 pub(crate) mod query;

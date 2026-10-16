@@ -1,4 +1,4 @@
-//! The overview's lines for kv, acr, aks, aisearch and arm, and `agent-cli
+//! The overview's lines for kv, acr, aks, aisearch, arm and net, and `agent-cli
 //! doctor` for each.
 
 use agent_cli_core::{Check, Config, Ctx};
@@ -251,8 +251,16 @@ pub(crate) fn arm_status(config: &Config) -> String {
     }
 }
 
+/// As arm's: net reads the same subscriptions, and its doctor is arm's.
+pub(crate) fn net_status(config: &Config) -> String {
+    match config.section::<Azure>("azure") {
+        Ok(_) => String::new(),
+        Err(_) => "net config broken".to_owned(),
+    }
+}
+
 /// The login, and the subscriptions it reaches within `[azure]
-/// subscriptions`: every arm command runs over them.
+/// subscriptions`: every arm and net command runs over them.
 pub(crate) fn arm_doctor(ctx: &Ctx) -> Vec<Check> {
     if !ctx.config().has_section("azure") {
         return Vec::new();

@@ -28,6 +28,7 @@ const EXAMPLE_ALIASES: &[(&str, &str)] = &[
     ("aks", "azure"),
     ("aisearch", "azure"),
     ("arm", "azure"),
+    ("net", "azure"),
     ("dd", "datadog"),
 ];
 

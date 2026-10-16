@@ -7,7 +7,15 @@
 //! `authOptions.aadOrApiKey`), else an admin key fetched from ARM for this run
 //! only. A request carries one or the other, never both, and goes to no host
 //! but one under `.search.windows.net`. A token refused by a service that
-//! also takes keys is tried once more with a key.
+//! also takes keys is tried once more with a key; a 401 or 403 after that is
+//! exit 3 naming the role.
+//!
+//! Ids are `service`, `service/index`, `service/index/key` and
+//! `service/indexer` (`refs.rs`). [`Search`] is the door, `reach` the
+//! services in scope, `holder` the one holding a bare name; `shape.rs`
+//! bounds and scrubs what comes back. `status: running` is the service's
+//! health, not a run; a 429 is the tier's quota. Data plane `2026-04-01`,
+//! ARM `2025-05-01`, no previews.
 
 pub(crate) mod document;
 pub(crate) mod index;

@@ -4,14 +4,17 @@
 //! and a ready-to-paste `[[k8s.scope]]` block for the k8s domain. The rest
 //! read and change the cluster through ARM's `managedClusters`, at one
 //! api-version, so a field never moves under a command.
+//!
+//! A cluster is its name, ARM id or portal link (`locate`, `Place`); a pool
+//! is `cluster/pool`. `k8s_scope` in its rows is the k8s scope id.
 
 pub(crate) mod cluster;
 pub(crate) mod command;
 pub(crate) mod nodepool;
 pub(crate) mod upgrade;
 
-use agent_cli_core::{Ctx, Failure, Request, host_under};
-use anyhow::{Result, bail};
+use agent_cli_core::{Ctx, Failure, Request};
+use anyhow::Result;
 use serde_json::Value;
 
 use crate::client::{ARM, bearer, decode, refused_with};
@@ -226,15 +229,6 @@ pub(crate) fn find(
             .into())
         }
     }
-}
-
-/// A URL ARM handed back (a `Location` to poll), refused unless it is
-/// ARM's: the token goes nowhere else.
-pub(crate) fn arm_only(url: &str) -> Result<&str> {
-    if !host_under(url, "management.azure.com") {
-        bail!("{url} is not ARM; the ARM token is not sent there");
-    }
-    Ok(url)
 }
 
 #[cfg(test)]
