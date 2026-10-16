@@ -12,10 +12,9 @@ and its help is 1 MB.
 ## Config
 `[datadog]` (or `[dd]`): `site` (`datadoghq.eu`, …; else `DD_SITE`, else
 `datadoghq.com`), `env` (the default `env:` tag). Credential, first found:
-`token_env` or `token_cmd` (a bearer), the pair `api_key_*` with
-`app_key_*`, `DD_ACCESS_TOKEN`, `DD_API_KEY` with `DD_APP_KEY`. A literal
-key or token in the file is refused. It goes only to `api.<site>`
-(`host_under`).
+`token`, `token_env` or `token_cmd` (a bearer), the pair `api_key*` with
+`app_key*`, `DD_ACCESS_TOKEN`, `DD_API_KEY` with `DD_APP_KEY`. It goes only
+to `api.<site>` (`host_under`).
 
 ## Ids
 Numeric ids (`4711`) or the web URL that shows the thing (`Dd::web_id`: the

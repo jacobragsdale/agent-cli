@@ -35,18 +35,19 @@ any key, for example `AGENT_CLI_ADO_PROJECT=web`.
 
 | Domain | Section | Sign-in |
 |---|---|---|
-| ado | `[ado]` org, project, team | `AZURE_DEVOPS_EXT_PAT`, else your `az login` |
-| confluence | `[confluence]` url, email | an API token: `token_env`/`token_cmd` |
+| ado | `[ado]` org, project, team | `pat`, else `AZURE_DEVOPS_EXT_PAT`, else your `az login` |
+| confluence | `[confluence]` url, email | an API token: `token` |
 | kv, acr, aks, aisearch, arm, net | `[azure]` (optional allowlists) | your `az login` (aisearch: a token, or an admin key it fetches, per service) |
 | k8s | `[[k8s.scope]]` per cluster | your kubeconfig; `agent-cli aks cluster connect NAME` fetches it for AKS |
-| sql | `[[sql.connection]]` per database | `password_env` or `password_cmd` |
-| airflow | `[[airflow.instance]]` per server | username with `password_env`/`password_cmd`, or `token_env`/`token_cmd` |
-| controlm | `[[controlm.instance]]` per Enterprise Manager | username with `password_env`/`password_cmd`, or an API token: `token_env`/`token_cmd` |
-| dd | `[datadog]` site and env | `token_env`/`token_cmd`, else `DD_ACCESS_TOKEN` |
+| sql | `[[sql.connection]]` per database | `user` and `password` |
+| airflow | `[[airflow.instance]]` per server | `username` and `password`, or `token` |
+| controlm | `[[controlm.instance]]` per Enterprise Manager | `username` and `password`, or an API token: `token` |
+| dd | `[datadog]` site and env | `token`, else `DD_ACCESS_TOKEN` |
 
-A credential is named by where it comes from (`KEY_env` for a variable,
-`KEY_cmd` for a command such as `pass show contoso/db`), never written into the
-file, and goes only to its own service's hosts. Check the setup with:
+One file holds every service, credentials included (`chmod 600` it). Any
+credential `KEY` can instead be `KEY_env` (a variable that holds it) or
+`KEY_cmd` (a command that prints it, such as `pass show contoso/db`). Each
+goes only to its own service's hosts. Check the setup with:
 
 ```sh
 agent-cli doctor

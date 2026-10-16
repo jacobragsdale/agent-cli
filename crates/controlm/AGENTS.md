@@ -13,7 +13,9 @@ assumption, and `docs/plans/controlm.md` is the order to check them in.
 UTC). Credential: `username` with `password`, `password_env` or
 `password_cmd` (a session token from `POST /session/login`, `Bearer`, once
 per command and again after a 401), or `token`, `token_env`, `token_cmd`
-(an API token, `x-api-key`). Only under `base_url/` (`same_origin`).
+(an API token, `x-api-key`); none yet is `Auth::Missing`, an error when a
+call goes out, so only that instance fails. Only under `base_url/`
+(`same_origin`).
 
 ## Ids
 A run: `SERVER:ORDER_ID` (`job_id`; words get a hint naming `job list

@@ -1,9 +1,9 @@
-//! Where a secret a config section needs comes from: the file itself
-//! (discouraged), an environment variable, or a command such as
-//! `pass show contoso/db` or `pup auth token`.
+//! Where a secret a config section needs comes from: the file itself, so
+//! one file holds a whole setup, an environment variable, or a command such
+//! as `pass show contoso/db` or `pup auth token`.
 //!
 //! A section keeps its own keys (sql's `password`, `password_env`,
-//! `password_cmd`; a token's `token_env`, `token_cmd`) and hands the three to
+//! `password_cmd`; a token's `token`, `token_env`, `token_cmd`) and hands the three to
 //! [`Credential::from_keys`]. Nothing is read until [`Credential::resolve`],
 //! so listing ten connections never runs ten commands.
 
@@ -66,11 +66,11 @@ impl Credential {
     }
 
     /// Where it comes from, never what it is: `password_env DB_PASS`,
-    /// `token_cmd`, `password (in the config file)`. For doctor and listings.
+    /// `token_cmd`, `password in the config file`. For doctor and listings.
     #[must_use]
     pub fn source(&self) -> String {
         match &self.source {
-            Source::Value(_) => format!("{} (in the config file)", self.key),
+            Source::Value(_) => format!("{} in the config file", self.key),
             Source::Env(variable) => format!("{}_env {variable}", self.key),
             Source::Cmd(_) => format!("{}_cmd", self.key),
         }

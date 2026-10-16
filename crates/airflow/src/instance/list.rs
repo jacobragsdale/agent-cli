@@ -67,7 +67,7 @@ mod tests {
                  "auth": "token (token_env AIRFLOW_TOKEN)",
                  "k8s_scope": "prod", "k8s_namespace": "web"},
                 {"name": "dev", "base_url": "http://localhost:8080",
-                 "auth": "password for agent (password (in the config file))"}
+                 "auth": "password for agent (password in the config file)"}
             ])
         );
         assert!(!outcome.stdout.contains("in-file-password-1"));

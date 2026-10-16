@@ -152,6 +152,17 @@ impl Client<'_> {
             Auth::Password { username, password } => {
                 self.sign_in(username, &password.resolve(self.ctx)?)?
             }
+            Auth::Missing(what) => {
+                return Err(Failure::setup(format!(
+                    "[[airflow.instance]] {:?} has no credential",
+                    self.instance.name
+                ))
+                .hint(format!(
+                    "add {what} under it in {}",
+                    self.ctx.config().path().display()
+                ))
+                .into());
+            }
         };
         let token = Secret::new(format!("Bearer {}", bearer.expose()));
         *self.token.borrow_mut() = Some(token.clone());

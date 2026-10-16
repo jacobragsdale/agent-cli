@@ -27,8 +27,7 @@ pub(crate) struct Section {
     /// first project, or `PROJECT/TEAM`.
     #[serde(default, deserialize_with = "one_or_many")]
     team: Vec<String>,
-    /// Refused: a PAT opens the whole organization, and config files end up
-    /// in dotfile repositories. A key only to say so.
+    /// The token itself, or (`pat_env`, `pat_cmd`) where it comes from.
     pat: Option<String>,
     pat_env: Option<String>,
     pat_cmd: Option<String>,
@@ -58,16 +57,9 @@ impl Ado {
     /// `az devops configure` defaults for the organization and project.
     pub(crate) fn load(ctx: &Ctx) -> Result<Self> {
         let section: Section = ctx.section("ado")?;
-        if section.pat.is_some() {
-            return Err(Failure::setup(
-                "[ado] pat holds the token itself, which is refused: a personal access token opens the whole organization",
-            )
-            .hint("name where it comes from: pat_env = \"VAR\" or pat_cmd = \"pass show NAME\"")
-            .into());
-        }
         let pat = Credential::from_keys(
             "pat",
-            None,
+            section.pat.clone(),
             section.pat_env.clone(),
             section.pat_cmd.clone(),
         )
@@ -408,17 +400,21 @@ mod tests {
         );
         assert_eq!(source(""), None, "no PAT anywhere: an az token");
 
-        for (extra, said) in [
-            ("pat = \"abc\"\n", "[ado] pat holds the token itself"),
-            (
-                "pat_env = \"A\"\npat_cmd = \"b\"\n",
-                "give one of pat, pat_env and pat_cmd",
-            ),
-        ] {
-            let error = Ado::load(&ctx(extra)).err().unwrap();
-            let failure = error.downcast_ref::<Failure>().unwrap();
-            assert_eq!(failure.exit, Exit::Setup);
-            assert!(failure.message.contains(said), "{}", failure.message);
-        }
+        assert_eq!(
+            source("pat = \"abc\"\n").as_deref(),
+            Some("pat in the config file")
+        );
+        let error = Ado::load(&ctx("pat_env = \"A\"\npat_cmd = \"b\"\n"))
+            .err()
+            .unwrap();
+        let failure = error.downcast_ref::<Failure>().unwrap();
+        assert_eq!(failure.exit, Exit::Setup);
+        assert!(
+            failure
+                .message
+                .contains("give one of pat, pat_env and pat_cmd"),
+            "{}",
+            failure.message
+        );
     }
 }

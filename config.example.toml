@@ -7,12 +7,17 @@
 # only that domain. AGENT_CLI_<SECTION>_<KEY> overrides any scalar key, for
 # example AGENT_CLI_ADO_PROJECT=web. Run `agent-cli doctor` to check it all.
 #
+# Passwords and tokens go in this file too (`chmod 600` it), so one file holds
+# every service. Any credential KEY can instead be KEY_env (a variable that
+# holds it) or KEY_cmd (a command that prints it, such as `pass show NAME`),
+# which lets many connections share one password.
+#
 # Every key below is commented out: uncomment the ones you need.
 
 # [ado]
-# Sign-in: a personal access token from pat_env or pat_cmd, else
-# AZURE_DEVOPS_EXT_PAT, else the Azure CLI's login (`az login`). A token
-# written here (pat = "...") is refused. org and project fall back to
+# Sign-in: a personal access token (pat, pat_env or pat_cmd), else
+# AZURE_DEVOPS_EXT_PAT, else the Azure CLI's login (`az login`). org and
+# project fall back to
 # `az devops configure --defaults organization=... project=...`.
 # org = "contoso"                        # or "https://dev.azure.com/contoso"
 # project = ["web", "mobile"]            # where the work items live; one or a
@@ -20,7 +25,7 @@
 # code_project = "web"                   # repos, PRs, pipelines; default: project
 # team = ["web team", "mobile/apps"]     # or one; PROJECT/TEAM for another
 #                                        # project's; `--iteration @current` needs it
-# pat_cmd = "pass show contoso/ado-pat"  # or pat_env = "CONTOSO_ADO_PAT"
+# pat = "..."                            # or pat_env, pat_cmd
 
 # [confluence]
 # Confluence Cloud only (SITE.atlassian.net); Data Center is not supported.
@@ -29,7 +34,7 @@
 # within a year; `agent-cli doctor confluence` says when one stops working.
 # url = "https://contoso.atlassian.net/wiki"
 # email = "jane@contoso.com"             # the account the token belongs to
-# token_env = "CONFLUENCE_TOKEN"         # or token_cmd = "pass show contoso/confluence"
+# token = "..."                          # or token_env, token_cmd
 # cloud_id = "11111111-2222-3333-4444-555555555555"  # a scoped token or service
 #                                        # account: calls go through api.atlassian.com
 #                                        # (https://SITE.atlassian.net/_edge/tenant_info
@@ -80,10 +85,9 @@
 # port = 1433                            # default 1433 (mssql), 1521 (oracle)
 # database = "contoso"                   # mssql only
 # user = "app_reader"
-# password_env = "CONTOSO_DB_PASSWORD"   # or password_cmd = "pass show contoso/db"
-#                                        # (run under the command's deadline, its
-#                                        # trailing newline dropped), or
-#                                        # password = "..." (throwaway only)
+# password = "..."                       # or password_env, password_cmd (run
+#                                        # under the command's deadline, its
+#                                        # trailing newline dropped)
 # trust_cert = false                     # mssql only: accept a self-signed certificate
 # encrypt = true                         # mssql only
 #
@@ -93,7 +97,7 @@
 # host = "ora.contoso.example"
 # service = "LEDGER"                     # oracle only: the service name
 # user = "app_reader"
-# password_cmd = "pass show contoso/ledger"
+# password_env = "CONTOSO_DB_PASSWORD"   # one password shared by connections
 #
 # Where an agent must not write, give it a login that can only read.
 
@@ -102,10 +106,10 @@
 # /api/v2) is asked of the server. --instance takes the name; the only one is
 # the default. Sign in with a username and password (Airflow 3: POST
 # {base_url}/auth/token; Airflow 2: HTTP Basic, else its sign-in form when
-# the server's auth_backends allow only session), or with a bearer token (token_env
-# or token_cmd: Astro, Composer, MWAA). The credential goes only to URLs
-# under base_url. An SSO user has no password the API takes: use a service
-# account.
+# the server's auth_backends allow only session), or with a bearer token
+# (token: Astro, Composer, MWAA). The credential goes only to URLs under
+# base_url. An SSO user has no password the API takes: use a service
+# account. An instance with no credential yet fails only itself.
 # name = "dev"
 # base_url = "https://airflow-dev.contoso.example"  # the webserver or API server,
 #                                        # with any path prefix, without /api/v1
@@ -113,7 +117,7 @@
 # api = "v1"                             # optional: v1 (Airflow 2) or v2 (3);
 #                                        # asked of the server when left out
 # username = "agent"
-# password_env = "AIRFLOW_DEV_PASSWORD"  # or password_cmd = "pass show airflow/dev"
+# password = "..."                       # or password_env, password_cmd
 # k8s_scope = "dev"                      # the [[k8s.scope]] its KubernetesExecutor
 #                                        # pods run in: task get prints the pod
 #                                        # as the id `k8s pod logs` takes
@@ -126,14 +130,14 @@
 # name = "qa"
 # base_url = "https://airflow-qa.contoso.example"
 # username = "agent"
-# password_env = "AIRFLOW_QA_PASSWORD"
+# password = "..."
 # k8s_scope = "qa"
 #
 # [[airflow.instance]]
 # name = "prod"
 # base_url = "https://airflow.contoso.example"
 # username = "agent"
-# password_cmd = "pass show airflow/prod"
+# password = "..."
 # k8s_scope = "prod"
 
 # [[controlm.instance]]
@@ -147,24 +151,24 @@
 #                                        # the Automation API endpoint, with
 #                                        # /automation-api
 # username = "agent"
-# password_env = "CONTROLM_PASSWORD"     # or password_cmd = "pass show controlm/prod"
-# token_env = "CONTROLM_TOKEN"           # instead of username and password:
-#                                        # an API token (or token_cmd)
+# password = "..."                       # or password_env, password_cmd
+# token = "..."                          # instead of username and password:
+#                                        # an API token (or token_env, token_cmd)
 # utc_offset = "-05:00"                  # the Control-M/Servers' clock, which
 #                                        # every time the API prints and takes
 #                                        # is on; default +00:00
 # [datadog]
 # Also read as [dd]. The credential is a Datadog personal access token (sent
-# as Authorization: Bearer), else the API + application key pair. Name where
-# each comes from with KEY_env or KEY_cmd; a key written here is refused.
-# With no key set at all: DD_ACCESS_TOKEN, else DD_API_KEY with DD_APP_KEY.
+# as Authorization: Bearer), else the API + application key pair, each as
+# KEY, KEY_env or KEY_cmd. With no key set at all: DD_ACCESS_TOKEN, else
+# DD_API_KEY with DD_APP_KEY.
 # The credential goes only to https://api.<site>.
 # site = "datadoghq.eu"                  # default: DD_SITE, else datadoghq.com
 # env = "prod"                           # default --env for logs, spans, services
-# token_env = "DD_ACCESS_TOKEN"          # or token_cmd = "pup auth token" (reuses
+# token = "..."                          # or token_cmd = "pup auth token" (reuses
 #                                        # a pup login; run again after a 401)
-# api_key_env = "DD_API_KEY"             # the fallback pair: both, each _env or _cmd
-# app_key_cmd = "pass show contoso/dd-app-key"
+# api_key = "..."                        # the fallback pair: both, each also
+# app_key = "..."                        # as _env or _cmd
 #
 # The real guard is a token with read scopes only (logs_read_data,
 # timeseries_query, metrics_read, monitors_read, events_read, apm_read,

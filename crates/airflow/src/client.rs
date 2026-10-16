@@ -82,6 +82,9 @@ pub(crate) enum Auth {
     },
     /// A bearer token as it is (Astro, Composer, MWAA).
     Token(Credential),
+    /// Not given yet: what to add. Said when this instance signs in, so an
+    /// instance added before its password stops no other.
+    Missing(&'static str),
 }
 
 /// One Airflow server, checked.
@@ -108,6 +111,7 @@ impl Instance {
                 format!("password for {username} ({})", password.source())
             }
             Auth::Token(token) => format!("token ({})", token.source()),
+            Auth::Missing(_) => "no credential".to_owned(),
         }
     }
 
@@ -318,9 +322,7 @@ impl Raw {
         let auth = match (self.username, password, token) {
             (Some(username), Some(password), None) => Auth::Password { username, password },
             (None, None, Some(token)) => Auth::Token(token),
-            (Some(_), None, None) => {
-                return Err("username needs password_env, password_cmd or password".to_owned());
-            }
+            (Some(_), None, None) => Auth::Missing("password (or password_env, password_cmd)"),
             (None, Some(_), None) => return Err("a password needs username".to_owned()),
             (_, Some(_), Some(_)) => {
                 return Err("give a username and password, or a token, not both".to_owned());
@@ -328,12 +330,7 @@ impl Raw {
             (Some(_), None, Some(_)) => {
                 return Err("a token needs no username; drop it".to_owned());
             }
-            (None, None, None) => {
-                return Err(
-                    "no credential: give username with password_env (or password_cmd), or token_env (or token_cmd)"
-                        .to_owned(),
-                );
-            }
+            (None, None, None) => Auth::Missing("username and password, or token"),
         };
         let k8s_scope = self
             .k8s_scope
@@ -483,7 +480,7 @@ impl<'a> Client<'a> {
     /// How a password signed in, for doctor.
     pub(crate) fn signed_in_by(&self) -> Option<&'static str> {
         match (&self.instance.auth, self.v1().unwrap_or(false)) {
-            (Auth::Token(_), _) => None,
+            (Auth::Token(_) | Auth::Missing(_), _) => None,
             (Auth::Password { .. }, false) => Some("a JWT from /auth/token"),
             (Auth::Password { .. }, true) if self.session.borrow().is_some() => {
                 Some("the sign-in form (the API takes only session auth)")
@@ -776,14 +773,6 @@ mod tests {
                 "ends in /api/v2",
             ),
             (
-                "base_url = \"https://airflow.contoso.example\"\nusername = \"a\"",
-                "username needs",
-            ),
-            (
-                "base_url = \"https://airflow.contoso.example\"",
-                "no credential",
-            ),
-            (
                 "base_url = \"https://airflow.contoso.example\"\ntoken_env = \"T\"\ntoken_cmd = \"x\"",
                 "give one of token",
             ),
@@ -796,6 +785,35 @@ mod tests {
             let (outcome, _) = airflow_with(&config, &["airflow", "dag", "list"], vec![]);
             assert_eq!(outcome.code, 3, "{body}: {outcome:?}");
             assert!(outcome.stderr.contains(want), "{body}: {}", outcome.stderr);
+        }
+    }
+
+    #[test]
+    fn an_instance_with_no_credential_yet_fails_only_when_it_is_used() {
+        let config = "[[airflow.instance]]\nname = \"dev\"\napi = \"v2\"\n\
+                      base_url = \"https://airflow-dev.contoso.example\"\ntoken_env = \"AIRFLOW_TOKEN\"\n\
+                      [[airflow.instance]]\nname = \"qa\"\napi = \"v2\"\n\
+                      base_url = \"https://airflow-qa.contoso.example\"\nusername = \"agent\"\n\
+                      [[airflow.instance]]\nname = \"uat\"\napi = \"v2\"\n\
+                      base_url = \"https://airflow-uat.contoso.example\"\n";
+        let page = json!({"dags": [], "total_entries": 0});
+        let dev = ["airflow", "dag", "list", "--instance", "dev"];
+        let (outcome, _) = airflow_with(config, &dev, vec![Answer::json(&page)]);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        for (instance, add) in [
+            (
+                "qa",
+                "add password (or password_env, password_cmd) under it",
+            ),
+            ("uat", "add username and password, or token under it"),
+        ] {
+            let argv = ["airflow", "dag", "list", "--instance", instance];
+            let (outcome, transport) = airflow_with(config, &argv, vec![]);
+            assert_eq!(outcome.code, 3, "{outcome:?}");
+            let said = format!("[[airflow.instance]] \"{instance}\" has no credential");
+            assert!(outcome.stderr.contains(&said), "{}", outcome.stderr);
+            assert!(outcome.stderr.contains(add), "{}", outcome.stderr);
+            assert!(transport.sent().is_empty());
         }
     }
 

@@ -80,8 +80,8 @@ pub(crate) const SITES: &[Site] = &[
     },
 ];
 
-/// `[datadog]` (or `[dd]`) in config.toml. Credentials are named by where
-/// they come from (`*_env`, `*_cmd`); a literal key in the file is refused.
+/// `[datadog]` (or `[dd]`) in config.toml. Each credential is the key
+/// itself, or (`*_env`, `*_cmd`) where it comes from.
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Section {
@@ -173,26 +173,24 @@ impl Dd {
                 .or_else(|| ctx.env("DD_SITE"))
                 .as_deref(),
         )?;
-        for (key, value) in [
-            ("token", &section.token),
-            ("api_key", &section.api_key),
-            ("app_key", &section.app_key),
-        ] {
-            if value.is_some() {
-                return Err(Failure::setup(format!(
-                    "[datadog] {key} holds the key itself, which is refused: a Datadog key opens a whole org"
-                ))
-                .hint(format!("name where it comes from: {key}_env = \"VAR\" or {key}_cmd = \"pass show NAME\""))
-                .into());
-            }
-        }
         let setup = |message: String| Failure::setup(message).hint(NO_CREDENTIAL_HINT);
-        let token = Credential::from_keys("token", None, section.token_env, section.token_cmd)
-            .map_err(setup)?;
-        let api = Credential::from_keys("api_key", None, section.api_key_env, section.api_key_cmd)
-            .map_err(setup)?;
-        let app = Credential::from_keys("app_key", None, section.app_key_env, section.app_key_cmd)
-            .map_err(setup)?;
+        let token =
+            Credential::from_keys("token", section.token, section.token_env, section.token_cmd)
+                .map_err(setup)?;
+        let api = Credential::from_keys(
+            "api_key",
+            section.api_key,
+            section.api_key_env,
+            section.api_key_cmd,
+        )
+        .map_err(setup)?;
+        let app = Credential::from_keys(
+            "app_key",
+            section.app_key,
+            section.app_key_env,
+            section.app_key_cmd,
+        )
+        .map_err(setup)?;
         let from_env = |key: &str, variable: &str| {
             Credential::from_keys(key, None, Some(variable.to_owned()), None)
                 .ok()
@@ -947,12 +945,11 @@ mod tests {
 
     #[test]
     fn the_key_pair_goes_in_its_headers_only_to_the_api_host_and_is_masked_everywhere() {
-        let config =
-            "[datadog]\nsite = \"us5.datadoghq.com\"\napi_key_env = \"K1\"\napp_key_env = \"K2\"\n";
+        // One key written in the file, the other from a variable.
+        let config = "[datadog]\nsite = \"us5.datadoghq.com\"\napi_key = \"api-key-value-0f0f0f\"\napp_key_env = \"K2\"\n";
         let headers = Headers::default();
         let setup = Setup::fake(headers.clone())
             .with_config(config)
-            .with_env("K1", "api-key-value-0f0f0f")
             .with_env("K2", "app-key-value-e1e1e1");
         let outcome = run(
             &[DOMAIN],
@@ -995,7 +992,6 @@ mod tests {
         assert_eq!(plan[0]["method"], "DELETE");
         let setup = Setup::fake(FakeTransport::default())
             .with_config(config)
-            .with_env("K1", "api-key-value-0f0f0f")
             .with_env("K2", "app-key-value-e1e1e1");
         let outcome = run(
             &[DOMAIN],
@@ -1046,12 +1042,8 @@ mod tests {
     }
 
     #[test]
-    fn a_literal_key_in_the_file_an_unknown_site_and_no_credential_are_setup_errors() {
+    fn an_unknown_site_and_no_credential_are_setup_errors() {
         for (config, want) in [
-            (
-                "[datadog]\napi_key = \"abc\"\napp_key_env = \"K\"\n",
-                "holds the key itself",
-            ),
             (
                 "[datadog]\nsite = \"datadog.contoso.example\"\n",
                 "is not a Datadog site",

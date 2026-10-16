@@ -6,9 +6,9 @@ https://learn.microsoft.com/rest/api/azure/devops/
 ## Config
 `[ado]`: `org`, `project` and `team` (one or a list; the first project is
 the default; `PROJECT/TEAM`), `code_project`, else
-`az devops configure`. Credential: `pat_env`, `pat_cmd`,
-`AZURE_DEVOPS_EXT_PAT`, then `az`; only to `trusted` hosts; a `pat`
-literal is refused. `Ado.project` steers URLs, caches:
+`az devops configure`. Credential: `pat`, `pat_env` or `pat_cmd`, then
+`AZURE_DEVOPS_EXT_PAT`, then `az`; only to `trusted` hosts. `Ado.project`
+steers URLs, caches:
 lists search all projects in one WIQL, other verbs take `--project` or
 the item's `System.TeamProject`.
 

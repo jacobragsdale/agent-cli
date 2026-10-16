@@ -58,12 +58,17 @@ set from the environment as `AGENT_CLI_<SECTION>_<KEY>`, for example
 
 ### Where secrets come from
 
-No password or token needs to be in the file. Each credential is three keys:
-`KEY` (the value itself; throwaway setups only, and refused for the ado PAT
-and Datadog keys), `KEY_env` (the variable that holds it) or `KEY_cmd` (a
-shell command that prints it, run only when a request needs it). Good commands are `pass show contoso/db` or
-`secret-tool lookup service contoso-db`. A file only you can read works too:
-`cat ~/.config/agent-cli/ado.pat` after `chmod 600` on it.
+Put each password or token in the config file beside the rest of its
+section, and `chmod 600 ~/.config/agent-cli/config.toml`. One file then
+holds every service: adding one is a block and a doctor run, and rotating a
+password is one line. Each credential `KEY` (`pat`, `password`, `token`) can
+instead be `KEY_env` (the variable that holds it) or `KEY_cmd` (a shell
+command that prints it, run only when a request needs it, such as
+`pass show contoso/db`). Use `KEY_env` when many connections share one
+password, so a rotation is one change.
+
+An Airflow or Control-M instance whose credential you do not have yet can
+go in the file anyway: only that instance fails, naming the key to add.
 
 ## 3. Azure DevOps (ado)
 
@@ -76,7 +81,7 @@ agent-cli config example ado
 org = "contoso"
 project = ["web", "mobile"]        # the first is the default
 team = ["web team", "mobile/mobile team"]   # PROJECT/TEAM for a project other than the first
-pat_cmd = "cat ~/.config/agent-cli/ado.pat"
+pat = "..."
 ```
 
 With several projects, `workitem list` and `activity list` search all of them
@@ -88,9 +93,8 @@ command on one work item uses that item's own project, whatever the default.
 per project. `code_project` (repositories, pull requests, pipelines) stays one
 project.
 
-The personal access token comes from `pat_env` or `pat_cmd`, else
-`AZURE_DEVOPS_EXT_PAT`, else your `az login`; a literal `pat = "..."` is
-refused, since a PAT opens the whole organization. Give it Work Items, Code,
+The personal access token comes from `pat` (or `pat_env`, `pat_cmd`), else
+`AZURE_DEVOPS_EXT_PAT`, else your `az login`. Give it Work Items, Code,
 Build, Test Management, and Project and Team scopes (read only for the first
 week).
 
@@ -192,7 +196,7 @@ kind = "mssql"
 host = "sql.contoso.example"
 database = "reporting"
 user = "app_reader"
-password_cmd = "pass show contoso/reporting"
+password = "..."
 
 [[sql.connection]]
 name = "ledger"
@@ -201,7 +205,7 @@ host = "ora.contoso.example"
 port = 1521
 service = "LEDGER"
 user = "app_reader"
-password_cmd = "pass show contoso/ledger"
+password = "..."
 ```
 
 One `[[sql.connection]]` per database; `--conn` takes its `name`. SQL Server
@@ -229,13 +233,13 @@ agent-cli config example airflow
 name = "dev"
 base_url = "https://airflow-dev.contoso.example"
 username = "agent"
-password_cmd = "pass show airflow/dev"
+password = "..."
 
 [[airflow.instance]]
 name = "prod"
 base_url = "https://airflow.contoso.example"
 username = "agent"
-password_cmd = "pass show airflow/prod"
+password = "..."
 ```
 
 One block per environment; `--instance` takes its `name`. Airflow 2.9
@@ -265,11 +269,11 @@ agent-cli config example dd
 ```toml
 [datadog]
 site = "datadoghq.eu"
-token_cmd = "pass show contoso/dd-token"
+token = "..."
 ```
 
 The credential is a personal access token, or the API and application key
-pair (`api_key_cmd`, `app_key_cmd`). Give it read scopes only.
+pair (`api_key`, `app_key`). Give it read scopes only.
 
 ```sh
 agent-cli doctor dd
@@ -292,7 +296,7 @@ agent-cli config example confluence
 [confluence]
 url = "https://contoso.atlassian.net/wiki"
 email = "jane@contoso.com"
-token_cmd = "pass show contoso/confluence-token"
+token = "..."
 ```
 
 Make an API token at
@@ -330,13 +334,13 @@ agent-cli config example controlm
 name = "prod"
 base_url = "https://ctm-em.contoso.example:8443/automation-api"
 username = "agent"
-password_cmd = "pass show controlm/prod"
+password = "..."
 utc_offset = "-05:00"
 ```
 
 The username and password are the ones Control-M's web client takes; each
 command logs in once. An API token (Enterprise Manager 9.0.21 and later,
-made in the web client) goes as `token_cmd` instead of the pair. Set
+made in the web client) goes as `token` instead of the pair. Set
 `utc_offset` to the Control-M/Servers' clock: the API prints times on it, and
 agent-cli turns them into UTC.
 
@@ -400,7 +404,7 @@ az login --use-device-code
 
 **A `password_cmd` that calls `powershell.exe`** (to read the Windows
 credential manager) costs about half a second per connection, every time.
-Prefer a Linux-side store: `pass`, `secret-tool`, or a `chmod 600` env file
+Keep the password in the config file instead, or in a `chmod 600` env file
 that your shell sources and a `password_env` names.
 
 ## Check everything

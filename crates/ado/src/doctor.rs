@@ -1,6 +1,6 @@
 //! The overview's line for ado, and `agent-cli doctor ado`.
 
-use agent_cli_core::{Check, Config, Ctx};
+use agent_cli_core::{Check, Config, Ctx, Failure};
 
 use crate::client::{self, Ado};
 use crate::config::{az_config_path, az_defaults};
@@ -25,11 +25,13 @@ pub(crate) fn doctor(ctx: &Ctx) -> Vec<Check> {
     let ado = match Ado::load(ctx) {
         Ok(ado) => ado,
         Err(error) => {
-            return vec![Check::failed(
-                "config",
-                format!("{error:#}"),
-                "set org and project under [ado]; `agent-cli config example ado` shows every key",
-            )];
+            let hint = (error.downcast_ref::<Failure>())
+                .and_then(|failure| failure.hint.clone())
+                .unwrap_or_else(|| {
+                    "set org and project under [ado]; `agent-cli config example ado` shows every key"
+                        .to_owned()
+                });
+            return vec![Check::failed("config", format!("{error:#}"), hint)];
         }
     };
     let mut checks = vec![Check::ok(

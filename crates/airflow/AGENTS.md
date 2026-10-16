@@ -12,7 +12,8 @@ hour: cheaper than a failing call naming the fix, and a wrong password
 never reads as a wrong version), `k8s_scope` and
 `k8s_namespace` (a row's `pod` is a k8s id), `dags_repo` (`REPO[:FOLDER]`:
 `source get` prints `repo_file`). Credential: `username` with `password`,
-`password_env` or `password_cmd`, or `token`, `token_env`, `token_cmd`.
+`password_env` or `password_cmd`, or `token`, `token_env`, `token_cmd`;
+none: `Auth::Missing`, failing at sign-in.
 A password is a JWT from `/auth/token` on 3; on 2 HTTP Basic, else (401
 or 403) the web form (`sign_in_form`, whose 302 carries the cookie). Only
 under `base_url/` (`same_origin`). `connection list` matches
