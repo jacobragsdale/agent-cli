@@ -563,3 +563,91 @@ expect = "k8s access list"
 [[query]]
 text = "am I forbidden from listing secrets in the namespace, check rbac permissions"
 expect = "k8s access list"
+
+[[query]]
+text = "trigger the cronjob now"
+expect = "k8s cronjob run"
+
+[[query]]
+text = "run the orders-export cronjob manually instead of waiting for its schedule"
+expect = "k8s cronjob run"
+
+[[query]]
+text = "kick off a scheduled job immediately"
+expect = "k8s cronjob run"
+
+[[query]]
+text = "delete the failed job"
+expect = "k8s job delete"
+
+[[query]]
+text = "remove a stuck job and its pods"
+expect = "k8s job delete"
+
+[[query]]
+text = "restart the orders-db statefulset"
+expect = "k8s statefulset restart"
+
+[[query]]
+text = "rollout restart a statefulset"
+expect = "k8s statefulset restart"
+
+[[query]]
+text = "scale the statefulset to zero replicas"
+expect = "k8s statefulset scale"
+
+[[query]]
+text = "scale down the database statefulset"
+expect = "k8s statefulset scale"
+
+[[query]]
+text = "restart the azure-cns daemonset"
+expect = "k8s daemonset restart"
+
+[[query]]
+text = "rollout restart a daemonset in kube-system"
+expect = "k8s daemonset restart"
+
+[[query]]
+text = "roll back the deployment to the previous version"
+expect = "k8s deployment update"
+
+[[query]]
+text = "undo the bad rollout of the api deployment"
+expect = "k8s deployment update"
+
+[[query]]
+text = "revert the deployment to revision 6"
+expect = "k8s deployment update"
+
+[[query]]
+text = "cordon a node"
+expect = "k8s node update"
+
+[[query]]
+text = "uncordon the node so pods can be scheduled on it again"
+expect = "k8s node update"
+
+[[query]]
+text = "mark a node unschedulable for maintenance"
+expect = "k8s node update"
+
+[[query]]
+text = "run nslookup inside the pod"
+expect = "k8s pod run"
+
+[[query]]
+text = "exec a command in a pod"
+expect = "k8s pod run"
+
+[[query]]
+text = "check from inside the pod whether it can reach the database port with nc"
+expect = "k8s pod run"
+
+[[query]]
+text = "print the environment variables of the running container"
+expect = "k8s pod run"
+
+[[query]]
+text = "cat /etc/resolv.conf in the api pod"
+expect = "k8s pod run"

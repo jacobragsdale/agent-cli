@@ -108,6 +108,10 @@ Objects are what `kubectl get -o json` prints (`kind`, `metadata.namespace`
 and `metadata.name` are what the fake filters on; a `CustomResourceDefinition`
 among them names its kind for `get` and `api-resources`). Logs are keyed
 `<context>/<namespace>/<pod>/<container>`, with `/previous` for `--previous`.
+`"exec": {"<context>": {"<namespace>/<pod>/<container>": {"<argv>": {"stdout",
+"stderr", "exit"}}}}` answers `k8s pod run`, the argv joined by spaces; an
+argv not recorded is an error. A change (`cordon`, `rollout undo`, `scale`…)
+answers what kubectl prints and changes nothing.
 
 ## Extend it
 

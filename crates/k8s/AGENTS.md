@@ -1,13 +1,12 @@
 # k8s: Kubernetes through kubectl
 
-A thin, bounded, JSON-emitting `kubectl` wrapper, not a kubectl replacement:
+A bounded, JSON-emitting `kubectl` wrapper, not a kubectl replacement:
 https://kubernetes.io/docs/reference/kubectl/
 
 ## Config
 `[[k8s.scope]]`: `name` (what `--cluster` takes), `context` (the kube
 context; defaults to `name`), `namespaces` (one or a list; empty lists every
-namespace). No credential of its own: kubectl's kubeconfig (and `kubelogin`
-for AKS) signs in.
+namespace). kubectl's kubeconfig (and `kubelogin` for AKS) signs in.
 
 ## Ids
 `cluster/namespace/name`, where `cluster` is the scope name (`prod/web/api`);
@@ -18,14 +17,14 @@ filling in the rest; a ref and a flag that disagree is exit 2.
 ## Where things are (`src/`)
 A command is `<resource>/<verb>.rs`: its args, rows, handler, `command!`
 and tests. Copy a sibling.
-- `lib.rs`: `K8S`, whose `commands` is the listing's order. `doctor.rs`.
+- `lib.rs`: `K8S` (`commands` in listing order). `doctor.rs`.
 - `kubectl.rs`, what every command shares:
-  - `At` (`--cluster`, `--namespace`, flattened into each command's args):
+  - `At` (`--cluster`, `--namespace`, flattened):
     `listing(ctx)`, `one(ctx)`, `named(ctx, raw)`; for cluster-scoped kinds
     `cluster_wide(ctx)`, `named_cluster(ctx, raw)`; `cluster_of`.
   - `Target`: `read`, `json`, `write(ctx, effect, args)`, `id(item)`,
-    `row_namespace(item)`; `kubectl(args)` and `finished` (`deployment wait`).
-  - `items`, `age`, `limited`, `name_has`, `digest`,
+    `row_namespace(item)`; `kubectl(args)`, `finished`.
+  - `items`, `age`, `limited`, `name_has`, `digest`, `Changed`,
     `owner_of` (a Job named for its schedule is its CronJob), `owned_by`.
 - `shape.rs`: `events_for` (five newest, by uid), `events_in` (from a
   joined read), `newest`, `event_row`, `conditions`, `trim`, `listing_for`
@@ -36,14 +35,15 @@ and tests. Copy a sibling.
   a template's `probes`, `sized`, `volumes`, `images`; `pv/mod.rs`: `row`,
   `attached_to`; `node/mod.rs`: `top` (metrics-server, else a note),
   `requests`, `quantity`; `access/mod.rs`: `rules` (`auth can-i --list`);
-  `daemonset/mod.rs` reads kube-system, whatever the scope).
-- `testing.rs`: `k8s(argv)`, `k8s_with(argv, config)`, `SCOPES` for tests.
+  `deployment/mod.rs`: `revisions`; `daemonset/mod.rs` reads kube-system).
+- `testing.rs`: `k8s(argv)`, `k8s_with(argv, config)`, `SCOPES`;
+  `dry_run(argv)`, `assert_dry_run` over `SCOPES`.
 
 ## Fixtures
 Tests run `scripts/fake/kubectl` over `fixtures/cluster.json` (contexts
-`aks-qa`, `aks-prod`; a new kind is data there; `server`, `top` and
-`access` answer version, metrics and can-i). Trials read
-`fixtures/world/kubectl.json`. Facts `fixtures/world/facts/k8s.md`; world
+`aks-qa`, `aks-prod`; a new kind is data there; `server`, `top`, `access`
+and `exec` answer version, metrics, can-i and `pod run`). Trials read
+`fixtures/world/kubectl.json`. Facts `fixtures/world/facts/k8s.md`;
 checks `crates/cli/tests/world_k8s.rs`; queries `crates/k8s/search.toml`.
 
 ## Quirks
@@ -51,8 +51,8 @@ checks `crates/cli/tests/world_k8s.rs`; queries `crates/k8s/search.toml`.
   group killed at the deadline: a kubelogin prompt cannot hang.
 - A new kubectl flag may need teaching `scripts/fake/kubectl`.
 - Node events carry the name as uid: `node get` matches kind and name.
-- Only `secret get` (a `Reveal`) prints values. `pod get` lists
-  `secret_refs` with the Key Vault ids (`kv`) a SecretProviderClass maps.
+- Only `secret get` (a `Reveal`) prints values; `pod run` masks those named
+  like secrets. `pod get` lists `secret_refs` with Key Vault ids (`kv`).
 
 ## Never needed
 Other crates' sources, `docs/plans/`, `docs/reference/`.

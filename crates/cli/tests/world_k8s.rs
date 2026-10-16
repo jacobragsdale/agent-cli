@@ -563,3 +563,116 @@ fn the_web_namespace_has_a_quota_and_its_service_accounts_say_what_they_may_do()
     ]);
     assert_eq!(mine[0], json!({"resource": "*.*"}));
 }
+
+#[test]
+fn a_web_pod_answers_env_and_resolv_conf_and_every_write_answers_as_kubectl_would() {
+    let pod = "prod/web/api-7d9f8c6b5-x2k4q";
+    let resolv = ok(&[
+        "k8s",
+        "pod",
+        "run",
+        pod,
+        "--yes",
+        "--",
+        "cat",
+        "/etc/resolv.conf",
+    ]);
+    assert_eq!(resolv["container"], "api");
+    assert!(
+        resolv["stdout"]
+            .as_str()
+            .unwrap()
+            .contains("nameserver 10.0.0.10"),
+        "kube-dns, as context get has it: {resolv}"
+    );
+    let env = ok(&["k8s", "pod", "run", pod, "--yes", "--", "env"]);
+    assert!(
+        env["stdout"].as_str().unwrap().contains("DB_USER=api"),
+        "{env}"
+    );
+
+    let rolled = ok(&[
+        "k8s",
+        "deployment",
+        "update",
+        "prod/web/api",
+        "--revision",
+        "6",
+        "--yes",
+    ]);
+    assert_eq!(
+        rolled["images"],
+        json!(["contosoacr.azurecr.io/api:v1.4.1"])
+    );
+    assert_eq!(rolled["previous"], 7);
+    let missing = agent_cli(&[
+        "k8s",
+        "deployment",
+        "update",
+        "prod/web/api",
+        "--revision",
+        "5",
+        "--yes",
+    ]);
+    assert_eq!(missing.code, 2, "{}", missing.stderr);
+    assert!(
+        missing.stderr.contains("it keeps 7, 6"),
+        "{}",
+        missing.stderr
+    );
+
+    let run = agent_cli(&["k8s", "cronjob", "run", "prod/web/orders-export"]);
+    assert_eq!(run.code, 0, "{}", run.stderr);
+    let id = run.json()["id"].as_str().unwrap().to_owned();
+    assert!(id.starts_with("prod/web/orders-export-manual-"), "{id}");
+    assert!(
+        run.stderr
+            .contains(&format!("[next: agent-cli k8s job get {id}]")),
+        "{}",
+        run.stderr
+    );
+
+    for args in [
+        &[
+            "k8s",
+            "job",
+            "delete",
+            "prod/web/orders-export-29844060",
+            "--yes",
+        ][..],
+        &[
+            "k8s",
+            "statefulset",
+            "restart",
+            "prod/web/orders-db",
+            "--yes",
+        ],
+        &[
+            "k8s",
+            "statefulset",
+            "scale",
+            "prod/web/orders-db",
+            "--replicas",
+            "1",
+            "--yes",
+        ],
+        &[
+            "k8s",
+            "daemonset",
+            "restart",
+            "prod/kube-system/azure-cns",
+            "--yes",
+        ],
+        &[
+            "k8s",
+            "node",
+            "update",
+            "prod/aks-user-27182818-vmss000001",
+            "--schedulable",
+            "true",
+            "--yes",
+        ],
+    ] {
+        ok(args);
+    }
+}

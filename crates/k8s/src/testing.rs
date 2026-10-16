@@ -49,3 +49,23 @@ pub fn run(argv: &[&str]) -> agent_cli_core::testing::Outcome {
     let argv: Vec<&str> = argv.iter().map(String::as_str).collect();
     k8s(&argv)
 }
+
+/// `testing::assert_dry_run` over [`SCOPES`], which it cannot be given:
+/// `--dry-run` goes before any `--`, kubectl's reads run against the fake,
+/// and the first change is planned, never run.
+pub fn dry_run(argv: &[&str]) -> Vec<serde_json::Value> {
+    let mut argv = argv.to_vec();
+    let at = argv
+        .iter()
+        .position(|arg| *arg == "--")
+        .unwrap_or(argv.len());
+    argv.insert(at, "--dry-run");
+    let outcome = k8s(&argv);
+    assert_eq!(outcome.code, 0, "{outcome:?}");
+    let printed = outcome.json();
+    assert_eq!(
+        printed["dry_run"], true,
+        "never reached ctx.write: {outcome:?}"
+    );
+    printed["would"].as_array().cloned().unwrap_or_default()
+}

@@ -7,6 +7,7 @@ pub(crate) mod delete;
 pub(crate) mod get;
 pub(crate) mod list;
 pub(crate) mod logs;
+pub(crate) mod run;
 
 use std::collections::BTreeMap;
 

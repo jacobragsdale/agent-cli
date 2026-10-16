@@ -276,17 +276,24 @@ impl At {
 
 impl Target {
     /// `kubectl --context C --request-timeout=10s <args> -n NS` (or
-    /// `--all-namespaces`).
+    /// `--all-namespaces`), the namespace before any `--`: after it, `exec`
+    /// would hand `-n` to the command in the pod.
     pub(crate) fn kubectl(&self, args: &[&str]) -> Command {
+        let (own, after) = args.split_at(
+            args.iter()
+                .position(|arg| *arg == "--")
+                .unwrap_or(args.len()),
+        );
         let mut command = program("kubectl");
         command
             .args(["--context", &self.context, REQUEST_TIMEOUT])
-            .args(args);
+            .args(own);
         match &self.namespace {
             _ if self.cluster_scoped => &mut command,
             Some(namespace) => command.args(["-n", namespace]),
             None => command.arg("--all-namespaces"),
         };
+        command.args(after);
         command
     }
 

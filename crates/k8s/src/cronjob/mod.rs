@@ -3,6 +3,7 @@
 
 pub(crate) mod get;
 pub(crate) mod list;
+pub(crate) mod run;
 
 use schemars::JsonSchema;
 use serde::Serialize;

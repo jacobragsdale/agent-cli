@@ -1,10 +1,11 @@
-# k8s — Kubernetes (47 commands)
+# k8s — Kubernetes (55 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
 | [`k8s pod list`](#k8s-pod-list) | read | List pods: status, ready, restarts, owner; or those mounting a Key Vault secret |
 | [`k8s pod get`](#k8s-pod-get) | read | Describe a pod: containers, images, states, last termination reason, owner |
-| [`k8s pod logs`](#k8s-pod-logs) | read | Read the tail of a pod's log, or of the container's previous run |
+| [`k8s pod logs`](#k8s-pod-logs) | read | Read the tail of a pod's log, or of its previous run |
+| [`k8s pod run`](#k8s-pod-run) | destructive | Run a command in a pod's container, from where the app runs (kubectl exec) |
 | [`k8s pod delete`](#k8s-pod-delete) | destructive | Delete a pod so its controller replaces it (a bare pod is gone for good) |
 | [`k8s event list`](#k8s-event-list) | read | List Kubernetes events, newest first: warnings, back-offs, failed pulls |
 | [`k8s service list`](#k8s-service-list) | read | List Kubernetes services: type, cluster IP, external IP, ports, ready endpoints |
@@ -22,19 +23,26 @@
 | [`k8s deployment get`](#k8s-deployment-get) | read | Describe a deployment: revision history, strategy, conditions, env, probes |
 | [`k8s deployment restart`](#k8s-deployment-restart) | destructive | Restart a deployment, replacing its pods one at a time |
 | [`k8s deployment scale`](#k8s-deployment-scale) | destructive | Scale a deployment to a number of replicas |
+| [`k8s deployment update`](#k8s-deployment-update) | destructive | Roll a deployment back to an earlier version of its pod template |
 | [`k8s deployment wait`](#k8s-deployment-wait) | read | Wait for a rollout: exit 0 once rolled out, 1 if it failed, 124 if still going |
 | [`k8s statefulset list`](#k8s-statefulset-list) | read | List statefulsets: ready pods, images, volume claim templates |
 | [`k8s statefulset get`](#k8s-statefulset-get) | read | Describe a statefulset: revisions, partition, each pod's volume claim, events |
+| [`k8s statefulset restart`](#k8s-statefulset-restart) | destructive | Restart a statefulset, replacing its pods one at a time from the highest |
+| [`k8s statefulset scale`](#k8s-statefulset-scale) | destructive | Scale a statefulset to a number of replicas |
 | [`k8s daemonset list`](#k8s-daemonset-list) | read | List daemonsets, kube-system's too: desired, ready, unavailable per node |
 | [`k8s daemonset get`](#k8s-daemonset-get) | read | Describe a daemonset, kube-system's too: unready pods, update strategy, events |
+| [`k8s daemonset restart`](#k8s-daemonset-restart) | destructive | Restart a daemonset, replacing its pod on each node in turn |
 | [`k8s job list`](#k8s-job-list) | read | List jobs: status, completions, failures, duration, the cronjob that made each |
 | [`k8s job get`](#k8s-job-get) | read | Show why a job failed: its tries, conditions, the cronjob behind it, events |
+| [`k8s job delete`](#k8s-job-delete) | destructive | Delete a job and its pods, stopping it if it still runs |
 | [`k8s cronjob list`](#k8s-cronjob-list) | read | List cronjobs: schedule, time zone, suspended, last run and last success |
 | [`k8s cronjob get`](#k8s-cronjob-get) | read | Describe a cronjob: recent runs with status, why one did not run |
+| [`k8s cronjob run`](#k8s-cronjob-run) | write | Run a cronjob now, as a job made from its template, off its schedule |
 | [`k8s hpa list`](#k8s-hpa-list) | read | List autoscalers: min, max, current and desired replicas, metrics vs target |
 | [`k8s pdb list`](#k8s-pdb-list) | read | List disruption budgets (PDBs): allowed disruptions; 0 blocks drains, upgrades |
 | [`k8s node list`](#k8s-node-list) | read | List nodes: ready, cordoned, taints, CPU and memory requests and usage |
 | [`k8s node get`](#k8s-node-get) | read | Show a node: conditions, requests, its Azure VM and AKS pool, events |
+| [`k8s node update`](#k8s-node-update) | destructive | Cordon or uncordon a node: whether new pods may be scheduled on it |
 | [`k8s namespace list`](#k8s-namespace-list) | read | List namespaces: status, labels, quota used of hard, whether the scope reads it |
 | [`k8s quota list`](#k8s-quota-list) | read | List resource quotas used of hard, and limit ranges' default requests and limits |
 | [`k8s serviceaccount list`](#k8s-serviceaccount-list) | read | List service accounts: their Azure client id, the pods that run as each |
@@ -83,7 +91,7 @@ e.g. agent-cli k8s pod get qa/dev/orders-api-7d9f5b-abc12 --fields status,contai
 ### k8s pod logs
 
 ```text
-agent-cli k8s pod logs — Read the tail of a pod's log, or of the container's previous run
+agent-cli k8s pod logs — Read the tail of a pod's log, or of its previous run
  *<pod> str        The pod: its id (cluster/namespace/name), namespace/name, or name
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
@@ -95,6 +103,21 @@ A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
 Returns: {pod,namespace,container,lines,text}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s pod logs qa/dev/orders-worker-5c4d3e-q8zt --previous --tail 50
+```
+
+### k8s pod run
+
+```text
+agent-cli k8s pod run — Run a command in a pod's container, from where the app runs (kubectl exec)
+ *<pod> str        The pod: its id (cluster/namespace/name), namespace/name, or name
+ *<argv> str[]     The command after `--`: nslookup HOST, env, cat /etc/resolv.conf, nc -zv HOST PORT
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --container str  Which container; defaults to the pod's only one
+  --tail int       How many of the last lines of stdout, and of stderr, to keep (default 200)
+Returns: {id,container,command,exit_code,stdout,stderr}
+Destructive: needs --yes; --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s pod run prod/web/api-7d9f8c6b5-x2k4q --yes -- nslookup kv-contoso-prod.vault.azure.net
 ```
 
 ### k8s pod delete
@@ -313,6 +336,19 @@ Destructive: needs --yes; --dry-run shows the change without making it. * requir
 e.g. agent-cli k8s deployment scale orders-api --replicas 3 --cluster qa --namespace dev
 ```
 
+### k8s deployment update
+
+```text
+agent-cli k8s deployment update — Roll a deployment back to an earlier version of its pod template
+ *<deployment> str  The deployment: its id (cluster/namespace/name), namespace/name, or name
+ *--revision int    The revision to roll back to, from deployment get's revisions
+  --cluster str     The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str   Defaults to the scope's only namespace
+Returns: {id,revision,images[],previous,said}
+Destructive: needs --yes; --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s deployment update prod/web/api --revision 6 --yes
+```
+
 ### k8s deployment wait
 
 ```text
@@ -350,6 +386,31 @@ Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s statefulset get prod/web/orders-db --fields ready,claims,events
 ```
 
+### k8s statefulset restart
+
+```text
+agent-cli k8s statefulset restart — Restart a statefulset, replacing its pods one at a time from the highest
+ *<statefulset> str  The statefulset: its id (cluster/namespace/name), namespace/name, or name
+  --cluster str      The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str    Defaults to the scope's only namespace
+Returns: {cluster,namespace,object,said,replicas,previous}
+Destructive: needs --yes; --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s statefulset restart prod/web/orders-db --yes
+```
+
+### k8s statefulset scale
+
+```text
+agent-cli k8s statefulset scale — Scale a statefulset to a number of replicas
+ *<statefulset> str  The statefulset: its id (cluster/namespace/name), namespace/name, or name
+ *--replicas int     How many pods it should run; fewer removes the highest ordinals, not their claims
+  --cluster str      The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str    Defaults to the scope's only namespace
+Returns: {cluster,namespace,object,said,replicas,previous}
+Destructive: needs --yes; --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s statefulset scale prod/web/orders-db --replicas 0 --yes
+```
+
 ### k8s daemonset list
 
 ```text
@@ -373,6 +434,18 @@ agent-cli k8s daemonset get — Describe a daemonset, kube-system's too: unready
 Returns: {id,name,namespace,desired,ready,updated,unavailable,node_selector,images[],age,update_strategy,misscheduled,unready[{id,name,namespace,status,ready,restarts,age,node,owner}],events[{type,reason,object,message,count,last_seen,namespace}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s daemonset get prod/kube-system/azure-cns
+```
+
+### k8s daemonset restart
+
+```text
+agent-cli k8s daemonset restart — Restart a daemonset, replacing its pod on each node in turn
+ *<daemonset> str  The daemonset: its id (cluster/namespace/name), namespace/name, or name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+Returns: {cluster,namespace,object,said,replicas,previous}
+Destructive: needs --yes; --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s daemonset restart prod/kube-system/azure-cns --yes
 ```
 
 ### k8s job list
@@ -400,6 +473,18 @@ Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s job get prod/web/orders-export-29844060 --fields status,conditions,pods
 ```
 
+### k8s job delete
+
+```text
+agent-cli k8s job delete — Delete a job and its pods, stopping it if it still runs
+ *<job> str        The job: its id (cluster/namespace/name), namespace/name, or name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+Returns: {cluster,namespace,object,said,replicas,previous}
+Destructive: needs --yes; --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s job delete prod/web/orders-export-29844060 --yes
+```
+
 ### k8s cronjob list
 
 ```text
@@ -423,6 +508,18 @@ agent-cli k8s cronjob get — Describe a cronjob: recent runs with status, why o
 Returns: {id,name,namespace,schedule,time_zone,suspended,last_schedule,last_success,active[],concurrency_policy,starting_deadline,jobs[{id,name,namespace,status,completions,failed,started,duration,cronjob}],events[{type,reason,object,message,count,last_seen,namespace}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s cronjob get prod/web/orders-export --fields schedule,last_success,jobs
+```
+
+### k8s cronjob run
+
+```text
+agent-cli k8s cronjob run — Run a cronjob now, as a job made from its template, off its schedule
+ *<cronjob> str    The cronjob: its id (cluster/namespace/name), namespace/name, or name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+Returns: {id,cronjob,said}
+Write: --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s cronjob run prod/web/orders-export
 ```
 
 ### k8s hpa list
@@ -474,6 +571,19 @@ agent-cli k8s node get — Show a node: conditions, requests, its Azure VM and A
 Returns: {id,name,ready,schedulable,pool,zone,version,taints[],cpu{requested,allocatable,requested_percent,usage,usage_percent},memory{requested,allocatable,requested_percent,usage,usage_percent},pressure[],pod_count,age,vm,nodepool,conditions[{type,status,reason,message}],ips[],pod_cidr,capacity,allocatable,pods[{id,status,cpu,memory}],events[{type,reason,object,message,count,last_seen,namespace}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s node get prod/aks-user-27182818-vmss000001 --fields ready,conditions,vm,nodepool
+```
+
+### k8s node update
+
+```text
+agent-cli k8s node update — Cordon or uncordon a node: whether new pods may be scheduled on it
+ *<node> str                The node: its id (cluster/name) or name
+ *--schedulable true|false  false cordons it (no new pod lands there; those on it stay), true uncordons it
+  --cluster str             The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str           Defaults to the scope's only namespace
+Returns: {id,schedulable,said}
+Destructive: needs --yes; --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s node update prod/aks-user-27182818-vmss000001 --schedulable false --yes
 ```
 
 ### k8s namespace list

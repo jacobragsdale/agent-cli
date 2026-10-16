@@ -1,6 +1,7 @@
 //! `k8s job …`: run-to-completion pods, read from kubectl's JSON, with the
 //! CronJob that made each.
 
+pub(crate) mod delete;
 pub(crate) mod get;
 pub(crate) mod list;
 

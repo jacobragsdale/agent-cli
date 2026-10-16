@@ -6,11 +6,11 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::kubectl::{At, items, non_empty, owned_by};
-use crate::pod::{Probe, Volume, first_unready, images, probes, sized, volumes};
+use crate::kubectl::{At, items, non_empty};
+use crate::pod::{Probe, Volume, first_unready, probes, sized, volumes};
 use crate::shape::{Condition, EventRow, conditions, events_in};
 
-use super::{DeploymentRow, own_pods, row};
+use super::{DeploymentRow, Revision, own_pods, revisions, row};
 
 #[derive(clap::Args)]
 pub struct DeploymentGetArgs {
@@ -43,18 +43,6 @@ pub struct DeploymentDetail {
     volumes: Vec<Volume>,
     /// The five newest events about it (ScalingReplicaSet…), newest first.
     events: Vec<EventRow>,
-}
-
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct Revision {
-    revision: i64,
-    images: Vec<String>,
-    /// The `kubernetes.io/change-cause` annotation, when the deploy set one.
-    change_cause: Option<String>,
-    /// When its ReplicaSet was made: when this revision rolled out.
-    created: Option<String>,
-    /// Pods it runs now; 0 for a revision rolled away from.
-    replicas: i64,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -142,28 +130,6 @@ fn strategy(strategy: &Value) -> Option<String> {
     ))
 }
 
-fn revisions(listed: &Value, name: &str) -> Vec<Revision> {
-    let mut found: Vec<Revision> = items(listed)
-        .filter(|held| held["kind"] == "ReplicaSet" && owned_by(held, "Deployment", name))
-        .map(|set| {
-            let annotations = &set["metadata"]["annotations"];
-            Revision {
-                revision: annotations["deployment.kubernetes.io/revision"]
-                    .as_str()
-                    .and_then(|held| held.parse().ok())
-                    .unwrap_or_default(),
-                images: images(&set["spec"]["template"]["spec"]),
-                change_cause: non_empty(&annotations["kubernetes.io/change-cause"])
-                    .map(str::to_owned),
-                created: non_empty(&set["metadata"]["creationTimestamp"]).map(agent_cli_core::utc),
-                replicas: set["status"]["replicas"].as_i64().unwrap_or_default(),
-            }
-        })
-        .collect();
-    found.sort_by_key(|held| std::cmp::Reverse(held.revision));
-    found
-}
-
 /// Each container's image and environment: a variable's name and the
 /// secret or configmap key it comes from, an `envFrom`'s source; never a
 /// value, which may be a secret written inline.
@@ -225,7 +191,7 @@ fn template_containers(
 command! {
     pub DEPLOYMENT_GET = ["k8s", "deployment", "get"], Read,
     "Describe a deployment: revision history, strategy, conditions, env, probes",
-    keywords: ["revisions", "rollback", "undo", "replicaset", "change-cause", "env", "variables", "available", "availability"],
+    keywords: ["revisions", "rollback", "roll", "back", "undo", "replicaset", "change-cause", "env", "variables", "available", "availability"],
     example: "k8s deployment get prod/web/api --fields revisions,conditions,containers",
     run: deployment_get,
 }

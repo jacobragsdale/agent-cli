@@ -65,7 +65,7 @@ fn deployment_scale(ctx: &Ctx, args: ScaleArgs) -> Result<Changed> {
 command! {
     pub DEPLOYMENT_SCALE = ["k8s", "deployment", "scale"], Destructive,
     "Scale a deployment to a number of replicas",
-    keywords: ["replicas", "pods", "up", "down", "zero", "statefulset", "workload"],
+    keywords: ["replicas", "pods", "up", "down", "zero", "workload"],
     example: "k8s deployment scale orders-api --replicas 3 --cluster qa --namespace dev",
     run: deployment_scale,
 }

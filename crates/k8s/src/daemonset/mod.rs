@@ -4,6 +4,7 @@
 
 pub(crate) mod get;
 pub(crate) mod list;
+pub(crate) mod restart;
 
 use std::collections::BTreeMap;
 

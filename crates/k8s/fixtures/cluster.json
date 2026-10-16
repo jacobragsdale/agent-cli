@@ -3518,5 +3518,18 @@
     ]
    ]
   }
+ },
+ "exec": {
+  "aks-qa": {
+   "dev/orders-api-7d9f5b-abc12/api": {
+    "env": {
+     "stdout": "HOSTNAME=orders-api-7d9f5b-abc12\nDB_PASSWORD=not-a-real-one\nLOG_LEVEL=info\n"
+    },
+    "nc -zv orders-db 5432": {
+     "stderr": "nc: orders-db (10.0.12.7:5432): Connection timed out\n",
+     "exit": 1
+    }
+   }
+  }
  }
 }

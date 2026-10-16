@@ -4935,5 +4935,17 @@
     ]
    ]
   }
+ },
+ "exec": {
+  "aks-contoso-prod": {
+   "web/api-7d9f8c6b5-x2k4q/api": {
+    "env": {
+     "stdout": "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\nHOSTNAME=api-7d9f8c6b5-x2k4q\nDB_USER=api\nLOG_LEVEL=info\nASPNETCORE_URLS=http://+:8080\nDOTNET_RUNNING_IN_CONTAINER=true\nKUBERNETES_SERVICE_HOST=10.0.0.1\nKUBERNETES_SERVICE_PORT=443\nAPI_SERVICE_HOST=10.0.142.17\nAPI_SERVICE_PORT=80\nWORKER_SERVICE_HOST=10.0.88.40\nWORKER_SERVICE_PORT=80\nHOME=/app\n"
+    },
+    "cat /etc/resolv.conf": {
+     "stdout": "search web.svc.cluster.local svc.cluster.local cluster.local\nnameserver 10.0.0.10\noptions ndots:5\n"
+    }
+   }
+  }
  }
 }

@@ -13,7 +13,9 @@ is v1.30.0 with every readiness check ok. "top": {CONTEXT: {"nodes": {NAME:
 [cpu, cpu%, memory, memory%]}, "pods": {"NS/NAME": [cpu, memory]}}} is what
 metrics-server measured (none for a context left out), and "access":
 {CONTEXT: {SUBJECT: [[resource, urls, names, verbs]]}} what `auth can-i
---list --as SUBJECT` grants ("" for yourself). `get KIND` answers for the
+--list --as SUBJECT` grants ("" for yourself). "exec": {CONTEXT: {"NS/POD/CONTAINER":
+{"ARGV joined by spaces": {"stdout": ..., "stderr": ..., "exit": N}}}} is what
+`exec` answers; an argv not recorded is an error. `get KIND` answers for the
 standard kinds and every kind the file holds (a CustomResourceDefinition
 there names its kind's plural and short names), and `api-resources` lists
 them. An object without a uid gets one from its context, kind, namespace and
@@ -30,6 +32,9 @@ import time
 import uuid
 
 args = sys.argv[1:]
+# What follows `--` is the command `exec` runs in the pod, not kubectl's flags.
+command = args[args.index("--") + 1:] if "--" in args else []
+args = args[:args.index("--")] if "--" in args else args
 
 
 def take(flag):
@@ -388,8 +393,29 @@ if args[:1] == ["describe"] and len(args) >= 3:
     )
     sys.exit(0)
 
-if args[:2] == ["delete", "pod"]:
-    print(f'pod "{args[2]}" deleted')
+if args[:1] == ["delete"] and len(args) >= 3:
+    # kubectl names what it deleted by kind and group: pod "x", job.batch "x".
+    row = resource(context, args[1]) or unknown(args[1])
+    find(row, args[2])
+    group = row[2].rpartition("/")[0]
+    print(f'{row[4].lower()}{"." + group if group else ""} "{args[2]}" deleted')
+    sys.exit(0)
+
+if args[:2] == ["create", "job"]:
+    # create job --from=cronjob/NAME JOB: the cronjob must be there.
+    kind, _, name = next(a for a in args if a.startswith("--from=")).split("=", 1)[1].partition("/")
+    find(resource(context, kind) or unknown(kind), name)
+    job = next(a for a in args[2:] if not a.startswith("-"))
+    print(f"job.batch/{job} created")
+    sys.exit(0)
+
+if args[:2] == ["rollout", "undo"]:
+    print(f"{args[2].replace('deployment/', 'deployment.apps/')} rolled back")
+    sys.exit(0)
+
+if args[:1] in (["cordon"], ["uncordon"]):
+    find(resource(context, "node"), args[1])
+    print(f"node/{args[1]} {args[0]}ed")
     sys.exit(0)
 
 if args[:2] == ["rollout", "restart"]:
@@ -451,11 +477,20 @@ if args[:1] == ["get"] and len(args) >= 3 and "yaml" in args:
     sys.exit(0)
 
 if args[:1] == ["exec"]:
-    # What a shell in the pod would do: print and leave, so the TUI repaints.
-    # The pod is the last argument before `--`; -n and -c were taken above.
-    pod_name = args[args.index("--") - 1] if "--" in args else args[-1]
-    print(f"fake shell in {pod_name}")
-    sys.exit(0)
+    # The recorded answer, as kubectl relays it: the command's output and
+    # exit code, and its own line on stderr when that is not 0.
+    find(resource(context, "pod"), args[1])
+    recorded = world.get("exec", {}).get(context, {}).get(f"{ns}/{args[1]}/{container}", {})
+    answer = recorded.get(" ".join(command))
+    if answer is None:
+        sys.stderr.write(f"error: fake kubectl has no exec answer for {ns}/{args[1]}/{container}: {' '.join(command)}\n")
+        sys.exit(2)
+    sys.stdout.write(answer.get("stdout", ""))
+    sys.stderr.write(answer.get("stderr", ""))
+    code = answer.get("exit", 0)
+    if code:
+        sys.stderr.write(f"command terminated with exit code {code}\n")
+    sys.exit(code)
 
 sys.stderr.write("error: fake kubectl does not know: " + " ".join(sys.argv[1:]) + "\n")
 sys.exit(2)

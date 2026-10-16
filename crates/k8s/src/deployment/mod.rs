@@ -4,6 +4,7 @@ pub(crate) mod get;
 pub(crate) mod list;
 pub(crate) mod restart;
 pub(crate) mod scale;
+pub(crate) mod update;
 pub(crate) mod wait;
 
 use agent_cli_core::{Ctx, Failure};
@@ -14,7 +15,8 @@ use serde_json::Value;
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
-use crate::kubectl::{At, Target, digest, non_empty, owner_of};
+use crate::kubectl::{At, Target, digest, items, non_empty, owned_by, owner_of};
+use crate::pod::images;
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct DeploymentRow {
@@ -104,6 +106,42 @@ fn row(target: &Target, item: &Value, pods: &[&Value]) -> Option<DeploymentRow> 
         images,
         updated: rolled_out(item).map(agent_cli_core::utc_time),
     })
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct Revision {
+    revision: i64,
+    images: Vec<String>,
+    /// The `kubernetes.io/change-cause` annotation, when the deploy set one.
+    change_cause: Option<String>,
+    /// When its ReplicaSet was made: when this revision rolled out.
+    created: Option<String>,
+    /// Pods it runs now; 0 for a revision rolled away from.
+    replicas: i64,
+}
+
+/// A deployment's revisions, newest first, from its ReplicaSets in `listed`:
+/// what `deployment get` shows and `deployment update --revision` takes.
+fn revisions(listed: &Value, name: &str) -> Vec<Revision> {
+    let mut found: Vec<Revision> = items(listed)
+        .filter(|held| held["kind"] == "ReplicaSet" && owned_by(held, "Deployment", name))
+        .map(|set| {
+            let annotations = &set["metadata"]["annotations"];
+            Revision {
+                revision: annotations["deployment.kubernetes.io/revision"]
+                    .as_str()
+                    .and_then(|held| held.parse().ok())
+                    .unwrap_or_default(),
+                images: images(&set["spec"]["template"]["spec"]),
+                change_cause: non_empty(&annotations["kubernetes.io/change-cause"])
+                    .map(str::to_owned),
+                created: non_empty(&set["metadata"]["creationTimestamp"]).map(agent_cli_core::utc),
+                replicas: set["status"]["replicas"].as_i64().unwrap_or_default(),
+            }
+        })
+        .collect();
+    found.sort_by_key(|held| std::cmp::Reverse(held.revision));
+    found
 }
 
 /// The pods a deployment made: its ReplicaSets' pods in its namespace.
