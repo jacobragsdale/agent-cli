@@ -37,7 +37,7 @@ fn kind_list(ctx: &Ctx, args: KindListArgs) -> Result<Vec<KindRow>> {
 
 command! {
     pub KIND_LIST = ["k8s", "kind", "list"], Read,
-    "List the kinds a cluster serves, CRDs included: names, short names, API group",
+    "List every kind a cluster has, CRDs included: names, short names, API group",
     keywords: ["crd", "crds", "custom", "resource", "definitions", "api-resources", "kubectl", "types", "installed", "operator"],
     example: "k8s kind list cert --cluster qa --fields name,kind,api_version,namespaced",
     run: kind_list,

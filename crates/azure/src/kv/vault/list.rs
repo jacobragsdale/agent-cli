@@ -28,8 +28,8 @@ fn vault_list(ctx: &Ctx, args: VaultListArgs) -> Result<Vec<Vault>> {
 
 command! {
     pub VAULT_LIST = ["kv", "vault", "list"], Read,
-    "List the key vaults the az login reaches (within [azure] vaults)",
-    keywords: ["keyvault", "inventory", "uri", "subscription"],
+    "List the vaults the az login reaches (within [azure] vaults)",
+    keywords: ["inventory", "uri", "subscription"],
     example: "kv vault list --fields name,resource_group,uri",
     run: vault_list,
 }

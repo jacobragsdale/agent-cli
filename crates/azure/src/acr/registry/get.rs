@@ -154,7 +154,7 @@ fn endpoint(connection: &Value) -> Endpoint {
 command! {
     pub REGISTRY_GET = ["acr", "registry", "get"], Read,
     "Show a container registry's SKU, access, network rules, retention and webhooks",
-    keywords: ["admin", "anonymous", "network", "public", "retention", "replication", "geo", "webhook", "sku"],
+    keywords: ["admin", "anonymous", "network", "public", "retention", "untagged", "replication", "geo", "webhook", "sku"],
     example: "acr registry get contosoacr --fields sku,admin_user,network,retention_days",
     run: registry_get,
 }

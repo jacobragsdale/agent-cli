@@ -83,7 +83,7 @@ fn certificate_list(ctx: &Ctx, args: CertificateListArgs) -> Result<Vec<Certific
 
 command! {
     pub CERTIFICATE_LIST = ["kv", "certificate", "list"], Read,
-    "List Key Vault certificates with subject, SANs, issuer, expiry and autorenew",
+    "List Key Vault certificates and when they expire, or those due in the next days",
     keywords: ["tls", "ssl", "x509", "expiring", "expired", "thumbprint", "domain"],
     example: "kv certificate list --expires-within 30d --fields id,subject,expires,autorenew",
     run: certificate_list,

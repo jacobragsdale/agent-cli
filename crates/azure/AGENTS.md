@@ -1,9 +1,9 @@
 # azure: kv, acr, aks, aisearch, arm and net
 
 Six domains, `KV`, `ACR`, `AKS`, `AISEARCH`, `ARM`, `NET`, over plain HTTPS
-with `az` tokens; no Azure SDK. Docs: https://learn.microsoft.com/rest/api/
-(keyvault, containerregistry, azureresourcegraph, searchservice, resources,
-virtualnetwork, monitor, authorization, managedidentity).
+with `az` tokens; no Azure SDK. Docs: https://learn.microsoft.com/rest/api/.
+`arm resource` and `arm query run` read any resource; a curated command adds
+a join or a bound. Never calls k8s: joins are ids one side prints.
 
 ## Config
 `[azure]`: `subscriptions`, `vaults`, `registries`, `search_services` (a
@@ -52,4 +52,4 @@ domain's module doc (`kv/mod.rs` …) gives its ids, helpers and quirks.
 - `VERIFY(work)` marks API behaviour no live call has confirmed yet.
 
 ## Never needed
-Other crates' sources, `docs/plans/`, `docs/reference/`.
+Other crates' sources, `docs/reference/`.

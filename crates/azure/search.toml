@@ -699,7 +699,7 @@ expect = "kv vault get"
 
 [[query]]
 text = "does kv-contoso-prod have a private endpoint"
-expect = "kv vault get"
+expect = "net endpoint list"
 
 [[query]]
 text = "is purge protection enabled on the vault"

@@ -1,7 +1,8 @@
 # k8s: Kubernetes through kubectl
 
-A bounded, JSON-emitting `kubectl` wrapper, not a kubectl replacement:
-https://kubernetes.io/docs/reference/kubectl/
+A bounded `kubectl` wrapper: `k8s object` reads any kind; a curated command
+adds a join or a bound. Never calls azure: joins are ids it prints
+(`pv.disk`, `vm`, `nodepool`, `client_id`).
 
 ## Config
 `[[k8s.scope]]`: `name` (what `--cluster` takes), `context` (the kube
@@ -15,9 +16,8 @@ also takes `namespace/name` or a name, with `--cluster` and `--namespace`
 filling in the rest; a ref and a flag that disagree is exit 2.
 
 ## Where things are (`src/`)
-A command is `<resource>/<verb>.rs`: its args, rows, handler, `command!`
-and tests. Copy a sibling.
-- `lib.rs`: `K8S` (`commands` in listing order). `doctor.rs`.
+A command is `<resource>/<verb>.rs`; copy a sibling.
+- `lib.rs`: `K8S` (commands in listing order). `doctor.rs`.
 - `kubectl.rs`, what every command shares:
   - `At` (`--cluster`, `--namespace`, flattened):
     `listing(ctx)`, `one(ctx)`, `named(ctx, raw)`; for cluster-scoped kinds
@@ -33,8 +33,8 @@ and tests. Copy a sibling.
 - `<resource>/mod.rs`: what its verbs share (`pod/mod.rs`: `PodRow`, `row`,
   `containers`, `status_word`, `previous_logs`, `ready`, `first_unready`,
   a template's `probes`, `sized`, `volumes`, `images`; `pv/mod.rs`: `row`,
-  `attached_to`; `node/mod.rs`: `top` (metrics-server, else a note),
-  `requests`, `quantity`; `access/mod.rs`: `rules` (`auth can-i --list`);
+  `attached_to`; `node/mod.rs`: `row`, `top` (metrics-server, else a
+  note), `requests`, `quantity`; `access/mod.rs`: `rules` (can-i --list);
   `deployment/mod.rs`: `revisions`; `daemonset/mod.rs` reads kube-system).
 - `testing.rs`: `k8s(argv)`, `k8s_with(argv, config)`, `SCOPES`;
   `dry_run(argv)`, `assert_dry_run` over `SCOPES`.
@@ -44,7 +44,7 @@ Tests run `scripts/fake/kubectl` over `fixtures/cluster.json` (contexts
 `aks-qa`, `aks-prod`; a new kind is data there; `server`, `top`, `access`
 and `exec` answer version, metrics, can-i and `pod run`). Trials read
 `fixtures/world/kubectl.json`. Facts `fixtures/world/facts/k8s.md`;
-checks `crates/cli/tests/world_k8s.rs`; queries `crates/k8s/search.toml`.
+checks `crates/cli/tests/world_k8s.rs`; queries `search.toml`.
 
 ## Quirks
 - Every call is `kubectl --context C --request-timeout=10s …`, its process
@@ -55,4 +55,4 @@ checks `crates/cli/tests/world_k8s.rs`; queries `crates/k8s/search.toml`.
   like secrets. `pod get` lists `secret_refs` with Key Vault ids (`kv`).
 
 ## Never needed
-Other crates' sources, `docs/plans/`, `docs/reference/`.
+Other crates' sources, `docs/reference/`.

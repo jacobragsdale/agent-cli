@@ -54,7 +54,7 @@
 | [`k8s secret get`](#k8s-secret-get) | reveal | Decode one key of a Kubernetes secret (needs --reveal, or --output FILE) |
 | [`k8s context list`](#k8s-context-list) | read | List the configured cluster scopes and whether kubectl knows each context |
 | [`k8s context get`](#k8s-context-get) | read | Check a cluster: server version, failing readiness checks, DNS address, CNI |
-| [`k8s kind list`](#k8s-kind-list) | read | List the kinds a cluster serves, CRDs included: names, short names, API group |
+| [`k8s kind list`](#k8s-kind-list) | read | List every kind a cluster has, CRDs included: names, short names, API group |
 | [`k8s object list`](#k8s-object-list) | read | List objects of any kind, custom resources (CRDs) too: id, age, ready, status |
 | [`k8s object get`](#k8s-object-get) | read | Show one object of any kind, a custom resource (CRD) too: manifest and status |
 
@@ -721,7 +721,7 @@ e.g. agent-cli k8s context get qa
 ### k8s kind list
 
 ```text
-agent-cli k8s kind list — List the kinds a cluster serves, CRDs included: names, short names, API group
+agent-cli k8s kind list — List every kind a cluster has, CRDs included: names, short names, API group
   <name> str       Part of the name, kind or API group: cert, gateway, keda.sh
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace

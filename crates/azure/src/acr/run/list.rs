@@ -88,7 +88,7 @@ fn run_list(ctx: &Ctx, args: RunListArgs) -> Result<Vec<RunRow>> {
 command! {
     pub RUN_LIST = ["acr", "run", "list"], Read,
     "List ACR Tasks runs, newest first: outcome, trigger and the images they pushed",
-    keywords: ["tasks", "history", "pushed", "trigger", "commit", "failed"],
+    keywords: ["tasks", "build", "history", "pushed", "trigger", "commit", "failed"],
     example: "acr run list --status failed --fields id,task,status,error",
     run: run_list,
 }

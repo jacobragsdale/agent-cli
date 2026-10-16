@@ -147,7 +147,7 @@ fn policy(policy: &Value) -> Policy {
 
 command! {
     pub CERTIFICATE_GET = ["kv", "certificate", "get"], Read,
-    "Show a Key Vault certificate with its policy and any pending renewal",
+    "Show a Key Vault certificate: subject, SANs, autorenew, policy, pending renewal",
     keywords: ["tls", "ssl", "x509", "renewal", "autorenew", "issuer", "san", "policy", "pending"],
     example: "kv certificate get kv-contoso-prod/www-contoso-example --fields subject,expires,autorenew,pending",
     run: certificate_get,

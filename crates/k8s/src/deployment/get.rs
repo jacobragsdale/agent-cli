@@ -191,7 +191,7 @@ fn template_containers(
 command! {
     pub DEPLOYMENT_GET = ["k8s", "deployment", "get"], Read,
     "Describe a deployment: revision history, strategy, conditions, env, probes",
-    keywords: ["revisions", "rollback", "roll", "back", "undo", "replicaset", "change-cause", "env", "variables", "available", "availability"],
+    keywords: ["revisions", "rollback", "roll", "back", "undo", "replicaset", "env", "variables", "available", "availability"],
     example: "k8s deployment get prod/web/api --fields revisions,conditions,containers",
     run: deployment_get,
 }

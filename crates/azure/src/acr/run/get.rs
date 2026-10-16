@@ -37,7 +37,7 @@ fn run_get(ctx: &Ctx, args: RunGetArgs) -> Result<RunRow> {
 command! {
     pub RUN_GET = ["acr", "run", "get"], Read,
     "Show one ACR Tasks run: outcome, trigger, images it pushed, duration, error",
-    keywords: ["task", "trigger", "duration", "why", "fail"],
+    keywords: ["task", "build", "status", "trigger", "duration", "why", "fail"],
     example: "acr run get contosoacr/ca1f --fields status,images,error",
     run: run_get,
 }

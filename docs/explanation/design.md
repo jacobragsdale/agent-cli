@@ -141,6 +141,20 @@ needs remapping to ids, UTC and bounds, and it adds a process start per call
 and a version to track. [How to add a domain](../how-to/add-a-domain.md)
 gives the four tests a new service must pass.
 
+Kubernetes and Azure have too many kinds and `az` groups for one command
+each, so they get a generic floor plus curated joins. `k8s object` reads any
+kind the API server serves, CRDs included, and `arm resource` and `arm query
+run` any ARM resource; the floor still adds scopes, ids, trimmed manifests
+and `--limit`. A curated command exists only where a join or a bound beats
+the raw object: a service with its ready endpoints and their pods, a PVC with
+its volume, node and Azure disk, a subnet with its free IPs, NSG, routes and
+private endpoints. The k8s and azure crates never call each other; a join is
+an id one side prints and the other takes. k8s prints what the cluster
+already holds (a disk's ARM id from `volumeHandle`, a VM's from `providerID`,
+the node pool as `cluster/pool`, a workload identity's client id), and the
+Azure side names the k8s object where it can (a load balancer frontend's
+service).
+
 Retention decides which way a question chains. Kubernetes keeps events for
 an hour, and a KubernetesExecutor task pod is deleted when it finishes, so
 "why did last night's run fail" goes from airflow to dd, whose logs last; the
@@ -265,7 +279,10 @@ renames a spec's time, limit and identity params (Datadog's `from`/`to`,
 ADO's `minTime`/`maxTime`) to the canonical flags, or `check_registry`
 refuses them, as it should. A spec does not always say which operations only
 read: Datadog searches logs, spans and events with POSTs, so its list of
-POSTs that only read is kept by hand.
+POSTs that only read is kept by hand. ARM does not need the runner yet:
+`arm resource get` reads its long tail with no generator, and the runner is
+worth revisiting only when writes to long-tail ARM types become a recurring
+task.
 
 ## What was left out
 

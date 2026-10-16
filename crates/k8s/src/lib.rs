@@ -128,6 +128,7 @@ pub const K8S: Domain = Domain {
         ("log", &["logs"]),
         ("output", &["logs"]),
         ("warnings", &["event"]),
+        ("cluster ip", &["clusterip"]),
     ],
     status: doctor::status,
     doctor: doctor::doctor,

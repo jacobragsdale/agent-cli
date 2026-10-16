@@ -82,7 +82,7 @@ fn secret_list(ctx: &Ctx, args: SecretListArgs) -> Result<Vec<SecretRow>> {
 command! {
     pub SECRET_LIST = ["kv", "secret", "list"], Read,
     "List Key Vault secrets with expiry and tags (names and metadata, never values)",
-    keywords: ["password", "credential", "expiring", "expired", "disabled", "vaults", "contains", "find", "tagged", "certificate"],
+    keywords: ["password", "credential", "expiring", "expired", "days", "disabled", "vaults", "contains", "find", "tagged", "certificate"],
     example: "kv secret list db --expires-within 30d --fields id,expires",
     run: secret_list,
 }

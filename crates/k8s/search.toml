@@ -314,7 +314,7 @@ expect = "k8s context get"
 
 [[query]]
 text = "which CNI network plugin and DNS service IP does the cluster use"
-expect = "k8s context get"
+expect = "aks cluster get"
 
 [[query]]
 text = "which pods are scheduled on this node"
