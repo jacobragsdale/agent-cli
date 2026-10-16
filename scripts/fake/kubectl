@@ -93,6 +93,7 @@ STANDARD = [
     ("endpointslices", "", "discovery.k8s.io/v1", True, "EndpointSlice"),
     ("networkpolicies", "netpol", "networking.k8s.io/v1", True, "NetworkPolicy"),
     ("storageclasses", "sc", "storage.k8s.io/v1", False, "StorageClass"),
+    ("volumeattachments", "", "storage.k8s.io/v1", False, "VolumeAttachment"),
     ("customresourcedefinitions", "crd,crds", "apiextensions.k8s.io/v1", False, "CustomResourceDefinition"),
 ]
 

@@ -20,9 +20,12 @@ mod kubectl;
 mod networkpolicy;
 mod object;
 mod pod;
+mod pv;
+mod pvc;
 mod secret;
 mod service;
 mod shape;
+mod storageclass;
 #[cfg(test)]
 mod testing;
 
@@ -43,6 +46,11 @@ pub const K8S: Domain = Domain {
         ingress::get::INGRESS_GET,
         networkpolicy::list::NETWORKPOLICY_LIST,
         networkpolicy::get::NETWORKPOLICY_GET,
+        pvc::list::PVC_LIST,
+        pvc::get::PVC_GET,
+        pv::list::PV_LIST,
+        pv::get::PV_GET,
+        storageclass::list::STORAGECLASS_LIST,
         deployment::list::DEPLOYMENT_LIST,
         deployment::restart::DEPLOYMENT_RESTART,
         deployment::scale::DEPLOYMENT_SCALE,

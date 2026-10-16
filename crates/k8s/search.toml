@@ -328,3 +328,59 @@ expect = "k8s pod list"
 text = "pod readiness probe and resource limits"
 expect = "k8s pod get"
 
+
+[[query]]
+text = "list the persistent volume claims in the namespace"
+expect = "k8s pvc list"
+
+[[query]]
+text = "which pvc is the database pod using, is it bound"
+expect = "k8s pvc list"
+
+[[query]]
+text = "pvc stuck pending"
+expect = "k8s pvc get"
+
+[[query]]
+text = "which node is the disk attached to"
+expect = "k8s pvc get"
+
+[[query]]
+text = "multi-attach error, volume is already exclusively attached to one node"
+expect = "k8s pvc get"
+
+[[query]]
+text = "pod stuck in ContainerCreating waiting for its volume to attach"
+expect = "k8s pvc get"
+
+[[query]]
+text = "list persistent volumes and their reclaim policy"
+expect = "k8s pv list"
+
+[[query]]
+text = "which azure disks back the cluster's volumes, released pv"
+expect = "k8s pv list"
+
+[[query]]
+text = "azure disk ARM id behind a persistent volume"
+expect = "k8s pv get"
+
+[[query]]
+text = "which zone is the persistent volume pinned to by node affinity"
+expect = "k8s pv get"
+
+[[query]]
+text = "storage class allow volume expansion"
+expect = "k8s storageclass list"
+
+[[query]]
+text = "which storage class is the default, premium ssd sku"
+expect = "k8s storageclass list"
+
+[[query]]
+text = "list events involving the node object"
+expect = "k8s event list"
+
+[[query]]
+text = "events involving a certificate object"
+expect = "k8s event list"

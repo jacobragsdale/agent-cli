@@ -1375,6 +1375,451 @@
      "creationTimestamp": "2025-06-02T11:00:00Z"
     },
     "spec": {}
+   },
+   {
+    "kind": "StorageClass",
+    "apiVersion": "storage.k8s.io/v1",
+    "metadata": {
+     "name": "managed-csi",
+     "creationTimestamp": "2025-06-01T09:00:00Z",
+     "labels": {
+      "addonmanager.kubernetes.io/mode": "EnsureExists",
+      "kubernetes.io/cluster-service": "true"
+     },
+     "annotations": {
+      "storageclass.kubernetes.io/is-default-class": "true"
+     }
+    },
+    "provisioner": "disk.csi.azure.com",
+    "parameters": {
+     "skuname": "StandardSSD_LRS"
+    },
+    "reclaimPolicy": "Delete",
+    "volumeBindingMode": "WaitForFirstConsumer",
+    "allowVolumeExpansion": true
+   },
+   {
+    "kind": "StorageClass",
+    "apiVersion": "storage.k8s.io/v1",
+    "metadata": {
+     "name": "managed-csi-premium",
+     "creationTimestamp": "2025-06-01T09:00:00Z",
+     "labels": {
+      "addonmanager.kubernetes.io/mode": "EnsureExists",
+      "kubernetes.io/cluster-service": "true"
+     }
+    },
+    "provisioner": "disk.csi.azure.com",
+    "parameters": {
+     "skuname": "Premium_LRS"
+    },
+    "reclaimPolicy": "Delete",
+    "volumeBindingMode": "WaitForFirstConsumer",
+    "allowVolumeExpansion": true
+   },
+   {
+    "kind": "StorageClass",
+    "apiVersion": "storage.k8s.io/v1",
+    "metadata": {
+     "name": "azurefile-csi",
+     "creationTimestamp": "2025-06-01T09:00:00Z",
+     "labels": {
+      "addonmanager.kubernetes.io/mode": "EnsureExists",
+      "kubernetes.io/cluster-service": "true"
+     }
+    },
+    "provisioner": "file.csi.azure.com",
+    "parameters": {
+     "skuName": "Standard_LRS"
+    },
+    "reclaimPolicy": "Delete",
+    "volumeBindingMode": "Immediate",
+    "allowVolumeExpansion": true
+   },
+   {
+    "kind": "Node",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "aks-user-27182818-vmss000001",
+     "creationTimestamp": "2026-09-17T08:00:00Z",
+     "labels": {
+      "agentpool": "user",
+      "kubernetes.azure.com/agentpool": "user",
+      "kubernetes.azure.com/node-image-version": "AKSUbuntu-2204gen2containerd-202509.10.0",
+      "node.kubernetes.io/instance-type": "Standard_D4s_v5",
+      "topology.kubernetes.io/zone": "westeurope-1"
+     }
+    },
+    "spec": {
+     "providerID": "azure:///subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/1",
+     "unschedulable": true,
+     "taints": [
+      {
+       "key": "node.kubernetes.io/unschedulable",
+       "effect": "NoSchedule",
+       "timeAdded": "2026-09-29T11:20:10Z"
+      },
+      {
+       "key": "node.kubernetes.io/unreachable",
+       "effect": "NoExecute",
+       "timeAdded": "2026-09-29T11:24:30Z"
+      }
+     ]
+    },
+    "status": {
+     "conditions": [
+      {
+       "type": "MemoryPressure",
+       "status": "Unknown",
+       "reason": "NodeStatusUnknown",
+       "message": "Kubelet stopped posting node status.",
+       "lastTransitionTime": "2026-09-29T11:24:30Z"
+      },
+      {
+       "type": "DiskPressure",
+       "status": "Unknown",
+       "reason": "NodeStatusUnknown",
+       "message": "Kubelet stopped posting node status.",
+       "lastTransitionTime": "2026-09-29T11:24:30Z"
+      },
+      {
+       "type": "Ready",
+       "status": "Unknown",
+       "reason": "NodeStatusUnknown",
+       "message": "Kubelet stopped posting node status.",
+       "lastTransitionTime": "2026-09-29T11:24:30Z"
+      }
+     ],
+     "nodeInfo": {
+      "kubeletVersion": "v1.30.4"
+     }
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "orders-db-0",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T11:22:00Z",
+     "labels": {
+      "app": "orders-db",
+      "apps.kubernetes.io/pod-index": "0",
+      "controller-revision-hash": "orders-db-6b8d9c7f5",
+      "statefulset.kubernetes.io/pod-name": "orders-db-0"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "StatefulSet",
+       "name": "orders-db",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-user-27182818-vmss000002",
+     "serviceAccountName": "default",
+     "dnsPolicy": "ClusterFirst",
+     "containers": [
+      {
+       "name": "postgres",
+       "image": "postgres:16.4",
+       "ports": [
+        {
+         "name": "postgres",
+         "containerPort": 5432,
+         "protocol": "TCP"
+        }
+       ],
+       "volumeMounts": [
+        {
+         "name": "data",
+         "mountPath": "/var/lib/postgresql/data"
+        }
+       ],
+       "resources": {
+        "requests": {
+         "cpu": "500m",
+         "memory": "1Gi"
+        },
+        "limits": {
+         "memory": "2Gi"
+        }
+       }
+      }
+     ],
+     "volumes": [
+      {
+       "name": "data",
+       "persistentVolumeClaim": {
+        "claimName": "data-orders-db-0"
+       }
+      }
+     ]
+    },
+    "status": {
+     "phase": "Pending",
+     "conditions": [
+      {
+       "type": "PodScheduled",
+       "status": "True"
+      },
+      {
+       "type": "Initialized",
+       "status": "True"
+      },
+      {
+       "type": "Ready",
+       "status": "False",
+       "reason": "ContainersNotReady",
+       "message": "containers with unready status: [postgres]"
+      }
+     ],
+     "containerStatuses": [
+      {
+       "name": "postgres",
+       "image": "postgres:16.4",
+       "ready": false,
+       "restartCount": 0,
+       "state": {
+        "waiting": {
+         "reason": "ContainerCreating"
+        }
+       }
+      }
+     ]
+    }
+   },
+   {
+    "kind": "PersistentVolumeClaim",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "data-orders-db-0",
+     "namespace": "web",
+     "creationTimestamp": "2025-06-02T11:00:00Z",
+     "labels": {
+      "app": "orders-db"
+     },
+     "annotations": {
+      "pv.kubernetes.io/bind-completed": "yes",
+      "volume.kubernetes.io/storage-provisioner": "disk.csi.azure.com"
+     }
+    },
+    "spec": {
+     "accessModes": [
+      "ReadWriteOnce"
+     ],
+     "resources": {
+      "requests": {
+       "storage": "64Gi"
+      }
+     },
+     "storageClassName": "managed-csi-premium",
+     "volumeMode": "Filesystem",
+     "volumeName": "pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a"
+    },
+    "status": {
+     "phase": "Bound",
+     "accessModes": [
+      "ReadWriteOnce"
+     ],
+     "capacity": {
+      "storage": "64Gi"
+     }
+    }
+   },
+   {
+    "kind": "PersistentVolume",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a",
+     "creationTimestamp": "2025-06-02T11:00:04Z",
+     "annotations": {
+      "pv.kubernetes.io/provisioned-by": "disk.csi.azure.com"
+     }
+    },
+    "spec": {
+     "accessModes": [
+      "ReadWriteOnce"
+     ],
+     "capacity": {
+      "storage": "64Gi"
+     },
+     "claimRef": {
+      "kind": "PersistentVolumeClaim",
+      "namespace": "web",
+      "name": "data-orders-db-0"
+     },
+     "csi": {
+      "driver": "disk.csi.azure.com",
+      "volumeHandle": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a",
+      "fsType": "ext4",
+      "volumeAttributes": {
+       "skuname": "Premium_LRS",
+       "csi.storage.k8s.io/pv/name": "pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a",
+       "csi.storage.k8s.io/pvc/name": "data-orders-db-0",
+       "csi.storage.k8s.io/pvc/namespace": "web"
+      }
+     },
+     "nodeAffinity": {
+      "required": {
+       "nodeSelectorTerms": [
+        {
+         "matchExpressions": [
+          {
+           "key": "topology.disk.csi.azure.com/zone",
+           "operator": "In",
+           "values": [
+            "westeurope-1"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     },
+     "persistentVolumeReclaimPolicy": "Delete",
+     "storageClassName": "managed-csi-premium",
+     "volumeMode": "Filesystem"
+    },
+    "status": {
+     "phase": "Bound"
+    }
+   },
+   {
+    "kind": "VolumeAttachment",
+    "apiVersion": "storage.k8s.io/v1",
+    "metadata": {
+     "name": "csi-9d4b2e7a1c3f5e8b0a6d4c2e1f3b5a7d9c0e2f4a6b8d0c1e3f5a7b9d2c4e6f8a",
+     "creationTimestamp": "2026-09-17T08:12:00Z"
+    },
+    "spec": {
+     "attacher": "disk.csi.azure.com",
+     "nodeName": "aks-user-27182818-vmss000001",
+     "source": {
+      "persistentVolumeName": "pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a"
+     }
+    },
+    "status": {
+     "attached": true,
+     "attachmentMetadata": {
+      "LUN": "0"
+     }
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "orders-db-0.scheduled",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T11:22:04Z"
+    },
+    "type": "Normal",
+    "reason": "Scheduled",
+    "count": 1,
+    "message": "Successfully assigned web/orders-db-0 to aks-user-27182818-vmss000002",
+    "firstTimestamp": "2026-09-29T11:22:04Z",
+    "lastTimestamp": "2026-09-29T11:22:04Z",
+    "involvedObject": {
+     "kind": "Pod",
+     "name": "orders-db-0",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "default-scheduler"
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "orders-db-0.attach",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T11:22:05Z"
+    },
+    "type": "Warning",
+    "reason": "FailedAttachVolume",
+    "count": 1,
+    "message": "Multi-Attach error for volume \"pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a\" Volume is already exclusively attached to one node and can't be attached to another",
+    "firstTimestamp": "2026-09-29T11:22:05Z",
+    "lastTimestamp": "2026-09-29T11:22:05Z",
+    "involvedObject": {
+     "kind": "Pod",
+     "name": "orders-db-0",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "attachdetach-controller"
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "orders-db-0.mount",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T11:24:06Z"
+    },
+    "type": "Warning",
+    "reason": "FailedMount",
+    "count": 17,
+    "message": "Unable to attach or mount volumes: unmounted volumes=[data], unattached volumes=[data kube-api-access-7r2xk]: timed out waiting for the condition",
+    "firstTimestamp": "2026-09-29T11:24:06Z",
+    "lastTimestamp": "2026-09-29T11:58:12Z",
+    "involvedObject": {
+     "kind": "Pod",
+     "name": "orders-db-0",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "kubelet"
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "aks-user-27182818-vmss000001.unschedulable",
+     "namespace": "default",
+     "creationTimestamp": "2026-09-29T11:20:10Z"
+    },
+    "type": "Normal",
+    "reason": "NodeNotSchedulable",
+    "count": 1,
+    "message": "Node aks-user-27182818-vmss000001 status is now: NodeNotSchedulable",
+    "firstTimestamp": "2026-09-29T11:20:10Z",
+    "lastTimestamp": "2026-09-29T11:20:10Z",
+    "involvedObject": {
+     "kind": "Node",
+     "name": "aks-user-27182818-vmss000001"
+    },
+    "source": {
+     "component": "kubelet"
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "aks-user-27182818-vmss000001.notready",
+     "namespace": "default",
+     "creationTimestamp": "2026-09-29T11:24:30Z"
+    },
+    "type": "Normal",
+    "reason": "NodeNotReady",
+    "count": 1,
+    "message": "Node aks-user-27182818-vmss000001 status is now: NodeNotReady",
+    "firstTimestamp": "2026-09-29T11:24:30Z",
+    "lastTimestamp": "2026-09-29T11:24:30Z",
+    "involvedObject": {
+     "kind": "Node",
+     "name": "aks-user-27182818-vmss000001"
+    },
+    "source": {
+     "component": "node-controller"
+    }
    }
   ]
  },

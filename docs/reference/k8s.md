@@ -1,4 +1,4 @@
-# k8s — Kubernetes (24 commands)
+# k8s — Kubernetes (29 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -13,6 +13,11 @@
 | [`k8s ingress get`](#k8s-ingress-get) | read | Show an ingress: each host and path's service and ready endpoints, TLS secrets |
 | [`k8s networkpolicy list`](#k8s-networkpolicy-list) | read | List network policies, or those that apply to one pod: selector, default deny |
 | [`k8s networkpolicy get`](#k8s-networkpolicy-get) | read | Show a network policy's rules in words: peers, ports, and the pods it selects |
+| [`k8s pvc list`](#k8s-pvc-list) | read | List persistent volume claims: status, size, storage class, pods mounting each |
+| [`k8s pvc get`](#k8s-pvc-get) | read | Show a volume claim: Azure disk or share, class, attachment, mounts, events |
+| [`k8s pv list`](#k8s-pv-list) | read | List persistent volumes: claim, capacity, reclaim policy, Azure disk or share |
+| [`k8s pv get`](#k8s-pv-get) | read | Show a persistent volume: Azure disk id, zone affinity, attachment, events |
+| [`k8s storageclass list`](#k8s-storageclass-list) | read | List storage classes: default, provisioner, SKU, binding mode, volume expansion |
 | [`k8s deployment list`](#k8s-deployment-list) | read | List deployments: ready pods, images with tag and digest, when they rolled out |
 | [`k8s deployment restart`](#k8s-deployment-restart) | destructive | Restart a deployment, replacing its pods one at a time |
 | [`k8s deployment scale`](#k8s-deployment-scale) | destructive | Scale a deployment to a number of replicas |
@@ -93,6 +98,7 @@ agent-cli k8s event list — List Kubernetes events, newest first: warnings, bac
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --pod str        Only events about this pod: its id, namespace/name or name
+  --object str     Only events about this object, as KIND/NAME (pvc/data-orders-db-0, node/aks-user-27182818-vmss000001); NAME may be its id
   --since time     Only events last seen after this
   --limit int      (default 50)
 A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
@@ -173,6 +179,67 @@ agent-cli k8s networkpolicy get — Show a network policy's rules in words: peer
 Returns: {id,name,namespace,pod_selector,pods[],types[],default_deny,rules[{direction,peers[],ports[]}],events[{type,reason,object,message,count,last_seen,namespace}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s networkpolicy get qa/dev/allow-orders-api --fields pods,rules
+```
+
+### k8s pvc list
+
+```text
+agent-cli k8s pvc list — List persistent volume claims: status, size, storage class, pods mounting each
+  <name> str       Part of the claim name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{id,name,namespace,status,capacity,requested,access_modes[],storage_class,volume,used_by[],age}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s pvc list --cluster qa --namespace dev --fields id,status,capacity,used_by
+```
+
+### k8s pvc get
+
+```text
+agent-cli k8s pvc get — Show a volume claim: Azure disk or share, class, attachment, mounts, events
+ *<pvc> str        The claim: its id (cluster/namespace/name), namespace/name, or name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+Returns: {id,name,namespace,status,capacity,requested,access_modes[],conditions[{type,status,reason,message}],pv{id,status,claim,capacity,access_modes[],reclaim,storage_class,driver,disk,share{resource_group,account,name},zone,age},storage_class,class{name,default,provisioner,parameters,binding_mode,expansion,reclaim},attached_to,used_by[],events[{type,reason,object,message,count,last_seen,namespace}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s pvc get qa/dev/orders-data --fields status,pv,attached_to,used_by,events
+```
+
+### k8s pv list
+
+```text
+agent-cli k8s pv list — List persistent volumes: claim, capacity, reclaim policy, Azure disk or share
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{id,status,claim,capacity,access_modes[],reclaim,storage_class,driver,disk,share{resource_group,account,name},zone,age}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s pv list --cluster qa --fields id,status,claim,disk
+```
+
+### k8s pv get
+
+```text
+agent-cli k8s pv get — Show a persistent volume: Azure disk id, zone affinity, attachment, events
+ *<pv> str         The volume: its id (cluster/name) or name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+Returns: {id,status,claim,capacity,access_modes[],reclaim,storage_class,driver,disk,share{resource_group,account,name},zone,age,node_affinity[],attached_to,events[{type,reason,object,message,count,last_seen,namespace}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s pv get qa/pvc-0a1b2c3d-1111-4000-8000-000000000001 --fields disk,zone,attached_to
+```
+
+### k8s storageclass list
+
+```text
+agent-cli k8s storageclass list — List storage classes: default, provisioner, SKU, binding mode, volume expansion
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{name,default,provisioner,parameters,binding_mode,expansion,reclaim}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s storageclass list --cluster qa --fields name,default,provisioner,expansion
 ```
 
 ### k8s deployment list

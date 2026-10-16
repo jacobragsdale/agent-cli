@@ -15,7 +15,7 @@ use crate::kubectl::{Target, items, non_empty};
 
 /// The kinds with a list of their own, as kubectl's errors name them
 /// (plural), and the resource word of `agent-cli k8s RESOURCE list`.
-const CURATED: [(&str, &str); 8] = [
+const CURATED: [(&str, &str); 11] = [
     ("pods", "pod"),
     ("deployments", "deployment"),
     ("configmaps", "configmap"),
@@ -24,6 +24,9 @@ const CURATED: [(&str, &str); 8] = [
     ("services", "service"),
     ("ingresses", "ingress"),
     ("networkpolicies", "networkpolicy"),
+    ("persistentvolumeclaims", "pvc"),
+    ("persistentvolumes", "pv"),
+    ("storageclasses", "storageclass"),
 ];
 
 /// What `kubectl apply` keeps on the object: a copy of the whole manifest.
@@ -43,6 +46,32 @@ pub struct EventRow {
     last_seen: Option<String>,
     /// Only when the listing spans namespaces.
     namespace: Option<String>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct Condition {
+    #[serde(rename = "type")]
+    kind: String,
+    status: String,
+    reason: Option<String>,
+    message: Option<String>,
+}
+
+/// An object's `status.conditions`, as `kubectl describe` lists them.
+pub(crate) fn conditions(item: &Value) -> Vec<Condition> {
+    item["status"]["conditions"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|condition| {
+            Some(Condition {
+                kind: non_empty(&condition["type"])?.to_owned(),
+                status: condition["status"].as_str().unwrap_or("Unknown").to_owned(),
+                reason: non_empty(&condition["reason"]).map(str::to_owned),
+                message: non_empty(&condition["message"]).map(str::to_owned),
+            })
+        })
+        .collect()
 }
 
 /// An event as a row, with when it was last seen to sort and filter on.
@@ -97,16 +126,22 @@ pub(crate) fn events_for(ctx: &Ctx, target: &Target, item: &Value) -> Vec<EventR
         argv.push("--all-namespaces");
     }
     match target.json(ctx, &argv) {
-        Ok(listed) => {
-            let mut rows: Vec<_> = items(&listed).map(|item| event_row(target, item)).collect();
-            rows.sort_by_key(|(last, _)| Reverse(*last));
-            rows.into_iter().take(5).map(|(_, row)| row).collect()
-        }
+        Ok(listed) => newest(target, items(&listed)),
         Err(error) => {
             ctx.note(format!("[events not read: {error:#}]"));
             Vec::new()
         }
     }
+}
+
+/// The five newest of `events`, newest first.
+pub(crate) fn newest<'a>(
+    target: &Target,
+    events: impl Iterator<Item = &'a Value>,
+) -> Vec<EventRow> {
+    let mut rows: Vec<_> = events.map(|item| event_row(target, item)).collect();
+    rows.sort_by_key(|(last, _)| Reverse(*last));
+    rows.into_iter().take(5).map(|(_, row)| row).collect()
 }
 
 /// Whether a label selector (`matchLabels`, and `matchExpressions` with In,

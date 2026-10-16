@@ -29,6 +29,16 @@ fn the_world_answers_what_a_trial_asks_of_k8s() {
         &["k8s", "ingress", "list"],
         &["k8s", "networkpolicy", "list"],
         &["k8s", "networkpolicy", "get", "prod/web/allow-egress"],
+        &["k8s", "pvc", "list"],
+        &["k8s", "pv", "list"],
+        &[
+            "k8s",
+            "pv",
+            "get",
+            "prod/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a",
+        ],
+        &["k8s", "storageclass", "list"],
+        &["k8s", "event", "list", "--object", "pvc/data-orders-db-0"],
     ] {
         ok(args);
     }
@@ -160,7 +170,8 @@ fn a_custom_resource_and_a_node_read_through_the_generic_floor_by_the_ids_it_lis
     let nodes = ok(&["k8s", "object", "list", "nodes", "--fields", "id,ready"]);
     assert_eq!(
         nodes,
-        json!([{"id": "prod/aks-system-31415926-vmss000001", "ready": true}])
+        json!([{"id": "prod/aks-system-31415926-vmss000001", "ready": true},
+            {"id": "prod/aks-user-27182818-vmss000001", "ready": false}])
     );
     let node = ok(&[
         "k8s",
@@ -245,6 +256,62 @@ fn the_web_pods_egress_is_denied_but_for_dns_the_namespace_and_private_addresses
     assert_eq!(
         cluster,
         json!({"name": "prod", "context": "aks-contoso-prod", "version": "v1.30.4",
-            "dns_ip": "10.0.0.10", "cni": "azure-cni", "nodes": 1})
+            "dns_ip": "10.0.0.10", "cni": "azure-cni", "nodes": 2})
+    );
+}
+
+#[test]
+fn the_database_pod_stuck_creating_has_its_disk_still_on_the_old_node_which_is_not_ready() {
+    let walked = follow(&["k8s", "pvc", "get", "prod/web/data-orders-db-0"]);
+    assert_eq!(walked.len(), 2, "pvc get, then the node holding the disk");
+    let claim = walked[0].json();
+    assert_eq!(claim["used_by"], json!(["prod/web/orders-db-0"]));
+    assert_eq!(claim["attached_to"], "prod/aks-user-27182818-vmss000001");
+    assert_eq!(
+        claim["pv"]["disk"],
+        "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a"
+    );
+    assert_eq!(claim["class"]["parameters"]["skuname"], "Premium_LRS");
+    assert!(
+        claim["events"][0]["message"]
+            .as_str()
+            .unwrap()
+            .starts_with("Multi-Attach error for volume \"pvc-7c3e9a1b"),
+        "{claim}"
+    );
+    let node = walked[1].json();
+    assert_eq!(node["id"], "prod/aks-user-27182818-vmss000001");
+    assert_eq!(node["manifest"]["spec"]["unschedulable"], true);
+    assert_eq!(
+        node["manifest"]["status"]["conditions"][2],
+        json!({"type": "Ready", "status": "Unknown", "reason": "NodeStatusUnknown",
+            "message": "Kubelet stopped posting node status.", "lastTransitionTime": "2026-09-29T11:24:30Z"})
+    );
+
+    let pod = ok(&[
+        "k8s",
+        "pod",
+        "get",
+        "prod/web/orders-db-0",
+        "--fields",
+        "status,node,owner",
+    ]);
+    assert_eq!(
+        pod,
+        json!({"status": "ContainerCreating", "node": "aks-user-27182818-vmss000002",
+            "owner": "StatefulSet/orders-db"})
+    );
+    let events = ok(&[
+        "k8s",
+        "event",
+        "list",
+        "--object",
+        "node/prod/aks-user-27182818-vmss000001",
+        "--fields",
+        "reason",
+    ]);
+    assert_eq!(
+        events,
+        json!([{"reason": "NodeNotReady"}, {"reason": "NodeNotSchedulable"}])
     );
 }

@@ -27,14 +27,14 @@ and tests. Copy a sibling.
     `row_namespace(item)`; `kubectl(args)` and `finished` for a caller that
     reads kubectl's failure itself (`deployment wait`).
   - `items`, `age`, `limited` (the `--limit` note), `digest`, `owner_of`.
-- `shape.rs`: `events_for` (an object's five newest, by uid), `event_row`,
-  `trim` (no managedFields or last-applied), `listing_for` (the not-found
-  hint: a curated list, else `k8s object list`), `selects` (a label
-  selector, matchExpressions included).
+- `shape.rs`: `events_for` (five newest, by uid), `newest`, `event_row`,
+  `conditions`, `trim` (no managedFields or last-applied), `listing_for`
+  (the not-found hint), `selects` (a label selector).
 - `kind/mod.rs`: `kinds` (api-resources, cached), `kind_named`.
 - `<resource>/mod.rs`: what its verbs share (`pod/mod.rs`: `PodRow`, `row`,
   `containers`, `status_word`, the SecretProviderClass reading,
-  `previous_logs`; `service/mod.rs`: `endpoints`, `ready`).
+  `previous_logs`; `service/mod.rs`: `endpoints`, `ready`; `pv/mod.rs`:
+  `row` with the disk's ARM id or the share, `attached_to`).
 - `testing.rs`: `k8s(argv)`, `k8s_with(argv, config)`, `SCOPES` for tests.
 
 ## Fixtures

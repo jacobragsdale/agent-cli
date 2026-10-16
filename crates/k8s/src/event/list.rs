@@ -1,7 +1,9 @@
-use agent_cli_core::{Ctx, When, command};
+use agent_cli_core::{Ctx, Failure, When, command};
 use anyhow::Result;
+use serde_json::Value;
 
-use crate::kubectl::{At, items, limited};
+use crate::kind::kind_named;
+use crate::kubectl::{At, Target, items, limited};
 use crate::shape::{EventRow, event_row};
 
 #[derive(clap::Args)]
@@ -9,8 +11,12 @@ pub struct EventListArgs {
     #[command(flatten)]
     at: At,
     /// Only events about this pod: its id, namespace/name or name
-    #[arg(long)]
+    #[arg(long, conflicts_with = "object")]
     pod: Option<String>,
+    /// Only events about this object, as KIND/NAME (pvc/data-orders-db-0,
+    /// node/aks-user-27182818-vmss000001); NAME may be its id
+    #[arg(long)]
+    object: Option<String>,
     /// Only events last seen after this
     #[arg(long)]
     since: Option<When>,
@@ -20,14 +26,22 @@ pub struct EventListArgs {
 
 fn event_list(ctx: &Ctx, args: EventListArgs) -> Result<Vec<EventRow>> {
     // A pod's id names its namespace; a bare name keeps the listing's.
-    let (target, pod) = match args.pod.as_deref() {
-        Some(raw) if raw.contains('/') => {
-            let (target, pod) = args.at.named(ctx, raw)?;
-            (target, Some(pod))
+    let (target, pod, listed) = match (&args.object, args.pod.as_deref()) {
+        (Some(object), _) => {
+            let (target, listed) = about(ctx, &args.at, object)?;
+            (target, None, listed)
         }
-        other => (args.at.listing(ctx)?, other.map(str::to_owned)),
+        (None, Some(raw)) if raw.contains('/') => {
+            let (target, pod) = args.at.named(ctx, raw)?;
+            let listed = target.json(ctx, &["get", "events", "-o", "json"])?;
+            (target, Some(pod), listed)
+        }
+        (None, other) => {
+            let target = args.at.listing(ctx)?;
+            let listed = target.json(ctx, &["get", "events", "-o", "json"])?;
+            (target, other.map(str::to_owned), listed)
+        }
     };
-    let listed = target.json(ctx, &["get", "events", "-o", "json"])?;
     let mut rows: Vec<_> = items(&listed)
         .filter(|item| {
             pod.as_deref()
@@ -46,10 +60,39 @@ fn event_list(ctx: &Ctx, args: EventListArgs) -> Result<Vec<EventRow>> {
     ))
 }
 
+/// The events about one object of any kind, by kind and name. Whether the
+/// kind is namespaced decides how NAME reads; a cluster-scoped object's
+/// events sit in `default` or wherever its controller wrote them, so they
+/// are read across namespaces.
+fn about(ctx: &Ctx, at: &At, object: &str) -> Result<(Target, Value)> {
+    let Some((word, raw)) = object.split_once('/') else {
+        return Err(Failure::usage(format!(
+            "--object {object:?} is not KIND/NAME (pvc/data-orders-db-0)"
+        ))
+        .into());
+    };
+    let kind = kind_named(ctx, &at.cluster_of(ctx, raw)?, word)?;
+    let (target, name) = if kind.namespaced {
+        at.named(ctx, raw)?
+    } else {
+        at.named_cluster(ctx, raw)?
+    };
+    let selector = format!(
+        "involvedObject.kind={},involvedObject.name={name}",
+        kind.kind
+    );
+    let mut argv = vec!["get", "events", "-o", "json", "--field-selector", &selector];
+    if target.cluster_scoped {
+        argv.push("--all-namespaces");
+    }
+    let listed = target.json(ctx, &argv)?;
+    Ok((target, listed))
+}
+
 command! {
     pub EVENT_LIST = ["k8s", "event", "list"], Read,
     "List Kubernetes events, newest first: warnings, back-offs, failed pulls",
-    keywords: ["warning", "warnings", "backoff", "crashloop", "why", "failed", "pull", "scheduling", "oomkilled"],
+    keywords: ["warning", "warnings", "backoff", "crashloop", "why", "failed", "pull", "scheduling", "oomkilled", "notready", "involved"],
     example: "k8s event list --pod qa/dev/orders-worker-5c4d3e-q8zt --since 1h --fields type,reason,message,last_seen",
     run: event_list,
 }
@@ -113,5 +156,51 @@ mod tests {
             recent.json(),
             json!([{"reason": "BackOff"}, {"reason": "Pulled"}])
         );
+    }
+
+    #[test]
+    fn events_narrow_to_any_object_by_kind_a_cluster_scoped_one_across_namespaces() {
+        let outcome = run(&[
+            "k8s",
+            "event",
+            "list",
+            "--object",
+            "pvc/scratch",
+            "--fields",
+            "reason,object",
+        ]);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json(),
+            json!([{"reason": "ProvisioningFailed", "object": "PersistentVolumeClaim/scratch"}])
+        );
+
+        let outcome = k8s(&[
+            "k8s",
+            "event",
+            "list",
+            "--object",
+            "node/qa/aks-np1-vmss000001",
+            "--fields",
+            "reason,namespace",
+        ]);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json(),
+            json!([{"reason": "NodeNotReady", "namespace": "default"}])
+        );
+
+        let outcome = run(&["k8s", "event", "list", "--object", "scratch"]);
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        let outcome = run(&[
+            "k8s",
+            "event",
+            "list",
+            "--object",
+            "pvc/scratch",
+            "--pod",
+            "redis-0",
+        ]);
+        assert_eq!(outcome.code, 2, "{outcome:?}");
     }
 }

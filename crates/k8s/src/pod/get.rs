@@ -7,7 +7,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::kubectl::{At, Target, non_empty};
-use crate::shape::{EventRow, events_for};
+use crate::shape::{Condition, EventRow, conditions, events_for};
 
 use super::{
     ContainerRow, PodRow, containers, csi_classes, key_vault_ids, previous_logs, row, status_word,
@@ -111,15 +111,6 @@ pub struct Volume {
     source: Option<String>,
 }
 
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct Condition {
-    #[serde(rename = "type")]
-    kind: String,
-    status: String,
-    reason: Option<String>,
-    message: Option<String>,
-}
-
 fn pod_get(ctx: &Ctx, args: PodGetArgs) -> Result<PodDetail> {
     let (target, pod) = args.at.named(ctx, &args.pod)?;
     let namespace = target.namespace.clone().unwrap_or_default();
@@ -186,19 +177,7 @@ fn pod_get(ctx: &Ctx, args: PodGetArgs) -> Result<PodDetail> {
         ip: non_empty(&item["status"]["podIP"]).map(str::to_owned),
         owner: summary.owner,
         containers,
-        conditions: item["status"]["conditions"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(|condition| {
-                Some(Condition {
-                    kind: non_empty(&condition["type"])?.to_owned(),
-                    status: condition["status"].as_str().unwrap_or("Unknown").to_owned(),
-                    reason: non_empty(&condition["reason"]).map(str::to_owned),
-                    message: non_empty(&condition["message"]).map(str::to_owned),
-                })
-            })
-            .collect(),
+        conditions: conditions(&item),
         labels: strings(&item["metadata"]["labels"]),
         text: None,
     })
