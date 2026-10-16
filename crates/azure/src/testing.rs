@@ -70,6 +70,29 @@ pub fn cluster(name: &str) -> Value {
     )
 }
 
+/// The ARM id of `cluster("aks-contoso-dev")`.
+pub const AKS_ID: &str = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-contoso/providers/Microsoft.ContainerService/managedClusters/aks-contoso-dev";
+
+/// An agent pool of `aks-contoso-dev` with `count` nodes, autoscaled up to
+/// `max` when given.
+pub fn agent_pool(name: &str, count: u64, max: Option<u64>) -> Value {
+    json!({
+        "id": format!("{AKS_ID}/agentPools/{name}"), "name": name,
+        "properties": {
+            "count": count, "vmSize": "Standard_D4s_v5", "mode": "User",
+            "enableAutoScaling": max.is_some(), "minCount": max.map(|_| 1), "maxCount": max,
+            "orchestratorVersion": "1.30.4", "currentOrchestratorVersion": "1.30.4",
+            "nodeImageVersion": "AKSUbuntu-2204gen2containerd-202509.10.0", "osSKU": "Ubuntu",
+            "availabilityZones": ["1", "2"], "maxPods": 110,
+            "vnetSubnetID": "/subscriptions/s/resourceGroups/rg-contoso/providers/Microsoft.Network/virtualNetworks/vnet/subnets/aks",
+            "nodeTaints": ["sku=gpu:NoSchedule"], "nodeLabels": {"team": "orders"},
+            "provisioningState": "Succeeded", "powerState": {"code": "Running"},
+            "upgradeSettings": {"maxSurge": "33%", "drainTimeoutInMinutes": 30},
+            "eTag": "etag-1",
+        },
+    })
+}
+
 /// A search service whose `authOptions` is `{auth: {}}` (`aadOrApiKey` or
 /// `apiKeyOnly`), or absent when `auth` is empty.
 pub fn search_service(name: &str, auth: &str) -> Value {

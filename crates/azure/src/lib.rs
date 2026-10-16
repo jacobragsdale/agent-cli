@@ -86,7 +86,13 @@ pub const AKS: Domain = Domain {
     summary: "AKS",
     commands: &[
         aks::cluster::list::CLUSTER_LIST,
+        aks::cluster::get::CLUSTER_GET,
         aks::cluster::connect::CLUSTER_CONNECT,
+        aks::nodepool::list::NODEPOOL_LIST,
+        aks::nodepool::get::NODEPOOL_GET,
+        aks::nodepool::scale::NODEPOOL_SCALE,
+        aks::upgrade::list::UPGRADE_LIST,
+        aks::command::run::COMMAND_RUN,
     ],
     synonyms: &[
         ("kubeconfig", &["connect"]),

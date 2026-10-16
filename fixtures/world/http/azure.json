@@ -593,6 +593,8 @@
     {
      "resourceType": "managedClusters",
      "apiVersions": [
+      "2026-07-02-preview",
+      "2026-07-01",
       "2025-02-02-preview",
       "2025-01-01",
       "2024-10-01",
@@ -602,6 +604,8 @@
     {
      "resourceType": "managedClusters/agentPools",
      "apiVersions": [
+      "2026-07-02-preview",
+      "2026-07-01",
       "2025-01-01",
       "2024-10-01"
      ]
@@ -610,8 +614,8 @@
   }
  },
  {
-  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod?api-version=2025-01-01",
-  "note": "arm resource get on the cluster: ARM's own shape, trimmed",
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod?api-version=2026-07-01",
+  "note": "the cluster, for arm resource get (the newest stable api-version) and aks cluster get",
   "answer": {
    "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod",
    "name": "aks-contoso-prod",
@@ -640,13 +644,72 @@
       "name": "system",
       "count": 3,
       "vmSize": "Standard_D4s_v5",
-      "mode": "System",
-      "orchestratorVersion": "1.30.4",
+      "osDiskSizeGB": 128,
+      "osDiskType": "Managed",
       "vnetSubnetID": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks",
+      "maxPods": 50,
+      "type": "VirtualMachineScaleSets",
+      "availabilityZones": [
+       "1",
+       "2",
+       "3"
+      ],
+      "enableAutoScaling": false,
       "provisioningState": "Succeeded",
       "powerState": {
        "code": "Running"
-      }
+      },
+      "orchestratorVersion": "1.30.4",
+      "currentOrchestratorVersion": "1.30.4",
+      "nodeImageVersion": "AKSUbuntu-2204gen2containerd-202509.10.0",
+      "mode": "System",
+      "osType": "Linux",
+      "osSKU": "Ubuntu",
+      "upgradeSettings": {
+       "maxSurge": "33%",
+       "drainTimeoutInMinutes": 30
+      },
+      "nodeLabels": {
+       "pool": "system"
+      },
+      "nodeTaints": [
+       "CriticalAddonsOnly=true:NoSchedule"
+      ]
+     },
+     {
+      "name": "user",
+      "count": 3,
+      "vmSize": "Standard_D4s_v5",
+      "osDiskSizeGB": 128,
+      "osDiskType": "Managed",
+      "vnetSubnetID": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks",
+      "maxPods": 50,
+      "type": "VirtualMachineScaleSets",
+      "availabilityZones": [
+       "1",
+       "2",
+       "3"
+      ],
+      "enableAutoScaling": true,
+      "provisioningState": "Succeeded",
+      "powerState": {
+       "code": "Running"
+      },
+      "orchestratorVersion": "1.30.4",
+      "currentOrchestratorVersion": "1.30.4",
+      "nodeImageVersion": "AKSUbuntu-2204gen2containerd-202509.10.0",
+      "mode": "User",
+      "osType": "Linux",
+      "osSKU": "Ubuntu",
+      "upgradeSettings": {
+       "maxSurge": "33%",
+       "drainTimeoutInMinutes": 30
+      },
+      "nodeLabels": {
+       "pool": "user"
+      },
+      "minCount": 1,
+      "maxCount": 3
      }
     ],
     "nodeResourceGroup": "MC_rg-contoso-prod_aks-contoso-prod_westeurope",
@@ -657,10 +720,23 @@
      "podCidr": "10.244.0.0/16",
      "serviceCidr": "10.0.0.0/16",
      "dnsServiceIP": "10.0.0.10",
-     "outboundType": "loadBalancer"
+     "outboundType": "loadBalancer",
+     "networkPolicy": "calico",
+     "loadBalancerSku": "standard",
+     "loadBalancerProfile": {
+      "managedOutboundIPs": {
+       "count": 1
+      },
+      "effectiveOutboundIPs": [
+       {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/publicIPAddresses/00000000-0000-4000-8000-00000000e1b1"
+       }
+      ]
+     }
     },
     "oidcIssuerProfile": {
-     "enabled": true
+     "enabled": true,
+     "issuerURL": "https://westeurope.oic.prod-aks.azure.com/00000000-0000-4000-8000-00000000a001/00000000-0000-4000-8000-00000000c0de/"
     },
     "securityProfile": {
      "workloadIdentity": {
@@ -674,7 +750,353 @@
        "enableSecretRotation": "true"
       }
      }
+    },
+    "apiServerAccessProfile": {
+     "enablePrivateCluster": false,
+     "authorizedIPRanges": [
+      "203.0.113.0/24"
+     ]
+    },
+    "identityProfile": {
+     "kubeletidentity": {
+      "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aks-contoso-prod-agentpool",
+      "clientId": "00000000-0000-4000-8000-00000000c002",
+      "objectId": "00000000-0000-4000-8000-00000000c003"
+     }
+    },
+    "autoUpgradeProfile": {
+     "upgradeChannel": "patch",
+     "nodeOSUpgradeChannel": "NodeImage"
     }
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/maintenanceConfigurations?api-version=2026-07-01",
+  "note": "aks cluster get: auto-upgrades wait for Sunday 02:00-06:00 UTC",
+  "answer": {
+   "value": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/maintenanceConfigurations/aksManagedAutoUpgradeSchedule",
+     "name": "aksManagedAutoUpgradeSchedule",
+     "type": "Microsoft.ContainerService/managedClusters/maintenanceConfigurations",
+     "properties": {
+      "maintenanceWindow": {
+       "schedule": {
+        "weekly": {
+         "dayOfWeek": "Sunday",
+         "intervalWeeks": 1
+        }
+       },
+       "durationHours": 4,
+       "startTime": "02:00",
+       "utcOffset": "+00:00",
+       "startDate": "2026-01-04"
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/agentPools?api-version=2026-07-01",
+  "note": "aks nodepool list and upgrade list: the system pool, and the user pool at its autoscaler's maximum",
+  "answer": {
+   "value": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/agentPools/system",
+     "name": "system",
+     "type": "Microsoft.ContainerService/managedClusters/agentPools",
+     "properties": {
+      "count": 3,
+      "vmSize": "Standard_D4s_v5",
+      "osDiskSizeGB": 128,
+      "osDiskType": "Managed",
+      "vnetSubnetID": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks",
+      "maxPods": 50,
+      "type": "VirtualMachineScaleSets",
+      "availabilityZones": [
+       "1",
+       "2",
+       "3"
+      ],
+      "enableAutoScaling": false,
+      "provisioningState": "Succeeded",
+      "powerState": {
+       "code": "Running"
+      },
+      "orchestratorVersion": "1.30.4",
+      "currentOrchestratorVersion": "1.30.4",
+      "nodeImageVersion": "AKSUbuntu-2204gen2containerd-202509.10.0",
+      "mode": "System",
+      "osType": "Linux",
+      "osSKU": "Ubuntu",
+      "upgradeSettings": {
+       "maxSurge": "33%",
+       "drainTimeoutInMinutes": 30
+      },
+      "nodeLabels": {
+       "pool": "system"
+      },
+      "eTag": "00000000-0000-4000-8000-00000000e701",
+      "nodeTaints": [
+       "CriticalAddonsOnly=true:NoSchedule"
+      ]
+     }
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/agentPools/user",
+     "name": "user",
+     "type": "Microsoft.ContainerService/managedClusters/agentPools",
+     "properties": {
+      "count": 3,
+      "vmSize": "Standard_D4s_v5",
+      "osDiskSizeGB": 128,
+      "osDiskType": "Managed",
+      "vnetSubnetID": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks",
+      "maxPods": 50,
+      "type": "VirtualMachineScaleSets",
+      "availabilityZones": [
+       "1",
+       "2",
+       "3"
+      ],
+      "enableAutoScaling": true,
+      "provisioningState": "Succeeded",
+      "powerState": {
+       "code": "Running"
+      },
+      "orchestratorVersion": "1.30.4",
+      "currentOrchestratorVersion": "1.30.4",
+      "nodeImageVersion": "AKSUbuntu-2204gen2containerd-202509.10.0",
+      "mode": "User",
+      "osType": "Linux",
+      "osSKU": "Ubuntu",
+      "upgradeSettings": {
+       "maxSurge": "33%",
+       "drainTimeoutInMinutes": 30
+      },
+      "nodeLabels": {
+       "pool": "user"
+      },
+      "eTag": "00000000-0000-4000-8000-00000000e702",
+      "minCount": 1,
+      "maxCount": 3
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/agentPools/system?api-version=2026-07-01",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/agentPools/system",
+   "name": "system",
+   "type": "Microsoft.ContainerService/managedClusters/agentPools",
+   "properties": {
+    "count": 3,
+    "vmSize": "Standard_D4s_v5",
+    "osDiskSizeGB": 128,
+    "osDiskType": "Managed",
+    "vnetSubnetID": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks",
+    "maxPods": 50,
+    "type": "VirtualMachineScaleSets",
+    "availabilityZones": [
+     "1",
+     "2",
+     "3"
+    ],
+    "enableAutoScaling": false,
+    "provisioningState": "Succeeded",
+    "powerState": {
+     "code": "Running"
+    },
+    "orchestratorVersion": "1.30.4",
+    "currentOrchestratorVersion": "1.30.4",
+    "nodeImageVersion": "AKSUbuntu-2204gen2containerd-202509.10.0",
+    "mode": "System",
+    "osType": "Linux",
+    "osSKU": "Ubuntu",
+    "upgradeSettings": {
+     "maxSurge": "33%",
+     "drainTimeoutInMinutes": 30
+    },
+    "nodeLabels": {
+     "pool": "system"
+    },
+    "eTag": "00000000-0000-4000-8000-00000000e701",
+    "nodeTaints": [
+     "CriticalAddonsOnly=true:NoSchedule"
+    ]
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/agentPools/user?api-version=2026-07-01",
+  "note": "the user pool, autoscaled 1 to 3 and at 3: pods that need more stay Pending",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/agentPools/user",
+   "name": "user",
+   "type": "Microsoft.ContainerService/managedClusters/agentPools",
+   "properties": {
+    "count": 3,
+    "vmSize": "Standard_D4s_v5",
+    "osDiskSizeGB": 128,
+    "osDiskType": "Managed",
+    "vnetSubnetID": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/aks",
+    "maxPods": 50,
+    "type": "VirtualMachineScaleSets",
+    "availabilityZones": [
+     "1",
+     "2",
+     "3"
+    ],
+    "enableAutoScaling": true,
+    "provisioningState": "Succeeded",
+    "powerState": {
+     "code": "Running"
+    },
+    "orchestratorVersion": "1.30.4",
+    "currentOrchestratorVersion": "1.30.4",
+    "nodeImageVersion": "AKSUbuntu-2204gen2containerd-202509.10.0",
+    "mode": "User",
+    "osType": "Linux",
+    "osSKU": "Ubuntu",
+    "upgradeSettings": {
+     "maxSurge": "33%",
+     "drainTimeoutInMinutes": 30
+    },
+    "nodeLabels": {
+     "pool": "user"
+    },
+    "eTag": "00000000-0000-4000-8000-00000000e702",
+    "minCount": 1,
+    "maxCount": 3
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/upgradeProfiles/default?api-version=2026-07-01",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/upgradeprofiles/default",
+   "name": "default",
+   "type": "Microsoft.ContainerService/managedClusters/upgradeprofiles",
+   "properties": {
+    "controlPlaneProfile": {
+     "name": "master",
+     "kubernetesVersion": "1.30.4",
+     "osType": "Linux",
+     "upgrades": [
+      {
+       "kubernetesVersion": "1.30.9"
+      },
+      {
+       "kubernetesVersion": "1.31.5"
+      },
+      {
+       "kubernetesVersion": "1.32.1",
+       "isPreview": true
+      }
+     ]
+    },
+    "agentPoolProfiles": [
+     {
+      "name": "system",
+      "kubernetesVersion": "1.30.4",
+      "osType": "Linux",
+      "upgrades": [
+       {
+        "kubernetesVersion": "1.30.9"
+       },
+       {
+        "kubernetesVersion": "1.31.5"
+       }
+      ]
+     },
+     {
+      "name": "user",
+      "kubernetesVersion": "1.30.4",
+      "osType": "Linux",
+      "upgrades": [
+       {
+        "kubernetesVersion": "1.30.9"
+       },
+       {
+        "kubernetesVersion": "1.31.5"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/agentPools/system/upgradeProfiles/default?api-version=2026-07-01",
+  "note": "a newer node image is out for both pools",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/agentPools/system/upgradeprofiles/default",
+   "name": "default",
+   "type": "Microsoft.ContainerService/managedClusters/agentPools/upgradeProfiles",
+   "properties": {
+    "kubernetesVersion": "1.30.4",
+    "osType": "Linux",
+    "latestNodeImageVersion": "AKSUbuntu-2204gen2containerd-202510.03.0",
+    "upgrades": [
+     {
+      "kubernetesVersion": "1.30.9"
+     },
+     {
+      "kubernetesVersion": "1.31.5"
+     }
+    ]
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/agentPools/user/upgradeProfiles/default?api-version=2026-07-01",
+  "note": "a newer node image is out for both pools",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/agentPools/user/upgradeprofiles/default",
+   "name": "default",
+   "type": "Microsoft.ContainerService/managedClusters/agentPools/upgradeProfiles",
+   "properties": {
+    "kubernetesVersion": "1.30.4",
+    "osType": "Linux",
+    "latestNodeImageVersion": "AKSUbuntu-2204gen2containerd-202510.03.0",
+    "upgrades": [
+     {
+      "kubernetesVersion": "1.30.9"
+     },
+     {
+      "kubernetesVersion": "1.31.5"
+     }
+    ]
+   }
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/runCommand?api-version=2026-07-01",
+  "note": "aks command run aks-contoso-prod --yes -- kubectl get nodes: accepted, then polled at its Location",
+  "body": {
+   "command": "kubectl get nodes"
+  },
+  "status": 202,
+  "headers": {
+   "Location": "https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/commandResults/0e9872e6629349dc865e27ee6f8bab2d?api-version=2026-07-01",
+   "Retry-After": "1"
+  },
+  "text": ""
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/commandResults/0e9872e6629349dc865e27ee6f8bab2d?api-version=2026-07-01",
+  "answer": {
+   "id": "0e9872e6629349dc865e27ee6f8bab2d",
+   "properties": {
+    "provisioningState": "succeeded",
+    "exitCode": 0,
+    "startedAt": "2026-09-29T10:02:11Z",
+    "finishedAt": "2026-09-29T10:02:14Z",
+    "logs": "NAME                             STATUS   ROLES    AGE   VERSION\naks-system-31415926-vmss000000   Ready    <none>   41d   v1.30.4\naks-system-31415926-vmss000001   Ready    <none>   41d   v1.30.4\naks-system-31415926-vmss000002   Ready    <none>   41d   v1.30.4\naks-user-27182818-vmss000000     Ready    <none>   12d   v1.30.4\naks-user-27182818-vmss000001     Ready    <none>   12d   v1.30.4\naks-user-27182818-vmss000002     Ready    <none>   12d   v1.30.4\n"
    }
   }
  },

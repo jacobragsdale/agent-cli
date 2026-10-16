@@ -333,3 +333,59 @@ expect = "arm query run"
 [[query]]
 text = "count azure resources by type with kql"
 expect = "arm query run"
+
+[[query]]
+text = "is the aks cluster private and which network plugin does it use"
+expect = "aks cluster get"
+
+[[query]]
+text = "what is the oidc issuer url of the aks cluster for workload identity"
+expect = "aks cluster get"
+
+[[query]]
+text = "which managed identity does the kubelet use to pull images"
+expect = "aks cluster get"
+
+[[query]]
+text = "when is the aks maintenance window"
+expect = "aks cluster get"
+
+[[query]]
+text = "list the node pools of the aks cluster"
+expect = "aks nodepool list"
+
+[[query]]
+text = "which agent pool vm sizes and subnets does the cluster use"
+expect = "aks nodepool list"
+
+[[query]]
+text = "is the user node pool autoscaler at its maximum"
+expect = "aks nodepool get"
+
+[[query]]
+text = "show the agent pool surge settings and node image version"
+expect = "aks nodepool get"
+
+[[query]]
+text = "add nodes to the system node pool"
+expect = "aks nodepool scale"
+
+[[query]]
+text = "scale the agent pool to 5 nodes"
+expect = "aks nodepool scale"
+
+[[query]]
+text = "which kubernetes version upgrade is available for aks"
+expect = "aks upgrade list"
+
+[[query]]
+text = "is there a newer node image for the cluster"
+expect = "aks upgrade list"
+
+[[query]]
+text = "private cluster run kubectl through azure"
+expect = "aks command run"
+
+[[query]]
+text = "run kubectl on an aks cluster i cannot reach from wsl"
+expect = "aks command run"

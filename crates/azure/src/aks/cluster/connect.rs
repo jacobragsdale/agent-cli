@@ -8,9 +8,9 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Value, json};
 
+use crate::aks::find;
 use crate::client::{first_line, program};
 use crate::config::Azure;
-use crate::graph::{Cluster, inventory};
 
 /// Namespaces every AKS cluster has that nobody wants a scope for.
 const SYSTEM_NAMESPACES: &[&str] = &[
@@ -61,7 +61,8 @@ fn cluster_connect(ctx: &Ctx, args: ClusterConnectArgs) -> Result<Connected> {
     let (resource_group, subscription) = match args.resource_group {
         Some(group) => (group, args.subscription),
         None => {
-            let found = locate(ctx, &args.name, args.subscription.as_deref())?;
+            let azure = Azure::load(ctx)?;
+            let found = find(ctx, &azure, &args.name, None, args.subscription.as_deref())?;
             (found.resource_group, Some(found.subscription))
         }
     };
@@ -136,39 +137,6 @@ fn cluster_connect(ctx: &Ctx, args: ClusterConnectArgs) -> Result<Connected> {
     })
 }
 
-/// The one cluster in reach called `name`: two is exit 2 naming where each
-/// is, none is exit 4.
-fn locate(ctx: &Ctx, name: &str, subscription: Option<&str>) -> Result<Cluster> {
-    let azure = Azure::load(ctx)?;
-    let mut found: Vec<Cluster> = inventory(ctx, &azure)?
-        .clusters
-        .into_iter()
-        .filter(|cluster| cluster.name.eq_ignore_ascii_case(name))
-        .filter(|cluster| {
-            subscription.is_none_or(|wanted| cluster.subscription.eq_ignore_ascii_case(wanted))
-        })
-        .collect();
-    match found.len() {
-        1 => Ok(found.remove(0)),
-        0 => Err(
-            Failure::not_found(format!("no AKS cluster {name} in reach of the az login"))
-                .hint("agent-cli aks cluster list --fields name,resource_group,subscription")
-                .into(),
-        ),
-        _ => {
-            let places: Vec<String> = found
-                .iter()
-                .map(|cluster| format!("{} in {}", cluster.resource_group, cluster.subscription))
-                .collect();
-            Err(Failure::usage(format!(
-                "there is more than one cluster {name} ({}); name one with --resource-group and --subscription",
-                places.join("; ")
-            ))
-            .into())
-        }
-    }
-}
-
 /// The two commands that change the kubeconfig, as one change: `--dry-run`
 /// shows both argv, and a failed `get-credentials` stops before `kubelogin`.
 /// `kubelogin` failing is reported rather than fatal, as in az-tui: the
@@ -219,7 +187,7 @@ impl Op for Connect {
 command! {
     pub CLUSTER_CONNECT = ["aks", "cluster", "connect"], Write,
     "Fetch an AKS cluster's kubeconfig credentials and print its [[k8s.scope]]",
-    keywords: ["kubeconfig", "credentials", "get-credentials", "kubelogin", "context", "setup", "login"],
+    keywords: ["kubeconfig", "credentials", "get-credentials", "kubelogin", "context", "setup", "login", "access"],
     example: "aks cluster connect aks-contoso-dev --resource-group rg-contoso --fields context,config",
     run: cluster_connect,
 }

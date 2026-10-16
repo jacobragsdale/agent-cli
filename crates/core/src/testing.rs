@@ -321,7 +321,12 @@ pub fn next_command(text: &str) -> Option<Vec<String>> {
 pub fn assert_dry_run(domains: &[Domain], argv: &[&str], answers: Vec<Answer>) -> Vec<Value> {
     let transport = FakeTransport::answering(answers);
     let mut argv = argv.to_vec();
-    argv.push("--dry-run");
+    // Before a `--`: after it, the flag would be the command's own words.
+    let at = argv
+        .iter()
+        .position(|arg| *arg == "--")
+        .unwrap_or(argv.len());
+    argv.insert(at, "--dry-run");
     let outcome = run(domains, &argv, Setup::fake(transport.clone()));
     let writes: Vec<Sent> = transport
         .sent()
