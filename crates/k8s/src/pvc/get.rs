@@ -135,8 +135,7 @@ fn next(
             pod["status"]["phase"] != "Running"
                 && non_empty(&pod["spec"]["nodeName"]).is_some_and(|held| held != node)
         })
-        // ponytail: the generic floor until a curated `k8s node get`.
-        .then(|| format!("agent-cli k8s object get node {attached}"))
+        .then(|| format!("agent-cli k8s node get {attached}"))
 }
 
 command! {
@@ -202,7 +201,7 @@ mod tests {
         assert!(
             outcome
                 .stderr
-                .contains("[next: agent-cli k8s object get node qa/aks-np1-vmss000001]"),
+                .contains("[next: agent-cli k8s node get qa/aks-np1-vmss000001]"),
             "{}",
             outcome.stderr
         );

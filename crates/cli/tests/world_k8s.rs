@@ -43,6 +43,12 @@ fn the_world_answers_what_a_trial_asks_of_k8s() {
         &["k8s", "job", "list"],
         &["k8s", "cronjob", "list"],
         &["k8s", "daemonset", "get", "prod/kube-system/kube-proxy"],
+        &["k8s", "node", "list"],
+        &["k8s", "node", "get", "prod/aks-system-31415926-vmss000001"],
+        &["k8s", "namespace", "list"],
+        &["k8s", "quota", "list"],
+        &["k8s", "serviceaccount", "list"],
+        &["k8s", "access", "list"],
     ] {
         ok(args);
     }
@@ -172,10 +178,10 @@ fn a_custom_resource_and_a_node_read_through_the_generic_floor_by_the_ids_it_lis
     );
 
     let nodes = ok(&["k8s", "object", "list", "nodes", "--fields", "id,ready"]);
+    assert_eq!(nodes.as_array().unwrap().len(), 6, "{nodes}");
     assert_eq!(
-        nodes,
-        json!([{"id": "prod/aks-system-31415926-vmss000001", "ready": true},
-            {"id": "prod/aks-user-27182818-vmss000001", "ready": false}])
+        nodes[4],
+        json!({"id": "prod/aks-user-27182818-vmss000001", "ready": false})
     );
     let node = ok(&[
         "k8s",
@@ -260,14 +266,18 @@ fn the_web_pods_egress_is_denied_but_for_dns_the_namespace_and_private_addresses
     assert_eq!(
         cluster,
         json!({"name": "prod", "context": "aks-contoso-prod", "version": "v1.30.4",
-            "dns_ip": "10.0.0.10", "cni": "azure-cni", "nodes": 2})
+            "dns_ip": "10.0.0.10", "cni": "azure-cni", "nodes": 6})
     );
 }
 
 #[test]
 fn the_database_pod_stuck_creating_has_its_disk_still_on_the_old_node_which_is_not_ready() {
     let walked = follow(&["k8s", "pvc", "get", "prod/web/data-orders-db-0"]);
-    assert_eq!(walked.len(), 2, "pvc get, then the node holding the disk");
+    assert_eq!(
+        walked.len(),
+        4,
+        "pvc get, the node holding the disk, its pool, the cluster's events"
+    );
     let claim = walked[0].json();
     assert_eq!(claim["used_by"], json!(["prod/web/orders-db-0"]));
     assert_eq!(claim["attached_to"], "prod/aks-user-27182818-vmss000001");
@@ -285,12 +295,21 @@ fn the_database_pod_stuck_creating_has_its_disk_still_on_the_old_node_which_is_n
     );
     let node = walked[1].json();
     assert_eq!(node["id"], "prod/aks-user-27182818-vmss000001");
-    assert_eq!(node["manifest"]["spec"]["unschedulable"], true);
     assert_eq!(
-        node["manifest"]["status"]["conditions"][2],
-        json!({"type": "Ready", "status": "Unknown", "reason": "NodeStatusUnknown",
-            "message": "Kubelet stopped posting node status.", "lastTransitionTime": "2026-09-29T11:24:30Z"})
+        (&node["ready"], &node["schedulable"]),
+        (&json!(false), &json!(false))
     );
+    assert_eq!(
+        node["conditions"][2],
+        json!({"type": "Ready", "status": "Unknown", "reason": "NodeStatusUnknown",
+            "message": "Kubelet stopped posting node status."})
+    );
+    assert_eq!(
+        node["vm"],
+        "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/1"
+    );
+    assert_eq!(node["nodepool"], "aks-contoso-prod/user");
+    assert_eq!(walked[2].json()["id"], "aks-contoso-prod/user");
 
     let pod = ok(&[
         "k8s",
@@ -438,4 +457,109 @@ fn reports_api_has_pending_pods_no_node_fits_and_its_autoscaler_is_at_its_maximu
         daemonsets[0],
         json!({"id": "prod/kube-system/azure-cns", "unavailable": 1})
     );
+    // Why the pending pods fit nowhere: the system pool's taint, the
+    // cordoned node, and the other two user nodes with 160m of CPU left.
+    let nodes = ok(&[
+        "k8s",
+        "node",
+        "list",
+        "--fields",
+        "name,ready,schedulable,taints,cpu",
+    ]);
+    let user: Vec<_> = nodes.as_array().unwrap()[3..].to_vec();
+    assert_eq!(
+        user[0],
+        json!({"name": "aks-user-27182818-vmss000000", "ready": true, "schedulable": true,
+            "cpu": {"requested": "3700m", "allocatable": "3860m", "requested_percent": 96,
+                "usage": "3412m", "usage_percent": 88}})
+    );
+    assert_eq!(user[1]["schedulable"], false);
+    assert_eq!(user[2]["cpu"]["requested_percent"], 96);
+    assert_eq!(
+        nodes[0]["taints"],
+        json!(["CriticalAddonsOnly=true:NoSchedule"])
+    );
+    let pods = ok(&[
+        "k8s",
+        "pod",
+        "list",
+        "reports-api",
+        "--fields",
+        "name,cpu_usage",
+    ]);
+    assert_eq!(
+        pods[0],
+        json!({"name": "reports-api-6f7d8c9b4-h2k8m", "cpu_usage": "958m"})
+    );
+}
+
+#[test]
+fn the_web_namespace_has_a_quota_and_its_service_accounts_say_what_they_may_do() {
+    let namespaces = ok(&[
+        "k8s",
+        "namespace",
+        "list",
+        "--fields",
+        "name,quota,in_scope",
+    ]);
+    assert_eq!(
+        namespaces[4],
+        json!({"name": "web", "in_scope": true,
+            "quota": {"pods": "10/30", "requests.cpu": "6500m/12", "requests.memory": "7Gi/24Gi"}})
+    );
+    assert_eq!(namespaces[2], json!({"name": "ingest", "in_scope": false}));
+    let limits = ok(&[
+        "k8s",
+        "quota",
+        "list",
+        "--fields",
+        "from,resource,default_request",
+    ]);
+    assert_eq!(
+        limits[3],
+        json!({"from": "LimitRange/web-defaults", "resource": "cpu", "default_request": "100m"})
+    );
+    let pod = ok(&[
+        "k8s",
+        "pod",
+        "get",
+        "prod/web/worker-5c4d3e9f1-q8zt1",
+        "--fields",
+        "service_account",
+    ]);
+    let account = ok(&[
+        "k8s",
+        "serviceaccount",
+        "get",
+        pod["service_account"].as_str().unwrap(),
+    ]);
+    assert!(account.get("client_id").is_none(), "{account}");
+    assert_eq!(account["pods"], json!(["prod/web/worker-5c4d3e9f1-q8zt1"]));
+    assert_eq!(
+        account["can"],
+        json!([{"resource": "configmaps", "names": ["api-config"], "verbs": ["get"]},
+            {"resource": "secrets", "names": ["worker-db"], "verbs": ["get"]}])
+    );
+    let accounts = ok(&["k8s", "serviceaccount", "list", "--fields", "id,client_id"]);
+    assert_eq!(
+        accounts[2],
+        json!({"id": "prod/web/notifier", "client_id": "00000000-0000-4000-8000-00000000b0f1"})
+    );
+    // The client id is what arm identity get takes, and the serviceaccount
+    // its federated credential names is what serviceaccount get takes.
+    let identity = ok(&[
+        "arm",
+        "identity",
+        "get",
+        accounts[2]["client_id"].as_str().unwrap(),
+    ]);
+    let subject = identity["federated_credentials"][0]["serviceaccount"]
+        .as_str()
+        .unwrap();
+    let back = ok(&["k8s", "serviceaccount", "get", subject, "--fields", "id"]);
+    assert_eq!(back, json!({"id": "prod/web/notifier"}));
+    let mine = ok(&[
+        "k8s", "access", "list", "--as", "@me", "--fields", "resource",
+    ]);
+    assert_eq!(mine[0], json!({"resource": "*.*"}));
 }

@@ -9,6 +9,7 @@
 //! `[[k8s.scope]]`: `--cluster` picks a scope and `--namespace` one of its
 //! namespaces, and each defaults only when there is exactly one to pick.
 
+mod access;
 mod configmap;
 mod context;
 mod cronjob;
@@ -21,14 +22,18 @@ mod ingress;
 mod job;
 mod kind;
 mod kubectl;
+mod namespace;
 mod networkpolicy;
+mod node;
 mod object;
 mod pdb;
 mod pod;
 mod pv;
 mod pvc;
+mod quota;
 mod secret;
 mod service;
+mod serviceaccount;
 mod shape;
 mod statefulset;
 mod storageclass;
@@ -72,6 +77,13 @@ pub const K8S: Domain = Domain {
         cronjob::get::CRONJOB_GET,
         hpa::list::HPA_LIST,
         pdb::list::PDB_LIST,
+        node::list::NODE_LIST,
+        node::get::NODE_GET,
+        namespace::list::NAMESPACE_LIST,
+        quota::list::QUOTA_LIST,
+        serviceaccount::list::SERVICEACCOUNT_LIST,
+        serviceaccount::get::SERVICEACCOUNT_GET,
+        access::list::ACCESS_LIST,
         configmap::list::CONFIGMAP_LIST,
         configmap::get::CONFIGMAP_GET,
         secret::list::SECRET_LIST,

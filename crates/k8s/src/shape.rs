@@ -15,7 +15,7 @@ use crate::kubectl::{Target, items, non_empty};
 
 /// The kinds with a list of their own, as kubectl's errors name them
 /// (plural), and the resource word of `agent-cli k8s RESOURCE list`.
-const CURATED: [(&str, &str); 17] = [
+const CURATED: [(&str, &str); 22] = [
     ("pods", "pod"),
     ("deployments", "deployment"),
     ("configmaps", "configmap"),
@@ -33,6 +33,11 @@ const CURATED: [(&str, &str); 17] = [
     ("cronjobs", "cronjob"),
     ("horizontalpodautoscalers", "hpa"),
     ("poddisruptionbudgets", "pdb"),
+    ("nodes", "node"),
+    ("namespaces", "namespace"),
+    ("resourcequotas", "quota"),
+    ("limitranges", "quota"),
+    ("serviceaccounts", "serviceaccount"),
 ];
 
 /// What `kubectl apply` keeps on the object: a copy of the whole manifest.

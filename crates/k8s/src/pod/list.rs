@@ -1,8 +1,11 @@
 use agent_cli_core::{Ctx, Failure, command};
 use anyhow::Result;
+use schemars::JsonSchema;
+use serde::Serialize;
 use serde_json::Value;
 
 use crate::kubectl::{At, items, limited};
+use crate::node::top;
 
 use super::{PodRow, csi_classes, key_vault_ids, row, status_word};
 
@@ -48,7 +51,17 @@ enum Status {
     Terminating,
 }
 
-fn pod_list(ctx: &Ctx, args: PodListArgs) -> Result<Vec<PodRow>> {
+/// A pod's row and what metrics-server measured of it.
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct PodListRow {
+    #[serde(flatten)]
+    pod: PodRow,
+    /// CPU in use now (`kubectl top`), when metrics-server answered.
+    cpu_usage: Option<String>,
+    memory_usage: Option<String>,
+}
+
+fn pod_list(ctx: &Ctx, args: PodListArgs) -> Result<Vec<PodListRow>> {
     let target = args.at.listing(ctx)?;
     if let Some(kv) = &args.kv
         && !kv.split_once('/').is_some_and(|(vault, name)| {
@@ -108,7 +121,28 @@ fn pod_list(ctx: &Ctx, args: PodListArgs) -> Result<Vec<PodRow>> {
         })
         .filter_map(|item| row(&target, item))
         .collect();
-    Ok(limited(ctx, rows, args.limit))
+    let rows = limited(ctx, rows, args.limit);
+    let used = if rows.is_empty() {
+        Default::default()
+    } else {
+        top(ctx, &target, &["pods"]).unwrap_or_default()
+    };
+    Ok(rows
+        .into_iter()
+        .map(|pod| {
+            // `kubectl top` names pods by namespace too when it reads several.
+            let key = match &pod.namespace {
+                Some(namespace) => format!("{namespace}/{}", pod.name),
+                None => pod.name.clone(),
+            };
+            let used = used.get(&key);
+            PodListRow {
+                cpu_usage: used.map(|held| held.cpu.clone()),
+                memory_usage: used.map(|held| held.memory.clone()),
+                pod,
+            }
+        })
+        .collect())
 }
 
 /// Whether `pod` mounts the Key Vault secret `wanted` (vault/name, any case
@@ -130,7 +164,7 @@ fn mounts(pod: &Value, classes: &[&Value], wanted: &str) -> bool {
 command! {
     pub POD_LIST = ["k8s", "pod", "list"], Read,
     "List pods: status, ready, restarts, owner; or those mounting a Key Vault secret",
-    keywords: ["containers", "restarting", "crashloop", "crash loop", "crashing", "running", "pending", "unhealthy", "deployments"],
+    keywords: ["containers", "restarting", "crashloop", "crash loop", "crashing", "running", "pending", "unhealthy", "deployments", "scheduled"],
     example: "k8s pod list --cluster qa --namespace dev --fields id,status,restarts,owner",
     run: pod_list,
 }

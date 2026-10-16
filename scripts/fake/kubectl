@@ -9,7 +9,11 @@ recorded world, see fixtures/world/README.md), that file. Either is
 {"contexts": {CONTEXT: [objects]}, "logs": {...}, "forbidden": {CONTEXT:
 [kinds]}, "server": {CONTEXT: {"version": "v1.29.7", "failing": ["etcd"]}}};
 without "logs", a pod's log is made up, and without "server" the API server
-is v1.30.0 with every readiness check ok. `get KIND` answers for the
+is v1.30.0 with every readiness check ok. "top": {CONTEXT: {"nodes": {NAME:
+[cpu, cpu%, memory, memory%]}, "pods": {"NS/NAME": [cpu, memory]}}} is what
+metrics-server measured (none for a context left out), and "access":
+{CONTEXT: {SUBJECT: [[resource, urls, names, verbs]]}} what `auth can-i
+--list --as SUBJECT` grants ("" for yourself). `get KIND` answers for the
 standard kinds and every kind the file holds (a CustomResourceDefinition
 there names its kind's plural and short names), and `api-resources` lists
 them. An object without a uid gets one from its context, kind, namespace and
@@ -48,6 +52,8 @@ with open(WORLD_FILE) as f:
 OBJECTS = world["contexts"]
 LOGS = world.get("logs")
 SERVER = world.get("server", {})
+TOP = world.get("top", {})
+ACCESS = world.get("access", {})
 FORBIDDEN = {(context, kind) for context, kinds in world.get("forbidden", {}).items() for kind in kinds}
 NAMESPACES = {name: sorted({o["metadata"]["namespace"] for o in objects if "namespace" in o["metadata"]}
                            | {"default", "kube-system"})
@@ -59,9 +65,11 @@ def uid(context, kind, namespace, name):
 
 
 for context, objects in OBJECTS.items():
+    held = {o["metadata"]["name"] for o in objects if o["kind"] == "Namespace"}
+    NAMESPACES[context] = sorted(set(NAMESPACES[context]) | held)
     objects.extend({"kind": "Namespace", "apiVersion": "v1",
                     "metadata": {"name": n, "creationTimestamp": "2026-01-01T00:00:00Z"},
-                    "status": {"phase": "Active"}} for n in NAMESPACES[context])
+                    "status": {"phase": "Active"}} for n in NAMESPACES[context] if n not in held)
     for o in objects:
         meta = o["metadata"]
         meta.setdefault("uid", uid(context, o["kind"], meta.get("namespace"), meta["name"]))
@@ -78,6 +86,8 @@ STANDARD = [
     ("secrets", "", "v1", True, "Secret"),
     ("services", "svc", "v1", True, "Service"),
     ("serviceaccounts", "sa", "v1", True, "ServiceAccount"),
+    ("resourcequotas", "quota", "v1", True, "ResourceQuota"),
+    ("limitranges", "limits", "v1", True, "LimitRange"),
     ("persistentvolumeclaims", "pvc", "v1", True, "PersistentVolumeClaim"),
     ("persistentvolumes", "pv", "v1", False, "PersistentVolume"),
     ("nodes", "no", "v1", False, "Node"),
@@ -191,6 +201,44 @@ if args[:2] == ["get", "--raw"] and args[2].startswith("/readyz"):
                          "has prevented the request from succeeding\n")
         sys.exit(1)
     print("\n".join(lines + ["readyz check passed"]))
+    sys.exit(0)
+
+
+if args[:1] == ["top"]:
+    # metrics-server's answer, as `kubectl top … --no-headers` prints it; a
+    # context without "top" has none, as AKS without it says.
+    if context not in TOP:
+        sys.stderr.write("error: Metrics API not available\n")
+        sys.exit(1)
+    if args[1] in ("node", "nodes"):
+        wanted = args[2] if len(args) > 2 and not args[2].startswith("-") else None
+        names = [o["metadata"]["name"] for o in OBJECTS[context] if o["kind"] == "Node"]
+        for name in names if wanted is None else [wanted]:
+            cpu, cpu_pct, memory, memory_pct = TOP[context]["nodes"].get(name, ["<unknown>"] * 4)
+            print(f"{name}   {cpu}   {cpu_pct}   {memory}   {memory_pct}")
+        sys.exit(0)
+    for key, (cpu, memory) in TOP[context]["pods"].items():
+        namespace, name = key.split("/")
+        if all_ns:
+            print(f"{namespace}   {name}   {cpu}   {memory}")
+        elif namespace == ns:
+            print(f"{name}   {cpu}   {memory}")
+    sys.exit(0)
+
+if args[:3] == ["auth", "can-i", "--list"]:
+    # What RBAC grants `--as` (yourself without it) in -n, after the rules
+    # every authenticated subject holds; "access" in the file keys rows by
+    # subject, "" for yourself.
+    subject = take("--as") or ""
+    granted = ACCESS.get(context, {}).get(subject, [])
+    rows = [["selfsubjectreviews.authentication.k8s.io", [], [], ["create"]],
+            ["selfsubjectaccessreviews.authorization.k8s.io", [], [], ["create"]],
+            ["selfsubjectrulesreviews.authorization.k8s.io", [], [], ["create"]]] + granted + [
+        ["", ["/api/*"], [], ["get"]], ["", ["/healthz"], [], ["get"]], ["", ["/version"], [], ["get"]]]
+    cells = [[r[0]] + ["[" + " ".join(part) + "]" for part in r[1:]] for r in rows]
+    widths = [max(len(c[i]) for c in cells) + 3 for i in range(3)]
+    for c in cells:
+        print("".join(cell.ljust(width) for cell, width in zip(c, widths)) + c[3])
     sys.exit(0)
 
 

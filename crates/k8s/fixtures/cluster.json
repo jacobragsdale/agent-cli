@@ -1156,11 +1156,20 @@
      "creationTimestamp": "2026-08-01T00:00:00Z",
      "labels": {
       "agentpool": "np1",
-      "kubernetes.io/os": "linux"
+      "kubernetes.io/os": "linux",
+      "kubernetes.azure.com/agentpool": "np1",
+      "topology.kubernetes.io/zone": "westeurope-1"
      }
     },
     "spec": {
-     "providerID": "azure:///subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/mc_contoso-qa/providers/Microsoft.Compute/virtualMachineScaleSets/aks-np1-vmss/virtualMachines/0"
+     "providerID": "azure:///subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/mc_contoso-qa/providers/Microsoft.Compute/virtualMachineScaleSets/aks-np1-vmss/virtualMachines/0",
+     "podCIDR": "10.244.0.0/24",
+     "taints": [
+      {
+       "key": "node.kubernetes.io/disk-pressure",
+       "effect": "NoSchedule"
+      }
+     ]
     },
     "status": {
      "conditions": [
@@ -1168,6 +1177,12 @@
        "type": "MemoryPressure",
        "status": "False",
        "reason": "KubeletHasSufficientMemory"
+      },
+      {
+       "type": "DiskPressure",
+       "status": "True",
+       "reason": "KubeletHasDiskPressure",
+       "message": "kubelet has disk pressure"
       },
       {
        "type": "Ready",
@@ -1178,7 +1193,27 @@
      ],
      "nodeInfo": {
       "kubeletVersion": "v1.30.4"
-     }
+     },
+     "capacity": {
+      "cpu": "2",
+      "memory": "8148204Ki",
+      "pods": "30"
+     },
+     "allocatable": {
+      "cpu": "1900m",
+      "memory": "5862972Ki",
+      "pods": "30"
+     },
+     "addresses": [
+      {
+       "type": "InternalIP",
+       "address": "10.224.0.4"
+      },
+      {
+       "type": "Hostname",
+       "address": "aks-np1-vmss000000"
+      }
+     ]
     }
    },
    {
@@ -1189,11 +1224,14 @@
      "creationTimestamp": "2026-08-01T00:00:00Z",
      "labels": {
       "agentpool": "np1",
-      "kubernetes.io/os": "linux"
+      "kubernetes.io/os": "linux",
+      "kubernetes.azure.com/agentpool": "np1",
+      "topology.kubernetes.io/zone": "westeurope-1"
      }
     },
     "spec": {
-     "providerID": "azure:///subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/mc_contoso-qa/providers/Microsoft.Compute/virtualMachineScaleSets/aks-np1-vmss/virtualMachines/1"
+     "providerID": "azure:///subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/mc_contoso-qa/providers/Microsoft.Compute/virtualMachineScaleSets/aks-np1-vmss/virtualMachines/1",
+     "podCIDR": "10.244.1.0/24"
     },
     "status": {
      "conditions": [
@@ -1211,7 +1249,27 @@
      ],
      "nodeInfo": {
       "kubeletVersion": "v1.30.4"
-     }
+     },
+     "capacity": {
+      "cpu": "2",
+      "memory": "8148204Ki",
+      "pods": "30"
+     },
+     "allocatable": {
+      "cpu": "1900m",
+      "memory": "5862972Ki",
+      "pods": "30"
+     },
+     "addresses": [
+      {
+       "type": "InternalIP",
+       "address": "10.224.0.5"
+      },
+      {
+       "type": "Hostname",
+       "address": "aks-np1-vmss000001"
+      }
+     ]
     }
    },
    {
@@ -2940,6 +2998,101 @@
     "source": {
      "component": "job-controller"
     }
+   },
+   {
+    "kind": "Namespace",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "dev",
+     "creationTimestamp": "2026-01-01T00:00:00Z",
+     "labels": {
+      "kubernetes.io/metadata.name": "dev",
+      "team": "orders"
+     }
+    },
+    "status": {
+     "phase": "Active"
+    }
+   },
+   {
+    "kind": "ResourceQuota",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "compute",
+     "namespace": "dev"
+    },
+    "spec": {
+     "hard": {
+      "requests.cpu": "4",
+      "requests.memory": "8Gi",
+      "pods": "20"
+     }
+    },
+    "status": {
+     "hard": {
+      "requests.cpu": "4",
+      "requests.memory": "8Gi",
+      "pods": "20"
+     },
+     "used": {
+      "requests.cpu": "250m",
+      "requests.memory": "256Mi",
+      "pods": "5"
+     }
+    }
+   },
+   {
+    "kind": "LimitRange",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "defaults",
+     "namespace": "qa"
+    },
+    "spec": {
+     "limits": [
+      {
+       "type": "Container",
+       "default": {
+        "memory": "256Mi"
+       },
+       "defaultRequest": {
+        "cpu": "50m",
+        "memory": "64Mi"
+       }
+      },
+      {
+       "type": "PersistentVolumeClaim",
+       "max": {
+        "storage": "50Gi"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "kind": "ServiceAccount",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "orders-api",
+     "namespace": "dev",
+     "annotations": {
+      "azure.workload.identity/client-id": "00000000-0000-4000-8000-0000000000c1"
+     }
+    },
+    "imagePullSecrets": [
+     {
+      "name": "acr-pull"
+     }
+    ]
+   },
+   {
+    "kind": "ServiceAccount",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "default",
+     "namespace": "dev"
+    },
+    "automountServiceAccountToken": false
    }
   ],
   "aks-prod": [
@@ -3294,6 +3447,75 @@
    "version": "v1.29.7",
    "failing": [
     "etcd"
+   ]
+  }
+ },
+ "top": {
+  "aks-qa": {
+   "nodes": {
+    "aks-np1-vmss000000": [
+     "320m",
+     "16%",
+     "2210Mi",
+     "38%"
+    ]
+   },
+   "pods": {
+    "dev/orders-api-7d9f5b-abc12": [
+     "12m",
+     "180Mi"
+    ],
+    "dev/redis-0": [
+     "4m",
+     "20Mi"
+    ]
+   }
+  }
+ },
+ "access": {
+  "aks-qa": {
+   "": [
+    [
+     "pods",
+     [],
+     [],
+     [
+      "get",
+      "list",
+      "watch"
+     ]
+    ],
+    [
+     "secrets",
+     [],
+     [],
+     [
+      "get",
+      "list"
+     ]
+    ]
+   ],
+   "system:serviceaccount:dev:orders-api": [
+    [
+     "configmaps",
+     [],
+     [
+      "orders-config"
+     ],
+     [
+      "get"
+     ]
+    ],
+    [
+     "secrets",
+     [],
+     [
+      "orders-db"
+     ],
+     [
+      "get"
+     ]
+    ]
    ]
   }
  }

@@ -486,3 +486,80 @@ expect = "k8s pdb list"
 [[query]]
 text = "node pool upgrade stuck evicting pods, which pdb allows 0 disruptions"
 expect = "k8s pdb list"
+
+
+[[query]]
+text = "which nodes are NotReady"
+expect = "k8s node list"
+
+[[query]]
+text = "node cpu requests vs allocatable"
+expect = "k8s node list"
+
+[[query]]
+text = "which nodes are cordoned"
+expect = "k8s node list"
+
+[[query]]
+text = "kubectl top nodes memory usage"
+expect = "k8s node list"
+
+[[query]]
+text = "2 Insufficient cpu: how full are the user pool's nodes"
+expect = "k8s node list"
+
+[[query]]
+text = "what azure vm is this node"
+expect = "k8s node get"
+
+[[query]]
+text = "why is node aks-user-27182818-vmss000001 not ready"
+expect = "k8s node get"
+
+[[query]]
+text = "which aks node pool and vmss instance is the node in"
+expect = "k8s node get"
+
+[[query]]
+text = "list the namespaces in the cluster"
+expect = "k8s namespace list"
+
+[[query]]
+text = "which namespaces does my scope let me read"
+expect = "k8s namespace list"
+
+[[query]]
+text = "exceeded quota in namespace web"
+expect = "k8s quota list"
+
+[[query]]
+text = "default cpu request from the limit range"
+expect = "k8s quota list"
+
+[[query]]
+text = "workload identity client id of a service account"
+expect = "k8s serviceaccount list"
+
+[[query]]
+text = "which service accounts use azure workload identity"
+expect = "k8s serviceaccount list"
+
+[[query]]
+text = "what can this service account do"
+expect = "k8s serviceaccount get"
+
+[[query]]
+text = "which managed identity does the worker service account map to and what rbac does it have"
+expect = "k8s serviceaccount get"
+
+[[query]]
+text = "what am I allowed to do in this namespace"
+expect = "k8s access list"
+
+[[query]]
+text = "kubectl auth can-i --list"
+expect = "k8s access list"
+
+[[query]]
+text = "am I forbidden from listing secrets in the namespace, check rbac permissions"
+expect = "k8s access list"

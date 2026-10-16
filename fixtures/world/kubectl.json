@@ -1128,18 +1128,67 @@
     "kind": "Node",
     "apiVersion": "v1",
     "metadata": {
-     "name": "aks-system-31415926-vmss000001",
+     "name": "aks-system-31415926-vmss000000",
      "creationTimestamp": "2026-09-20T04:00:00Z",
      "labels": {
       "agentpool": "system",
-      "kubernetes.azure.com/agentpool": "system"
+      "kubernetes.azure.com/agentpool": "system",
+      "kubernetes.azure.com/mode": "system",
+      "kubernetes.azure.com/node-image-version": "AKSUbuntu-2204gen2containerd-202509.10.0",
+      "kubernetes.io/hostname": "aks-system-31415926-vmss000000",
+      "kubernetes.io/os": "linux",
+      "node.kubernetes.io/instance-type": "Standard_D4s_v5",
+      "pool": "system",
+      "topology.kubernetes.io/region": "westeurope",
+      "topology.kubernetes.io/zone": "westeurope-3"
      }
     },
     "spec": {
-     "providerID": "azure:///subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/1"
+     "podCIDR": "10.244.0.0/24",
+     "podCIDRs": [
+      "10.244.0.0/24"
+     ],
+     "providerID": "azure:///subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/0",
+     "taints": [
+      {
+       "key": "CriticalAddonsOnly",
+       "value": "true",
+       "effect": "NoSchedule"
+      }
+     ]
     },
     "status": {
+     "capacity": {
+      "cpu": "4",
+      "memory": "16365384Ki",
+      "pods": "50",
+      "ephemeral-storage": "129886128Ki"
+     },
+     "allocatable": {
+      "cpu": "3860m",
+      "memory": "13626184Ki",
+      "pods": "50",
+      "ephemeral-storage": "119703055367"
+     },
      "conditions": [
+      {
+       "type": "MemoryPressure",
+       "status": "False",
+       "reason": "KubeletHasSufficientMemory",
+       "message": "kubelet has sufficient memory available"
+      },
+      {
+       "type": "DiskPressure",
+       "status": "False",
+       "reason": "KubeletHasNoDiskPressure",
+       "message": "kubelet has no disk pressure"
+      },
+      {
+       "type": "PIDPressure",
+       "status": "False",
+       "reason": "KubeletHasSufficientPID",
+       "message": "kubelet has sufficient PID available"
+      },
       {
        "type": "Ready",
        "status": "True",
@@ -1147,8 +1196,201 @@
        "message": "kubelet is posting ready status"
       }
      ],
+     "addresses": [
+      {
+       "type": "InternalIP",
+       "address": "10.1.0.4"
+      },
+      {
+       "type": "Hostname",
+       "address": "aks-system-31415926-vmss000000"
+      }
+     ],
      "nodeInfo": {
-      "kubeletVersion": "v1.30.4"
+      "kubeletVersion": "v1.30.4",
+      "osImage": "Ubuntu 22.04.5 LTS",
+      "containerRuntimeVersion": "containerd://1.7.22-1",
+      "kernelVersion": "5.15.0-1073-azure"
+     }
+    }
+   },
+   {
+    "kind": "Node",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "aks-system-31415926-vmss000001",
+     "creationTimestamp": "2026-09-20T04:00:00Z",
+     "labels": {
+      "agentpool": "system",
+      "kubernetes.azure.com/agentpool": "system",
+      "kubernetes.azure.com/mode": "system",
+      "kubernetes.azure.com/node-image-version": "AKSUbuntu-2204gen2containerd-202509.10.0",
+      "kubernetes.io/hostname": "aks-system-31415926-vmss000001",
+      "kubernetes.io/os": "linux",
+      "node.kubernetes.io/instance-type": "Standard_D4s_v5",
+      "pool": "system",
+      "topology.kubernetes.io/region": "westeurope",
+      "topology.kubernetes.io/zone": "westeurope-1"
+     }
+    },
+    "spec": {
+     "podCIDR": "10.244.1.0/24",
+     "podCIDRs": [
+      "10.244.1.0/24"
+     ],
+     "providerID": "azure:///subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/1",
+     "taints": [
+      {
+       "key": "CriticalAddonsOnly",
+       "value": "true",
+       "effect": "NoSchedule"
+      }
+     ]
+    },
+    "status": {
+     "capacity": {
+      "cpu": "4",
+      "memory": "16365384Ki",
+      "pods": "50",
+      "ephemeral-storage": "129886128Ki"
+     },
+     "allocatable": {
+      "cpu": "3860m",
+      "memory": "13626184Ki",
+      "pods": "50",
+      "ephemeral-storage": "119703055367"
+     },
+     "conditions": [
+      {
+       "type": "MemoryPressure",
+       "status": "False",
+       "reason": "KubeletHasSufficientMemory",
+       "message": "kubelet has sufficient memory available"
+      },
+      {
+       "type": "DiskPressure",
+       "status": "False",
+       "reason": "KubeletHasNoDiskPressure",
+       "message": "kubelet has no disk pressure"
+      },
+      {
+       "type": "PIDPressure",
+       "status": "False",
+       "reason": "KubeletHasSufficientPID",
+       "message": "kubelet has sufficient PID available"
+      },
+      {
+       "type": "Ready",
+       "status": "True",
+       "reason": "KubeletReady",
+       "message": "kubelet is posting ready status"
+      }
+     ],
+     "addresses": [
+      {
+       "type": "InternalIP",
+       "address": "10.1.0.5"
+      },
+      {
+       "type": "Hostname",
+       "address": "aks-system-31415926-vmss000001"
+      }
+     ],
+     "nodeInfo": {
+      "kubeletVersion": "v1.30.4",
+      "osImage": "Ubuntu 22.04.5 LTS",
+      "containerRuntimeVersion": "containerd://1.7.22-1",
+      "kernelVersion": "5.15.0-1073-azure"
+     }
+    }
+   },
+   {
+    "kind": "Node",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "aks-system-31415926-vmss000002",
+     "creationTimestamp": "2026-09-20T04:00:00Z",
+     "labels": {
+      "agentpool": "system",
+      "kubernetes.azure.com/agentpool": "system",
+      "kubernetes.azure.com/mode": "system",
+      "kubernetes.azure.com/node-image-version": "AKSUbuntu-2204gen2containerd-202509.10.0",
+      "kubernetes.io/hostname": "aks-system-31415926-vmss000002",
+      "kubernetes.io/os": "linux",
+      "node.kubernetes.io/instance-type": "Standard_D4s_v5",
+      "pool": "system",
+      "topology.kubernetes.io/region": "westeurope",
+      "topology.kubernetes.io/zone": "westeurope-2"
+     }
+    },
+    "spec": {
+     "podCIDR": "10.244.2.0/24",
+     "podCIDRs": [
+      "10.244.2.0/24"
+     ],
+     "providerID": "azure:///subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/2",
+     "taints": [
+      {
+       "key": "CriticalAddonsOnly",
+       "value": "true",
+       "effect": "NoSchedule"
+      }
+     ]
+    },
+    "status": {
+     "capacity": {
+      "cpu": "4",
+      "memory": "16365384Ki",
+      "pods": "50",
+      "ephemeral-storage": "129886128Ki"
+     },
+     "allocatable": {
+      "cpu": "3860m",
+      "memory": "13626184Ki",
+      "pods": "50",
+      "ephemeral-storage": "119703055367"
+     },
+     "conditions": [
+      {
+       "type": "MemoryPressure",
+       "status": "False",
+       "reason": "KubeletHasSufficientMemory",
+       "message": "kubelet has sufficient memory available"
+      },
+      {
+       "type": "DiskPressure",
+       "status": "False",
+       "reason": "KubeletHasNoDiskPressure",
+       "message": "kubelet has no disk pressure"
+      },
+      {
+       "type": "PIDPressure",
+       "status": "False",
+       "reason": "KubeletHasSufficientPID",
+       "message": "kubelet has sufficient PID available"
+      },
+      {
+       "type": "Ready",
+       "status": "True",
+       "reason": "KubeletReady",
+       "message": "kubelet is posting ready status"
+      }
+     ],
+     "addresses": [
+      {
+       "type": "InternalIP",
+       "address": "10.1.0.6"
+      },
+      {
+       "type": "Hostname",
+       "address": "aks-system-31415926-vmss000002"
+      }
+     ],
+     "nodeInfo": {
+      "kubeletVersion": "v1.30.4",
+      "osImage": "Ubuntu 22.04.5 LTS",
+      "containerRuntimeVersion": "containerd://1.7.22-1",
+      "kernelVersion": "5.15.0-1073-azure"
      }
     }
    },
@@ -1701,17 +1943,109 @@
     "kind": "Node",
     "apiVersion": "v1",
     "metadata": {
+     "name": "aks-user-27182818-vmss000000",
+     "creationTimestamp": "2026-09-17T08:00:00Z",
+     "labels": {
+      "agentpool": "user",
+      "kubernetes.azure.com/agentpool": "user",
+      "kubernetes.azure.com/mode": "user",
+      "kubernetes.azure.com/node-image-version": "AKSUbuntu-2204gen2containerd-202509.10.0",
+      "kubernetes.io/hostname": "aks-user-27182818-vmss000000",
+      "kubernetes.io/os": "linux",
+      "node.kubernetes.io/instance-type": "Standard_D4s_v5",
+      "pool": "user",
+      "topology.kubernetes.io/region": "westeurope",
+      "topology.kubernetes.io/zone": "westeurope-2"
+     }
+    },
+    "spec": {
+     "podCIDR": "10.244.3.0/24",
+     "podCIDRs": [
+      "10.244.3.0/24"
+     ],
+     "providerID": "azure:///subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/0"
+    },
+    "status": {
+     "capacity": {
+      "cpu": "4",
+      "memory": "16365384Ki",
+      "pods": "50",
+      "ephemeral-storage": "129886128Ki"
+     },
+     "allocatable": {
+      "cpu": "3860m",
+      "memory": "13626184Ki",
+      "pods": "50",
+      "ephemeral-storage": "119703055367"
+     },
+     "conditions": [
+      {
+       "type": "MemoryPressure",
+       "status": "False",
+       "reason": "KubeletHasSufficientMemory",
+       "message": "kubelet has sufficient memory available"
+      },
+      {
+       "type": "DiskPressure",
+       "status": "False",
+       "reason": "KubeletHasNoDiskPressure",
+       "message": "kubelet has no disk pressure"
+      },
+      {
+       "type": "PIDPressure",
+       "status": "False",
+       "reason": "KubeletHasSufficientPID",
+       "message": "kubelet has sufficient PID available"
+      },
+      {
+       "type": "Ready",
+       "status": "True",
+       "reason": "KubeletReady",
+       "message": "kubelet is posting ready status"
+      }
+     ],
+     "addresses": [
+      {
+       "type": "InternalIP",
+       "address": "10.1.0.7"
+      },
+      {
+       "type": "Hostname",
+       "address": "aks-user-27182818-vmss000000"
+      }
+     ],
+     "nodeInfo": {
+      "kubeletVersion": "v1.30.4",
+      "osImage": "Ubuntu 22.04.5 LTS",
+      "containerRuntimeVersion": "containerd://1.7.22-1",
+      "kernelVersion": "5.15.0-1073-azure"
+     }
+    }
+   },
+   {
+    "kind": "Node",
+    "apiVersion": "v1",
+    "metadata": {
      "name": "aks-user-27182818-vmss000001",
      "creationTimestamp": "2026-09-17T08:00:00Z",
      "labels": {
       "agentpool": "user",
       "kubernetes.azure.com/agentpool": "user",
+      "kubernetes.azure.com/mode": "user",
       "kubernetes.azure.com/node-image-version": "AKSUbuntu-2204gen2containerd-202509.10.0",
+      "kubernetes.io/hostname": "aks-user-27182818-vmss000001",
+      "kubernetes.io/os": "linux",
       "node.kubernetes.io/instance-type": "Standard_D4s_v5",
+      "pool": "user",
+      "topology.kubernetes.io/region": "westeurope",
       "topology.kubernetes.io/zone": "westeurope-1"
      }
     },
     "spec": {
+     "podCIDR": "10.244.4.0/24",
+     "podCIDRs": [
+      "10.244.4.0/24"
+     ],
      "providerID": "azure:///subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/1",
      "unschedulable": true,
      "taints": [
@@ -1728,6 +2062,18 @@
      ]
     },
     "status": {
+     "capacity": {
+      "cpu": "4",
+      "memory": "16365384Ki",
+      "pods": "50",
+      "ephemeral-storage": "129886128Ki"
+     },
+     "allocatable": {
+      "cpu": "3860m",
+      "memory": "13626184Ki",
+      "pods": "50",
+      "ephemeral-storage": "119703055367"
+     },
      "conditions": [
       {
        "type": "MemoryPressure",
@@ -1749,10 +2095,113 @@
        "reason": "NodeStatusUnknown",
        "message": "Kubelet stopped posting node status.",
        "lastTransitionTime": "2026-09-29T11:24:30Z"
+      },
+      {
+       "type": "PIDPressure",
+       "status": "Unknown",
+       "reason": "NodeStatusUnknown",
+       "message": "Kubelet stopped posting node status.",
+       "lastTransitionTime": "2026-09-29T11:24:30Z"
+      }
+     ],
+     "addresses": [
+      {
+       "type": "InternalIP",
+       "address": "10.1.0.8"
+      },
+      {
+       "type": "Hostname",
+       "address": "aks-user-27182818-vmss000001"
       }
      ],
      "nodeInfo": {
-      "kubeletVersion": "v1.30.4"
+      "kubeletVersion": "v1.30.4",
+      "osImage": "Ubuntu 22.04.5 LTS",
+      "containerRuntimeVersion": "containerd://1.7.22-1",
+      "kernelVersion": "5.15.0-1073-azure"
+     }
+    }
+   },
+   {
+    "kind": "Node",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "aks-user-27182818-vmss000002",
+     "creationTimestamp": "2026-09-17T08:00:00Z",
+     "labels": {
+      "agentpool": "user",
+      "kubernetes.azure.com/agentpool": "user",
+      "kubernetes.azure.com/mode": "user",
+      "kubernetes.azure.com/node-image-version": "AKSUbuntu-2204gen2containerd-202509.10.0",
+      "kubernetes.io/hostname": "aks-user-27182818-vmss000002",
+      "kubernetes.io/os": "linux",
+      "node.kubernetes.io/instance-type": "Standard_D4s_v5",
+      "pool": "user",
+      "topology.kubernetes.io/region": "westeurope",
+      "topology.kubernetes.io/zone": "westeurope-1"
+     }
+    },
+    "spec": {
+     "podCIDR": "10.244.5.0/24",
+     "podCIDRs": [
+      "10.244.5.0/24"
+     ],
+     "providerID": "azure:///subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/2"
+    },
+    "status": {
+     "capacity": {
+      "cpu": "4",
+      "memory": "16365384Ki",
+      "pods": "50",
+      "ephemeral-storage": "129886128Ki"
+     },
+     "allocatable": {
+      "cpu": "3860m",
+      "memory": "13626184Ki",
+      "pods": "50",
+      "ephemeral-storage": "119703055367"
+     },
+     "conditions": [
+      {
+       "type": "MemoryPressure",
+       "status": "False",
+       "reason": "KubeletHasSufficientMemory",
+       "message": "kubelet has sufficient memory available"
+      },
+      {
+       "type": "DiskPressure",
+       "status": "False",
+       "reason": "KubeletHasNoDiskPressure",
+       "message": "kubelet has no disk pressure"
+      },
+      {
+       "type": "PIDPressure",
+       "status": "False",
+       "reason": "KubeletHasSufficientPID",
+       "message": "kubelet has sufficient PID available"
+      },
+      {
+       "type": "Ready",
+       "status": "True",
+       "reason": "KubeletReady",
+       "message": "kubelet is posting ready status"
+      }
+     ],
+     "addresses": [
+      {
+       "type": "InternalIP",
+       "address": "10.1.0.9"
+      },
+      {
+       "type": "Hostname",
+       "address": "aks-user-27182818-vmss000002"
+      }
+     ],
+     "nodeInfo": {
+      "kubeletVersion": "v1.30.4",
+      "osImage": "Ubuntu 22.04.5 LTS",
+      "containerRuntimeVersion": "containerd://1.7.22-1",
+      "kernelVersion": "5.15.0-1073-azure"
      }
     }
    },
@@ -3901,6 +4350,377 @@
       }
      ]
     }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "ingest-7c9d5f6b8-a1b2c",
+     "namespace": "ingest",
+     "creationTimestamp": "2026-09-22T06:00:00Z",
+     "labels": {
+      "app": "ingest",
+      "pod-template-hash": "7c9d5f6b8"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "ReplicaSet",
+       "name": "ingest-7c9d5f6b8",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "serviceAccountName": "default",
+     "nodeName": "aks-user-27182818-vmss000000",
+     "containers": [
+      {
+       "name": "ingest",
+       "image": "contosoacr.azurecr.io/ingest:v2.3.0",
+       "resources": {
+        "requests": {
+         "cpu": "1700m",
+         "memory": "4Gi"
+        },
+        "limits": {
+         "memory": "4Gi"
+        }
+       }
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.3.12",
+     "conditions": [
+      {
+       "type": "PodScheduled",
+       "status": "True"
+      },
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ],
+     "containerStatuses": [
+      {
+       "name": "ingest",
+       "image": "contosoacr.azurecr.io/ingest:v2.3.0",
+       "ready": true,
+       "restartCount": 0,
+       "state": {
+        "running": {
+         "startedAt": "2026-09-22T06:00:00Z"
+        }
+       }
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "ingest-7c9d5f6b8-d3e4f",
+     "namespace": "ingest",
+     "creationTimestamp": "2026-09-29T11:22:40Z",
+     "labels": {
+      "app": "ingest",
+      "pod-template-hash": "7c9d5f6b8"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "ReplicaSet",
+       "name": "ingest-7c9d5f6b8",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "serviceAccountName": "default",
+     "nodeName": "aks-user-27182818-vmss000002",
+     "containers": [
+      {
+       "name": "ingest",
+       "image": "contosoacr.azurecr.io/ingest:v2.3.0",
+       "resources": {
+        "requests": {
+         "cpu": "1700m",
+         "memory": "4Gi"
+        },
+        "limits": {
+         "memory": "4Gi"
+        }
+       }
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.5.8",
+     "conditions": [
+      {
+       "type": "PodScheduled",
+       "status": "True"
+      },
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ],
+     "containerStatuses": [
+      {
+       "name": "ingest",
+       "image": "contosoacr.azurecr.io/ingest:v2.3.0",
+       "ready": true,
+       "restartCount": 0,
+       "state": {
+        "running": {
+         "startedAt": "2026-09-29T11:22:40Z"
+        }
+       }
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "nginx-5d8f9b7c6-k4m2p",
+     "namespace": "app-routing-system",
+     "creationTimestamp": "2026-09-29T11:22:30Z",
+     "labels": {
+      "app": "nginx",
+      "pod-template-hash": "5d8f9b7c6"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "ReplicaSet",
+       "name": "nginx-5d8f9b7c6",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "serviceAccountName": "default",
+     "nodeName": "aks-user-27182818-vmss000002",
+     "containers": [
+      {
+       "name": "controller",
+       "image": "mcr.microsoft.com/oss/kubernetes/ingress/nginx-ingress-controller:v1.11.2",
+       "resources": {
+        "requests": {
+         "cpu": "500m",
+         "memory": "256Mi"
+        },
+        "limits": {
+         "memory": "256Mi"
+        }
+       }
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.5.6",
+     "conditions": [
+      {
+       "type": "PodScheduled",
+       "status": "True"
+      },
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ],
+     "containerStatuses": [
+      {
+       "name": "controller",
+       "image": "mcr.microsoft.com/oss/kubernetes/ingress/nginx-ingress-controller:v1.11.2",
+       "ready": true,
+       "restartCount": 0,
+       "state": {
+        "running": {
+         "startedAt": "2026-09-29T11:22:30Z"
+        }
+       }
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Namespace",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "app-routing-system",
+     "creationTimestamp": "2025-06-02T10:40:00Z",
+     "labels": {
+      "kubernetes.io/metadata.name": "app-routing-system",
+      "app.kubernetes.io/managed-by": "aks-app-routing-operator"
+     }
+    },
+    "status": {
+     "phase": "Active"
+    }
+   },
+   {
+    "kind": "Namespace",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "default",
+     "creationTimestamp": "2025-06-02T10:30:00Z",
+     "labels": {
+      "kubernetes.io/metadata.name": "default"
+     }
+    },
+    "status": {
+     "phase": "Active"
+    }
+   },
+   {
+    "kind": "Namespace",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "ingest",
+     "creationTimestamp": "2026-03-10T09:00:00Z",
+     "labels": {
+      "kubernetes.io/metadata.name": "ingest",
+      "team": "data"
+     }
+    },
+    "status": {
+     "phase": "Active"
+    }
+   },
+   {
+    "kind": "Namespace",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "kube-system",
+     "creationTimestamp": "2025-06-02T10:30:00Z",
+     "labels": {
+      "kubernetes.io/metadata.name": "kube-system"
+     }
+    },
+    "status": {
+     "phase": "Active"
+    }
+   },
+   {
+    "kind": "Namespace",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "web",
+     "creationTimestamp": "2025-06-02T11:00:00Z",
+     "labels": {
+      "kubernetes.io/metadata.name": "web",
+      "team": "orders"
+     }
+    },
+    "status": {
+     "phase": "Active"
+    }
+   },
+   {
+    "kind": "ResourceQuota",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "web-quota",
+     "namespace": "web",
+     "creationTimestamp": "2025-06-02T11:00:00Z"
+    },
+    "spec": {
+     "hard": {
+      "requests.cpu": "12",
+      "requests.memory": "24Gi",
+      "pods": "30"
+     }
+    },
+    "status": {
+     "hard": {
+      "requests.cpu": "12",
+      "requests.memory": "24Gi",
+      "pods": "30"
+     },
+     "used": {
+      "requests.cpu": "6500m",
+      "requests.memory": "7Gi",
+      "pods": "10"
+     }
+    }
+   },
+   {
+    "kind": "LimitRange",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "web-defaults",
+     "namespace": "web",
+     "creationTimestamp": "2025-06-02T11:00:00Z"
+    },
+    "spec": {
+     "limits": [
+      {
+       "type": "Container",
+       "default": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       },
+       "defaultRequest": {
+        "cpu": "100m",
+        "memory": "128Mi"
+       },
+       "max": {
+        "cpu": "2",
+        "memory": "4Gi"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "kind": "ServiceAccount",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "api",
+     "namespace": "web",
+     "creationTimestamp": "2025-06-02T11:00:00Z"
+    }
+   },
+   {
+    "kind": "ServiceAccount",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "default",
+     "namespace": "web",
+     "creationTimestamp": "2025-06-02T11:00:00Z"
+    },
+    "automountServiceAccountToken": false
+   },
+   {
+    "kind": "ServiceAccount",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "notifier",
+     "namespace": "web",
+     "creationTimestamp": "2026-08-12T09:30:00Z",
+     "annotations": {
+      "azure.workload.identity/client-id": "00000000-0000-4000-8000-00000000b0f1",
+      "azure.workload.identity/tenant-id": "00000000-0000-4000-8000-00000000a001"
+     }
+    }
+   },
+   {
+    "kind": "ServiceAccount",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "worker",
+     "namespace": "web",
+     "creationTimestamp": "2025-06-02T11:00:00Z"
+    }
    }
   ]
  },
@@ -3915,6 +4735,205 @@
   "aks-contoso-prod": {
    "version": "v1.30.4",
    "failing": []
+  }
+ },
+ "top": {
+  "aks-contoso-prod": {
+   "nodes": {
+    "aks-system-31415926-vmss000000": [
+     "412m",
+     "10%",
+     "3105Mi",
+     "23%"
+    ],
+    "aks-system-31415926-vmss000001": [
+     "1187m",
+     "30%",
+     "4310Mi",
+     "32%"
+    ],
+    "aks-system-31415926-vmss000002": [
+     "356m",
+     "9%",
+     "2950Mi",
+     "22%"
+    ],
+    "aks-user-27182818-vmss000000": [
+     "3412m",
+     "88%",
+     "7420Mi",
+     "55%"
+    ],
+    "aks-user-27182818-vmss000002": [
+     "2689m",
+     "69%",
+     "6013Mi",
+     "45%"
+    ]
+   },
+   "pods": {
+    "web/api-7d9f8c6b5-x2k4q": [
+     "118m",
+     "301Mi"
+    ],
+    "web/api-7d9f8c6b5-m3n5p": [
+     "124m",
+     "296Mi"
+    ],
+    "web/api-7d9f8c6b5-r7t8v": [
+     "109m",
+     "288Mi"
+    ],
+    "web/worker-5c4d3e9f1-q8zt1": [
+     "2m",
+     "38Mi"
+    ],
+    "web/reports-api-6f7d8c9b4-h2k8m": [
+     "958m",
+     "702Mi"
+    ],
+    "web/reports-api-6f7d8c9b4-t6x9q": [
+     "967m",
+     "688Mi"
+    ],
+    "web/reports-api-6f7d8c9b4-p4w7n": [
+     "955m",
+     "695Mi"
+    ],
+    "ingest/ingest-7c9d5f6b8-a1b2c": [
+     "1402m",
+     "3610Mi"
+    ],
+    "ingest/ingest-7c9d5f6b8-d3e4f": [
+     "1388m",
+     "3544Mi"
+    ],
+    "app-routing-system/nginx-5d8f9b7c6-k4m2p": [
+     "31m",
+     "142Mi"
+    ]
+   }
+  }
+ },
+ "access": {
+  "aks-contoso-prod": {
+   "": [
+    [
+     "*.*",
+     [],
+     [],
+     [
+      "get",
+      "list",
+      "watch"
+     ]
+    ],
+    [
+     "pods",
+     [],
+     [],
+     [
+      "create",
+      "delete",
+      "get",
+      "list",
+      "patch",
+      "update",
+      "watch"
+     ]
+    ],
+    [
+     "pods/exec",
+     [],
+     [],
+     [
+      "create",
+      "get"
+     ]
+    ],
+    [
+     "pods/log",
+     [],
+     [],
+     [
+      "get",
+      "list"
+     ]
+    ],
+    [
+     "deployments.apps",
+     [],
+     [],
+     [
+      "create",
+      "delete",
+      "get",
+      "list",
+      "patch",
+      "update",
+      "watch"
+     ]
+    ],
+    [
+     "jobs.batch",
+     [],
+     [],
+     [
+      "create",
+      "delete",
+      "get",
+      "list",
+      "watch"
+     ]
+    ]
+   ],
+   "system:serviceaccount:web:api": [
+    [
+     "configmaps",
+     [],
+     [
+      "api-config"
+     ],
+     [
+      "get",
+      "watch"
+     ]
+    ]
+   ],
+   "system:serviceaccount:web:worker": [
+    [
+     "configmaps",
+     [],
+     [
+      "api-config"
+     ],
+     [
+      "get"
+     ]
+    ],
+    [
+     "secrets",
+     [],
+     [
+      "worker-db"
+     ],
+     [
+      "get"
+     ]
+    ]
+   ],
+   "system:serviceaccount:web:notifier": [
+    [
+     "configmaps",
+     [],
+     [
+      "api-config"
+     ],
+     [
+      "get"
+     ]
+    ]
+   ]
   }
  }
 }

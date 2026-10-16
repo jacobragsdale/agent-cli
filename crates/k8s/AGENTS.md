@@ -33,25 +33,26 @@ and tests. Copy a sibling.
 - `kind/mod.rs`: `kinds` (api-resources, cached), `kind_named`.
 - `<resource>/mod.rs`: what its verbs share (`pod/mod.rs`: `PodRow`, `row`,
   `containers`, `status_word`, `previous_logs`, `ready`, `first_unready`,
-  a template's `probes`, `sized`, `volumes`, `images`; `service/mod.rs`:
-  `endpoints`; `pv/mod.rs`: `row` with the disk's ARM id, `attached_to`;
-  `daemonset/mod.rs` reads kube-system whatever the scope names).
+  a template's `probes`, `sized`, `volumes`, `images`; `pv/mod.rs`: `row`,
+  `attached_to`; `node/mod.rs`: `top` (metrics-server, else a note),
+  `requests`, `quantity`; `access/mod.rs`: `rules` (`auth can-i --list`);
+  `daemonset/mod.rs` reads kube-system, whatever the scope).
 - `testing.rs`: `k8s(argv)`, `k8s_with(argv, config)`, `SCOPES` for tests.
 
 ## Fixtures
 Tests run `scripts/fake/kubectl` over `fixtures/cluster.json` (contexts
-`aks-qa`, `aks-prod`; a new kind is data there, `server` the version and
-failing readyz checks; `FAKE_KUBECTL_LOG` records calls). Trials read `fixtures/world/kubectl.json`. Facts
-`fixtures/world/facts/k8s.md`; world checks `crates/cli/tests/world_k8s.rs`;
-queries `crates/k8s/search.toml`.
+`aks-qa`, `aks-prod`; a new kind is data there; `server`, `top` and
+`access` answer version, metrics and can-i). Trials read
+`fixtures/world/kubectl.json`. Facts `fixtures/world/facts/k8s.md`; world
+checks `crates/cli/tests/world_k8s.rs`; queries `crates/k8s/search.toml`.
 
 ## Quirks
 - Every call is `kubectl --context C --request-timeout=10s …`, its process
   group killed at the deadline: a kubelogin prompt cannot hang.
-- A new kubectl flag may need teaching `scripts/fake/kubectl` (it reads
-  `-l`, `--field-selector` and `api-resources`).
-- Only `secret get` (a `Reveal`) prints values. `pod get` lists `secret_refs` with the Key Vault ids (`kv`) a
-  SecretProviderClass maps. `ingress get` checks a TLS secret by `-o name`.
+- A new kubectl flag may need teaching `scripts/fake/kubectl`.
+- Node events carry the name as uid: `node get` matches kind and name.
+- Only `secret get` (a `Reveal`) prints values. `pod get` lists
+  `secret_refs` with the Key Vault ids (`kv`) a SecretProviderClass maps.
 
 ## Never needed
 Other crates' sources, `docs/plans/`, `docs/reference/`.

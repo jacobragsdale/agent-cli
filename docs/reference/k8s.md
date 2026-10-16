@@ -1,4 +1,4 @@
-# k8s — Kubernetes (40 commands)
+# k8s — Kubernetes (47 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -33,6 +33,13 @@
 | [`k8s cronjob get`](#k8s-cronjob-get) | read | Describe a cronjob: recent runs with status, why one did not run |
 | [`k8s hpa list`](#k8s-hpa-list) | read | List autoscalers: min, max, current and desired replicas, metrics vs target |
 | [`k8s pdb list`](#k8s-pdb-list) | read | List disruption budgets (PDBs): allowed disruptions; 0 blocks drains, upgrades |
+| [`k8s node list`](#k8s-node-list) | read | List nodes: ready, cordoned, taints, CPU and memory requests and usage |
+| [`k8s node get`](#k8s-node-get) | read | Show a node: conditions, requests, its Azure VM and AKS pool, events |
+| [`k8s namespace list`](#k8s-namespace-list) | read | List namespaces: status, labels, quota used of hard, whether the scope reads it |
+| [`k8s quota list`](#k8s-quota-list) | read | List resource quotas used of hard, and limit ranges' default requests and limits |
+| [`k8s serviceaccount list`](#k8s-serviceaccount-list) | read | List service accounts: their Azure client id, the pods that run as each |
+| [`k8s serviceaccount get`](#k8s-serviceaccount-get) | read | Show a service account: its Azure client id, pods, what RBAC lets it do |
+| [`k8s access list`](#k8s-access-list) | read | List what RBAC allows you or a service account to do in a namespace (auth can-i) |
 | [`k8s configmap list`](#k8s-configmap-list) | read | List configmaps and their keys |
 | [`k8s configmap get`](#k8s-configmap-get) | read | Show a configmap's keys and values (binary keys show their size only) |
 | [`k8s secret list`](#k8s-secret-list) | read | List Kubernetes secrets: type, key names and sizes (never values) |
@@ -55,7 +62,7 @@ agent-cli k8s pod list — List pods: status, ready, restarts, owner; or those m
   --node str                    Only pods on this node, as `pod list` prints it
   --status running|pending|succeeded|failed|unknown|crashloopbackoff|imagepullbackoff|errimagepull|containercreating|completed|error|oomkilled|…  Only pods whose phase or status word is this
   --limit int                   (default 50)
-Returns: [{id,name,namespace,status,ready,restarts,age,node,owner}]
+Returns: [{id,name,namespace,status,ready,restarts,age,node,owner,cpu_usage,memory_usage}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s pod list --cluster qa --namespace dev --fields id,status,restarts,owner
 ```
@@ -442,6 +449,94 @@ agent-cli k8s pdb list — List disruption budgets (PDBs): allowed disruptions; 
 Returns: [{id,name,namespace,selector,min_available,max_unavailable,allowed_disruptions,current_healthy,desired_healthy,expected}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s pdb list --cluster prod --namespace web --fields id,selector,allowed_disruptions
+```
+
+### k8s node list
+
+```text
+agent-cli k8s node list — List nodes: ready, cordoned, taints, CPU and memory requests and usage
+  <name> str       Part of the node name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{id,name,ready,schedulable,pool,zone,version,taints[],cpu{requested,allocatable,requested_percent,usage,usage_percent},memory{requested,allocatable,requested_percent,usage,usage_percent},pressure[],pod_count,age}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s node list --cluster prod --fields id,ready,schedulable,pool,cpu
+```
+
+### k8s node get
+
+```text
+agent-cli k8s node get — Show a node: conditions, requests, its Azure VM and AKS pool, events
+ *<node> str       The node: its id (cluster/name) or name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+Returns: {id,name,ready,schedulable,pool,zone,version,taints[],cpu{requested,allocatable,requested_percent,usage,usage_percent},memory{requested,allocatable,requested_percent,usage,usage_percent},pressure[],pod_count,age,vm,nodepool,conditions[{type,status,reason,message}],ips[],pod_cidr,capacity,allocatable,pods[{id,status,cpu,memory}],events[{type,reason,object,message,count,last_seen,namespace}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s node get prod/aks-user-27182818-vmss000001 --fields ready,conditions,vm,nodepool
+```
+
+### k8s namespace list
+
+```text
+agent-cli k8s namespace list — List namespaces: status, labels, quota used of hard, whether the scope reads it
+  <name> str       Part of the namespace's name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{name,status,labels,quota,in_scope,age}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s namespace list --cluster prod --fields name,status,quota,in_scope
+```
+
+### k8s quota list
+
+```text
+agent-cli k8s quota list — List resource quotas used of hard, and limit ranges' default requests and limits
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{namespace,from,resource,used,hard,applies_to,default,default_request,min,max}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s quota list --cluster prod --namespace web --fields from,resource,used,hard
+```
+
+### k8s serviceaccount list
+
+```text
+agent-cli k8s serviceaccount list — List service accounts: their Azure client id, the pods that run as each
+  <name> str       Part of the service account's name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{id,name,namespace,client_id,pull_secrets[],automount,pods[]}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s serviceaccount list --cluster prod --fields id,client_id,pods
+```
+
+### k8s serviceaccount get
+
+```text
+agent-cli k8s serviceaccount get — Show a service account: its Azure client id, pods, what RBAC lets it do
+ *<account> str    The service account: its id (cluster/namespace/name), namespace/name, or name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+Returns: {id,name,namespace,client_id,pull_secrets[],automount,pods[],can[{resource,names[],verbs[]}],events[{type,reason,object,message,count,last_seen,namespace}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s serviceaccount get prod/web/worker --fields client_id,pods,can
+```
+
+### k8s access list
+
+```text
+agent-cli k8s access list — List what RBAC allows you or a service account to do in a namespace (auth can-i)
+  --as str         Whose access: a serviceaccount's id (cluster/namespace/name), namespace/name or name; @me (the default) is yourself
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{resource,names[],verbs[]}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s access list --as prod/web/worker --fields resource,names,verbs
 ```
 
 ### k8s configmap list
