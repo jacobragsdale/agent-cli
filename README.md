@@ -95,7 +95,7 @@ role, a read-only database login, an Airflow Viewer.
 | acr | Container Registry repositories, tags, manifests | 4 |
 | aks | AKS clusters, node pools, upgrades, credentials, kubectl through ARM | 8 |
 | aisearch | Azure AI Search services, indexes, documents (keyword, vector, hybrid, semantic), indexers | 16 |
-| arm | Any Azure resource: Resource Graph lists and queries, ARM reads by id, groups, subscriptions | 5 |
+| arm | Any Azure resource: Resource Graph lists and queries, ARM reads by id, activity log, changes, role assignments, managed identities, policy, metrics | 12 |
 | net | Azure vnets, subnets and their free IPs, NSG rules, NICs' effective rules and routes, route tables | 7 |
 | k8s | Kubernetes pods, logs, events, deployments, config maps, secrets | 14 |
 | sql | SQL Server and Oracle queries and catalog | 6 |

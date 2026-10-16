@@ -5,10 +5,25 @@
 //! get` takes, as it takes a portal link or a name with `--type`, `--group`
 //! and `--subscription` (`resource/mod.rs`, which net shares). Reads pick
 //! the provider's newest stable api-version, cached (`resource/get.rs`).
+//! A `--resource` or `--scope` flag takes any of those (`resource::any`).
+//!
+//! Beyond the floor: the activity log (per subscription, `az monitor
+//! activity-log`'s filter), and Resource Graph's `resourcechanges`,
+//! `authorizationresources` (role assignments with role names joined;
+//! `role/mod.rs`'s `assignments`, which `identity get` shares) and
+//! `policyresources`; user-assigned identities, whose federated subjects are
+//! named as k8s serviceaccount ids `cluster/namespace/name` by the AKS
+//! cluster whose OIDC issuer they trust; and Azure Monitor metrics.
 
+pub(crate) mod activity;
+pub(crate) mod change;
 pub(crate) mod group;
+pub(crate) mod identity;
+pub(crate) mod metric;
+pub(crate) mod policy;
 pub(crate) mod query;
 pub(crate) mod resource;
+pub(crate) mod role;
 pub(crate) mod subscription;
 
 use agent_cli_core::{Ctx, Request, host_under, redact};

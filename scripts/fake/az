@@ -1,10 +1,15 @@
 #!/bin/sh
 # An az for tests and fixture trials, without Azure: it knows
-# `aks get-credentials` (for `aks cluster connect`) and hands out a stand-in
-# access token for any resource (for AGENT_CLI_FIXTURES worlds, whose replayed
-# answers ignore it). Put this directory first on PATH.
+# `aks get-credentials` (for `aks cluster connect`), `account show` (the
+# login `--caller @me` names) and hands out a stand-in access token for any
+# resource (for AGENT_CLI_FIXTURES worlds, whose replayed answers ignore it).
+# Put this directory first on PATH.
 if [ "$1 $2" = "aks get-credentials" ]; then
   echo "Merged \"$6\" as current context in /nonexistent/.kube/config"
+  exit 0
+fi
+if [ "$1 $2" = "account show" ]; then
+  echo "ops@contoso.example"
   exit 0
 fi
 if [ "$1 $2" = "account get-access-token" ]; then

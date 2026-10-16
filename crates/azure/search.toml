@@ -582,3 +582,107 @@ expect = "net appgw get"
 [[query]]
 text = "listeners and routing rules of the application gateway"
 expect = "net appgw get"
+
+[[query]]
+text = "who deleted the role assignment"
+expect = "arm activity list"
+
+[[query]]
+text = "azure activity log for the resource group yesterday"
+expect = "arm activity list"
+
+[[query]]
+text = "which deployment failed in azure and who ran it"
+expect = "arm activity list"
+
+[[query]]
+text = "audit who changed the key vault"
+expect = "arm activity list"
+
+[[query]]
+text = "what operations did I run in azure today"
+expect = "arm activity list"
+
+[[query]]
+text = "what changed on this resource yesterday"
+expect = "arm change list"
+
+[[query]]
+text = "azure resource change history before and after"
+expect = "arm change list"
+
+[[query]]
+text = "diff of properties changed on the cluster this week"
+expect = "arm change list"
+
+[[query]]
+text = "what changed in the resource group recently"
+expect = "arm change list"
+
+[[query]]
+text = "who has rbac access to this azure resource"
+expect = "arm role list"
+
+[[query]]
+text = "rbac role assignments inherited from the subscription"
+expect = "arm role list"
+
+[[query]]
+text = "rbac permissions granted on the resource group"
+expect = "arm role list"
+
+[[query]]
+text = "which roles is this principal id granted, inherited ones too"
+expect = "arm role list"
+
+[[query]]
+text = "list managed identities"
+expect = "arm identity list"
+
+[[query]]
+text = "user assigned identities in the resource group"
+expect = "arm identity list"
+
+[[query]]
+text = "managed identity federated credential"
+expect = "arm identity get"
+
+[[query]]
+text = "which serviceaccount does this workload identity client id trust"
+expect = "arm identity get"
+
+[[query]]
+text = "show the managed identity's oidc issuer and subject"
+expect = "arm identity get"
+
+[[query]]
+text = "denied by policy"
+expect = "arm policy list"
+
+[[query]]
+text = "RequestDisallowedByPolicy"
+expect = "arm policy list"
+
+[[query]]
+text = "non-compliant resources azure policy"
+expect = "arm policy list"
+
+[[query]]
+text = "which azure policy blocked creating the resource"
+expect = "arm policy list"
+
+[[query]]
+text = "disk iops throttled"
+expect = "arm metric list"
+
+[[query]]
+text = "azure monitor metrics for the managed disk"
+expect = "arm metric list"
+
+[[query]]
+text = "data disk iops consumed percentage"
+expect = "arm metric list"
+
+[[query]]
+text = "which metrics does this azure resource have"
+expect = "arm metric list"

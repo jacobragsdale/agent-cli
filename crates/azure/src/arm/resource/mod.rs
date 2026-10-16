@@ -188,6 +188,19 @@ pub(crate) fn resolve(ctx: &Ctx, azure: &Azure, raw: &str, lookup: &Lookup) -> R
     Ok(target)
 }
 
+/// Any resource `raw` names, as a `--resource` or `--scope` flag takes it:
+/// an id, a portal link, or a name within `group`.
+pub(crate) fn any(ctx: &Ctx, azure: &Azure, raw: &str, group: Option<&str>) -> Result<Target> {
+    let lookup = Lookup {
+        kinds: &[],
+        group,
+        subscription: None,
+        list: "arm resource list",
+        get: "arm resource get",
+    };
+    resolve(ctx, azure, raw, &lookup)
+}
+
 /// An id and a flag (or the command's type) that disagree is exit 2; an id
 /// outside `[azure] subscriptions` too, since every list keeps within it.
 fn agree(ctx: &Ctx, azure: &Azure, lookup: &Lookup, target: &Target) -> Result<()> {

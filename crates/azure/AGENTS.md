@@ -3,7 +3,7 @@
 Six domains, `KV`, `ACR`, `AKS`, `AISEARCH`, `ARM`, `NET`, over plain HTTPS
 with `az` tokens; no Azure SDK. Docs: https://learn.microsoft.com/rest/api/
 (keyvault, containerregistry, azureresourcegraph, searchservice, resources,
-virtualnetwork).
+virtualnetwork, monitor, authorization, managedidentity).
 
 ## Config
 `[azure]`: `subscriptions`, `vaults`, `registries`, `search_services` (a
@@ -32,7 +32,8 @@ domain's module doc (`kv/mod.rs` …) gives its ids, helpers and quirks.
 - `aisearch/mod.rs`: `Search`, the door; ids in `aisearch/refs.rs`.
 - `arm/mod.rs`: `subscriptions`, `scope` (`--subscription`), `quote`
   and `of_type` (KQL), `scrub`. `arm/resource/mod.rs`: `resolve`, any ARM
-  ref (an id, a portal link, a name within a `Lookup`), for arm and net.
+  ref (an id, a portal link, a name within a `Lookup`), for arm and net;
+  `any` for a `--resource` flag. `arm/role/mod.rs`: `assignments`.
 - `net/mod.rs`: `Place` (`--group`, `--subscription`; `rows`, any Resource
   Graph tail), `read`, `found` (a 404 is `None`), `leaf`, `usages`, `rule`
   (an NSG rule as written or in effect). `net/ip/mod.rs`: `public_ips`,

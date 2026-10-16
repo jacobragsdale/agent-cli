@@ -432,8 +432,8 @@
    }
   },
   "answer": {
-   "totalRecords": 18,
-   "count": 18,
+   "totalRecords": 22,
+   "count": 22,
    "data": [
     {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/publicIPAddresses/00000000-0000-4000-8000-00000000e1b1",
@@ -463,6 +463,24 @@
      "provisioningState": "Succeeded"
     },
     {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aks-contoso-prod-agentpool",
+     "name": "aks-contoso-prod-agentpool",
+     "type": "microsoft.managedidentity/userassignedidentities",
+     "resourceGroup": "mc_rg-contoso-prod_aks-contoso-prod_westeurope",
+     "location": "westeurope",
+     "sku": "",
+     "provisioningState": ""
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.ManagedIdentity/userAssignedIdentities/azurekeyvaultsecretsprovider-aks-contoso-prod",
+     "name": "azurekeyvaultsecretsprovider-aks-contoso-prod",
+     "type": "microsoft.managedidentity/userassignedidentities",
+     "resourceGroup": "mc_rg-contoso-prod_aks-contoso-prod_westeurope",
+     "location": "westeurope",
+     "sku": "",
+     "provisioningState": ""
+    },
+    {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/dnszones/contoso.example",
      "name": "contoso.example",
      "type": "microsoft.network/dnszones",
@@ -479,6 +497,15 @@
      "location": "westeurope",
      "sku": "Standard",
      "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-notifier",
+     "name": "id-contoso-notifier",
+     "type": "microsoft.managedidentity/userassignedidentities",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "",
+     "provisioningState": ""
     },
     {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes",
@@ -559,6 +586,15 @@
      "resourceGroup": "rg-contoso-prod",
      "location": "global",
      "sku": "",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a",
+     "name": "pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a",
+     "type": "microsoft.compute/disks",
+     "resourceGroup": "mc_rg-contoso-prod_aks-contoso-prod_westeurope",
+     "location": "westeurope",
+     "sku": "Premium_LRS",
      "provisioningState": "Succeeded"
     },
     {
@@ -666,8 +702,8 @@
    }
   },
   "answer": {
-   "totalRecords": 15,
-   "count": 15,
+   "totalRecords": 17,
+   "count": 17,
    "data": [
     {
      "type": "microsoft.containerservice/managedclusters",
@@ -727,6 +763,14 @@
     },
     {
      "type": "microsoft.network/applicationgateways",
+     "count_": 1
+    },
+    {
+     "type": "microsoft.managedidentity/userassignedidentities",
+     "count_": 3
+    },
+    {
+     "type": "microsoft.compute/disks",
      "count_": 1
     }
    ]
@@ -3236,6 +3280,1046 @@
      ]
     }
    ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm role list: every assignment in scope",
+  "body": {
+   "query": "authorizationresources\n| where type =~ 'microsoft.authorization/roleassignments'\n| extend principalId = tostring(properties.principalId), principalType = tostring(properties.principalType), scope = tostring(properties.scope), roleId = tolower(extract('[^/]+$', 0, tostring(properties.roleDefinitionId)))\n| join kind=leftouter (authorizationresources | where type =~ 'microsoft.authorization/roledefinitions' | project roleId = tolower(name), role = tostring(properties.roleName)) on roleId\n| project id, principalId, principalType, role, scope\n| order by scope asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 4,
+   "count": 4,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e01",
+     "principalId": "00000000-0000-4000-8000-00000000f001",
+     "principalType": "Group",
+     "role": "Contributor",
+     "scope": "/subscriptions/00000000-0000-4000-8000-000000005b01"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e04",
+     "principalId": "00000000-0000-4000-8000-00000000b0f2",
+     "principalType": "ServicePrincipal",
+     "role": "Monitoring Metrics Publisher",
+     "scope": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e02",
+     "principalId": "00000000-0000-4000-8000-00000000c003",
+     "principalType": "ServicePrincipal",
+     "role": "AcrPull",
+     "scope": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e03",
+     "principalId": "00000000-0000-4000-8000-00000000c005",
+     "principalType": "ServicePrincipal",
+     "role": "Key Vault Secrets User",
+     "scope": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm role list --principal: the notifier's identity holds no Key Vault role",
+  "body": {
+   "query": "authorizationresources\n| where type =~ 'microsoft.authorization/roleassignments'\n| extend principalId = tostring(properties.principalId), principalType = tostring(properties.principalType), scope = tostring(properties.scope), roleId = tolower(extract('[^/]+$', 0, tostring(properties.roleDefinitionId)))\n| where principalId =~ '00000000-0000-4000-8000-00000000b0f2'\n| join kind=leftouter (authorizationresources | where type =~ 'microsoft.authorization/roledefinitions' | project roleId = tolower(name), role = tostring(properties.roleName)) on roleId\n| project id, principalId, principalType, role, scope\n| order by scope asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e04",
+     "principalId": "00000000-0000-4000-8000-00000000b0f2",
+     "principalType": "ServicePrincipal",
+     "role": "Monitoring Metrics Publisher",
+     "scope": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm identity get id-contoso-notifier: its roles",
+  "body": {
+   "query": "authorizationresources\n| where type =~ 'microsoft.authorization/roleassignments'\n| extend principalId = tostring(properties.principalId), principalType = tostring(properties.principalType), scope = tostring(properties.scope), roleId = tolower(extract('[^/]+$', 0, tostring(properties.roleDefinitionId)))\n| where principalId =~ '00000000-0000-4000-8000-00000000b0f2'\n| join kind=leftouter (authorizationresources | where type =~ 'microsoft.authorization/roledefinitions' | project roleId = tolower(name), role = tostring(properties.roleName)) on roleId\n| project id, principalId, principalType, role, scope\n| order by scope asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e04",
+     "principalId": "00000000-0000-4000-8000-00000000b0f2",
+     "principalType": "ServicePrincipal",
+     "role": "Monitoring Metrics Publisher",
+     "scope": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm role list --scope kv-contoso-prod: what applies at the vault",
+  "body": {
+   "query": "authorizationresources\n| where type =~ 'microsoft.authorization/roleassignments'\n| extend principalId = tostring(properties.principalId), principalType = tostring(properties.principalType), scope = tostring(properties.scope), roleId = tolower(extract('[^/]+$', 0, tostring(properties.roleDefinitionId)))\n| where scope in~ ('/subscriptions/00000000-0000-4000-8000-000000005b01', '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod', '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod')\n| join kind=leftouter (authorizationresources | where type =~ 'microsoft.authorization/roledefinitions' | project roleId = tolower(name), role = tostring(properties.roleName)) on roleId\n| project id, principalId, principalType, role, scope\n| order by scope asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 3,
+   "count": 3,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e01",
+     "principalId": "00000000-0000-4000-8000-00000000f001",
+     "principalType": "Group",
+     "role": "Contributor",
+     "scope": "/subscriptions/00000000-0000-4000-8000-000000005b01"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e04",
+     "principalId": "00000000-0000-4000-8000-00000000b0f2",
+     "principalType": "ServicePrincipal",
+     "role": "Monitoring Metrics Publisher",
+     "scope": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e03",
+     "principalId": "00000000-0000-4000-8000-00000000c005",
+     "principalType": "ServicePrincipal",
+     "role": "Key Vault Secrets User",
+     "scope": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm role list --scope kv-contoso-prod: the name, found",
+  "body": {
+   "query": "resources\n| where name =~ 'kv-contoso-prod'\n| project id\n| order by id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm identity list",
+  "body": {
+   "query": "resources\n| where type =~ 'Microsoft.ManagedIdentity/userAssignedIdentities'\n| project id, name, resourceGroup, clientId = tostring(properties.clientId), principalId = tostring(properties.principalId)\n| order by name asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 3,
+   "count": 3,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aks-contoso-prod-agentpool",
+     "name": "aks-contoso-prod-agentpool",
+     "resourceGroup": "mc_rg-contoso-prod_aks-contoso-prod_westeurope",
+     "clientId": "00000000-0000-4000-8000-00000000c002",
+     "principalId": "00000000-0000-4000-8000-00000000c003"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.ManagedIdentity/userAssignedIdentities/azurekeyvaultsecretsprovider-aks-contoso-prod",
+     "name": "azurekeyvaultsecretsprovider-aks-contoso-prod",
+     "resourceGroup": "mc_rg-contoso-prod_aks-contoso-prod_westeurope",
+     "clientId": "00000000-0000-4000-8000-00000000c004",
+     "principalId": "00000000-0000-4000-8000-00000000c005"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-notifier",
+     "name": "id-contoso-notifier",
+     "resourceGroup": "rg-contoso-prod",
+     "clientId": "00000000-0000-4000-8000-00000000b0f1",
+     "principalId": "00000000-0000-4000-8000-00000000b0f2"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm identity get id-contoso-notifier: the name, found",
+  "body": {
+   "query": "resources\n| where name =~ 'id-contoso-notifier'\n| where type =~ 'Microsoft.ManagedIdentity/userAssignedIdentities'\n| project id\n| order by id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-notifier"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm identity get CLIENT_ID: the client id the k8s serviceaccount web/notifier names",
+  "body": {
+   "query": "resources\n| where type =~ 'Microsoft.ManagedIdentity/userAssignedIdentities'\n| where tostring(properties.clientId) =~ '00000000-0000-4000-8000-00000000b0f1'\n| project id\n| order by id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 2,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-notifier"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-notifier?api-version=2023-01-31",
+  "note": "arm identity get: the notifier's identity",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-notifier",
+   "name": "id-contoso-notifier",
+   "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+   "location": "westeurope",
+   "tags": {
+    "app": "notifier"
+   },
+   "properties": {
+    "tenantId": "00000000-0000-4000-8000-00000000a001",
+    "principalId": "00000000-0000-4000-8000-00000000b0f2",
+    "clientId": "00000000-0000-4000-8000-00000000b0f1"
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-notifier/federatedIdentityCredentials?api-version=2023-01-31",
+  "note": "arm identity get: it trusts the cluster's serviceaccount web/notifier",
+  "answer": {
+   "value": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-notifier/federatedIdentityCredentials/fc-aks-contoso-prod-web-notifier",
+     "name": "fc-aks-contoso-prod-web-notifier",
+     "type": "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials",
+     "properties": {
+      "issuer": "https://westeurope.oic.prod-aks.azure.com/00000000-0000-4000-8000-00000000a001/00000000-0000-4000-8000-00000000c0de/",
+      "subject": "system:serviceaccount:web:notifier",
+      "audiences": [
+       "api://AzureADTokenExchange"
+      ]
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm identity get: every AKS cluster's OIDC issuer",
+  "body": {
+   "query": "resources\n| where type =~ 'microsoft.containerservice/managedclusters'\n| project name, issuer = tostring(properties.oidcIssuerProfile.issuerURL)\n| where isnotempty(issuer)\n| order by name asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "name": "aks-contoso-prod",
+     "issuer": "https://westeurope.oic.prod-aks.azure.com/00000000-0000-4000-8000-00000000a001/00000000-0000-4000-8000-00000000c0de/"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Insights/eventtypes/management/values?api-version=2015-04-01&$filter=eventTimestamp%20ge%20%272026-09-28T12%3A00%3A00Z%27%20and%20eventTimestamp%20le%20%272026-09-29T12%3A00%3A00Z%27&$select=eventTimestamp%2Ccaller%2CoperationName%2Cstatus%2CresourceId%2Cproperties",
+  "note": "arm activity list: the last day",
+  "answer": {
+   "value": [
+    {
+     "eventTimestamp": "2026-09-29T09:14:31.2050000Z",
+     "caller": "sam@contoso.example",
+     "operationName": {
+      "value": "Microsoft.Storage/storageAccounts/write",
+      "localizedValue": "Create/Update Storage Account"
+     },
+     "status": {
+      "value": "Failed",
+      "localizedValue": "Failed"
+     },
+     "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/stcontosoreports",
+     "properties": {
+      "statusCode": "Forbidden",
+      "statusMessage": "{\"error\": {\"code\": \"RequestDisallowedByPolicy\", \"target\": \"stcontosoreports\", \"message\": \"Resource 'stcontosoreports' was disallowed by policy. Reasons: 'Storage accounts must not allow public network access'. See error details for policy resource IDs.\", \"additionalInfo\": [{\"type\": \"PolicyViolation\", \"info\": {\"policyAssignmentId\": \"/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Authorization/policyAssignments/deny-public-storage\", \"policyAssignmentName\": \"deny-public-storage\", \"policyDefinitionName\": \"b2982f36-99f2-4db5-8eff-283140c09693\", \"policyEffect\": \"Deny\"}}]}}",
+      "eventCategory": "Administrative",
+      "entity": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/stcontosoreports"
+     }
+    },
+    {
+     "eventTimestamp": "2026-09-29T09:14:30.8810000Z",
+     "caller": "sam@contoso.example",
+     "operationName": {
+      "value": "Microsoft.Storage/storageAccounts/write",
+      "localizedValue": "Create/Update Storage Account"
+     },
+     "status": {
+      "value": "Started",
+      "localizedValue": "Started"
+     },
+     "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/stcontosoreports",
+     "properties": {
+      "eventCategory": "Administrative",
+      "entity": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/stcontosoreports"
+     }
+    },
+    {
+     "eventTimestamp": "2026-09-28T16:42:11.4730000Z",
+     "caller": "dana@contoso.example",
+     "operationName": {
+      "value": "Microsoft.Authorization/roleAssignments/delete",
+      "localizedValue": "Delete role assignment"
+     },
+     "status": {
+      "value": "Succeeded",
+      "localizedValue": "Succeeded"
+     },
+     "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05",
+     "properties": {
+      "statusCode": "OK",
+      "eventCategory": "Administrative",
+      "entity": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05",
+      "message": "Microsoft.Authorization/roleAssignments/delete",
+      "responseBody": "{\"properties\": {\"roleDefinitionId\": \"/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6\", \"principalId\": \"00000000-0000-4000-8000-00000000b0f2\", \"principalType\": \"ServicePrincipal\", \"scope\": \"/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod\"}, \"id\": \"/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05\", \"type\": \"Microsoft.Authorization/roleAssignments\", \"name\": \"00000000-0000-4000-8000-0000000a5e05\"}"
+     }
+    },
+    {
+     "eventTimestamp": "2026-09-28T16:42:09.9120000Z",
+     "caller": "dana@contoso.example",
+     "operationName": {
+      "value": "Microsoft.Authorization/roleAssignments/delete",
+      "localizedValue": "Delete role assignment"
+     },
+     "status": {
+      "value": "Started",
+      "localizedValue": "Started"
+     },
+     "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05",
+     "properties": {
+      "eventCategory": "Administrative",
+      "entity": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05",
+      "message": "Microsoft.Authorization/roleAssignments/delete"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Insights/eventtypes/management/values?api-version=2015-04-01&$filter=eventTimestamp%20ge%20%272026-09-28T12%3A00%3A00Z%27%20and%20eventTimestamp%20le%20%272026-09-29T12%3A00%3A00Z%27%20and%20resourceGroupName%20eq%20%27rg-contoso-prod%27&$select=eventTimestamp%2Ccaller%2CoperationName%2Cstatus%2CresourceId%2Cproperties",
+  "note": "arm activity list --group rg-contoso-prod",
+  "answer": {
+   "value": [
+    {
+     "eventTimestamp": "2026-09-29T09:14:31.2050000Z",
+     "caller": "sam@contoso.example",
+     "operationName": {
+      "value": "Microsoft.Storage/storageAccounts/write",
+      "localizedValue": "Create/Update Storage Account"
+     },
+     "status": {
+      "value": "Failed",
+      "localizedValue": "Failed"
+     },
+     "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/stcontosoreports",
+     "properties": {
+      "statusCode": "Forbidden",
+      "statusMessage": "{\"error\": {\"code\": \"RequestDisallowedByPolicy\", \"target\": \"stcontosoreports\", \"message\": \"Resource 'stcontosoreports' was disallowed by policy. Reasons: 'Storage accounts must not allow public network access'. See error details for policy resource IDs.\", \"additionalInfo\": [{\"type\": \"PolicyViolation\", \"info\": {\"policyAssignmentId\": \"/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Authorization/policyAssignments/deny-public-storage\", \"policyAssignmentName\": \"deny-public-storage\", \"policyDefinitionName\": \"b2982f36-99f2-4db5-8eff-283140c09693\", \"policyEffect\": \"Deny\"}}]}}",
+      "eventCategory": "Administrative",
+      "entity": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/stcontosoreports"
+     }
+    },
+    {
+     "eventTimestamp": "2026-09-29T09:14:30.8810000Z",
+     "caller": "sam@contoso.example",
+     "operationName": {
+      "value": "Microsoft.Storage/storageAccounts/write",
+      "localizedValue": "Create/Update Storage Account"
+     },
+     "status": {
+      "value": "Started",
+      "localizedValue": "Started"
+     },
+     "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/stcontosoreports",
+     "properties": {
+      "eventCategory": "Administrative",
+      "entity": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/stcontosoreports"
+     }
+    },
+    {
+     "eventTimestamp": "2026-09-28T16:42:11.4730000Z",
+     "caller": "dana@contoso.example",
+     "operationName": {
+      "value": "Microsoft.Authorization/roleAssignments/delete",
+      "localizedValue": "Delete role assignment"
+     },
+     "status": {
+      "value": "Succeeded",
+      "localizedValue": "Succeeded"
+     },
+     "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05",
+     "properties": {
+      "statusCode": "OK",
+      "eventCategory": "Administrative",
+      "entity": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05",
+      "message": "Microsoft.Authorization/roleAssignments/delete",
+      "responseBody": "{\"properties\": {\"roleDefinitionId\": \"/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6\", \"principalId\": \"00000000-0000-4000-8000-00000000b0f2\", \"principalType\": \"ServicePrincipal\", \"scope\": \"/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod\"}, \"id\": \"/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05\", \"type\": \"Microsoft.Authorization/roleAssignments\", \"name\": \"00000000-0000-4000-8000-0000000a5e05\"}"
+     }
+    },
+    {
+     "eventTimestamp": "2026-09-28T16:42:09.9120000Z",
+     "caller": "dana@contoso.example",
+     "operationName": {
+      "value": "Microsoft.Authorization/roleAssignments/delete",
+      "localizedValue": "Delete role assignment"
+     },
+     "status": {
+      "value": "Started",
+      "localizedValue": "Started"
+     },
+     "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05",
+     "properties": {
+      "eventCategory": "Administrative",
+      "entity": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05",
+      "message": "Microsoft.Authorization/roleAssignments/delete"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Insights/eventtypes/management/values?api-version=2015-04-01&$filter=eventTimestamp%20ge%20%272026-09-28T12%3A00%3A00Z%27%20and%20eventTimestamp%20le%20%272026-09-29T12%3A00%3A00Z%27%20and%20resourceUri%20eq%20%27%2Fsubscriptions%2F00000000-0000-4000-8000-000000005b01%2FresourceGroups%2Frg-contoso-prod%2Fproviders%2FMicrosoft.KeyVault%2Fvaults%2Fkv-contoso-prod%27&$select=eventTimestamp%2Ccaller%2CoperationName%2Cstatus%2CresourceId%2Cproperties",
+  "note": "arm activity list --resource kv-contoso-prod: its role assignment, deleted",
+  "answer": {
+   "value": [
+    {
+     "eventTimestamp": "2026-09-28T16:42:11.4730000Z",
+     "caller": "dana@contoso.example",
+     "operationName": {
+      "value": "Microsoft.Authorization/roleAssignments/delete",
+      "localizedValue": "Delete role assignment"
+     },
+     "status": {
+      "value": "Succeeded",
+      "localizedValue": "Succeeded"
+     },
+     "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05",
+     "properties": {
+      "statusCode": "OK",
+      "eventCategory": "Administrative",
+      "entity": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05",
+      "message": "Microsoft.Authorization/roleAssignments/delete",
+      "responseBody": "{\"properties\": {\"roleDefinitionId\": \"/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6\", \"principalId\": \"00000000-0000-4000-8000-00000000b0f2\", \"principalType\": \"ServicePrincipal\", \"scope\": \"/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod\"}, \"id\": \"/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05\", \"type\": \"Microsoft.Authorization/roleAssignments\", \"name\": \"00000000-0000-4000-8000-0000000a5e05\"}"
+     }
+    },
+    {
+     "eventTimestamp": "2026-09-28T16:42:09.9120000Z",
+     "caller": "dana@contoso.example",
+     "operationName": {
+      "value": "Microsoft.Authorization/roleAssignments/delete",
+      "localizedValue": "Delete role assignment"
+     },
+     "status": {
+      "value": "Started",
+      "localizedValue": "Started"
+     },
+     "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05",
+     "properties": {
+      "eventCategory": "Administrative",
+      "entity": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05",
+      "message": "Microsoft.Authorization/roleAssignments/delete"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Insights/eventtypes/management/values?api-version=2015-04-01&$filter=eventTimestamp%20ge%20%272026-09-28T12%3A00%3A00Z%27%20and%20eventTimestamp%20le%20%272026-09-29T12%3A00%3A00Z%27%20and%20status%20eq%20%27Failed%27&$select=eventTimestamp%2Ccaller%2CoperationName%2Cstatus%2CresourceId%2Cproperties",
+  "note": "arm activity list --status failed",
+  "answer": {
+   "value": [
+    {
+     "eventTimestamp": "2026-09-29T09:14:31.2050000Z",
+     "caller": "sam@contoso.example",
+     "operationName": {
+      "value": "Microsoft.Storage/storageAccounts/write",
+      "localizedValue": "Create/Update Storage Account"
+     },
+     "status": {
+      "value": "Failed",
+      "localizedValue": "Failed"
+     },
+     "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/stcontosoreports",
+     "properties": {
+      "statusCode": "Forbidden",
+      "statusMessage": "{\"error\": {\"code\": \"RequestDisallowedByPolicy\", \"target\": \"stcontosoreports\", \"message\": \"Resource 'stcontosoreports' was disallowed by policy. Reasons: 'Storage accounts must not allow public network access'. See error details for policy resource IDs.\", \"additionalInfo\": [{\"type\": \"PolicyViolation\", \"info\": {\"policyAssignmentId\": \"/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Authorization/policyAssignments/deny-public-storage\", \"policyAssignmentName\": \"deny-public-storage\", \"policyDefinitionName\": \"b2982f36-99f2-4db5-8eff-283140c09693\", \"policyEffect\": \"Deny\"}}]}}",
+      "eventCategory": "Administrative",
+      "entity": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/stcontosoreports"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm change list: the last 14 days",
+  "body": {
+   "query": "resourcechanges\n| extend changeTime = todatetime(properties.changeAttributes.timestamp), target = tostring(properties.targetResourceId)\n| where changeTime >= datetime(2026-09-15T12:00:00Z)\n| project id, changeTime, target, changeType = tostring(properties.changeType), changedBy = tostring(properties.changeAttributes.changedBy), changes = properties.changes\n| order by changeTime desc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 2,
+   "count": 2,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05/providers/Microsoft.Resources/changes/08585000000000000000000000001",
+     "changeTime": "2026-09-28T16:42:11.473Z",
+     "target": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05",
+     "changeType": "Delete",
+     "changedBy": "dana@contoso.example",
+     "changes": {}
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/agentPools/user/providers/Microsoft.Resources/changes/08585000000000000000000000002",
+     "changeTime": "2026-09-27T03:10:42.118Z",
+     "target": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod/agentPools/user",
+     "changeType": "Update",
+     "changedBy": "",
+     "changes": {
+      "properties.count": {
+       "previousValue": "2",
+       "newValue": "3",
+       "changeCategory": "System",
+       "propertyChangeType": "Update"
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm change list --resource kv-contoso-prod",
+  "body": {
+   "query": "resourcechanges\n| extend changeTime = todatetime(properties.changeAttributes.timestamp), target = tostring(properties.targetResourceId)\n| where changeTime >= datetime(2026-09-15T12:00:00Z)\n| where target =~ '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod' or target startswith '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/'\n| project id, changeTime, target, changeType = tostring(properties.changeType), changedBy = tostring(properties.changeAttributes.changedBy), changes = properties.changes\n| order by changeTime desc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05/providers/Microsoft.Resources/changes/08585000000000000000000000001",
+     "changeTime": "2026-09-28T16:42:11.473Z",
+     "target": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e05",
+     "changeType": "Delete",
+     "changedBy": "dana@contoso.example",
+     "changes": {}
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm policy list: one non-compliant state",
+  "body": {
+   "query": "policyresources\n| where type =~ 'microsoft.policyinsights/policystates'\n| where tostring(properties.complianceState) =~ 'NonCompliant'\n| extend resource = tostring(properties.resourceId), definition = tolower(tostring(properties.policyDefinitionId)), assignment = tolower(tostring(properties.policyAssignmentId))\n| join kind=leftouter (policyresources | where type =~ 'microsoft.authorization/policydefinitions' | project definition = tolower(id), displayName = tostring(properties.displayName)) on definition\n| join kind=leftouter (policyresources | where type =~ 'microsoft.authorization/policyassignments' | project assignment = tolower(id), assignmentId = id, reason = tostring(properties.nonComplianceMessages[0].message)) on assignment\n| project id, resource, policy = tostring(properties.policyDefinitionName), displayName, effect = tostring(properties.policyDefinitionAction), reason, assignmentId\n| order by resource asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.PolicyInsights/policyStates/00000000-0000-4000-8000-00000000d001",
+     "resource": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourcegroups/rg-contoso-prod/providers/microsoft.keyvault/vaults/kv-contoso-prod",
+     "policy": "405c5871-3e91-4644-8a63-58e19d68ff5b",
+     "displayName": "Azure Key Vault should disable public network access",
+     "effect": "audit",
+     "reason": "Key vaults must be reached through their private endpoint; turn public network access off",
+     "assignmentId": "/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Authorization/policyAssignments/kv-private-access"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm policy list --group rg-contoso-prod",
+  "body": {
+   "query": "policyresources\n| where type =~ 'microsoft.policyinsights/policystates'\n| where tostring(properties.complianceState) =~ 'NonCompliant'\n| extend resource = tostring(properties.resourceId), definition = tolower(tostring(properties.policyDefinitionId)), assignment = tolower(tostring(properties.policyAssignmentId))\n| where tostring(properties.resourceGroup) =~ 'rg-contoso-prod'\n| join kind=leftouter (policyresources | where type =~ 'microsoft.authorization/policydefinitions' | project definition = tolower(id), displayName = tostring(properties.displayName)) on definition\n| join kind=leftouter (policyresources | where type =~ 'microsoft.authorization/policyassignments' | project assignment = tolower(id), assignmentId = id, reason = tostring(properties.nonComplianceMessages[0].message)) on assignment\n| project id, resource, policy = tostring(properties.policyDefinitionName), displayName, effect = tostring(properties.policyDefinitionAction), reason, assignmentId\n| order by resource asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.PolicyInsights/policyStates/00000000-0000-4000-8000-00000000d001",
+     "resource": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourcegroups/rg-contoso-prod/providers/microsoft.keyvault/vaults/kv-contoso-prod",
+     "policy": "405c5871-3e91-4644-8a63-58e19d68ff5b",
+     "displayName": "Azure Key Vault should disable public network access",
+     "effect": "audit",
+     "reason": "Key vaults must be reached through their private endpoint; turn public network access off",
+     "assignmentId": "/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Authorization/policyAssignments/kv-private-access"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Compute?api-version=2021-04-01",
+  "note": "arm resource get on k8s pvc get's pv.disk: the api-versions",
+  "answer": {
+   "namespace": "Microsoft.Compute",
+   "resourceTypes": [
+    {
+     "resourceType": "virtualMachineScaleSets",
+     "apiVersions": [
+      "2024-07-01",
+      "2024-03-01"
+     ]
+    },
+    {
+     "resourceType": "disks",
+     "apiVersions": [
+      "2025-01-02-preview",
+      "2024-03-02",
+      "2023-10-02"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a?api-version=2024-03-02",
+  "note": "arm resource get: data-orders-db-0's disk, still attached to vmss instance 1",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a",
+   "name": "pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a",
+   "type": "Microsoft.Compute/disks",
+   "location": "westeurope",
+   "zones": [
+    "1"
+   ],
+   "managedBy": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/1",
+   "sku": {
+    "name": "Premium_LRS",
+    "tier": "Premium"
+   },
+   "tags": {
+    "k8s-azure-created-by": "kubernetes-azure-dd",
+    "kubernetes.io-created-for-pv-name": "pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a",
+    "kubernetes.io-created-for-pvc-name": "data-orders-db-0",
+    "kubernetes.io-created-for-pvc-namespace": "web"
+   },
+   "properties": {
+    "creationData": {
+     "createOption": "Empty"
+    },
+    "diskSizeGB": 64,
+    "diskSizeBytes": 68719476736,
+    "diskIOPSReadWrite": 240,
+    "diskMBpsReadWrite": 50,
+    "tier": "P6",
+    "encryption": {
+     "type": "EncryptionAtRestWithPlatformKey"
+    },
+    "networkAccessPolicy": "AllowAll",
+    "publicNetworkAccess": "Enabled",
+    "timeCreated": "2026-08-14T09:02:17Z",
+    "provisioningState": "Succeeded",
+    "diskState": "Attached",
+    "uniqueId": "00000000-0000-4000-8000-00000000d15c"
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a/providers/Microsoft.Insights/metricDefinitions?api-version=2018-01-01",
+  "note": "arm metric list on the disk: what it has",
+  "answer": {
+   "value": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a/providers/microsoft.insights/metricdefinitions/Composite Disk Read Bytes/sec",
+     "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a",
+     "namespace": "Microsoft.Compute/disks",
+     "name": {
+      "value": "Composite Disk Read Bytes/sec",
+      "localizedValue": "Composite Disk Read Bytes/sec"
+     },
+     "isDimensionRequired": false,
+     "unit": "BytesPerSecond",
+     "primaryAggregationType": "Average",
+     "supportedAggregationTypes": [
+      "None",
+      "Average",
+      "Minimum",
+      "Maximum",
+      "Total",
+      "Count"
+     ],
+     "metricAvailabilities": [
+      {
+       "timeGrain": "PT1M",
+       "retention": "P93D"
+      }
+     ]
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a/providers/microsoft.insights/metricdefinitions/Composite Disk Read Operations/sec",
+     "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a",
+     "namespace": "Microsoft.Compute/disks",
+     "name": {
+      "value": "Composite Disk Read Operations/sec",
+      "localizedValue": "Composite Disk Read Operations/sec"
+     },
+     "isDimensionRequired": false,
+     "unit": "CountPerSecond",
+     "primaryAggregationType": "Average",
+     "supportedAggregationTypes": [
+      "None",
+      "Average",
+      "Minimum",
+      "Maximum",
+      "Total",
+      "Count"
+     ],
+     "metricAvailabilities": [
+      {
+       "timeGrain": "PT1M",
+       "retention": "P93D"
+      }
+     ]
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a/providers/microsoft.insights/metricdefinitions/Composite Disk Write Bytes/sec",
+     "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a",
+     "namespace": "Microsoft.Compute/disks",
+     "name": {
+      "value": "Composite Disk Write Bytes/sec",
+      "localizedValue": "Composite Disk Write Bytes/sec"
+     },
+     "isDimensionRequired": false,
+     "unit": "BytesPerSecond",
+     "primaryAggregationType": "Average",
+     "supportedAggregationTypes": [
+      "None",
+      "Average",
+      "Minimum",
+      "Maximum",
+      "Total",
+      "Count"
+     ],
+     "metricAvailabilities": [
+      {
+       "timeGrain": "PT1M",
+       "retention": "P93D"
+      }
+     ]
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a/providers/microsoft.insights/metricdefinitions/Composite Disk Write Operations/sec",
+     "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a",
+     "namespace": "Microsoft.Compute/disks",
+     "name": {
+      "value": "Composite Disk Write Operations/sec",
+      "localizedValue": "Composite Disk Write Operations/sec"
+     },
+     "isDimensionRequired": false,
+     "unit": "CountPerSecond",
+     "primaryAggregationType": "Average",
+     "supportedAggregationTypes": [
+      "None",
+      "Average",
+      "Minimum",
+      "Maximum",
+      "Total",
+      "Count"
+     ],
+     "metricAvailabilities": [
+      {
+       "timeGrain": "PT1M",
+       "retention": "P93D"
+      }
+     ]
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a/providers/microsoft.insights/metricdefinitions/DiskPaidBurstIOPS",
+     "resourceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a",
+     "namespace": "Microsoft.Compute/disks",
+     "name": {
+      "value": "DiskPaidBurstIOPS",
+      "localizedValue": "DiskPaidBurstIOPS"
+     },
+     "isDimensionRequired": false,
+     "unit": "Count",
+     "primaryAggregationType": "Average",
+     "supportedAggregationTypes": [
+      "None",
+      "Average",
+      "Minimum",
+      "Maximum",
+      "Total",
+      "Count"
+     ],
+     "metricAvailabilities": [
+      {
+       "timeGrain": "PT1M",
+       "retention": "P93D"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a/providers/Microsoft.Insights/metrics?api-version=2018-01-01&metricnames=Composite%20Disk%20Write%20Operations%2Fsec&timespan=2026-09-29T11%3A00%3A00Z%2F2026-09-29T12%3A00%3A00Z&interval=PT5M",
+  "note": "arm metric list on the disk: writes stop when vmss000001 goes NotReady",
+  "answer": {
+   "cost": 0,
+   "timespan": "2026-09-29T11:00:00Z/2026-09-29T12:00:00Z",
+   "interval": "PT5M",
+   "value": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/disks/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a/providers/Microsoft.Insights/metrics/Composite Disk Write Operations/sec",
+     "type": "Microsoft.Insights/metrics",
+     "name": {
+      "value": "Composite Disk Write Operations/sec",
+      "localizedValue": "Composite Disk Write Operations/sec"
+     },
+     "unit": "CountPerSecond",
+     "timeseries": [
+      {
+       "metadatavalues": [],
+       "data": [
+        {
+         "timeStamp": "2026-09-29T11:00:00Z",
+         "average": 182.4
+        },
+        {
+         "timeStamp": "2026-09-29T11:05:00Z",
+         "average": 176.9
+        },
+        {
+         "timeStamp": "2026-09-29T11:10:00Z",
+         "average": 190.2
+        },
+        {
+         "timeStamp": "2026-09-29T11:15:00Z",
+         "average": 185.0
+        },
+        {
+         "timeStamp": "2026-09-29T11:20:00Z",
+         "average": 61.3
+        },
+        {
+         "timeStamp": "2026-09-29T11:25:00Z",
+         "average": 0.0
+        },
+        {
+         "timeStamp": "2026-09-29T11:30:00Z",
+         "average": 0.0
+        },
+        {
+         "timeStamp": "2026-09-29T11:35:00Z",
+         "average": 0.0
+        },
+        {
+         "timeStamp": "2026-09-29T11:40:00Z",
+         "average": 0.0
+        },
+        {
+         "timeStamp": "2026-09-29T11:45:00Z",
+         "average": 0.0
+        },
+        {
+         "timeStamp": "2026-09-29T11:50:00Z",
+         "average": 0.0
+        },
+        {
+         "timeStamp": "2026-09-29T11:55:00Z"
+        }
+       ]
+      }
+     ],
+     "errorCode": "Success"
+    }
+   ],
+   "namespace": "Microsoft.Compute/disks",
+   "resourceregion": "westeurope"
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/providers/Microsoft.Insights/metrics?api-version=2018-01-01&metricnames=Data%20Disk%20IOPS%20Consumed%20Percentage&timespan=2026-09-29T11%3A00%3A00Z%2F2026-09-29T12%3A00%3A00Z&interval=PT5M",
+  "note": "arm metric list on the user pool's scale set: IOPS consumed, by VM size and disk cap",
+  "answer": {
+   "cost": 0,
+   "timespan": "2026-09-29T11:00:00Z/2026-09-29T12:00:00Z",
+   "interval": "PT5M",
+   "value": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/providers/Microsoft.Insights/metrics/Data Disk IOPS Consumed Percentage",
+     "type": "Microsoft.Insights/metrics",
+     "name": {
+      "value": "Data Disk IOPS Consumed Percentage",
+      "localizedValue": "Data Disk IOPS Consumed Percentage"
+     },
+     "unit": "Percent",
+     "timeseries": [
+      {
+       "metadatavalues": [],
+       "data": [
+        {
+         "timeStamp": "2026-09-29T11:00:00Z",
+         "average": 76.0
+        },
+        {
+         "timeStamp": "2026-09-29T11:05:00Z",
+         "average": 74.2
+        },
+        {
+         "timeStamp": "2026-09-29T11:10:00Z",
+         "average": 79.3
+        },
+        {
+         "timeStamp": "2026-09-29T11:15:00Z",
+         "average": 77.1
+        },
+        {
+         "timeStamp": "2026-09-29T11:20:00Z",
+         "average": 25.5
+        },
+        {
+         "timeStamp": "2026-09-29T11:25:00Z",
+         "average": 0.0
+        },
+        {
+         "timeStamp": "2026-09-29T11:30:00Z",
+         "average": 0.0
+        },
+        {
+         "timeStamp": "2026-09-29T11:35:00Z",
+         "average": 0.0
+        },
+        {
+         "timeStamp": "2026-09-29T11:40:00Z",
+         "average": 0.0
+        },
+        {
+         "timeStamp": "2026-09-29T11:45:00Z",
+         "average": 0.0
+        },
+        {
+         "timeStamp": "2026-09-29T11:50:00Z",
+         "average": 0.0
+        },
+        {
+         "timeStamp": "2026-09-29T11:55:00Z"
+        }
+       ]
+      }
+     ],
+     "errorCode": "Success"
+    }
+   ],
+   "namespace": "Microsoft.Compute/virtualMachineScaleSets",
+   "resourceregion": "westeurope"
   }
  }
 ]
