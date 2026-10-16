@@ -29,16 +29,18 @@ and tests. Copy a sibling.
   - `items`, `age`, `limited` (the `--limit` note), `digest`, `owner_of`.
 - `shape.rs`: `events_for` (an object's five newest, by uid), `event_row`,
   `trim` (no managedFields or last-applied), `listing_for` (the not-found
-  hint: a curated list, else `k8s object list`).
+  hint: a curated list, else `k8s object list`), `selects` (a label
+  selector, matchExpressions included).
 - `kind/mod.rs`: `kinds` (api-resources, cached), `kind_named`.
 - `<resource>/mod.rs`: what its verbs share (`pod/mod.rs`: `PodRow`, `row`,
-  `containers`, the SecretProviderClass reading, `previous_logs`).
+  `containers`, `status_word`, the SecretProviderClass reading,
+  `previous_logs`; `service/mod.rs`: `endpoints`, `ready`).
 - `testing.rs`: `k8s(argv)`, `k8s_with(argv, config)`, `SCOPES` for tests.
 
 ## Fixtures
 Tests run `scripts/fake/kubectl` over `fixtures/cluster.json` (contexts
-`aks-qa`, `aks-prod`; a new kind is data there; `FAKE_KUBECTL_LOG` records
-calls). Trials read `fixtures/world/kubectl.json`. Facts
+`aks-qa`, `aks-prod`; a new kind is data there, `server` the version and
+failing readyz checks; `FAKE_KUBECTL_LOG` records calls). Trials read `fixtures/world/kubectl.json`. Facts
 `fixtures/world/facts/k8s.md`; world checks `crates/cli/tests/world_k8s.rs`;
 queries `crates/k8s/search.toml`.
 
@@ -50,7 +52,7 @@ queries `crates/k8s/search.toml`.
   `-l`, `--field-selector` and `api-resources`).
 - `secret list` rows never carry values; only `secret get` (a `Reveal`)
   does. `pod get` lists `secret_refs` with the Key Vault ids (`kv`) a
-  SecretProviderClass maps.
+  SecretProviderClass maps. `ingress get` checks a TLS secret by `-o name`.
 
 ## Never needed
 Other crates' sources, `docs/plans/`, `docs/reference/`.

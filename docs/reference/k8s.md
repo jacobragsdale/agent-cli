@@ -1,4 +1,4 @@
-# k8s — Kubernetes (17 commands)
+# k8s — Kubernetes (24 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -7,6 +7,12 @@
 | [`k8s pod logs`](#k8s-pod-logs) | read | Read the tail of a pod's log, or of the container's previous run |
 | [`k8s pod delete`](#k8s-pod-delete) | destructive | Delete a pod so its controller replaces it (a bare pod is gone for good) |
 | [`k8s event list`](#k8s-event-list) | read | List Kubernetes events, newest first: warnings, back-offs, failed pulls |
+| [`k8s service list`](#k8s-service-list) | read | List Kubernetes services: type, cluster IP, external IP, ports, ready endpoints |
+| [`k8s service get`](#k8s-service-get) | read | Show a Kubernetes service: ports, endpoint pods and IPs, or what leaves it empty |
+| [`k8s ingress list`](#k8s-ingress-list) | read | List ingresses: the hosts each serves, class, TLS secrets, address |
+| [`k8s ingress get`](#k8s-ingress-get) | read | Show an ingress: each host and path's service and ready endpoints, TLS secrets |
+| [`k8s networkpolicy list`](#k8s-networkpolicy-list) | read | List network policies, or those that apply to one pod: selector, default deny |
+| [`k8s networkpolicy get`](#k8s-networkpolicy-get) | read | Show a network policy's rules in words: peers, ports, and the pods it selects |
 | [`k8s deployment list`](#k8s-deployment-list) | read | List deployments: ready pods, images with tag and digest, when they rolled out |
 | [`k8s deployment restart`](#k8s-deployment-restart) | destructive | Restart a deployment, replacing its pods one at a time |
 | [`k8s deployment scale`](#k8s-deployment-scale) | destructive | Scale a deployment to a number of replicas |
@@ -16,6 +22,7 @@
 | [`k8s secret list`](#k8s-secret-list) | read | List Kubernetes secrets: type, key names and sizes (never values) |
 | [`k8s secret get`](#k8s-secret-get) | reveal | Decode one key of a Kubernetes secret (needs --reveal, or --output FILE) |
 | [`k8s context list`](#k8s-context-list) | read | List the configured cluster scopes and whether kubectl knows each context |
+| [`k8s context get`](#k8s-context-get) | read | Check a cluster: server version, failing readiness checks, DNS address, CNI |
 | [`k8s kind list`](#k8s-kind-list) | read | List the kinds a cluster serves, CRDs included: names, short names, API group |
 | [`k8s object list`](#k8s-object-list) | read | List objects of any kind, custom resources (CRDs) too: id, age, ready, status |
 | [`k8s object get`](#k8s-object-get) | read | Show one object of any kind, a custom resource (CRD) too: manifest and status |
@@ -24,12 +31,14 @@
 
 ```text
 agent-cli k8s pod list — List pods: status, ready, restarts, owner; or those mounting a Key Vault secret
-  <name> str       Part of the pod name
-  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
-  --namespace str  Defaults to the scope's only namespace
-  --label str[]    Only pods with this label: app=api, or a key alone (repeatable, all must hold)
-  --kv str         Only pods mounting this Key Vault secret: VAULT/NAME, as `kv secret list` prints it
-  --limit int      (default 50)
+  <name> str                    Part of the pod name
+  --cluster str                 The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str               Defaults to the scope's only namespace
+  --label str[]                 Only pods with this label: app=api, or a key alone (repeatable, all must hold)
+  --kv str                      Only pods mounting this Key Vault secret: VAULT/NAME, as `kv secret list` prints it
+  --node str                    Only pods on this node, as `pod list` prints it
+  --status running|pending|succeeded|failed|unknown|crashloopbackoff|imagepullbackoff|errimagepull|containercreating|completed|error|oomkilled|…  Only pods whose phase or status word is this
+  --limit int                   (default 50)
 Returns: [{id,name,namespace,status,ready,restarts,age,node,owner}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s pod list --cluster qa --namespace dev --fields id,status,restarts,owner
@@ -43,7 +52,7 @@ agent-cli k8s pod get — Describe a pod: containers, images, states, last termi
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --yaml           The manifest as YAML text instead
-Returns: {id,name,namespace,status,ready,restarts,age,node,ip,owner,containers[{name,image,digest,ready,restarts,state,last_termination}],secret_refs[{via,secret,keys[],class,kv[]}],conditions[{type,status,reason,message}],events[{type,reason,object,message,count,last_seen,namespace}],labels,text}
+Returns: {id,name,namespace,status,ready,restarts,age,node,ip,ips[],host_network,dns_policy,service_account,owner,containers[{name,image,digest,ready,restarts,state,last_termination}],ports[{container,name,port,protocol}],probes[{container,kind,action,initial_delay,period,failure_threshold}],requests,limits,volumes[{name,kind,source}],node_selector,tolerations[],secret_refs[{via,secret,keys[],class,kv[]}],conditions[{type,status,reason,message}],events[{type,reason,object,message,count,last_seen,namespace}],labels,text}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s pod get qa/dev/orders-api-7d9f5b-abc12 --fields status,containers,secret_refs
 ```
@@ -90,6 +99,80 @@ A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
 Returns: [{type,reason,object,message,count,last_seen,namespace}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s event list --pod qa/dev/orders-worker-5c4d3e-q8zt --since 1h --fields type,reason,message,last_seen
+```
+
+### k8s service list
+
+```text
+agent-cli k8s service list — List Kubernetes services: type, cluster IP, external IP, ports, ready endpoints
+  <name> str       Part of the service name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{id,name,namespace,type,cluster_ip,external[],ports[],selector,ready,age}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s service list --cluster qa --namespace dev --fields id,type,ports,ready
+```
+
+### k8s service get
+
+```text
+agent-cli k8s service get — Show a Kubernetes service: ports, endpoint pods and IPs, or what leaves it empty
+ *<service> str    The service: its id (cluster/namespace/name), namespace/name, or name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+Returns: {id,name,namespace,type,cluster_ip,external[],ports[{name,port,target_port,target_name,protocol,node_port}],selector,ready,endpoints[{pod,ip,ready,node,zone}],why_none,azure,events[{type,reason,object,message,count,last_seen,namespace}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s service get qa/dev/orders-api --fields ports,ready,endpoints,why_none
+```
+
+### k8s ingress list
+
+```text
+agent-cli k8s ingress list — List ingresses: the hosts each serves, class, TLS secrets, address
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{id,name,namespace,class,hosts[],tls[],address[],age}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s ingress list --cluster qa --namespace dev --fields id,hosts,address
+```
+
+### k8s ingress get
+
+```text
+agent-cli k8s ingress get — Show an ingress: each host and path's service and ready endpoints, TLS secrets
+ *<ingress> str    The ingress: its id (cluster/namespace/name), namespace/name, or name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+Returns: {id,name,namespace,class,controller,address[],rules[{host,path,service,port,ready}],default_backend{host,path,service,port,ready},tls[{hosts[],secret,exists}],events[{type,reason,object,message,count,last_seen,namespace}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s ingress get qa/dev/orders --fields rules,tls
+```
+
+### k8s networkpolicy list
+
+```text
+agent-cli k8s networkpolicy list — List network policies, or those that apply to one pod: selector, default deny
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --pod str        Only the policies that select this pod: its id, namespace/name or name
+  --limit int      (default 50)
+Returns: [{id,name,namespace,pod_selector,types[],ingress_rules,egress_rules,default_deny}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s networkpolicy list --pod qa/dev/orders-api-7d9f5b-abc12 --fields id,types,default_deny
+```
+
+### k8s networkpolicy get
+
+```text
+agent-cli k8s networkpolicy get — Show a network policy's rules in words: peers, ports, and the pods it selects
+ *<policy> str     The policy: its id (cluster/namespace/name), namespace/name, or name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+Returns: {id,name,namespace,pod_selector,pods[],types[],default_deny,rules[{direction,peers[],ports[]}],events[{type,reason,object,message,count,last_seen,namespace}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s networkpolicy get qa/dev/allow-orders-api --fields pods,rules
 ```
 
 ### k8s deployment list
@@ -201,6 +284,17 @@ agent-cli k8s context list — List the configured cluster scopes and whether ku
 Returns: [{name,context,namespaces[],known}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s context list --fields name,context,namespaces,known
+```
+
+### k8s context get
+
+```text
+agent-cli k8s context get — Check a cluster: server version, failing readiness checks, DNS address, CNI
+  <cluster> str  The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --cluster str  The same, as a flag
+Returns: {name,context,version,failing[],dns_ip,cni,nodes}
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s context get qa
 ```
 
 ### k8s kind list

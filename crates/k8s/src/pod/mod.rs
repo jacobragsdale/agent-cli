@@ -219,7 +219,7 @@ fn is_sidecar(spec: &Value) -> bool {
 /// `Terminating` over all of it once a delete is in.
 // ponytail: skipped from kubectl's printPod — Signal:N, NotReady,
 // NodeLost→Unknown, and the "(N ago)" restart suffix.
-fn status_word(item: &Value) -> String {
+pub(crate) fn status_word(item: &Value) -> String {
     let status = &item["status"];
     let phase = status["phase"].as_str().unwrap_or("Unknown");
     let mut word = non_empty(&status["reason"]).unwrap_or(phase).to_owned();

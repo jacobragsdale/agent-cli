@@ -14,11 +14,14 @@ mod context;
 mod deployment;
 mod doctor;
 mod event;
+mod ingress;
 mod kind;
 mod kubectl;
+mod networkpolicy;
 mod object;
 mod pod;
 mod secret;
+mod service;
 mod shape;
 #[cfg(test)]
 mod testing;
@@ -34,6 +37,12 @@ pub const K8S: Domain = Domain {
         pod::logs::POD_LOGS,
         pod::delete::POD_DELETE,
         event::list::EVENT_LIST,
+        service::list::SERVICE_LIST,
+        service::get::SERVICE_GET,
+        ingress::list::INGRESS_LIST,
+        ingress::get::INGRESS_GET,
+        networkpolicy::list::NETWORKPOLICY_LIST,
+        networkpolicy::get::NETWORKPOLICY_GET,
         deployment::list::DEPLOYMENT_LIST,
         deployment::restart::DEPLOYMENT_RESTART,
         deployment::scale::DEPLOYMENT_SCALE,
@@ -43,6 +52,7 @@ pub const K8S: Domain = Domain {
         secret::list::SECRET_LIST,
         secret::get::SECRET_GET,
         context::list::CONTEXT_LIST,
+        context::get::CONTEXT_GET,
         kind::list::KIND_LIST,
         object::list::OBJECT_LIST,
         object::get::OBJECT_GET,

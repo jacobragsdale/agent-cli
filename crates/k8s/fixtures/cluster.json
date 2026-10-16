@@ -60,7 +60,37 @@
           "name": "orders-env"
          }
         }
-       ]
+       ],
+       "ports": [
+        {
+         "name": "http",
+         "containerPort": 8080,
+         "protocol": "TCP"
+        }
+       ],
+       "readinessProbe": {
+        "httpGet": {
+         "path": "/healthz",
+         "port": "http"
+        },
+        "periodSeconds": 5
+       },
+       "livenessProbe": {
+        "tcpSocket": {
+         "port": 8080
+        },
+        "initialDelaySeconds": 10,
+        "failureThreshold": 3
+       },
+       "resources": {
+        "requests": {
+         "cpu": "250m",
+         "memory": "256Mi"
+        },
+        "limits": {
+         "memory": "512Mi"
+        }
+       }
       }
      ],
      "imagePullSecrets": [
@@ -84,6 +114,49 @@
        "secret": {
         "secretName": "orders-tls"
        }
+      },
+      {
+       "name": "data",
+       "persistentVolumeClaim": {
+        "claimName": "orders-data"
+       }
+      },
+      {
+       "name": "config",
+       "configMap": {
+        "name": "orders-config"
+       }
+      },
+      {
+       "name": "kube-api-access-x1",
+       "projected": {
+        "sources": [
+         {
+          "serviceAccountToken": {
+           "path": "token"
+          }
+         }
+        ]
+       }
+      }
+     ],
+     "serviceAccountName": "orders-api",
+     "dnsPolicy": "ClusterFirst",
+     "nodeSelector": {
+      "kubernetes.io/os": "linux"
+     },
+     "tolerations": [
+      {
+       "key": "node.kubernetes.io/not-ready",
+       "operator": "Exists",
+       "effect": "NoExecute",
+       "tolerationSeconds": 300
+      },
+      {
+       "key": "pool",
+       "operator": "Equal",
+       "value": "orders",
+       "effect": "NoSchedule"
       }
      ]
     },
@@ -108,6 +181,14 @@
       {
        "type": "Ready",
        "status": "True"
+      }
+     ],
+     "podIPs": [
+      {
+       "ip": "10.244.0.7"
+      },
+      {
+       "ip": "fd00::7"
       }
      ]
     }
@@ -135,13 +216,20 @@
      "containers": [
       {
        "name": "api",
-       "image": "contosoacr.azurecr.io/team/orders-api:1.2.3"
+       "image": "contosoacr.azurecr.io/team/orders-api:1.2.3",
+       "ports": [
+        {
+         "name": "http",
+         "containerPort": 8080,
+         "protocol": "TCP"
+        }
+       ]
       }
      ]
     },
     "status": {
      "phase": "Running",
-     "podIP": "10.244.0.7",
+     "podIP": "10.244.0.8",
      "containerStatuses": [
       {
        "name": "api",
@@ -1205,6 +1293,539 @@
      ],
      "notAfter": "2026-11-30T00:00:00Z"
     }
+   },
+   {
+    "kind": "Service",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "orders-api",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z"
+    },
+    "spec": {
+     "type": "ClusterIP",
+     "clusterIP": "10.0.10.20",
+     "ports": [
+      {
+       "name": "http",
+       "port": 80,
+       "targetPort": "http",
+       "protocol": "TCP"
+      }
+     ],
+     "selector": {
+      "app": "orders-api"
+     }
+    }
+   },
+   {
+    "kind": "EndpointSlice",
+    "apiVersion": "discovery.k8s.io/v1",
+    "metadata": {
+     "name": "orders-api-ab12c",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z",
+     "labels": {
+      "kubernetes.io/service-name": "orders-api"
+     }
+    },
+    "addressType": "IPv4",
+    "ports": [
+     {
+      "name": "http",
+      "port": 8080,
+      "protocol": "TCP"
+     }
+    ],
+    "endpoints": [
+     {
+      "addresses": [
+       "10.244.0.7"
+      ],
+      "conditions": {
+       "ready": true
+      },
+      "nodeName": "aks-np1-vmss000000",
+      "zone": "westeurope-1",
+      "targetRef": {
+       "kind": "Pod",
+       "name": "orders-api-7d9f5b-abc12",
+       "namespace": "dev"
+      }
+     },
+     {
+      "addresses": [
+       "10.244.0.8"
+      ],
+      "conditions": {
+       "ready": true
+      },
+      "nodeName": "aks-np1-vmss000000",
+      "zone": "westeurope-1",
+      "targetRef": {
+       "kind": "Pod",
+       "name": "orders-api-7d9f5b-k9x2p",
+       "namespace": "dev"
+      }
+     }
+    ]
+   },
+   {
+    "kind": "Service",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "orders-worker",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z"
+    },
+    "spec": {
+     "type": "ClusterIP",
+     "clusterIP": "10.0.10.21",
+     "ports": [
+      {
+       "port": 80,
+       "targetPort": 8080,
+       "protocol": "TCP"
+      }
+     ],
+     "selector": {
+      "app": "orders-worker"
+     }
+    }
+   },
+   {
+    "kind": "EndpointSlice",
+    "apiVersion": "discovery.k8s.io/v1",
+    "metadata": {
+     "name": "orders-worker-ab12c",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z",
+     "labels": {
+      "kubernetes.io/service-name": "orders-worker"
+     }
+    },
+    "addressType": "IPv4",
+    "ports": [
+     {
+      "port": 8080,
+      "protocol": "TCP"
+     }
+    ],
+    "endpoints": [
+     {
+      "addresses": [
+       "10.244.0.7"
+      ],
+      "conditions": {
+       "ready": false
+      },
+      "nodeName": "aks-np1-vmss000000",
+      "zone": "westeurope-1",
+      "targetRef": {
+       "kind": "Pod",
+       "name": "orders-worker-5c4d3e-q8zt",
+       "namespace": "dev"
+      }
+     }
+    ]
+   },
+   {
+    "kind": "Service",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "billing-api",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z",
+     "annotations": {
+      "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
+      "team": "billing"
+     }
+    },
+    "spec": {
+     "type": "LoadBalancer",
+     "clusterIP": "10.0.10.22",
+     "ports": [
+      {
+       "name": "https",
+       "port": 443,
+       "targetPort": 8443,
+       "nodePort": 31443,
+       "protocol": "TCP"
+      }
+     ],
+     "selector": {
+      "app": "billing-api"
+     }
+    },
+    "status": {
+     "loadBalancer": {
+      "ingress": [
+       {
+        "ip": "10.240.0.50"
+       }
+      ]
+     }
+    }
+   },
+   {
+    "kind": "EndpointSlice",
+    "apiVersion": "discovery.k8s.io/v1",
+    "metadata": {
+     "name": "billing-api-ab12c",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z",
+     "labels": {
+      "kubernetes.io/service-name": "billing-api"
+     }
+    },
+    "addressType": "IPv4",
+    "ports": [
+     {
+      "name": "https",
+      "port": 8443,
+      "protocol": "TCP"
+     }
+    ],
+    "endpoints": [
+     {
+      "addresses": [
+       "10.244.0.7"
+      ],
+      "conditions": {
+       "ready": true
+      },
+      "nodeName": "aks-np1-vmss000000",
+      "zone": "westeurope-1",
+      "targetRef": {
+       "kind": "Pod",
+       "name": "billing-api-1a2b3c-qq111",
+       "namespace": "dev"
+      }
+     }
+    ]
+   },
+   {
+    "kind": "Service",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "legacy-db",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z"
+    },
+    "spec": {
+     "type": "ClusterIP",
+     "clusterIP": "10.0.10.23",
+     "ports": [
+      {
+       "port": 5432,
+       "protocol": "TCP"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Service",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "reports",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z"
+    },
+    "spec": {
+     "type": "ClusterIP",
+     "clusterIP": "10.0.10.24",
+     "ports": [
+      {
+       "port": 80,
+       "targetPort": "web",
+       "protocol": "TCP"
+      }
+     ],
+     "selector": {
+      "app": "reports"
+     }
+    }
+   },
+   {
+    "kind": "IngressClass",
+    "apiVersion": "networking.k8s.io/v1",
+    "metadata": {
+     "name": "nginx",
+     "creationTimestamp": "2026-09-01T00:00:00Z"
+    },
+    "spec": {
+     "controller": "k8s.io/ingress-nginx"
+    }
+   },
+   {
+    "kind": "Ingress",
+    "apiVersion": "networking.k8s.io/v1",
+    "metadata": {
+     "name": "orders",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z"
+    },
+    "spec": {
+     "ingressClassName": "nginx",
+     "tls": [
+      {
+       "hosts": [
+        "orders.contoso.example"
+       ],
+       "secretName": "orders-tls"
+      },
+      {
+       "hosts": [
+        "billing.contoso.example"
+       ],
+       "secretName": "billing-tls"
+      }
+     ],
+     "rules": [
+      {
+       "host": "orders.contoso.example",
+       "http": {
+        "paths": [
+         {
+          "path": "/",
+          "pathType": "Prefix",
+          "backend": {
+           "service": {
+            "name": "orders-api",
+            "port": {
+             "name": "http"
+            }
+           }
+          }
+         },
+         {
+          "path": "/reports",
+          "pathType": "Prefix",
+          "backend": {
+           "service": {
+            "name": "reports",
+            "port": {
+             "number": 80
+            }
+           }
+          }
+         }
+        ]
+       }
+      },
+      {
+       "host": "billing.contoso.example",
+       "http": {
+        "paths": [
+         {
+          "path": "/",
+          "pathType": "Prefix",
+          "backend": {
+           "service": {
+            "name": "billing-gone",
+            "port": {
+             "number": 443
+            }
+           }
+          }
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "status": {
+     "loadBalancer": {
+      "ingress": [
+       {
+        "ip": "10.240.0.60"
+       }
+      ]
+     }
+    }
+   },
+   {
+    "kind": "NetworkPolicy",
+    "apiVersion": "networking.k8s.io/v1",
+    "metadata": {
+     "name": "default-deny",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z"
+    },
+    "spec": {
+     "podSelector": {},
+     "policyTypes": [
+      "Ingress",
+      "Egress"
+     ]
+    }
+   },
+   {
+    "kind": "NetworkPolicy",
+    "apiVersion": "networking.k8s.io/v1",
+    "metadata": {
+     "name": "allow-orders-api",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z"
+    },
+    "spec": {
+     "podSelector": {
+      "matchLabels": {
+       "app": "orders-api"
+      }
+     },
+     "ingress": [
+      {
+       "from": [
+        {
+         "podSelector": {
+          "matchExpressions": [
+           {
+            "key": "app",
+            "operator": "NotIn",
+            "values": [
+             "redis"
+            ]
+           }
+          ]
+         }
+        },
+        {
+         "namespaceSelector": {
+          "matchLabels": {
+           "team": "edge"
+          }
+         }
+        }
+       ],
+       "ports": [
+        {
+         "port": "http"
+        }
+       ]
+      }
+     ],
+     "egress": [
+      {
+       "to": [
+        {
+         "ipBlock": {
+          "cidr": "10.0.0.0/8",
+          "except": [
+           "10.0.99.0/24"
+          ]
+         }
+        }
+       ],
+       "ports": [
+        {
+         "protocol": "TCP",
+         "port": 5432
+        },
+        {
+         "protocol": "TCP",
+         "port": 8000,
+         "endPort": 8100
+        }
+       ]
+      },
+      {}
+     ]
+    }
+   },
+   {
+    "kind": "NetworkPolicy",
+    "apiVersion": "networking.k8s.io/v1",
+    "metadata": {
+     "name": "redis-only",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-01T00:00:00Z"
+    },
+    "spec": {
+     "podSelector": {
+      "matchExpressions": [
+       {
+        "key": "app",
+        "operator": "In",
+        "values": [
+         "redis"
+        ]
+       },
+       {
+        "key": "tier",
+        "operator": "DoesNotExist"
+       }
+      ]
+     },
+     "policyTypes": [
+      "Ingress"
+     ],
+     "ingress": [
+      {
+       "from": [
+        {
+         "podSelector": {
+          "matchExpressions": [
+           {
+            "key": "app",
+            "operator": "Exists"
+           }
+          ]
+         },
+         "namespaceSelector": {}
+        }
+       ],
+       "ports": [
+        {
+         "port": 6379
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Service",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "kube-dns",
+     "namespace": "kube-system",
+     "creationTimestamp": "2026-09-01T00:00:00Z"
+    },
+    "spec": {
+     "type": "ClusterIP",
+     "clusterIP": "10.0.0.10",
+     "ports": [
+      {
+       "name": "dns",
+       "port": 53,
+       "protocol": "UDP"
+      }
+     ],
+     "selector": {
+      "k8s-app": "kube-dns"
+     }
+    }
+   },
+   {
+    "kind": "DaemonSet",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "kube-proxy",
+     "namespace": "kube-system",
+     "creationTimestamp": "2026-09-01T00:00:00Z"
+    },
+    "spec": {}
+   },
+   {
+    "kind": "DaemonSet",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "cilium",
+     "namespace": "kube-system",
+     "creationTimestamp": "2026-09-01T00:00:00Z"
+    },
+    "spec": {}
    }
   ],
   "aks-prod": [
@@ -1553,5 +2174,13 @@
   "aks-prod": [
    "Secret"
   ]
+ },
+ "server": {
+  "aks-qa": {
+   "version": "v1.29.7",
+   "failing": [
+    "etcd"
+   ]
+  }
  }
 }

@@ -37,8 +37,25 @@ pub struct PodDetail {
     age: Option<String>,
     node: Option<String>,
     ip: Option<String>,
+    /// Every IP, both families on a dual-stack cluster.
+    ips: Vec<String>,
+    host_network: Option<bool>,
+    /// ClusterFirst, Default (the node's resolver), None…
+    dns_policy: Option<String>,
+    /// The service account's id (cluster/namespace/name).
+    service_account: Option<String>,
     owner: Option<String>,
     containers: Vec<ContainerRow>,
+    ports: Vec<PortRow>,
+    probes: Vec<Probe>,
+    /// Container to its resource requests: `{"api": {"cpu": "250m"}}`.
+    requests: BTreeMap<String, BTreeMap<String, String>>,
+    /// Container to its resource limits.
+    limits: BTreeMap<String, BTreeMap<String, String>>,
+    volumes: Vec<Volume>,
+    node_selector: BTreeMap<String, String>,
+    /// `key=value:NoSchedule`, `key:NoExecute (300s)`; `*` tolerates every taint.
+    tolerations: Vec<String>,
     /// The secrets it reads: names and keys only, never values.
     secret_refs: Vec<SecretRef>,
     conditions: Vec<Condition>,
@@ -63,6 +80,35 @@ pub struct SecretRef {
     /// The Key Vault secrets the class mounts, as `kv secret get` takes them
     /// (`vault/name`).
     kv: Vec<String>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct PortRow {
+    container: String,
+    name: Option<String>,
+    port: i64,
+    protocol: String,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct Probe {
+    container: String,
+    /// liveness, readiness or startup.
+    kind: &'static str,
+    /// `GET :http/healthz`, `TCP :8080`, `exec cat /tmp/ready`, `gRPC :9000`.
+    action: String,
+    initial_delay: Option<i64>,
+    period: Option<i64>,
+    failure_threshold: Option<i64>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct Volume {
+    name: String,
+    /// persistentVolumeClaim, configMap, secret, csi, emptyDir, projected…
+    kind: String,
+    /// The PVC, configmap or secret's id; a CSI volume's driver and class.
+    source: Option<String>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -103,7 +149,30 @@ fn pod_get(ctx: &Ctx, args: PodGetArgs) -> Result<PodDetail> {
     if let Some(next) = previous_logs(&id, &containers) {
         ctx.note(format!("[next: {next}]"));
     }
+    let spec = &item["spec"];
+    let in_namespace = |name: &str| format!("{}/{namespace}/{name}", target.scope);
     Ok(PodDetail {
+        ips: item["status"]["podIPs"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|held| non_empty(&held["ip"]).map(str::to_owned))
+            .collect(),
+        host_network: Some(spec["hostNetwork"].as_bool() == Some(true)),
+        dns_policy: non_empty(&spec["dnsPolicy"]).map(str::to_owned),
+        service_account: non_empty(&spec["serviceAccountName"]).map(in_namespace),
+        ports: ports(spec),
+        probes: probes(spec),
+        requests: sized(spec, "requests"),
+        limits: sized(spec, "limits"),
+        volumes: volumes(spec, &in_namespace),
+        node_selector: strings(&spec["nodeSelector"]),
+        tolerations: spec["tolerations"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(toleration)
+            .collect(),
         secret_refs: secret_refs(ctx, &target, &item),
         events: events_for(ctx, &target, &item),
         id,
@@ -130,14 +199,148 @@ fn pod_get(ctx: &Ctx, args: PodGetArgs) -> Result<PodDetail> {
                 })
             })
             .collect(),
-        labels: item["metadata"]["labels"]
-            .as_object()
-            .into_iter()
-            .flatten()
-            .filter_map(|(key, value)| Some((key.clone(), value.as_str()?.to_owned())))
-            .collect(),
+        labels: strings(&item["metadata"]["labels"]),
         text: None,
     })
+}
+
+fn strings(map: &Value) -> BTreeMap<String, String> {
+    map.as_object()
+        .into_iter()
+        .flatten()
+        .filter_map(|(key, value)| Some((key.clone(), value.as_str()?.to_owned())))
+        .collect()
+}
+
+/// The containers (and native sidecars) a pod runs, by name.
+fn running(spec: &Value) -> impl Iterator<Item = (&str, &Value)> {
+    spec["initContainers"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|held| held["restartPolicy"] == "Always")
+        .chain(spec["containers"].as_array().into_iter().flatten())
+        .filter_map(|held| Some((non_empty(&held["name"])?, held)))
+}
+
+fn ports(spec: &Value) -> Vec<PortRow> {
+    running(spec)
+        .flat_map(|(container, held)| {
+            held["ports"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(move |port| PortRow {
+                    container: container.to_owned(),
+                    name: non_empty(&port["name"]).map(str::to_owned),
+                    port: port["containerPort"].as_i64().unwrap_or_default(),
+                    protocol: port["protocol"].as_str().unwrap_or("TCP").to_owned(),
+                })
+        })
+        .collect()
+}
+
+fn probes(spec: &Value) -> Vec<Probe> {
+    let mut found = Vec::new();
+    for (container, held) in running(spec) {
+        for (key, kind) in [
+            ("livenessProbe", "liveness"),
+            ("readinessProbe", "readiness"),
+            ("startupProbe", "startup"),
+        ] {
+            let probe = &held[key];
+            if !probe.is_object() {
+                continue;
+            }
+            let port = |handler: &Value| match &handler["port"] {
+                Value::String(name) => name.clone(),
+                other => other.to_string(),
+            };
+            let action = if probe["httpGet"].is_object() {
+                let get = &probe["httpGet"];
+                format!("GET :{}{}", port(get), get["path"].as_str().unwrap_or("/"))
+            } else if probe["tcpSocket"].is_object() {
+                format!("TCP :{}", port(&probe["tcpSocket"]))
+            } else if probe["grpc"].is_object() {
+                format!("gRPC :{}", port(&probe["grpc"]))
+            } else {
+                let command: Vec<&str> = probe["exec"]["command"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(Value::as_str)
+                    .collect();
+                format!("exec {}", command.join(" "))
+            };
+            found.push(Probe {
+                container: container.to_owned(),
+                kind,
+                action,
+                initial_delay: probe["initialDelaySeconds"].as_i64(),
+                period: probe["periodSeconds"].as_i64(),
+                failure_threshold: probe["failureThreshold"].as_i64(),
+            });
+        }
+    }
+    found
+}
+
+/// Each container's `resources.requests` or `.limits`, for those that set any.
+fn sized(spec: &Value, key: &str) -> BTreeMap<String, BTreeMap<String, String>> {
+    running(spec)
+        .map(|(container, held)| (container.to_owned(), strings(&held["resources"][key])))
+        .filter(|(_, sizes)| !sizes.is_empty())
+        .collect()
+}
+
+/// Each volume by the kind of its source; a PVC, configmap or secret by
+/// its id, which its own command takes.
+fn volumes(spec: &Value, in_namespace: &dyn Fn(&str) -> String) -> Vec<Volume> {
+    spec["volumes"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|volume| {
+            let (kind, held) = volume
+                .as_object()?
+                .iter()
+                .find(|(key, _)| key.as_str() != "name")?;
+            let named = |key: &str| non_empty(&held[key]).map(in_namespace);
+            let source = match kind.as_str() {
+                "persistentVolumeClaim" => named("claimName"),
+                "configMap" => named("name"),
+                "secret" => named("secretName"),
+                "csi" => non_empty(&held["driver"]).map(|driver| {
+                    non_empty(&held["volumeAttributes"]["secretProviderClass"])
+                        .map_or_else(|| driver.to_owned(), |class| format!("{driver} ({class})"))
+                }),
+                _ => None,
+            };
+            Some(Volume {
+                name: volume["name"].as_str().unwrap_or_default().to_owned(),
+                kind: kind.clone(),
+                source,
+            })
+        })
+        .collect()
+}
+
+/// A toleration as a taint reads: `key=value:Effect`, `key:Effect` for
+/// Exists, `*` for an empty key with Exists, which tolerates every taint.
+fn toleration(held: &Value) -> String {
+    let key = held["key"].as_str().unwrap_or_default();
+    let mut text = match (key, non_empty(&held["value"])) {
+        ("", _) => "*".to_owned(),
+        (key, Some(value)) if held["operator"] != "Exists" => format!("{key}={value}"),
+        (key, _) => key.to_owned(),
+    };
+    if let Some(effect) = non_empty(&held["effect"]) {
+        text = format!("{text}:{effect}");
+    }
+    if let Some(seconds) = held["tolerationSeconds"].as_i64() {
+        text = format!("{text} ({seconds}s)");
+    }
+    text
 }
 
 command! {
@@ -318,6 +521,44 @@ mod tests {
         );
         let other = run(&["k8s", "pod", "get", "redis-0", "--fields", "secret_refs"]);
         assert_eq!(other.stdout.trim(), "{}", "{other:?}");
+    }
+
+    #[test]
+    fn pod_get_shows_how_it_runs_on_the_network_and_what_it_mounts() {
+        let outcome = run(&[
+            "k8s",
+            "pod",
+            "get",
+            "orders-api-7d9f5b-abc12",
+            "--fields",
+            "ips,host_network,dns_policy,service_account,ports,probes,requests,limits,volumes,node_selector,tolerations",
+        ]);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json(),
+            json!({
+                "ips": ["10.244.0.7", "fd00::7"],
+                "host_network": false,
+                "dns_policy": "ClusterFirst",
+                "service_account": "qa/dev/orders-api",
+                "ports": [{"container": "api", "name": "http", "port": 8080, "protocol": "TCP"}],
+                "probes": [
+                    {"container": "api", "kind": "liveness", "action": "TCP :8080", "initial_delay": 10, "failure_threshold": 3},
+                    {"container": "api", "kind": "readiness", "action": "GET :http/healthz", "period": 5},
+                ],
+                "requests": {"api": {"cpu": "250m", "memory": "256Mi"}},
+                "limits": {"api": {"memory": "512Mi"}},
+                "volumes": [
+                    {"name": "kv", "kind": "csi", "source": "secrets-store.csi.k8s.io (orders-kv)"},
+                    {"name": "tls", "kind": "secret", "source": "qa/dev/orders-tls"},
+                    {"name": "data", "kind": "persistentVolumeClaim", "source": "qa/dev/orders-data"},
+                    {"name": "config", "kind": "configMap", "source": "qa/dev/orders-config"},
+                    {"name": "kube-api-access-x1", "kind": "projected"},
+                ],
+                "node_selector": {"kubernetes.io/os": "linux"},
+                "tolerations": ["node.kubernetes.io/not-ready:NoExecute (300s)", "pool=orders:NoSchedule"],
+            })
+        );
     }
 
     #[test]

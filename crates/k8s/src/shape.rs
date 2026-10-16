@@ -15,12 +15,15 @@ use crate::kubectl::{Target, items, non_empty};
 
 /// The kinds with a list of their own, as kubectl's errors name them
 /// (plural), and the resource word of `agent-cli k8s RESOURCE list`.
-const CURATED: [(&str, &str); 5] = [
+const CURATED: [(&str, &str); 8] = [
     ("pods", "pod"),
     ("deployments", "deployment"),
     ("configmaps", "configmap"),
     ("secrets", "secret"),
     ("events", "event"),
+    ("services", "service"),
+    ("ingresses", "ingress"),
+    ("networkpolicies", "networkpolicy"),
 ];
 
 /// What `kubectl apply` keeps on the object: a copy of the whole manifest.
@@ -106,6 +109,40 @@ pub(crate) fn events_for(ctx: &Ctx, target: &Target, item: &Value) -> Vec<EventR
     }
 }
 
+/// Whether a label selector (`matchLabels`, and `matchExpressions` with In,
+/// NotIn, Exists and DoesNotExist) selects an object with `labels`. An empty
+/// selector selects everything, as a NetworkPolicy's `podSelector: {}` does.
+pub(crate) fn selects(selector: &Value, labels: &Value) -> bool {
+    let label = |key: &str| labels[key].as_str();
+    let pairs = selector["matchLabels"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .all(|(key, value)| label(key) == value.as_str());
+    pairs
+        && selector["matchExpressions"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .all(|expression| {
+                let held = label(expression["key"].as_str().unwrap_or_default());
+                let listed = |held: &str| {
+                    expression["values"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .any(|value| value.as_str() == Some(held))
+                };
+                match expression["operator"].as_str() {
+                    Some("In") => held.is_some_and(listed),
+                    Some("NotIn") => held.is_none_or(|held| !listed(held)),
+                    Some("Exists") => held.is_some(),
+                    Some("DoesNotExist") => held.is_none(),
+                    _ => false,
+                }
+            })
+}
+
 /// A manifest without what only the API server's bookkeeping needs
 /// (`managedFields`, the last-applied copy of itself), status kept.
 pub(crate) fn trim(mut manifest: Value) -> Value {
@@ -167,6 +204,30 @@ mod tests {
             hint("the server could not find the requested resource"),
             None
         );
+    }
+
+    #[test]
+    fn a_selector_reads_match_labels_and_every_expression_operator() {
+        let labels = json!({"app": "redis", "tier": "cache"});
+        let selects = |selector| selects(&selector, &labels);
+        assert!(selects(json!({})), "an empty selector selects every pod");
+        assert!(selects(json!({"matchLabels": {"app": "redis"}})));
+        assert!(!selects(
+            json!({"matchLabels": {"app": "redis", "tier": "db"}})
+        ));
+        let expression = |operator: &str, key: &str, values: &[&str]| json!({"matchExpressions": [{"key": key, "operator": operator, "values": values}]});
+        assert!(selects(expression("In", "app", &["api", "redis"])));
+        assert!(!selects(expression("In", "zone", &["a"])));
+        assert!(selects(expression("NotIn", "app", &["api"])));
+        assert!(
+            selects(expression("NotIn", "zone", &["a"])),
+            "NotIn holds without the label"
+        );
+        assert!(!selects(expression("NotIn", "app", &["redis"])));
+        assert!(selects(expression("Exists", "tier", &[])));
+        assert!(!selects(expression("DoesNotExist", "tier", &[])));
+        assert!(selects(expression("DoesNotExist", "zone", &[])));
+        assert!(!selects(expression("Gt", "app", &[])));
     }
 
     #[test]

@@ -251,3 +251,80 @@ expect = "k8s object get"
 [[query]]
 text = "read any kubernetes object by kind and name"
 expect = "k8s object get"
+
+[[query]]
+text = "list the kubernetes services in the namespace and their ports"
+expect = "k8s service list"
+
+[[query]]
+text = "which svc is a LoadBalancer and what is its external IP"
+expect = "k8s service list"
+
+[[query]]
+text = "cluster IP of the api service in k8s"
+expect = "k8s service list"
+
+[[query]]
+text = "why does my kubernetes service have no endpoints"
+expect = "k8s service get"
+
+[[query]]
+text = "which pods are behind the worker svc"
+expect = "k8s service get"
+
+[[query]]
+text = "what port does the k8s service forward to, targetPort"
+expect = "k8s service get"
+
+[[query]]
+text = "list ingresses and their hostnames"
+expect = "k8s ingress list"
+
+[[query]]
+text = "which ingress routes api.contoso.example"
+expect = "k8s ingress list"
+
+[[query]]
+text = "ingress returns 503, which backend service has no ready pods"
+expect = "k8s ingress get"
+
+[[query]]
+text = "does the ingress tls secret exist"
+expect = "k8s ingress get"
+
+[[query]]
+text = "list network policies in the namespace"
+expect = "k8s networkpolicy list"
+
+[[query]]
+text = "which netpol applies to this pod, is egress denied by default"
+expect = "k8s networkpolicy list"
+
+[[query]]
+text = "what traffic does this network policy allow"
+expect = "k8s networkpolicy get"
+
+[[query]]
+text = "which ports and CIDRs can pods reach under the egress policy"
+expect = "k8s networkpolicy get"
+
+[[query]]
+text = "are the kubernetes API server readiness checks failing"
+expect = "k8s context get"
+
+[[query]]
+text = "which CNI network plugin and DNS service IP does the cluster use"
+expect = "k8s context get"
+
+[[query]]
+text = "which pods are scheduled on this node"
+expect = "k8s pod list"
+
+[[query]]
+text = "list pending pods"
+expect = "k8s pod list"
+
+[[query]]
+text = "pod readiness probe and resource limits"
+expect = "k8s pod get"
+

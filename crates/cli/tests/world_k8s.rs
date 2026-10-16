@@ -24,6 +24,11 @@ fn the_world_answers_what_a_trial_asks_of_k8s() {
         &["k8s", "configmap", "get", "prod/web/api-config"],
         &["k8s", "secret", "list"],
         &["k8s", "kind", "list"],
+        &["k8s", "service", "list"],
+        &["k8s", "service", "get", "prod/web/api"],
+        &["k8s", "ingress", "list"],
+        &["k8s", "networkpolicy", "list"],
+        &["k8s", "networkpolicy", "get", "prod/web/allow-egress"],
     ] {
         ok(args);
     }
@@ -169,5 +174,77 @@ fn a_custom_resource_and_a_node_read_through_the_generic_floor_by_the_ids_it_lis
             .as_str()
             .is_some_and(|id| id.ends_with("/virtualMachines/1")),
         "{node}"
+    );
+}
+
+#[test]
+fn the_worker_service_answers_nothing_and_its_notes_lead_to_the_refused_password() {
+    let walked = follow(&["k8s", "service", "get", "prod/web/worker"]);
+    assert_eq!(
+        walked.len(),
+        3,
+        "service get, the pod, then its previous log"
+    );
+    let service = walked[0].json();
+    assert_eq!(service["ready"], "0/1");
+    assert_eq!(
+        service["why_none"],
+        "no pod matching app=worker is ready: worker-5c4d3e9f1-q8zt1 (CrashLoopBackOff)"
+    );
+    assert_eq!(service["ports"][0]["target_port"], 8080);
+    let log = walked[2].json();
+    assert!(
+        log["text"]
+            .as_str()
+            .unwrap()
+            .contains("password authentication failed for user \"worker\""),
+        "{log}"
+    );
+}
+
+#[test]
+fn the_api_ingress_serves_its_ready_pods_over_the_certificate_cert_manager_keeps() {
+    let ingress = ok(&[
+        "k8s",
+        "ingress",
+        "get",
+        "prod/web/api",
+        "--fields",
+        "rules,tls",
+    ]);
+    assert_eq!(
+        ingress,
+        json!({"rules": [{"host": "api.contoso.example", "path": "/", "service": "prod/web/api", "port": "http", "ready": "3/3"}],
+            "tls": [{"hosts": ["api.contoso.example"], "secret": "prod/web/api-tls", "exists": true}]})
+    );
+}
+
+#[test]
+fn the_web_pods_egress_is_denied_but_for_dns_the_namespace_and_private_addresses() {
+    let policies = ok(&[
+        "k8s",
+        "networkpolicy",
+        "list",
+        "--pod",
+        "prod/web/worker-5c4d3e9f1-q8zt1",
+        "--fields",
+        "id,default_deny",
+    ]);
+    assert_eq!(
+        policies,
+        json!([{"id": "prod/web/default-deny-egress", "default_deny": true},
+            {"id": "prod/web/allow-egress", "default_deny": false}])
+    );
+    let allowed = ok(&["k8s", "networkpolicy", "get", "prod/web/allow-egress"]);
+    assert_eq!(
+        allowed["rules"][2],
+        json!({"direction": "egress", "peers": ["cidr 10.0.0.0/8"], "ports": ["5432/TCP", "443/TCP"]})
+    );
+
+    let cluster = ok(&["k8s", "context", "get"]);
+    assert_eq!(
+        cluster,
+        json!({"name": "prod", "context": "aks-contoso-prod", "version": "v1.30.4",
+            "dns_ip": "10.0.0.10", "cni": "azure-cni", "nodes": 1})
     );
 }

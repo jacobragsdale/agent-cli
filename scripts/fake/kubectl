@@ -7,7 +7,9 @@ Put this directory first on PATH. It reads crates/k8s/fixtures/cluster.json
 prod), or, with AGENT_CLI_FIXTURES set to a directory holding kubectl.json (a
 recorded world, see fixtures/world/README.md), that file. Either is
 {"contexts": {CONTEXT: [objects]}, "logs": {...}, "forbidden": {CONTEXT:
-[kinds]}}; without "logs", a pod's log is made up. `get KIND` answers for the
+[kinds]}, "server": {CONTEXT: {"version": "v1.29.7", "failing": ["etcd"]}}};
+without "logs", a pod's log is made up, and without "server" the API server
+is v1.30.0 with every readiness check ok. `get KIND` answers for the
 standard kinds and every kind the file holds (a CustomResourceDefinition
 there names its kind's plural and short names), and `api-resources` lists
 them. An object without a uid gets one from its context, kind, namespace and
@@ -45,6 +47,7 @@ with open(WORLD_FILE) as f:
     world = json.load(f)
 OBJECTS = world["contexts"]
 LOGS = world.get("logs")
+SERVER = world.get("server", {})
 FORBIDDEN = {(context, kind) for context, kinds in world.get("forbidden", {}).items() for kind in kinds}
 NAMESPACES = {name: sorted({o["metadata"]["namespace"] for o in objects if "namespace" in o["metadata"]}
                            | {"default", "kube-system"})
@@ -86,6 +89,8 @@ STANDARD = [
     ("jobs", "", "batch/v1", True, "Job"),
     ("cronjobs", "cj", "batch/v1", True, "CronJob"),
     ("ingresses", "ing", "networking.k8s.io/v1", True, "Ingress"),
+    ("ingressclasses", "", "networking.k8s.io/v1", False, "IngressClass"),
+    ("endpointslices", "", "discovery.k8s.io/v1", True, "EndpointSlice"),
     ("networkpolicies", "netpol", "networking.k8s.io/v1", True, "NetworkPolicy"),
     ("storageclasses", "sc", "storage.k8s.io/v1", False, "StorageClass"),
     ("customresourcedefinitions", "crd,crds", "apiextensions.k8s.io/v1", False, "CustomResourceDefinition"),
@@ -163,6 +168,27 @@ if os.environ.get("FAKE_KUBECTL_DOWN") == context:
         "Unable to connect to the server: dial tcp 10.0.0.1:443: i/o timeout\n"
     )
     sys.exit(1)
+
+
+if args[:1] == ["version"]:
+    version = SERVER.get(context, {}).get("version", "v1.30.0")
+    print(json.dumps({"clientVersion": {"gitVersion": "v1.31.2-fake"},
+                      "serverVersion": {"gitVersion": version, "platform": "linux/amd64"}}))
+    sys.exit(0)
+
+if args[:2] == ["get", "--raw"] and args[2].startswith("/readyz"):
+    # As the API server answers ?verbose: a line per check, and a 500 that
+    # kubectl reports with the body quoted when one fails.
+    failing = SERVER.get(context, {}).get("failing", [])
+    lines = [f"[-]{check} failed: reason withheld" if check in failing else f"[+]{check} ok"
+             for check in ("ping", "log", "etcd", "etcd-readiness", "informer-sync", "shutdown")]
+    if failing:
+        body = "\\n".join(lines + ["readyz check failed"])
+        sys.stderr.write(f'Error from server (InternalError): an error on the server ("{body}") '
+                         "has prevented the request from succeeding\n")
+        sys.exit(1)
+    print("\n".join(lines + ["readyz check passed"]))
+    sys.exit(0)
 
 
 def labelled(o):
@@ -247,6 +273,11 @@ if args[:1] == ["get"] and len(args) >= 2 and "/" not in args[1] and (len(args) 
         print("\n".join(f"{o['kind'].lower()}/{o['metadata']['name']}" for o in items[:1]))
         sys.exit(0)
     print(json.dumps({"apiVersion": "v1", "kind": "List", "items": items}))
+    sys.exit(0)
+
+if args[:1] == ["get"] and len(args) >= 3 and "/" not in args[1] and args[-2:] == ["-o", "name"]:
+    row = resource(context, args[1]) or unknown(args[1])
+    print(f"{row[4].lower()}/{find(row, args[2])['metadata']['name']}")
     sys.exit(0)
 
 if args[:1] == ["get"] and len(args) >= 3 and "/" not in args[1] and "json" in args:

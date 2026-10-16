@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use crate::kubectl::{At, items, limited};
 
-use super::{PodRow, csi_classes, key_vault_ids, row};
+use super::{PodRow, csi_classes, key_vault_ids, row, status_word};
 
 #[derive(clap::Args)]
 pub struct PodListArgs {
@@ -18,8 +18,34 @@ pub struct PodListArgs {
     /// Only pods mounting this Key Vault secret: VAULT/NAME, as `kv secret list` prints it
     #[arg(long, conflicts_with = "label")]
     kv: Option<String>,
+    /// Only pods on this node, as `pod list` prints it
+    #[arg(long)]
+    node: Option<String>,
+    /// Only pods whose phase or status word is this
+    #[arg(long, value_enum, ignore_case = true)]
+    status: Option<Status>,
     #[arg(long, default_value_t = 50)]
     limit: usize,
+}
+
+/// A pod's phase, or a status word `pod list` prints: the ones worth
+/// finding across a namespace.
+#[derive(Clone, Copy, clap::ValueEnum)]
+#[value(rename_all = "lower")]
+enum Status {
+    Running,
+    Pending,
+    Succeeded,
+    Failed,
+    Unknown,
+    CrashLoopBackOff,
+    ImagePullBackOff,
+    ErrImagePull,
+    ContainerCreating,
+    Completed,
+    Error,
+    OomKilled,
+    Terminating,
 }
 
 fn pod_list(ctx: &Ctx, args: PodListArgs) -> Result<Vec<PodRow>> {
@@ -60,6 +86,24 @@ fn pod_list(ctx: &Ctx, args: PodListArgs) -> Result<Vec<PodRow>> {
                 item["metadata"]["name"]
                     .as_str()
                     .is_some_and(|name| name.contains(part))
+            })
+        })
+        .filter(|item| {
+            args.node
+                .as_deref()
+                .is_none_or(|node| item["spec"]["nodeName"].as_str() == Some(node))
+        })
+        .filter(|item| {
+            args.status.is_none_or(|wanted| {
+                let wanted = clap::ValueEnum::to_possible_value(&wanted)
+                    .map(|value| value.get_name().to_owned())
+                    .unwrap_or_default();
+                [
+                    status_word(item).as_str(),
+                    item["status"]["phase"].as_str().unwrap_or_default(),
+                ]
+                .iter()
+                .any(|held| held.eq_ignore_ascii_case(&wanted))
             })
         })
         .filter_map(|item| row(&target, item))
@@ -178,6 +222,33 @@ mod tests {
         );
         let outcome = run(&["k8s", "pod", "list", "--kv", "kv/x", "--label", "app=x"]);
         assert_eq!(outcome.code, 2, "{outcome:?}");
+    }
+
+    #[test]
+    fn pod_list_narrows_to_a_node_and_a_status_word_or_phase() {
+        let names = |argv: &[&str]| {
+            let mut argv = argv.to_vec();
+            argv.extend(["--fields", "name"]);
+            let outcome = k8s(&argv);
+            assert_eq!(outcome.code, 0, "{outcome:?}");
+            outcome.json()
+        };
+        let all = ["k8s", "pod", "list", "--cluster", "all"];
+        assert_eq!(
+            names(&[&all[..], &["--status", "crashloopbackoff"]].concat()),
+            json!([{"name": "orders-worker-5c4d3e-q8zt"}])
+        );
+        assert_eq!(
+            names(&[&all[..], &["--status", "Succeeded"]].concat()),
+            json!([{"name": "nightly-report-29-k8s7f"}]),
+            "a phase matches too"
+        );
+        assert_eq!(
+            names(&[&all[..], &["--node", "aks-np1-vmss000009"]].concat()),
+            json!([])
+        );
+        let on_node = names(&[&all[..], &["--node", "aks-np1-vmss000000"]].concat());
+        assert!(!on_node.as_array().unwrap().is_empty(), "{on_node}");
     }
 
     #[test]

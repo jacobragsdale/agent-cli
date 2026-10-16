@@ -81,10 +81,10 @@ pub(crate) fn scopes(config: &Config) -> Result<Vec<Scope>> {
 pub struct At {
     /// The [[k8s.scope]] name (or its kube context); defaults to the only one
     #[arg(long)]
-    cluster: Option<String>,
+    pub(crate) cluster: Option<String>,
     /// Defaults to the scope's only namespace
     #[arg(long)]
-    namespace: Option<String>,
+    pub(crate) namespace: Option<String>,
 }
 
 /// A scope and namespace picked, ready to run kubectl against.
