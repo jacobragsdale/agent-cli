@@ -424,6 +424,15 @@ pub(crate) fn items(listed: &Value) -> impl Iterator<Item = &Value> {
     listed["items"].as_array().into_iter().flatten()
 }
 
+/// Whether a listing's `[NAME]` filter, part of a name, keeps `item`.
+pub(crate) fn name_has(item: &Value, part: Option<&str>) -> bool {
+    part.is_none_or(|part| {
+        item["metadata"]["name"]
+            .as_str()
+            .is_some_and(|name| name.contains(part))
+    })
+}
+
 pub(crate) fn non_empty(value: &Value) -> Option<&str> {
     value.as_str().filter(|held| !held.is_empty())
 }
@@ -462,9 +471,10 @@ pub(crate) fn digest(image_id: &Value) -> Option<String> {
 
 /// What made the pod, as `Kind/name`. A ReplicaSet named after a
 /// pod-template hash is a Deployment's, and is reported as that Deployment,
-/// which is the name `k8s deployment restart` takes.
-// ponytail: a Job's CronJob is not resolved; a ReplicaSet with no hash label
-// stays a ReplicaSet.
+/// which is the name `k8s deployment restart` takes; a Job named after its
+/// schedule is a CronJob's, and is reported as that CronJob.
+// ponytail: a ReplicaSet with no hash label stays a ReplicaSet, and a Job
+// made by hand from a CronJob (`create job --from`) keeps its own name.
 pub(crate) fn owner_of(item: &Value) -> Option<String> {
     let references = item["metadata"]["ownerReferences"].as_array()?;
     let owner = references
@@ -479,7 +489,31 @@ pub(crate) fn owner_of(item: &Value) -> Option<String> {
     {
         return Some(format!("Deployment/{base}"));
     }
+    if kind == "Job"
+        && let Some(base) = cronjob_of(name)
+    {
+        return Some(format!("CronJob/{base}"));
+    }
     Some(format!("{kind}/{name}"))
+}
+
+/// The CronJob a Job's name says made it: the controller names each run
+/// `CRONJOB-MINUTES`, its scheduled time in minutes since 1970. Eight digits
+/// from 23,000,000 (2013) on, so a `backup-20260929` date stays a Job.
+fn cronjob_of(job: &str) -> Option<&str> {
+    let (base, minutes) = job.rsplit_once('-')?;
+    let minutes: u32 = minutes.parse().ok()?;
+    (!base.is_empty() && (23_000_000..100_000_000).contains(&minutes)).then_some(base)
+}
+
+/// Whether `item` names `KIND/NAME` among its owners: a workload's own pods,
+/// a Deployment's ReplicaSets, a CronJob's Jobs.
+pub(crate) fn owned_by(item: &Value, kind: &str, name: &str) -> bool {
+    item["metadata"]["ownerReferences"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .any(|owner| owner["kind"] == kind && owner["name"] == name)
 }
 
 /// What a change did, as kubectl said it.
@@ -619,6 +653,27 @@ mod tests {
             outcome.stderr.contains("aks cluster connect"),
             "{}",
             outcome.stderr
+        );
+    }
+
+    #[test]
+    fn a_pod_of_a_job_named_for_its_schedule_belongs_to_the_cronjob() {
+        let pod = |job: &str| {
+            serde_json::json!({"metadata": {"ownerReferences": [
+                {"kind": "Job", "name": job, "controller": true}]}})
+        };
+        assert_eq!(
+            owner_of(&pod("orders-export-29844060")).as_deref(),
+            Some("CronJob/orders-export")
+        );
+        assert_eq!(
+            owner_of(&pod("backup-20260929")).as_deref(),
+            Some("Job/backup-20260929"),
+            "a date is not a schedule"
+        );
+        assert_eq!(
+            owner_of(&pod("nightly-report")).as_deref(),
+            Some("Job/nightly-report")
         );
     }
 

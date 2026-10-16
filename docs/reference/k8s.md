@@ -1,4 +1,4 @@
-# k8s — Kubernetes (29 commands)
+# k8s — Kubernetes (40 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -19,9 +19,20 @@
 | [`k8s pv get`](#k8s-pv-get) | read | Show a persistent volume: Azure disk id, zone affinity, attachment, events |
 | [`k8s storageclass list`](#k8s-storageclass-list) | read | List storage classes: default, provisioner, SKU, binding mode, volume expansion |
 | [`k8s deployment list`](#k8s-deployment-list) | read | List deployments: ready pods, images with tag and digest, when they rolled out |
+| [`k8s deployment get`](#k8s-deployment-get) | read | Describe a deployment: revision history, strategy, conditions, env, probes |
 | [`k8s deployment restart`](#k8s-deployment-restart) | destructive | Restart a deployment, replacing its pods one at a time |
 | [`k8s deployment scale`](#k8s-deployment-scale) | destructive | Scale a deployment to a number of replicas |
 | [`k8s deployment wait`](#k8s-deployment-wait) | read | Wait for a rollout: exit 0 once rolled out, 1 if it failed, 124 if still going |
+| [`k8s statefulset list`](#k8s-statefulset-list) | read | List statefulsets: ready pods, images, volume claim templates |
+| [`k8s statefulset get`](#k8s-statefulset-get) | read | Describe a statefulset: revisions, partition, each pod's volume claim, events |
+| [`k8s daemonset list`](#k8s-daemonset-list) | read | List daemonsets, kube-system's too: desired, ready, unavailable per node |
+| [`k8s daemonset get`](#k8s-daemonset-get) | read | Describe a daemonset, kube-system's too: unready pods, update strategy, events |
+| [`k8s job list`](#k8s-job-list) | read | List jobs: status, completions, failures, duration, the cronjob that made each |
+| [`k8s job get`](#k8s-job-get) | read | Show why a job failed: its tries, conditions, the cronjob behind it, events |
+| [`k8s cronjob list`](#k8s-cronjob-list) | read | List cronjobs: schedule, time zone, suspended, last run and last success |
+| [`k8s cronjob get`](#k8s-cronjob-get) | read | Describe a cronjob: recent runs with status, why one did not run |
+| [`k8s hpa list`](#k8s-hpa-list) | read | List autoscalers: min, max, current and desired replicas, metrics vs target |
+| [`k8s pdb list`](#k8s-pdb-list) | read | List disruption budgets (PDBs): allowed disruptions; 0 blocks drains, upgrades |
 | [`k8s configmap list`](#k8s-configmap-list) | read | List configmaps and their keys |
 | [`k8s configmap get`](#k8s-configmap-get) | read | Show a configmap's keys and values (binary keys show their size only) |
 | [`k8s secret list`](#k8s-secret-list) | read | List Kubernetes secrets: type, key names and sizes (never values) |
@@ -258,6 +269,18 @@ Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s deployment list --cluster prod --namespace web --fields id,ready,images,updated
 ```
 
+### k8s deployment get
+
+```text
+agent-cli k8s deployment get — Describe a deployment: revision history, strategy, conditions, env, probes
+ *<deployment> str  The deployment: its id (cluster/namespace/name), namespace/name, or name
+  --cluster str     The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str   Defaults to the scope's only namespace
+Returns: {id,name,namespace,ready,replicas,images[{container,image,digest}],updated,strategy,conditions[{type,status,reason,message}],revisions[{revision,images[],change_cause,created,replicas}],containers[{name,image,env[{name,secret,configmap,key}]}],probes[{container,kind,action,initial_delay,period,failure_threshold}],requests,limits,volumes[{name,kind,source}],events[{type,reason,object,message,count,last_seen,namespace}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s deployment get prod/web/api --fields revisions,conditions,containers
+```
+
 ### k8s deployment restart
 
 ```text
@@ -293,6 +316,132 @@ agent-cli k8s deployment wait — Wait for a rollout: exit 0 once rolled out, 1 
 Returns: {id,name,namespace,ready,replicas,images[{container,image,digest}],updated,rolled_out}
 Read. * required. Globals: --fields --raw --timeout (default 100s) --output
 e.g. agent-cli k8s deployment wait prod/web/api
+```
+
+### k8s statefulset list
+
+```text
+agent-cli k8s statefulset list — List statefulsets: ready pods, images, volume claim templates
+  <name> str       Part of the statefulset name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{id,name,namespace,ready,images[],claim_templates[],age}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s statefulset list --cluster prod --namespace web --fields id,ready,claim_templates
+```
+
+### k8s statefulset get
+
+```text
+agent-cli k8s statefulset get — Describe a statefulset: revisions, partition, each pod's volume claim, events
+ *<statefulset> str  The statefulset: its id (cluster/namespace/name), namespace/name, or name
+  --cluster str      The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str    Defaults to the scope's only namespace
+Returns: {id,name,namespace,ready,images[],claim_templates[],age,service,update_strategy,partition,current_revision,update_revision,updated,claims[{template,storage_class,requested,access_modes[],pvcs[]}],events[{type,reason,object,message,count,last_seen,namespace}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s statefulset get prod/web/orders-db --fields ready,claims,events
+```
+
+### k8s daemonset list
+
+```text
+agent-cli k8s daemonset list — List daemonsets, kube-system's too: desired, ready, unavailable per node
+  <name> str       Part of the daemonset name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{id,name,namespace,desired,ready,updated,unavailable,node_selector,images[],age}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s daemonset list --cluster prod --namespace kube-system --fields id,desired,ready,unavailable
+```
+
+### k8s daemonset get
+
+```text
+agent-cli k8s daemonset get — Describe a daemonset, kube-system's too: unready pods, update strategy, events
+ *<daemonset> str  The daemonset: its id (cluster/namespace/name), namespace/name, or name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+Returns: {id,name,namespace,desired,ready,updated,unavailable,node_selector,images[],age,update_strategy,misscheduled,unready[{id,name,namespace,status,ready,restarts,age,node,owner}],events[{type,reason,object,message,count,last_seen,namespace}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s daemonset get prod/kube-system/azure-cns
+```
+
+### k8s job list
+
+```text
+agent-cli k8s job list — List jobs: status, completions, failures, duration, the cronjob that made each
+  <name> str       Part of the job name (a CronJob's runs start with its name)
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{id,name,namespace,status,completions,failed,started,duration,cronjob}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s job list --cluster prod --namespace web --fields id,status,started,cronjob
+```
+
+### k8s job get
+
+```text
+agent-cli k8s job get — Show why a job failed: its tries, conditions, the cronjob behind it, events
+ *<job> str        The job: its id (cluster/namespace/name), namespace/name, or name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+Returns: {id,name,namespace,status,completions,failed,started,duration,cronjob,backoff_limit,deadline,conditions[{type,status,reason,message}],pods[{id,name,namespace,status,ready,restarts,age,node,owner}],events[{type,reason,object,message,count,last_seen,namespace}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s job get prod/web/orders-export-29844060 --fields status,conditions,pods
+```
+
+### k8s cronjob list
+
+```text
+agent-cli k8s cronjob list — List cronjobs: schedule, time zone, suspended, last run and last success
+  <name> str       Part of the cronjob name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{id,name,namespace,schedule,time_zone,suspended,last_schedule,last_success,active[]}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s cronjob list --cluster prod --namespace web --fields id,schedule,last_schedule,last_success
+```
+
+### k8s cronjob get
+
+```text
+agent-cli k8s cronjob get — Describe a cronjob: recent runs with status, why one did not run
+ *<cronjob> str    The cronjob: its id (cluster/namespace/name), namespace/name, or name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+Returns: {id,name,namespace,schedule,time_zone,suspended,last_schedule,last_success,active[],concurrency_policy,starting_deadline,jobs[{id,name,namespace,status,completions,failed,started,duration,cronjob}],events[{type,reason,object,message,count,last_seen,namespace}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s cronjob get prod/web/orders-export --fields schedule,last_success,jobs
+```
+
+### k8s hpa list
+
+```text
+agent-cli k8s hpa list — List autoscalers: min, max, current and desired replicas, metrics vs target
+  <name> str       Part of the autoscaler's name (usually its workload's)
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{id,name,namespace,target,min,max,current,desired,metrics[{metric,current,target}],conditions[{type,status,reason,message}]}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s hpa list --cluster prod --namespace web --fields id,current,max,metrics,conditions
+```
+
+### k8s pdb list
+
+```text
+agent-cli k8s pdb list — List disruption budgets (PDBs): allowed disruptions; 0 blocks drains, upgrades
+  <name> str       Part of the budget's name
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --limit int      (default 50)
+Returns: [{id,name,namespace,selector,min_available,max_unavailable,allowed_disruptions,current_healthy,desired_healthy,expected}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s pdb list --cluster prod --namespace web --fields id,selector,allowed_disruptions
 ```
 
 ### k8s configmap list

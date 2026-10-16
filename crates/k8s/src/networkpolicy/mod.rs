@@ -6,6 +6,8 @@ pub(crate) mod list;
 
 use serde_json::Value;
 
+use crate::shape::selector_text;
+
 /// The directions a policy governs: `policyTypes`, else Ingress, and Egress
 /// too when it has egress rules, as the API defaults them.
 fn types(policy: &Value) -> Vec<String> {
@@ -33,37 +35,6 @@ fn default_deny(policy: &Value) -> bool {
     types(policy)
         .iter()
         .any(|kind| rules(policy, &kind.to_ascii_lowercase()).is_empty())
-}
-
-/// A label selector as `kubectl` writes one: `app=api,tier in (web),!canary`.
-/// None for the empty selector, which selects everything.
-fn selector_text(selector: &Value) -> Option<String> {
-    let mut terms: Vec<String> = selector["matchLabels"]
-        .as_object()
-        .into_iter()
-        .flatten()
-        .map(|(key, value)| format!("{key}={}", value.as_str().unwrap_or_default()))
-        .collect();
-    for expression in selector["matchExpressions"]
-        .as_array()
-        .into_iter()
-        .flatten()
-    {
-        let key = expression["key"].as_str().unwrap_or_default();
-        let values: Vec<&str> = expression["values"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(Value::as_str)
-            .collect();
-        terms.push(match expression["operator"].as_str().unwrap_or_default() {
-            "In" => format!("{key} in ({})", values.join(",")),
-            "NotIn" => format!("{key} notin ({})", values.join(",")),
-            "DoesNotExist" => format!("!{key}"),
-            _ => key.to_owned(),
-        });
-    }
-    (!terms.is_empty()).then(|| terms.join(","))
 }
 
 /// The pods a policy applies to, in words.

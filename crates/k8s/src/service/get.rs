@@ -174,7 +174,7 @@ fn no_endpoints(
             )),
         );
     }
-    let unready: Vec<&&Value> = pods.iter().filter(|pod| !pod_ready(pod)).collect();
+    let unready: Vec<&&Value> = pods.iter().filter(|pod| !crate::pod::ready(pod)).collect();
     let Some(first) = unready.first() else {
         return (
             format!(
@@ -197,14 +197,6 @@ fn no_endpoints(
         format!("no pod matching {selector} is ready: {}", named.join(", ")),
         Some(format!("agent-cli k8s pod get {}", target.id(first))),
     )
-}
-
-fn pod_ready(pod: &Value) -> bool {
-    pod["status"]["conditions"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .any(|condition| condition["type"] == "Ready" && condition["status"] == "True")
 }
 
 command! {

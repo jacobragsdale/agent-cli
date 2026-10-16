@@ -11,6 +11,9 @@
      "labels": {
       "app": "api",
       "tags.datadoghq.com/service": "api"
+     },
+     "annotations": {
+      "deployment.kubernetes.io/revision": "7"
      }
     },
     "spec": {
@@ -21,13 +24,97 @@
       }
      },
      "template": {
+      "metadata": {
+       "labels": {
+        "app": "api"
+       }
+      },
       "spec": {
        "containers": [
         {
          "name": "api",
-         "image": "contosoacr.azurecr.io/api:v1.4.2"
+         "image": "contosoacr.azurecr.io/api:v1.4.2",
+         "env": [
+          {
+           "name": "DB_USER",
+           "valueFrom": {
+            "secretKeyRef": {
+             "name": "api-env",
+             "key": "DB_USER"
+            }
+           }
+          },
+          {
+           "name": "LOG_LEVEL",
+           "valueFrom": {
+            "configMapKeyRef": {
+             "name": "api-config",
+             "key": "LOG_LEVEL"
+            }
+           }
+          }
+         ],
+         "envFrom": [
+          {
+           "configMapRef": {
+            "name": "api-config"
+           }
+          }
+         ],
+         "volumeMounts": [
+          {
+           "name": "kv",
+           "mountPath": "/mnt/secrets",
+           "readOnly": true
+          }
+         ],
+         "ports": [
+          {
+           "name": "http",
+           "containerPort": 8080,
+           "protocol": "TCP"
+          }
+         ],
+         "readinessProbe": {
+          "httpGet": {
+           "path": "/healthz",
+           "port": "http"
+          },
+          "periodSeconds": 10
+         },
+         "resources": {
+          "requests": {
+           "cpu": "250m",
+           "memory": "256Mi"
+          },
+          "limits": {
+           "memory": "512Mi"
+          }
+         }
         }
-       ]
+       ],
+       "volumes": [
+        {
+         "name": "kv",
+         "csi": {
+          "driver": "secrets-store.csi.k8s.io",
+          "readOnly": true,
+          "volumeAttributes": {
+           "secretProviderClass": "api-kv"
+          }
+         }
+        }
+       ],
+       "imagePullSecrets": [],
+       "serviceAccountName": "api",
+       "dnsPolicy": "ClusterFirst"
+      }
+     },
+     "strategy": {
+      "type": "RollingUpdate",
+      "rollingUpdate": {
+       "maxSurge": "25%",
+       "maxUnavailable": "25%"
       }
      }
     },
@@ -39,7 +126,8 @@
       {
        "type": "Available",
        "status": "True",
-       "lastUpdateTime": "2026-09-28T21:34:40Z"
+       "lastUpdateTime": "2026-09-28T21:34:40Z",
+       "reason": "MinimumReplicasAvailable"
       },
       {
        "type": "Progressing",
@@ -60,6 +148,9 @@
      "labels": {
       "app": "worker",
       "tags.datadoghq.com/service": "worker"
+     },
+     "annotations": {
+      "deployment.kubernetes.io/revision": "5"
      }
     },
     "spec": {
@@ -70,14 +161,78 @@
       }
      },
      "template": {
+      "metadata": {
+       "labels": {
+        "app": "worker"
+       }
+      },
       "spec": {
        "containers": [
         {
          "name": "worker",
-         "image": "contosoacr.azurecr.io/worker:v1.4.2"
+         "image": "contosoacr.azurecr.io/worker:v1.4.2",
+         "env": [
+          {
+           "name": "DB_USER",
+           "valueFrom": {
+            "secretKeyRef": {
+             "name": "worker-db",
+             "key": "username"
+            }
+           }
+          }
+         ],
+         "volumeMounts": [
+          {
+           "name": "kv",
+           "mountPath": "/mnt/secrets",
+           "readOnly": true
+          }
+         ],
+         "ports": [
+          {
+           "name": "http",
+           "containerPort": 8080,
+           "protocol": "TCP"
+          }
+         ],
+         "readinessProbe": {
+          "httpGet": {
+           "path": "/healthz",
+           "port": "http"
+          },
+          "periodSeconds": 10
+         },
+         "resources": {
+          "requests": {
+           "cpu": "250m",
+           "memory": "256Mi"
+          },
+          "limits": {
+           "memory": "512Mi"
+          }
+         }
         }
-       ]
+       ],
+       "volumes": [
+        {
+         "name": "kv",
+         "csi": {
+          "driver": "secrets-store.csi.k8s.io",
+          "readOnly": true,
+          "volumeAttributes": {
+           "secretProviderClass": "worker-kv"
+          }
+         }
+        }
+       ],
+       "imagePullSecrets": [],
+       "serviceAccountName": "worker",
+       "dnsPolicy": "ClusterFirst"
       }
+     },
+     "strategy": {
+      "type": "Recreate"
      }
     },
     "status": {
@@ -88,7 +243,8 @@
       {
        "type": "Available",
        "status": "False",
-       "lastUpdateTime": "2026-09-28T21:36:02Z"
+       "lastUpdateTime": "2026-09-28T21:36:02Z",
+       "reason": "MinimumReplicasUnavailable"
       },
       {
        "type": "Progressing",
@@ -1354,7 +1510,42 @@
      "namespace": "kube-system",
      "creationTimestamp": "2025-06-02T11:00:00Z"
     },
-    "spec": {}
+    "spec": {
+     "selector": {
+      "matchLabels": {
+       "k8s-app": "azure-cns"
+      }
+     },
+     "updateStrategy": {
+      "type": "RollingUpdate"
+     },
+     "template": {
+      "spec": {
+       "nodeSelector": {
+        "kubernetes.io/os": "linux"
+       },
+       "tolerations": [
+        {
+         "operator": "Exists"
+        }
+       ],
+       "containers": [
+        {
+         "name": "azure-cns"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "desiredNumberScheduled": 6,
+     "currentNumberScheduled": 6,
+     "numberReady": 5,
+     "updatedNumberScheduled": 6,
+     "numberAvailable": 5,
+     "numberUnavailable": 1,
+     "numberMisscheduled": 0
+    }
    },
    {
     "kind": "DaemonSet",
@@ -1364,7 +1555,42 @@
      "namespace": "kube-system",
      "creationTimestamp": "2025-06-02T11:00:00Z"
     },
-    "spec": {}
+    "spec": {
+     "selector": {
+      "matchLabels": {
+       "k8s-app": "kube-proxy"
+      }
+     },
+     "updateStrategy": {
+      "type": "RollingUpdate"
+     },
+     "template": {
+      "spec": {
+       "nodeSelector": {
+        "kubernetes.io/os": "linux"
+       },
+       "tolerations": [
+        {
+         "operator": "Exists"
+        }
+       ],
+       "containers": [
+        {
+         "name": "kube-proxy"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "desiredNumberScheduled": 6,
+     "currentNumberScheduled": 6,
+     "numberReady": 5,
+     "updatedNumberScheduled": 6,
+     "numberAvailable": 5,
+     "numberUnavailable": 1,
+     "numberMisscheduled": 0
+    }
    },
    {
     "kind": "DaemonSet",
@@ -1374,7 +1600,42 @@
      "namespace": "kube-system",
      "creationTimestamp": "2025-06-02T11:00:00Z"
     },
-    "spec": {}
+    "spec": {
+     "selector": {
+      "matchLabels": {
+       "k8s-app": "cloud-node-manager"
+      }
+     },
+     "updateStrategy": {
+      "type": "RollingUpdate"
+     },
+     "template": {
+      "spec": {
+       "nodeSelector": {
+        "kubernetes.io/os": "linux"
+       },
+       "tolerations": [
+        {
+         "operator": "Exists"
+        }
+       ],
+       "containers": [
+        {
+         "name": "cloud-node-manager"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "desiredNumberScheduled": 6,
+     "currentNumberScheduled": 6,
+     "numberReady": 5,
+     "updatedNumberScheduled": 6,
+     "numberAvailable": 5,
+     "numberUnavailable": 1,
+     "numberMisscheduled": 0
+    }
    },
    {
     "kind": "StorageClass",
@@ -1820,6 +2081,1826 @@
     "source": {
      "component": "node-controller"
     }
+   },
+   {
+    "kind": "ReplicaSet",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "api-6c8e7b5a4",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-15T16:20:00Z",
+     "labels": {
+      "app": "api",
+      "pod-template-hash": "6c8e7b5a4"
+     },
+     "annotations": {
+      "deployment.kubernetes.io/revision": "6"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "Deployment",
+       "name": "api",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "replicas": 0,
+     "selector": {
+      "matchLabels": {
+       "app": "api",
+       "pod-template-hash": "6c8e7b5a4"
+      }
+     },
+     "template": {
+      "metadata": {
+       "labels": {
+        "app": "api",
+        "pod-template-hash": "6c8e7b5a4"
+       }
+      },
+      "spec": {
+       "containers": [
+        {
+         "name": "api",
+         "image": "contosoacr.azurecr.io/api:v1.4.1",
+         "env": [
+          {
+           "name": "DB_USER",
+           "valueFrom": {
+            "secretKeyRef": {
+             "name": "api-env",
+             "key": "DB_USER"
+            }
+           }
+          },
+          {
+           "name": "LOG_LEVEL",
+           "valueFrom": {
+            "configMapKeyRef": {
+             "name": "api-config",
+             "key": "LOG_LEVEL"
+            }
+           }
+          }
+         ],
+         "envFrom": [
+          {
+           "configMapRef": {
+            "name": "api-config"
+           }
+          }
+         ],
+         "volumeMounts": [
+          {
+           "name": "kv",
+           "mountPath": "/mnt/secrets",
+           "readOnly": true
+          }
+         ],
+         "ports": [
+          {
+           "name": "http",
+           "containerPort": 8080,
+           "protocol": "TCP"
+          }
+         ],
+         "readinessProbe": {
+          "httpGet": {
+           "path": "/healthz",
+           "port": "http"
+          },
+          "periodSeconds": 10
+         },
+         "resources": {
+          "requests": {
+           "cpu": "250m",
+           "memory": "256Mi"
+          },
+          "limits": {
+           "memory": "512Mi"
+          }
+         }
+        }
+       ],
+       "volumes": [
+        {
+         "name": "kv",
+         "csi": {
+          "driver": "secrets-store.csi.k8s.io",
+          "readOnly": true,
+          "volumeAttributes": {
+           "secretProviderClass": "api-kv"
+          }
+         }
+        }
+       ],
+       "imagePullSecrets": [],
+       "serviceAccountName": "api",
+       "dnsPolicy": "ClusterFirst"
+      }
+     }
+    },
+    "status": {
+     "replicas": 0,
+     "readyReplicas": 0,
+     "availableReplicas": 0
+    }
+   },
+   {
+    "kind": "ReplicaSet",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "api-7d9f8c6b5",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-28T21:34:12Z",
+     "labels": {
+      "app": "api",
+      "pod-template-hash": "7d9f8c6b5"
+     },
+     "annotations": {
+      "deployment.kubernetes.io/revision": "7",
+      "kubernetes.io/change-cause": "image api:v1.4.2 (api-ci run 8812)"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "Deployment",
+       "name": "api",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "replicas": 3,
+     "selector": {
+      "matchLabels": {
+       "app": "api",
+       "pod-template-hash": "7d9f8c6b5"
+      }
+     },
+     "template": {
+      "metadata": {
+       "labels": {
+        "app": "api",
+        "pod-template-hash": "7d9f8c6b5"
+       }
+      },
+      "spec": {
+       "containers": [
+        {
+         "name": "api",
+         "image": "contosoacr.azurecr.io/api:v1.4.2",
+         "env": [
+          {
+           "name": "DB_USER",
+           "valueFrom": {
+            "secretKeyRef": {
+             "name": "api-env",
+             "key": "DB_USER"
+            }
+           }
+          },
+          {
+           "name": "LOG_LEVEL",
+           "valueFrom": {
+            "configMapKeyRef": {
+             "name": "api-config",
+             "key": "LOG_LEVEL"
+            }
+           }
+          }
+         ],
+         "envFrom": [
+          {
+           "configMapRef": {
+            "name": "api-config"
+           }
+          }
+         ],
+         "volumeMounts": [
+          {
+           "name": "kv",
+           "mountPath": "/mnt/secrets",
+           "readOnly": true
+          }
+         ],
+         "ports": [
+          {
+           "name": "http",
+           "containerPort": 8080,
+           "protocol": "TCP"
+          }
+         ],
+         "readinessProbe": {
+          "httpGet": {
+           "path": "/healthz",
+           "port": "http"
+          },
+          "periodSeconds": 10
+         },
+         "resources": {
+          "requests": {
+           "cpu": "250m",
+           "memory": "256Mi"
+          },
+          "limits": {
+           "memory": "512Mi"
+          }
+         }
+        }
+       ],
+       "volumes": [
+        {
+         "name": "kv",
+         "csi": {
+          "driver": "secrets-store.csi.k8s.io",
+          "readOnly": true,
+          "volumeAttributes": {
+           "secretProviderClass": "api-kv"
+          }
+         }
+        }
+       ],
+       "imagePullSecrets": [],
+       "serviceAccountName": "api",
+       "dnsPolicy": "ClusterFirst"
+      }
+     }
+    },
+    "status": {
+     "replicas": 3,
+     "readyReplicas": 3,
+     "availableReplicas": 3
+    }
+   },
+   {
+    "kind": "ReplicaSet",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "worker-4b3c2d8e0",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-15T16:22:00Z",
+     "labels": {
+      "app": "worker",
+      "pod-template-hash": "4b3c2d8e0"
+     },
+     "annotations": {
+      "deployment.kubernetes.io/revision": "4"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "Deployment",
+       "name": "worker",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "replicas": 0,
+     "selector": {
+      "matchLabels": {
+       "app": "worker",
+       "pod-template-hash": "4b3c2d8e0"
+      }
+     },
+     "template": {
+      "metadata": {
+       "labels": {
+        "app": "worker",
+        "pod-template-hash": "4b3c2d8e0"
+       }
+      },
+      "spec": {
+       "containers": [
+        {
+         "name": "worker",
+         "image": "contosoacr.azurecr.io/worker:v1.4.1",
+         "env": [
+          {
+           "name": "DB_USER",
+           "valueFrom": {
+            "secretKeyRef": {
+             "name": "worker-db",
+             "key": "username"
+            }
+           }
+          }
+         ],
+         "volumeMounts": [
+          {
+           "name": "kv",
+           "mountPath": "/mnt/secrets",
+           "readOnly": true
+          }
+         ],
+         "ports": [
+          {
+           "name": "http",
+           "containerPort": 8080,
+           "protocol": "TCP"
+          }
+         ],
+         "readinessProbe": {
+          "httpGet": {
+           "path": "/healthz",
+           "port": "http"
+          },
+          "periodSeconds": 10
+         },
+         "resources": {
+          "requests": {
+           "cpu": "250m",
+           "memory": "256Mi"
+          },
+          "limits": {
+           "memory": "512Mi"
+          }
+         }
+        }
+       ],
+       "volumes": [
+        {
+         "name": "kv",
+         "csi": {
+          "driver": "secrets-store.csi.k8s.io",
+          "readOnly": true,
+          "volumeAttributes": {
+           "secretProviderClass": "worker-kv"
+          }
+         }
+        }
+       ],
+       "imagePullSecrets": [],
+       "serviceAccountName": "worker",
+       "dnsPolicy": "ClusterFirst"
+      }
+     }
+    },
+    "status": {
+     "replicas": 0,
+     "readyReplicas": 0,
+     "availableReplicas": 0
+    }
+   },
+   {
+    "kind": "ReplicaSet",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "worker-5c4d3e9f1",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-28T21:34:12Z",
+     "labels": {
+      "app": "worker",
+      "pod-template-hash": "5c4d3e9f1"
+     },
+     "annotations": {
+      "deployment.kubernetes.io/revision": "5",
+      "kubernetes.io/change-cause": "image worker:v1.4.2 (worker-ci)"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "Deployment",
+       "name": "worker",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "replicas": 1,
+     "selector": {
+      "matchLabels": {
+       "app": "worker",
+       "pod-template-hash": "5c4d3e9f1"
+      }
+     },
+     "template": {
+      "metadata": {
+       "labels": {
+        "app": "worker",
+        "pod-template-hash": "5c4d3e9f1"
+       }
+      },
+      "spec": {
+       "containers": [
+        {
+         "name": "worker",
+         "image": "contosoacr.azurecr.io/worker:v1.4.2",
+         "env": [
+          {
+           "name": "DB_USER",
+           "valueFrom": {
+            "secretKeyRef": {
+             "name": "worker-db",
+             "key": "username"
+            }
+           }
+          }
+         ],
+         "volumeMounts": [
+          {
+           "name": "kv",
+           "mountPath": "/mnt/secrets",
+           "readOnly": true
+          }
+         ],
+         "ports": [
+          {
+           "name": "http",
+           "containerPort": 8080,
+           "protocol": "TCP"
+          }
+         ],
+         "readinessProbe": {
+          "httpGet": {
+           "path": "/healthz",
+           "port": "http"
+          },
+          "periodSeconds": 10
+         },
+         "resources": {
+          "requests": {
+           "cpu": "250m",
+           "memory": "256Mi"
+          },
+          "limits": {
+           "memory": "512Mi"
+          }
+         }
+        }
+       ],
+       "volumes": [
+        {
+         "name": "kv",
+         "csi": {
+          "driver": "secrets-store.csi.k8s.io",
+          "readOnly": true,
+          "volumeAttributes": {
+           "secretProviderClass": "worker-kv"
+          }
+         }
+        }
+       ],
+       "imagePullSecrets": [],
+       "serviceAccountName": "worker",
+       "dnsPolicy": "ClusterFirst"
+      }
+     }
+    },
+    "status": {
+     "replicas": 1,
+     "readyReplicas": 0,
+     "availableReplicas": 0
+    }
+   },
+   {
+    "kind": "Deployment",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "reports-api",
+     "namespace": "web",
+     "creationTimestamp": "2026-03-02T10:00:00Z",
+     "labels": {
+      "app": "reports-api"
+     },
+     "annotations": {
+      "deployment.kubernetes.io/revision": "3"
+     }
+    },
+    "spec": {
+     "replicas": 5,
+     "selector": {
+      "matchLabels": {
+       "app": "reports-api"
+      }
+     },
+     "strategy": {
+      "type": "RollingUpdate",
+      "rollingUpdate": {
+       "maxSurge": "25%",
+       "maxUnavailable": "25%"
+      }
+     },
+     "template": {
+      "metadata": {
+       "labels": {
+        "app": "reports-api"
+       }
+      },
+      "spec": {
+       "serviceAccountName": "default",
+       "dnsPolicy": "ClusterFirst",
+       "containers": [
+        {
+         "name": "reports",
+         "image": "contosoacr.azurecr.io/reports:v0.9.3",
+         "env": [
+          {
+           "name": "LOG_LEVEL",
+           "valueFrom": {
+            "configMapKeyRef": {
+             "name": "api-config",
+             "key": "LOG_LEVEL"
+            }
+           }
+          }
+         ],
+         "ports": [
+          {
+           "name": "http",
+           "containerPort": 8080,
+           "protocol": "TCP"
+          }
+         ],
+         "readinessProbe": {
+          "httpGet": {
+           "path": "/healthz",
+           "port": "http"
+          },
+          "periodSeconds": 10
+         },
+         "resources": {
+          "requests": {
+           "cpu": "1",
+           "memory": "1Gi"
+          },
+          "limits": {
+           "memory": "2Gi"
+          }
+         }
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "replicas": 5,
+     "readyReplicas": 3,
+     "availableReplicas": 3,
+     "updatedReplicas": 5,
+     "unavailableReplicas": 2,
+     "conditions": [
+      {
+       "type": "Available",
+       "status": "False",
+       "reason": "MinimumReplicasUnavailable",
+       "message": "Deployment does not have minimum availability.",
+       "lastUpdateTime": "2026-09-29T11:41:16Z"
+      },
+      {
+       "type": "Progressing",
+       "status": "True",
+       "reason": "NewReplicaSetAvailable",
+       "message": "ReplicaSet \"reports-api-6f7d8c9b4\" has successfully progressed.",
+       "lastUpdateTime": "2026-09-29T08:02:40Z"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "ReplicaSet",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "reports-api-6f7d8c9b4",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T08:02:00Z",
+     "labels": {
+      "app": "reports-api",
+      "pod-template-hash": "6f7d8c9b4"
+     },
+     "annotations": {
+      "deployment.kubernetes.io/revision": "3"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "Deployment",
+       "name": "reports-api",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "replicas": 5,
+     "selector": {
+      "matchLabels": {
+       "app": "reports-api",
+       "pod-template-hash": "6f7d8c9b4"
+      }
+     },
+     "template": {
+      "metadata": {
+       "labels": {
+        "app": "reports-api",
+        "pod-template-hash": "6f7d8c9b4"
+       }
+      },
+      "spec": {
+       "serviceAccountName": "default",
+       "dnsPolicy": "ClusterFirst",
+       "containers": [
+        {
+         "name": "reports",
+         "image": "contosoacr.azurecr.io/reports:v0.9.3",
+         "env": [
+          {
+           "name": "LOG_LEVEL",
+           "valueFrom": {
+            "configMapKeyRef": {
+             "name": "api-config",
+             "key": "LOG_LEVEL"
+            }
+           }
+          }
+         ],
+         "ports": [
+          {
+           "name": "http",
+           "containerPort": 8080,
+           "protocol": "TCP"
+          }
+         ],
+         "readinessProbe": {
+          "httpGet": {
+           "path": "/healthz",
+           "port": "http"
+          },
+          "periodSeconds": 10
+         },
+         "resources": {
+          "requests": {
+           "cpu": "1",
+           "memory": "1Gi"
+          },
+          "limits": {
+           "memory": "2Gi"
+          }
+         }
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "replicas": 5,
+     "readyReplicas": 5,
+     "availableReplicas": 5
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "reports-api-6f7d8c9b4-h2k8m",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T08:02:10Z",
+     "labels": {
+      "app": "reports-api",
+      "pod-template-hash": "6f7d8c9b4"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "ReplicaSet",
+       "name": "reports-api-6f7d8c9b4",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "serviceAccountName": "default",
+     "dnsPolicy": "ClusterFirst",
+     "containers": [
+      {
+       "name": "reports",
+       "image": "contosoacr.azurecr.io/reports:v0.9.3",
+       "env": [
+        {
+         "name": "LOG_LEVEL",
+         "valueFrom": {
+          "configMapKeyRef": {
+           "name": "api-config",
+           "key": "LOG_LEVEL"
+          }
+         }
+        }
+       ],
+       "ports": [
+        {
+         "name": "http",
+         "containerPort": 8080,
+         "protocol": "TCP"
+        }
+       ],
+       "readinessProbe": {
+        "httpGet": {
+         "path": "/healthz",
+         "port": "http"
+        },
+        "periodSeconds": 10
+       },
+       "resources": {
+        "requests": {
+         "cpu": "1",
+         "memory": "1Gi"
+        },
+        "limits": {
+         "memory": "2Gi"
+        }
+       }
+      }
+     ],
+     "nodeName": "aks-user-27182818-vmss000000"
+    },
+    "status": {
+     "phase": "Running",
+     "conditions": [
+      {
+       "type": "PodScheduled",
+       "status": "True"
+      },
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ],
+     "containerStatuses": [
+      {
+       "name": "reports",
+       "image": "contosoacr.azurecr.io/reports:v0.9.3",
+       "ready": true,
+       "restartCount": 0,
+       "state": {
+        "running": {
+         "startedAt": "2026-09-29T08:02:30Z"
+        }
+       }
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "reports-api-6f7d8c9b4-p4w7n",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T08:02:10Z",
+     "labels": {
+      "app": "reports-api",
+      "pod-template-hash": "6f7d8c9b4"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "ReplicaSet",
+       "name": "reports-api-6f7d8c9b4",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "serviceAccountName": "default",
+     "dnsPolicy": "ClusterFirst",
+     "containers": [
+      {
+       "name": "reports",
+       "image": "contosoacr.azurecr.io/reports:v0.9.3",
+       "env": [
+        {
+         "name": "LOG_LEVEL",
+         "valueFrom": {
+          "configMapKeyRef": {
+           "name": "api-config",
+           "key": "LOG_LEVEL"
+          }
+         }
+        }
+       ],
+       "ports": [
+        {
+         "name": "http",
+         "containerPort": 8080,
+         "protocol": "TCP"
+        }
+       ],
+       "readinessProbe": {
+        "httpGet": {
+         "path": "/healthz",
+         "port": "http"
+        },
+        "periodSeconds": 10
+       },
+       "resources": {
+        "requests": {
+         "cpu": "1",
+         "memory": "1Gi"
+        },
+        "limits": {
+         "memory": "2Gi"
+        }
+       }
+      }
+     ],
+     "nodeName": "aks-user-27182818-vmss000002"
+    },
+    "status": {
+     "phase": "Running",
+     "conditions": [
+      {
+       "type": "PodScheduled",
+       "status": "True"
+      },
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ],
+     "containerStatuses": [
+      {
+       "name": "reports",
+       "image": "contosoacr.azurecr.io/reports:v0.9.3",
+       "ready": true,
+       "restartCount": 0,
+       "state": {
+        "running": {
+         "startedAt": "2026-09-29T08:02:30Z"
+        }
+       }
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "reports-api-6f7d8c9b4-t6x9q",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T08:02:10Z",
+     "labels": {
+      "app": "reports-api",
+      "pod-template-hash": "6f7d8c9b4"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "ReplicaSet",
+       "name": "reports-api-6f7d8c9b4",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "serviceAccountName": "default",
+     "dnsPolicy": "ClusterFirst",
+     "containers": [
+      {
+       "name": "reports",
+       "image": "contosoacr.azurecr.io/reports:v0.9.3",
+       "env": [
+        {
+         "name": "LOG_LEVEL",
+         "valueFrom": {
+          "configMapKeyRef": {
+           "name": "api-config",
+           "key": "LOG_LEVEL"
+          }
+         }
+        }
+       ],
+       "ports": [
+        {
+         "name": "http",
+         "containerPort": 8080,
+         "protocol": "TCP"
+        }
+       ],
+       "readinessProbe": {
+        "httpGet": {
+         "path": "/healthz",
+         "port": "http"
+        },
+        "periodSeconds": 10
+       },
+       "resources": {
+        "requests": {
+         "cpu": "1",
+         "memory": "1Gi"
+        },
+        "limits": {
+         "memory": "2Gi"
+        }
+       }
+      }
+     ],
+     "nodeName": "aks-user-27182818-vmss000000"
+    },
+    "status": {
+     "phase": "Running",
+     "conditions": [
+      {
+       "type": "PodScheduled",
+       "status": "True"
+      },
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ],
+     "containerStatuses": [
+      {
+       "name": "reports",
+       "image": "contosoacr.azurecr.io/reports:v0.9.3",
+       "ready": true,
+       "restartCount": 0,
+       "state": {
+        "running": {
+         "startedAt": "2026-09-29T08:02:30Z"
+        }
+       }
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "reports-api-6f7d8c9b4-v3c5z",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T11:41:16Z",
+     "labels": {
+      "app": "reports-api",
+      "pod-template-hash": "6f7d8c9b4"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "ReplicaSet",
+       "name": "reports-api-6f7d8c9b4",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "serviceAccountName": "default",
+     "dnsPolicy": "ClusterFirst",
+     "containers": [
+      {
+       "name": "reports",
+       "image": "contosoacr.azurecr.io/reports:v0.9.3",
+       "env": [
+        {
+         "name": "LOG_LEVEL",
+         "valueFrom": {
+          "configMapKeyRef": {
+           "name": "api-config",
+           "key": "LOG_LEVEL"
+          }
+         }
+        }
+       ],
+       "ports": [
+        {
+         "name": "http",
+         "containerPort": 8080,
+         "protocol": "TCP"
+        }
+       ],
+       "readinessProbe": {
+        "httpGet": {
+         "path": "/healthz",
+         "port": "http"
+        },
+        "periodSeconds": 10
+       },
+       "resources": {
+        "requests": {
+         "cpu": "1",
+         "memory": "1Gi"
+        },
+        "limits": {
+         "memory": "2Gi"
+        }
+       }
+      }
+     ]
+    },
+    "status": {
+     "phase": "Pending",
+     "conditions": [
+      {
+       "type": "PodScheduled",
+       "status": "False",
+       "reason": "Unschedulable",
+       "message": "0/6 nodes are available: 1 node(s) were unschedulable, 2 Insufficient cpu, 3 node(s) had untolerated taint {CriticalAddonsOnly: true}. preemption: 0/6 nodes are available: 2 No preemption victims found for incoming pod, 4 Preemption is not helpful for scheduling."
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "reports-api-6f7d8c9b4-z8j2r",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T11:41:16Z",
+     "labels": {
+      "app": "reports-api",
+      "pod-template-hash": "6f7d8c9b4"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "ReplicaSet",
+       "name": "reports-api-6f7d8c9b4",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "serviceAccountName": "default",
+     "dnsPolicy": "ClusterFirst",
+     "containers": [
+      {
+       "name": "reports",
+       "image": "contosoacr.azurecr.io/reports:v0.9.3",
+       "env": [
+        {
+         "name": "LOG_LEVEL",
+         "valueFrom": {
+          "configMapKeyRef": {
+           "name": "api-config",
+           "key": "LOG_LEVEL"
+          }
+         }
+        }
+       ],
+       "ports": [
+        {
+         "name": "http",
+         "containerPort": 8080,
+         "protocol": "TCP"
+        }
+       ],
+       "readinessProbe": {
+        "httpGet": {
+         "path": "/healthz",
+         "port": "http"
+        },
+        "periodSeconds": 10
+       },
+       "resources": {
+        "requests": {
+         "cpu": "1",
+         "memory": "1Gi"
+        },
+        "limits": {
+         "memory": "2Gi"
+        }
+       }
+      }
+     ]
+    },
+    "status": {
+     "phase": "Pending",
+     "conditions": [
+      {
+       "type": "PodScheduled",
+       "status": "False",
+       "reason": "Unschedulable",
+       "message": "0/6 nodes are available: 1 node(s) were unschedulable, 2 Insufficient cpu, 3 node(s) had untolerated taint {CriticalAddonsOnly: true}. preemption: 0/6 nodes are available: 2 No preemption victims found for incoming pod, 4 Preemption is not helpful for scheduling."
+      }
+     ]
+    }
+   },
+   {
+    "kind": "HorizontalPodAutoscaler",
+    "apiVersion": "autoscaling/v2",
+    "metadata": {
+     "name": "reports-api",
+     "namespace": "web",
+     "creationTimestamp": "2026-03-02T10:00:00Z"
+    },
+    "spec": {
+     "scaleTargetRef": {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "name": "reports-api"
+     },
+     "minReplicas": 2,
+     "maxReplicas": 5,
+     "metrics": [
+      {
+       "type": "Resource",
+       "resource": {
+        "name": "cpu",
+        "target": {
+         "type": "Utilization",
+         "averageUtilization": 70
+        }
+       }
+      }
+     ]
+    },
+    "status": {
+     "currentReplicas": 5,
+     "desiredReplicas": 5,
+     "lastScaleTime": "2026-09-29T11:41:15Z",
+     "currentMetrics": [
+      {
+       "type": "Resource",
+       "resource": {
+        "name": "cpu",
+        "current": {
+         "averageUtilization": 96,
+         "averageValue": "960m"
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "AbleToScale",
+       "status": "True",
+       "reason": "ReadyForNewScale",
+       "message": "recommended size matches current size"
+      },
+      {
+       "type": "ScalingActive",
+       "status": "True",
+       "reason": "ValidMetricFound",
+       "message": "the HPA was able to successfully calculate a replica count from cpu resource utilization (percentage of request)"
+      },
+      {
+       "type": "ScalingLimited",
+       "status": "True",
+       "reason": "TooManyReplicas",
+       "message": "the desired replica count is more than the maximum replica count"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "reports-api.rescale",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T11:41:15Z"
+    },
+    "type": "Normal",
+    "reason": "SuccessfulRescale",
+    "count": 1,
+    "message": "New size: 5; reason: cpu resource utilization (percentage of request) above target",
+    "firstTimestamp": "2026-09-29T11:41:15Z",
+    "lastTimestamp": "2026-09-29T11:41:15Z",
+    "involvedObject": {
+     "kind": "HorizontalPodAutoscaler",
+     "name": "reports-api",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "horizontal-pod-autoscaler"
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "reports-api.scaled",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T11:41:15Z"
+    },
+    "type": "Normal",
+    "reason": "ScalingReplicaSet",
+    "count": 1,
+    "message": "Scaled up replica set reports-api-6f7d8c9b4 to 5 from 3",
+    "firstTimestamp": "2026-09-29T11:41:15Z",
+    "lastTimestamp": "2026-09-29T11:41:15Z",
+    "involvedObject": {
+     "kind": "Deployment",
+     "name": "reports-api",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "deployment-controller"
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "reports-api-6f7d8c9b4-v3c5z.failedscheduling",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T11:41:16Z"
+    },
+    "type": "Warning",
+    "reason": "FailedScheduling",
+    "count": 19,
+    "message": "0/6 nodes are available: 1 node(s) were unschedulable, 2 Insufficient cpu, 3 node(s) had untolerated taint {CriticalAddonsOnly: true}. preemption: 0/6 nodes are available: 2 No preemption victims found for incoming pod, 4 Preemption is not helpful for scheduling.",
+    "firstTimestamp": "2026-09-29T11:41:16Z",
+    "lastTimestamp": "2026-09-29T11:58:40Z",
+    "involvedObject": {
+     "kind": "Pod",
+     "name": "reports-api-6f7d8c9b4-v3c5z",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "default-scheduler"
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "reports-api-6f7d8c9b4-v3c5z.notriggerscaleup",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T11:41:26Z"
+    },
+    "type": "Normal",
+    "reason": "NotTriggerScaleUp",
+    "count": 96,
+    "message": "pod didn't trigger scale-up: 1 max node group size reached",
+    "firstTimestamp": "2026-09-29T11:41:26Z",
+    "lastTimestamp": "2026-09-29T11:58:31Z",
+    "involvedObject": {
+     "kind": "Pod",
+     "name": "reports-api-6f7d8c9b4-v3c5z",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "cluster-autoscaler"
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "reports-api-6f7d8c9b4-z8j2r.failedscheduling",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T11:41:16Z"
+    },
+    "type": "Warning",
+    "reason": "FailedScheduling",
+    "count": 19,
+    "message": "0/6 nodes are available: 1 node(s) were unschedulable, 2 Insufficient cpu, 3 node(s) had untolerated taint {CriticalAddonsOnly: true}. preemption: 0/6 nodes are available: 2 No preemption victims found for incoming pod, 4 Preemption is not helpful for scheduling.",
+    "firstTimestamp": "2026-09-29T11:41:16Z",
+    "lastTimestamp": "2026-09-29T11:58:40Z",
+    "involvedObject": {
+     "kind": "Pod",
+     "name": "reports-api-6f7d8c9b4-z8j2r",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "default-scheduler"
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "reports-api-6f7d8c9b4-z8j2r.notriggerscaleup",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T11:41:26Z"
+    },
+    "type": "Normal",
+    "reason": "NotTriggerScaleUp",
+    "count": 96,
+    "message": "pod didn't trigger scale-up: 1 max node group size reached",
+    "firstTimestamp": "2026-09-29T11:41:26Z",
+    "lastTimestamp": "2026-09-29T11:58:31Z",
+    "involvedObject": {
+     "kind": "Pod",
+     "name": "reports-api-6f7d8c9b4-z8j2r",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "cluster-autoscaler"
+    }
+   },
+   {
+    "kind": "StatefulSet",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "orders-db",
+     "namespace": "web",
+     "creationTimestamp": "2025-06-02T11:00:00Z",
+     "labels": {
+      "app": "orders-db"
+     }
+    },
+    "spec": {
+     "replicas": 1,
+     "serviceName": "orders-db",
+     "podManagementPolicy": "OrderedReady",
+     "selector": {
+      "matchLabels": {
+       "app": "orders-db"
+      }
+     },
+     "updateStrategy": {
+      "type": "RollingUpdate",
+      "rollingUpdate": {
+       "partition": 0
+      }
+     },
+     "template": {
+      "metadata": {
+       "labels": {
+        "app": "orders-db"
+       }
+      },
+      "spec": {
+       "serviceAccountName": "default",
+       "dnsPolicy": "ClusterFirst",
+       "containers": [
+        {
+         "name": "postgres",
+         "image": "postgres:16.4",
+         "ports": [
+          {
+           "name": "postgres",
+           "containerPort": 5432,
+           "protocol": "TCP"
+          }
+         ],
+         "volumeMounts": [
+          {
+           "name": "data",
+           "mountPath": "/var/lib/postgresql/data"
+          }
+         ],
+         "resources": {
+          "requests": {
+           "cpu": "500m",
+           "memory": "1Gi"
+          },
+          "limits": {
+           "memory": "2Gi"
+          }
+         }
+        }
+       ],
+       "volumes": [
+        {
+         "name": "data",
+         "persistentVolumeClaim": {
+          "claimName": "data-orders-db-0"
+         }
+        }
+       ]
+      }
+     },
+     "volumeClaimTemplates": [
+      {
+       "metadata": {
+        "name": "data"
+       },
+       "spec": {
+        "accessModes": [
+         "ReadWriteOnce"
+        ],
+        "storageClassName": "managed-csi-premium",
+        "resources": {
+         "requests": {
+          "storage": "64Gi"
+         }
+        }
+       }
+      }
+     ]
+    },
+    "status": {
+     "replicas": 1,
+     "readyReplicas": 0,
+     "currentReplicas": 1,
+     "updatedReplicas": 1,
+     "availableReplicas": 0,
+     "currentRevision": "orders-db-6b8d9c7f5",
+     "updateRevision": "orders-db-6b8d9c7f5"
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "orders-db.create",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T11:22:00Z"
+    },
+    "type": "Normal",
+    "reason": "SuccessfulCreate",
+    "count": 1,
+    "message": "create Pod orders-db-0 in StatefulSet orders-db successful",
+    "firstTimestamp": "2026-09-29T11:22:00Z",
+    "lastTimestamp": "2026-09-29T11:22:00Z",
+    "involvedObject": {
+     "kind": "StatefulSet",
+     "name": "orders-db",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "statefulset-controller"
+    }
+   },
+   {
+    "kind": "PodDisruptionBudget",
+    "apiVersion": "policy/v1",
+    "metadata": {
+     "name": "orders-db",
+     "namespace": "web",
+     "creationTimestamp": "2025-06-02T11:00:00Z"
+    },
+    "spec": {
+     "minAvailable": 1,
+     "selector": {
+      "matchLabels": {
+       "app": "orders-db"
+      }
+     }
+    },
+    "status": {
+     "disruptionsAllowed": 0,
+     "currentHealthy": 0,
+     "desiredHealthy": 1,
+     "expectedPods": 1,
+     "conditions": [
+      {
+       "type": "DisruptionAllowed",
+       "status": "False",
+       "reason": "InsufficientPods"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "CronJob",
+    "apiVersion": "batch/v1",
+    "metadata": {
+     "name": "orders-export",
+     "namespace": "web",
+     "creationTimestamp": "2026-06-01T09:00:00Z",
+     "labels": {
+      "app": "orders-export"
+     }
+    },
+    "spec": {
+     "schedule": "0 1 * * *",
+     "timeZone": "Etc/UTC",
+     "concurrencyPolicy": "Forbid",
+     "suspend": false,
+     "successfulJobsHistoryLimit": 3,
+     "failedJobsHistoryLimit": 1,
+     "jobTemplate": {
+      "spec": {
+       "backoffLimit": 0,
+       "template": {
+        "spec": {
+         "restartPolicy": "Never",
+         "containers": [
+          {
+           "name": "export",
+           "image": "contosoacr.azurecr.io/api:v1.4.2",
+           "command": [
+            "dotnet",
+            "Api.dll",
+            "export-orders",
+            "--since",
+            "1d"
+           ]
+          }
+         ]
+        }
+       }
+      }
+     }
+    },
+    "status": {
+     "lastScheduleTime": "2026-09-29T01:00:00Z",
+     "lastSuccessfulTime": "2026-09-28T01:06:12Z"
+    }
+   },
+   {
+    "kind": "Job",
+    "apiVersion": "batch/v1",
+    "metadata": {
+     "name": "orders-export-29842620",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-28T01:00:00Z",
+     "labels": {
+      "app": "orders-export"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "batch/v1",
+       "kind": "CronJob",
+       "name": "orders-export",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "completions": 1,
+     "backoffLimit": 0,
+     "template": {
+      "spec": {
+       "restartPolicy": "Never",
+       "containers": [
+        {
+         "name": "export",
+         "image": "contosoacr.azurecr.io/api:v1.4.1",
+         "command": [
+          "dotnet",
+          "Api.dll",
+          "export-orders",
+          "--since",
+          "1d"
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "startTime": "2026-09-28T01:00:00Z",
+     "conditions": [
+      {
+       "type": "Complete",
+       "status": "True",
+       "lastTransitionTime": "2026-09-28T01:06:12Z"
+      }
+     ],
+     "completionTime": "2026-09-28T01:06:12Z",
+     "succeeded": 1
+    }
+   },
+   {
+    "kind": "Job",
+    "apiVersion": "batch/v1",
+    "metadata": {
+     "name": "orders-export-29844060",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T01:00:00Z",
+     "labels": {
+      "app": "orders-export"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "batch/v1",
+       "kind": "CronJob",
+       "name": "orders-export",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "completions": 1,
+     "backoffLimit": 0,
+     "template": {
+      "spec": {
+       "restartPolicy": "Never",
+       "containers": [
+        {
+         "name": "export",
+         "image": "contosoacr.azurecr.io/api:v1.4.2",
+         "command": [
+          "dotnet",
+          "Api.dll",
+          "export-orders",
+          "--since",
+          "1d"
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "startTime": "2026-09-29T01:00:00Z",
+     "conditions": [
+      {
+       "type": "Failed",
+       "status": "True",
+       "reason": "BackoffLimitExceeded",
+       "message": "Job has reached the specified backoff limit",
+       "lastTransitionTime": "2026-09-29T01:05:09Z"
+      }
+     ],
+     "failed": 1
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "orders-export-29844060-k2v9w",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T01:00:02Z",
+     "labels": {
+      "app": "orders-export",
+      "batch.kubernetes.io/job-name": "orders-export-29844060"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "batch/v1",
+       "kind": "Job",
+       "name": "orders-export-29844060",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-user-27182818-vmss000000",
+     "restartPolicy": "Never",
+     "serviceAccountName": "default",
+     "containers": [
+      {
+       "name": "export",
+       "image": "contosoacr.azurecr.io/api:v1.4.2",
+       "command": [
+        "dotnet",
+        "Api.dll",
+        "export-orders",
+        "--since",
+        "1d"
+       ]
+      }
+     ]
+    },
+    "status": {
+     "phase": "Failed",
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "False",
+       "reason": "PodFailed"
+      }
+     ],
+     "containerStatuses": [
+      {
+       "name": "export",
+       "image": "contosoacr.azurecr.io/api:v1.4.2",
+       "imageID": "contosoacr.azurecr.io/api@sha256:7a72fa7948c3b5e299c40bdb1ebeb125e313c32d4262e130a8206115054663d3",
+       "ready": false,
+       "restartCount": 0,
+       "state": {
+        "terminated": {
+         "reason": "Error",
+         "exitCode": 134,
+         "startedAt": "2026-09-29T01:00:04Z",
+         "finishedAt": "2026-09-29T01:05:08Z"
+        }
+       }
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "orders-export.created",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T01:00:00Z"
+    },
+    "type": "Normal",
+    "reason": "SuccessfulCreate",
+    "count": 1,
+    "message": "Created job orders-export-29844060",
+    "firstTimestamp": "2026-09-29T01:00:00Z",
+    "lastTimestamp": "2026-09-29T01:00:00Z",
+    "involvedObject": {
+     "kind": "CronJob",
+     "name": "orders-export",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "cronjob-controller"
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "orders-export.saw",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T01:05:10Z"
+    },
+    "type": "Normal",
+    "reason": "SawCompletedJob",
+    "count": 1,
+    "message": "Saw completed job: orders-export-29844060, status: Failed",
+    "firstTimestamp": "2026-09-29T01:05:10Z",
+    "lastTimestamp": "2026-09-29T01:05:10Z",
+    "involvedObject": {
+     "kind": "CronJob",
+     "name": "orders-export",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "cronjob-controller"
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "orders-export-29844060.create",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T01:00:02Z"
+    },
+    "type": "Normal",
+    "reason": "SuccessfulCreate",
+    "count": 1,
+    "message": "Created pod: orders-export-29844060-k2v9w",
+    "firstTimestamp": "2026-09-29T01:00:02Z",
+    "lastTimestamp": "2026-09-29T01:00:02Z",
+    "involvedObject": {
+     "kind": "Job",
+     "name": "orders-export-29844060",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "job-controller"
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "orders-export-29844060.backoff",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T01:05:09Z"
+    },
+    "type": "Warning",
+    "reason": "BackoffLimitExceeded",
+    "count": 1,
+    "message": "Job has reached the specified backoff limit",
+    "firstTimestamp": "2026-09-29T01:05:09Z",
+    "lastTimestamp": "2026-09-29T01:05:09Z",
+    "involvedObject": {
+     "kind": "Job",
+     "name": "orders-export-29844060",
+     "namespace": "web"
+    },
+    "source": {
+     "component": "job-controller"
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "azure-cns-7xq2m",
+     "namespace": "kube-system",
+     "creationTimestamp": "2026-09-17T08:01:00Z",
+     "labels": {
+      "k8s-app": "azure-cns"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "DaemonSet",
+       "name": "azure-cns",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-user-27182818-vmss000001",
+     "containers": [
+      {
+       "name": "cns-container"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "False",
+       "lastTransitionTime": "2026-09-29T11:24:30Z"
+      }
+     ],
+     "containerStatuses": [
+      {
+       "name": "cns-container",
+       "ready": false,
+       "restartCount": 0,
+       "state": {
+        "running": {
+         "startedAt": "2026-09-17T08:01:20Z"
+        }
+       }
+      }
+     ]
+    }
    }
   ]
  },
@@ -1827,7 +3908,8 @@
   "aks-contoso-prod/web/worker-5c4d3e9f1-q8zt1/worker/previous": "2026-09-29T11:47:10.100Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:11.137Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:12.174Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:13.211Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:12.512Z INFO  reading database password from /mnt/secrets/worker-db-password\n2026-09-29T11:47:12.874Z INFO  connecting to orders-db.contoso.example:5432 as worker\n2026-09-29T11:47:13.905Z ERROR connect failed: FATAL: password authentication failed for user \"worker\" (SQLSTATE 28P01)\n2026-09-29T11:47:13.906Z ERROR the password in /mnt/secrets/worker-db-password is the one Key Vault held before it expired on 2026-09-20\n2026-09-29T11:47:14.010Z FATAL cannot start without the orders database; exiting with status 1\n",
   "aks-contoso-prod/web/worker-5c4d3e9f1-q8zt1/worker": "2026-09-29T11:47:10.100Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:11.137Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:12.174Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:13.211Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:12.512Z INFO  reading database password from /mnt/secrets/worker-db-password\n2026-09-29T11:47:12.874Z INFO  connecting to orders-db.contoso.example:5432 as worker\n",
   "aks-contoso-prod/web/api-7d9f8c6b5-x2k4q/api": "2026-09-29T11:50:00.000Z INFO  GET /orders/1050 200 13ms\n2026-09-29T11:51:00.000Z INFO  GET /orders/1051 200 14ms\n2026-09-29T11:52:00.000Z INFO  GET /orders/1052 200 15ms\n2026-09-29T11:53:00.000Z INFO  GET /orders/1053 200 16ms\n2026-09-29T11:54:00.000Z INFO  GET /orders/1054 200 17ms\n2026-09-29T11:55:00.000Z INFO  GET /orders/1055 200 18ms\n2026-09-29T11:56:00.000Z INFO  GET /orders/1056 200 12ms\n2026-09-29T11:57:00.000Z INFO  GET /orders/1057 200 13ms\n2026-09-29T11:58:00.000Z INFO  GET /orders/1058 200 14ms\n2026-09-29T11:59:00.000Z INFO  GET /orders/1059 200 15ms\n",
-  "aks-contoso-prod/web/etl-nightly-load-orders-q8x1k2vz/base": "{\"timestamp\":\"2026-09-29T00:41:07.120511Z\",\"level\":\"info\",\"event\":\"Task instance is in running state\",\"logger\":\"airflow.sdk.execution_time.task_runner\"}\n{\"timestamp\":\"2026-09-29T00:41:07.244103Z\",\"level\":\"info\",\"event\":\"Loading orders for 2026-09-28\",\"rows\":48213,\"logger\":\"task\"}\n{\"timestamp\":\"2026-09-29T00:43:54.991870Z\",\"level\":\"warning\",\"event\":\"Order without a customer\",\"order_id\":88123,\"logger\":\"task\"}\n{\"timestamp\":\"2026-09-29T00:43:55.004213Z\",\"level\":\"error\",\"event\":\"Task failed with exception\",\"logger\":\"task\"}\nTraceback (most recent call last):\n  File \"/home/airflow/.local/lib/python3.12/site-packages/airflow/sdk/execution_time/task_runner.py\", line 875, in run\n  File \"/opt/airflow/dags/etl_nightly.py\", line 42, in load_orders\n    raise ValueError(f\"order {order_id} has no customer_id\")\nValueError: order 88123 has no customer_id\n"
+  "aks-contoso-prod/web/etl-nightly-load-orders-q8x1k2vz/base": "{\"timestamp\":\"2026-09-29T00:41:07.120511Z\",\"level\":\"info\",\"event\":\"Task instance is in running state\",\"logger\":\"airflow.sdk.execution_time.task_runner\"}\n{\"timestamp\":\"2026-09-29T00:41:07.244103Z\",\"level\":\"info\",\"event\":\"Loading orders for 2026-09-28\",\"rows\":48213,\"logger\":\"task\"}\n{\"timestamp\":\"2026-09-29T00:43:54.991870Z\",\"level\":\"warning\",\"event\":\"Order without a customer\",\"order_id\":88123,\"logger\":\"task\"}\n{\"timestamp\":\"2026-09-29T00:43:55.004213Z\",\"level\":\"error\",\"event\":\"Task failed with exception\",\"logger\":\"task\"}\nTraceback (most recent call last):\n  File \"/home/airflow/.local/lib/python3.12/site-packages/airflow/sdk/execution_time/task_runner.py\", line 875, in run\n  File \"/opt/airflow/dags/etl_nightly.py\", line 42, in load_orders\n    raise ValueError(f\"order {order_id} has no customer_id\")\nValueError: order 88123 has no customer_id\n",
+  "aks-contoso-prod/web/orders-export-29844060-k2v9w/export": "2026-09-29T01:00:05.112Z info: Contoso.Api.Export[0] Exporting orders since 2026-09-28T01:00:00Z for 212 customers\n2026-09-29T01:00:41.870Z info: Contoso.Api.Export[0] Customer 4402: 1,204 orders written\n2026-09-29T01:00:58.311Z info: Contoso.Api.Export[0] Customer 4417: 12,380 orders, paging\n2026-09-29T01:05:08.004Z fail: Contoso.Api.Export[0] Export failed at customer 4417\nUnhandled exception. System.TimeoutException: The orders request for customer 4417 timed out after 00:04:00\n   at Contoso.Api.Orders.OrderClient.GetOrdersAsync(Int32 customerId, CancellationToken ct) in /app/src/Orders/OrderClient.cs:line 19\n   at Program.<Main>$(String[] args)\n"
  },
  "server": {
   "aks-contoso-prod": {

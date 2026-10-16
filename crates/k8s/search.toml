@@ -384,3 +384,105 @@ expect = "k8s event list"
 [[query]]
 text = "events involving a certificate object"
 expect = "k8s event list"
+
+# ---------- phase 4: workloads ----------
+
+[[query]]
+text = "rollout history of a deployment"
+expect = "k8s deployment get"
+
+[[query]]
+text = "which revision can I roll back the api deployment to"
+expect = "k8s deployment get"
+
+[[query]]
+text = "what env vars and secrets does the deployment's pod template use"
+expect = "k8s deployment get"
+
+[[query]]
+text = "why is the deployment not available"
+expect = "k8s deployment get"
+
+[[query]]
+text = "list statefulsets and their ready replicas"
+expect = "k8s statefulset list"
+
+[[query]]
+text = "which statefulsets have volume claim templates"
+expect = "k8s statefulset list"
+
+[[query]]
+text = "which pvc does each pod of the orders-db statefulset get"
+expect = "k8s statefulset get"
+
+[[query]]
+text = "statefulset stuck with an unready replica, current and update revision"
+expect = "k8s statefulset get"
+
+[[query]]
+text = "list daemonsets in kube-system"
+expect = "k8s daemonset list"
+
+[[query]]
+text = "is the CNI daemonset running on every node"
+expect = "k8s daemonset list"
+
+[[query]]
+text = "which node is the unavailable daemonset pod on"
+expect = "k8s daemonset get"
+
+[[query]]
+text = "describe the azure-cns daemonset and its update strategy"
+expect = "k8s daemonset get"
+
+[[query]]
+text = "list kubernetes jobs and whether they succeeded"
+expect = "k8s job list"
+
+[[query]]
+text = "which batch jobs failed in the namespace"
+expect = "k8s job list"
+
+[[query]]
+text = "why did the kubernetes job fail, backoff limit exceeded"
+expect = "k8s job get"
+
+[[query]]
+text = "describe the failed job orders-export-29844060"
+expect = "k8s job get"
+
+[[query]]
+text = "list cronjobs and their schedules"
+expect = "k8s cronjob list"
+
+[[query]]
+text = "when did the scheduled job last succeed"
+expect = "k8s cronjob list"
+
+[[query]]
+text = "why is the cronjob not running"
+expect = "k8s cronjob get"
+
+[[query]]
+text = "did last night's cronjob run fail"
+expect = "k8s cronjob get"
+
+[[query]]
+text = "hpa at max replicas"
+expect = "k8s hpa list"
+
+[[query]]
+text = "is the horizontal pod autoscaler limited, cpu utilization vs target"
+expect = "k8s hpa list"
+
+[[query]]
+text = "why won't the autoscaler add more pods"
+expect = "k8s hpa list"
+
+[[query]]
+text = "pod disruption budget blocking drain"
+expect = "k8s pdb list"
+
+[[query]]
+text = "node pool upgrade stuck evicting pods, which pdb allows 0 disruptions"
+expect = "k8s pdb list"

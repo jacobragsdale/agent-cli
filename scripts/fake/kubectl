@@ -88,6 +88,8 @@ STANDARD = [
     ("daemonsets", "ds", "apps/v1", True, "DaemonSet"),
     ("jobs", "", "batch/v1", True, "Job"),
     ("cronjobs", "cj", "batch/v1", True, "CronJob"),
+    ("horizontalpodautoscalers", "hpa", "autoscaling/v2", True, "HorizontalPodAutoscaler"),
+    ("poddisruptionbudgets", "pdb", "policy/v1", True, "PodDisruptionBudget"),
     ("ingresses", "ing", "networking.k8s.io/v1", True, "Ingress"),
     ("ingressclasses", "", "networking.k8s.io/v1", False, "IngressClass"),
     ("endpointslices", "", "discovery.k8s.io/v1", True, "EndpointSlice"),

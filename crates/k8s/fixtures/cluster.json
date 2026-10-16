@@ -703,7 +703,10 @@
     "metadata": {
      "name": "orders-api",
      "namespace": "dev",
-     "creationTimestamp": "2026-08-01T00:00:00Z"
+     "creationTimestamp": "2026-08-01T00:00:00Z",
+     "annotations": {
+      "deployment.kubernetes.io/revision": "3"
+     }
     },
     "spec": {
      "replicas": 2,
@@ -748,9 +751,20 @@
             "name": "orders-env"
            }
           }
-         ]
+         ],
+         "resources": {
+          "requests": {
+           "cpu": "250m"
+          }
+         }
         }
        ]
+      }
+     },
+     "strategy": {
+      "type": "RollingUpdate",
+      "rollingUpdate": {
+       "maxSurge": 1
       }
      }
     },
@@ -758,6 +772,11 @@
      "replicas": 2,
      "readyReplicas": 2,
      "conditions": [
+      {
+       "type": "Available",
+       "status": "True",
+       "reason": "MinimumReplicasAvailable"
+      },
       {
        "type": "Progressing",
        "status": "True",
@@ -791,6 +810,12 @@
      "replicas": 1,
      "readyReplicas": 0,
      "conditions": [
+      {
+       "type": "Available",
+       "status": "False",
+       "reason": "MinimumReplicasUnavailable",
+       "message": "Deployment does not have minimum availability."
+      },
       {
        "type": "Progressing",
        "status": "False",
@@ -1823,7 +1848,26 @@
      "namespace": "kube-system",
      "creationTimestamp": "2026-09-01T00:00:00Z"
     },
-    "spec": {}
+    "spec": {
+     "updateStrategy": {
+      "type": "RollingUpdate"
+     },
+     "template": {
+      "spec": {
+       "nodeSelector": {
+        "kubernetes.io/os": "linux"
+       }
+      }
+     }
+    },
+    "status": {
+     "desiredNumberScheduled": 2,
+     "currentNumberScheduled": 2,
+     "numberReady": 2,
+     "updatedNumberScheduled": 2,
+     "numberAvailable": 2,
+     "numberMisscheduled": 0
+    }
    },
    {
     "kind": "DaemonSet",
@@ -1833,7 +1877,27 @@
      "namespace": "kube-system",
      "creationTimestamp": "2026-09-01T00:00:00Z"
     },
-    "spec": {}
+    "spec": {
+     "updateStrategy": {
+      "type": "RollingUpdate"
+     },
+     "template": {
+      "spec": {
+       "nodeSelector": {
+        "kubernetes.io/os": "linux"
+       }
+      }
+     }
+    },
+    "status": {
+     "desiredNumberScheduled": 2,
+     "currentNumberScheduled": 2,
+     "numberReady": 1,
+     "updatedNumberScheduled": 2,
+     "numberAvailable": 1,
+     "numberMisscheduled": 0,
+     "numberUnavailable": 1
+    }
    },
    {
     "kind": "StorageClass",
@@ -2237,6 +2301,644 @@
     },
     "source": {
      "component": "node-controller"
+    }
+   },
+   {
+    "kind": "ReplicaSet",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "orders-api-6c8e4a",
+     "namespace": "dev",
+     "creationTimestamp": "2026-08-20T10:00:00Z",
+     "annotations": {
+      "deployment.kubernetes.io/revision": "2"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "Deployment",
+       "name": "orders-api",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "replicas": 0,
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "api",
+         "image": "contosoacr.azurecr.io/team/orders-api:1.2.2"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "replicas": 0,
+     "readyReplicas": 0
+    }
+   },
+   {
+    "kind": "ReplicaSet",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "orders-api-7d9f5b",
+     "namespace": "dev",
+     "creationTimestamp": "2026-09-10T07:58:00Z",
+     "annotations": {
+      "deployment.kubernetes.io/revision": "3",
+      "kubernetes.io/change-cause": "release 1.2.3"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "Deployment",
+       "name": "orders-api",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "replicas": 2,
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "api",
+         "image": "contosoacr.azurecr.io/team/orders-api:1.2.3"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "replicas": 2,
+     "readyReplicas": 2
+    }
+   },
+   {
+    "kind": "StatefulSet",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "redis",
+     "namespace": "dev",
+     "creationTimestamp": "2026-08-01T00:00:00Z"
+    },
+    "spec": {
+     "replicas": 1,
+     "serviceName": "redis",
+     "selector": {
+      "matchLabels": {
+       "app": "redis"
+      }
+     },
+     "updateStrategy": {
+      "type": "RollingUpdate",
+      "rollingUpdate": {
+       "partition": 0
+      }
+     },
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "api",
+         "image": "redis:7"
+        }
+       ]
+      }
+     },
+     "volumeClaimTemplates": [
+      {
+       "metadata": {
+        "name": "data"
+       },
+       "spec": {
+        "accessModes": [
+         "ReadWriteOnce"
+        ],
+        "storageClassName": "managed-csi",
+        "resources": {
+         "requests": {
+          "storage": "8Gi"
+         }
+        }
+       }
+      }
+     ]
+    },
+    "status": {
+     "replicas": 1,
+     "readyReplicas": 1,
+     "updatedReplicas": 1,
+     "currentRevision": "redis-5f6d7c8b9",
+     "updateRevision": "redis-5f6d7c8b9"
+    }
+   },
+   {
+    "kind": "HorizontalPodAutoscaler",
+    "apiVersion": "autoscaling/v2",
+    "metadata": {
+     "name": "orders-api",
+     "namespace": "dev",
+     "creationTimestamp": "2026-08-01T00:00:00Z"
+    },
+    "spec": {
+     "scaleTargetRef": {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "name": "orders-api"
+     },
+     "minReplicas": 2,
+     "maxReplicas": 4,
+     "metrics": [
+      {
+       "type": "Resource",
+       "resource": {
+        "name": "cpu",
+        "target": {
+         "type": "Utilization",
+         "averageUtilization": 70
+        }
+       }
+      },
+      {
+       "type": "Resource",
+       "resource": {
+        "name": "memory",
+        "target": {
+         "type": "AverageValue",
+         "averageValue": "512Mi"
+        }
+       }
+      }
+     ]
+    },
+    "status": {
+     "currentReplicas": 4,
+     "desiredReplicas": 4,
+     "currentMetrics": [
+      {
+       "type": "Resource",
+       "resource": {
+        "name": "memory",
+        "current": {
+         "averageValue": "300Mi"
+        }
+       }
+      },
+      {
+       "type": "Resource",
+       "resource": {
+        "name": "cpu",
+        "current": {
+         "averageUtilization": 88,
+         "averageValue": "220m"
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "AbleToScale",
+       "status": "True",
+       "reason": "ReadyForNewScale"
+      },
+      {
+       "type": "ScalingLimited",
+       "status": "True",
+       "reason": "TooManyReplicas",
+       "message": "the desired replica count is more than the maximum replica count"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "PodDisruptionBudget",
+    "apiVersion": "policy/v1",
+    "metadata": {
+     "name": "redis",
+     "namespace": "dev",
+     "creationTimestamp": "2026-08-01T00:00:00Z"
+    },
+    "spec": {
+     "minAvailable": 1,
+     "selector": {
+      "matchLabels": {
+       "app": "redis"
+      }
+     }
+    },
+    "status": {
+     "disruptionsAllowed": 0,
+     "currentHealthy": 1,
+     "desiredHealthy": 1,
+     "expectedPods": 1
+    }
+   },
+   {
+    "kind": "PodDisruptionBudget",
+    "apiVersion": "policy/v1",
+    "metadata": {
+     "name": "orders-api",
+     "namespace": "dev",
+     "creationTimestamp": "2026-08-01T00:00:00Z"
+    },
+    "spec": {
+     "maxUnavailable": "25%",
+     "selector": {
+      "matchLabels": {
+       "app": "orders-api"
+      }
+     }
+    },
+    "status": {
+     "disruptionsAllowed": 1,
+     "currentHealthy": 2,
+     "desiredHealthy": 1,
+     "expectedPods": 2
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "cilium-x7k2p",
+     "namespace": "kube-system",
+     "creationTimestamp": "2026-09-12T11:00:00Z",
+     "labels": {
+      "k8s-app": "cilium"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "DaemonSet",
+       "name": "cilium",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000001",
+     "containers": [
+      {
+       "name": "cilium-agent",
+       "image": "mcr.microsoft.com/oss/cilium/cilium:1.14.10"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Pending",
+     "containerStatuses": [
+      {
+       "name": "cilium-agent",
+       "image": "mcr.microsoft.com/oss/cilium/cilium:1.14.10",
+       "ready": false,
+       "restartCount": 0,
+       "state": {
+        "waiting": {
+         "reason": "ContainerCreating"
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "False"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Job",
+    "apiVersion": "batch/v1",
+    "metadata": {
+     "name": "nightly-report",
+     "namespace": "qa",
+     "creationTimestamp": "2026-09-10T07:59:00Z"
+    },
+    "spec": {
+     "completions": 1,
+     "backoffLimit": 6,
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "api",
+         "image": "contosoacr.azurecr.io/team/nightly-report:3"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "startTime": "2026-09-10T07:59:00Z",
+     "completionTime": "2026-09-10T08:00:30Z",
+     "succeeded": 1,
+     "conditions": [
+      {
+       "type": "Complete",
+       "status": "True"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "CronJob",
+    "apiVersion": "batch/v1",
+    "metadata": {
+     "name": "cleanup",
+     "namespace": "qa",
+     "creationTimestamp": "2026-08-01T00:00:00Z"
+    },
+    "spec": {
+     "schedule": "*/30 * * * *",
+     "timeZone": "Etc/UTC",
+     "concurrencyPolicy": "Forbid",
+     "suspend": false,
+     "jobTemplate": {
+      "spec": {
+       "backoffLimit": 1,
+       "template": {
+        "spec": {
+         "containers": [
+          {
+           "name": "cleanup",
+           "image": "contosoacr.azurecr.io/team/cleanup:1"
+          }
+         ]
+        }
+       }
+      }
+     }
+    },
+    "status": {
+     "lastScheduleTime": "2026-09-12T01:00:00Z",
+     "lastSuccessfulTime": "2026-09-12T00:30:41Z"
+    }
+   },
+   {
+    "kind": "Job",
+    "apiVersion": "batch/v1",
+    "metadata": {
+     "name": "cleanup-29819550",
+     "namespace": "qa",
+     "creationTimestamp": "2026-09-12T00:30:00Z",
+     "ownerReferences": [
+      {
+       "apiVersion": "batch/v1",
+       "kind": "CronJob",
+       "name": "cleanup",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "completions": 1,
+     "backoffLimit": 1,
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "cleanup",
+         "image": "contosoacr.azurecr.io/team/cleanup:1"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "startTime": "2026-09-12T00:30:00Z",
+     "conditions": [
+      {
+       "type": "Complete",
+       "status": "True"
+      }
+     ],
+     "completionTime": "2026-09-12T00:30:41Z",
+     "succeeded": 1
+    }
+   },
+   {
+    "kind": "Job",
+    "apiVersion": "batch/v1",
+    "metadata": {
+     "name": "cleanup-29819580",
+     "namespace": "qa",
+     "creationTimestamp": "2026-09-12T01:00:00Z",
+     "ownerReferences": [
+      {
+       "apiVersion": "batch/v1",
+       "kind": "CronJob",
+       "name": "cleanup",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "completions": 1,
+     "backoffLimit": 1,
+     "template": {
+      "spec": {
+       "containers": [
+        {
+         "name": "cleanup",
+         "image": "contosoacr.azurecr.io/team/cleanup:1"
+        }
+       ]
+      }
+     }
+    },
+    "status": {
+     "startTime": "2026-09-12T01:00:00Z",
+     "conditions": [
+      {
+       "type": "Failed",
+       "status": "True",
+       "reason": "BackoffLimitExceeded",
+       "message": "Job has reached the specified backoff limit",
+       "lastTransitionTime": "2026-09-12T01:05:00Z"
+      }
+     ],
+     "failed": 2
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "cleanup-29819580-q2n8d",
+     "namespace": "qa",
+     "creationTimestamp": "2026-09-12T01:00:01Z",
+     "labels": {
+      "job-name": "cleanup-29819580"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "batch/v1",
+       "kind": "Job",
+       "name": "cleanup-29819580",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "restartPolicy": "Never",
+     "containers": [
+      {
+       "name": "cleanup",
+       "image": "contosoacr.azurecr.io/team/cleanup:1"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Failed",
+     "containerStatuses": [
+      {
+       "name": "cleanup",
+       "image": "contosoacr.azurecr.io/team/cleanup:1",
+       "ready": false,
+       "restartCount": 0,
+       "state": {
+        "terminated": {
+         "reason": "Error",
+         "exitCode": 1
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "False"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "cleanup-29819580-b7m4x",
+     "namespace": "qa",
+     "creationTimestamp": "2026-09-12T01:02:30Z",
+     "labels": {
+      "job-name": "cleanup-29819580"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "batch/v1",
+       "kind": "Job",
+       "name": "cleanup-29819580",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "nodeName": "aks-np1-vmss000000",
+     "restartPolicy": "Never",
+     "containers": [
+      {
+       "name": "cleanup",
+       "image": "contosoacr.azurecr.io/team/cleanup:1"
+      }
+     ]
+    },
+    "status": {
+     "phase": "Failed",
+     "containerStatuses": [
+      {
+       "name": "cleanup",
+       "image": "contosoacr.azurecr.io/team/cleanup:1",
+       "ready": false,
+       "restartCount": 0,
+       "state": {
+        "terminated": {
+         "reason": "Error",
+         "exitCode": 1
+        }
+       }
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "False"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "cleanup.created",
+     "namespace": "qa",
+     "creationTimestamp": "2026-09-12T01:00:00Z"
+    },
+    "type": "Normal",
+    "reason": "SuccessfulCreate",
+    "count": 1,
+    "message": "Created job cleanup-29819580",
+    "firstTimestamp": "2026-09-12T01:00:00Z",
+    "lastTimestamp": "2026-09-12T01:00:00Z",
+    "involvedObject": {
+     "kind": "CronJob",
+     "name": "cleanup",
+     "namespace": "qa"
+    },
+    "source": {
+     "component": "cronjob-controller"
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "cleanup.saw",
+     "namespace": "qa",
+     "creationTimestamp": "2026-09-12T01:05:00Z"
+    },
+    "type": "Normal",
+    "reason": "SawCompletedJob",
+    "count": 1,
+    "message": "Saw completed job: cleanup-29819580, status: Failed",
+    "firstTimestamp": "2026-09-12T01:05:00Z",
+    "lastTimestamp": "2026-09-12T01:05:00Z",
+    "involvedObject": {
+     "kind": "CronJob",
+     "name": "cleanup",
+     "namespace": "qa"
+    },
+    "source": {
+     "component": "cronjob-controller"
+    }
+   },
+   {
+    "kind": "Event",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "cleanup-29819580.backoff",
+     "namespace": "qa",
+     "creationTimestamp": "2026-09-12T01:05:00Z"
+    },
+    "type": "Warning",
+    "reason": "BackoffLimitExceeded",
+    "count": 1,
+    "message": "Job has reached the specified backoff limit",
+    "firstTimestamp": "2026-09-12T01:05:00Z",
+    "lastTimestamp": "2026-09-12T01:05:00Z",
+    "involvedObject": {
+     "kind": "Job",
+     "name": "cleanup-29819580",
+     "namespace": "qa"
+    },
+    "source": {
+     "component": "job-controller"
     }
    }
   ],

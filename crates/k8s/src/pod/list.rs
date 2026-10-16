@@ -179,7 +179,7 @@ mod tests {
         let rows = outcome.json();
         assert_eq!(
             rows.as_array().unwrap().len(),
-            10,
+            13,
             "every namespace of the qa context"
         );
         assert_eq!(rows[9]["namespace"], "uat");

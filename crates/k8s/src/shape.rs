@@ -15,7 +15,7 @@ use crate::kubectl::{Target, items, non_empty};
 
 /// The kinds with a list of their own, as kubectl's errors name them
 /// (plural), and the resource word of `agent-cli k8s RESOURCE list`.
-const CURATED: [(&str, &str); 11] = [
+const CURATED: [(&str, &str); 17] = [
     ("pods", "pod"),
     ("deployments", "deployment"),
     ("configmaps", "configmap"),
@@ -27,6 +27,12 @@ const CURATED: [(&str, &str); 11] = [
     ("persistentvolumeclaims", "pvc"),
     ("persistentvolumes", "pv"),
     ("storageclasses", "storageclass"),
+    ("statefulsets", "statefulset"),
+    ("daemonsets", "daemonset"),
+    ("jobs", "job"),
+    ("cronjobs", "cronjob"),
+    ("horizontalpodautoscalers", "hpa"),
+    ("poddisruptionbudgets", "pdb"),
 ];
 
 /// What `kubectl apply` keeps on the object: a copy of the whole manifest.
@@ -134,6 +140,18 @@ pub(crate) fn events_for(ctx: &Ctx, target: &Target, item: &Value) -> Vec<EventR
     }
 }
 
+/// The five newest events about `item` among those a joined read listed,
+/// matched by uid as `events_for` matches them, for a get that reads its
+/// object's neighbours and events in one kubectl call.
+pub(crate) fn events_in(target: &Target, listed: &Value, item: &Value) -> Vec<EventRow> {
+    newest(
+        target,
+        items(listed).filter(|held| {
+            held["kind"] == "Event" && held["involvedObject"]["uid"] == item["metadata"]["uid"]
+        }),
+    )
+}
+
 /// The five newest of `events`, newest first.
 pub(crate) fn newest<'a>(
     target: &Target,
@@ -176,6 +194,37 @@ pub(crate) fn selects(selector: &Value, labels: &Value) -> bool {
                     _ => false,
                 }
             })
+}
+
+/// A label selector as `kubectl` writes one: `app=api,tier in (web),!canary`.
+/// None for the empty selector, which selects everything.
+pub(crate) fn selector_text(selector: &Value) -> Option<String> {
+    let mut terms: Vec<String> = selector["matchLabels"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .map(|(key, value)| format!("{key}={}", value.as_str().unwrap_or_default()))
+        .collect();
+    for expression in selector["matchExpressions"]
+        .as_array()
+        .into_iter()
+        .flatten()
+    {
+        let key = expression["key"].as_str().unwrap_or_default();
+        let values: Vec<&str> = expression["values"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .collect();
+        terms.push(match expression["operator"].as_str().unwrap_or_default() {
+            "In" => format!("{key} in ({})", values.join(",")),
+            "NotIn" => format!("{key} notin ({})", values.join(",")),
+            "DoesNotExist" => format!("!{key}"),
+            _ => key.to_owned(),
+        });
+    }
+    (!terms.is_empty()).then(|| terms.join(","))
 }
 
 /// A manifest without what only the API server's bookkeeping needs

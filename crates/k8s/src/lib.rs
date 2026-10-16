@@ -11,20 +11,26 @@
 
 mod configmap;
 mod context;
+mod cronjob;
+mod daemonset;
 mod deployment;
 mod doctor;
 mod event;
+mod hpa;
 mod ingress;
+mod job;
 mod kind;
 mod kubectl;
 mod networkpolicy;
 mod object;
+mod pdb;
 mod pod;
 mod pv;
 mod pvc;
 mod secret;
 mod service;
 mod shape;
+mod statefulset;
 mod storageclass;
 #[cfg(test)]
 mod testing;
@@ -52,9 +58,20 @@ pub const K8S: Domain = Domain {
         pv::get::PV_GET,
         storageclass::list::STORAGECLASS_LIST,
         deployment::list::DEPLOYMENT_LIST,
+        deployment::get::DEPLOYMENT_GET,
         deployment::restart::DEPLOYMENT_RESTART,
         deployment::scale::DEPLOYMENT_SCALE,
         deployment::wait::DEPLOYMENT_WAIT,
+        statefulset::list::STATEFULSET_LIST,
+        statefulset::get::STATEFULSET_GET,
+        daemonset::list::DAEMONSET_LIST,
+        daemonset::get::DAEMONSET_GET,
+        job::list::JOB_LIST,
+        job::get::JOB_GET,
+        cronjob::list::CRONJOB_LIST,
+        cronjob::get::CRONJOB_GET,
+        hpa::list::HPA_LIST,
+        pdb::list::PDB_LIST,
         configmap::list::CONFIGMAP_LIST,
         configmap::get::CONFIGMAP_GET,
         secret::list::SECRET_LIST,

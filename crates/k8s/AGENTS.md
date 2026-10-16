@@ -24,17 +24,18 @@ and tests. Copy a sibling.
     `listing(ctx)`, `one(ctx)`, `named(ctx, raw)`; for cluster-scoped kinds
     `cluster_wide(ctx)`, `named_cluster(ctx, raw)`; `cluster_of`.
   - `Target`: `read`, `json`, `write(ctx, effect, args)`, `id(item)`,
-    `row_namespace(item)`; `kubectl(args)` and `finished` for a caller that
-    reads kubectl's failure itself (`deployment wait`).
-  - `items`, `age`, `limited` (the `--limit` note), `digest`, `owner_of`.
-- `shape.rs`: `events_for` (five newest, by uid), `newest`, `event_row`,
-  `conditions`, `trim` (no managedFields or last-applied), `listing_for`
-  (the not-found hint), `selects` (a label selector).
+    `row_namespace(item)`; `kubectl(args)` and `finished` (`deployment wait`).
+  - `items`, `age`, `limited`, `name_has`, `digest`,
+    `owner_of` (a Job named for its schedule is its CronJob), `owned_by`.
+- `shape.rs`: `events_for` (five newest, by uid), `events_in` (from a
+  joined read), `newest`, `event_row`, `conditions`, `trim`, `listing_for`
+  (the not-found hint), `selects`, `selector_text`.
 - `kind/mod.rs`: `kinds` (api-resources, cached), `kind_named`.
 - `<resource>/mod.rs`: what its verbs share (`pod/mod.rs`: `PodRow`, `row`,
-  `containers`, `status_word`, the SecretProviderClass reading,
-  `previous_logs`; `service/mod.rs`: `endpoints`, `ready`; `pv/mod.rs`:
-  `row` with the disk's ARM id or the share, `attached_to`).
+  `containers`, `status_word`, `previous_logs`, `ready`, `first_unready`,
+  a template's `probes`, `sized`, `volumes`, `images`; `service/mod.rs`:
+  `endpoints`; `pv/mod.rs`: `row` with the disk's ARM id, `attached_to`;
+  `daemonset/mod.rs` reads kube-system whatever the scope names).
 - `testing.rs`: `k8s(argv)`, `k8s_with(argv, config)`, `SCOPES` for tests.
 
 ## Fixtures
@@ -45,13 +46,11 @@ failing readyz checks; `FAKE_KUBECTL_LOG` records calls). Trials read `fixtures/
 queries `crates/k8s/search.toml`.
 
 ## Quirks
-- Every call is `kubectl --context C --request-timeout=10s …` under the
-  command's deadline; the process group is killed at it, so a kubelogin
-  device-code prompt cannot hang.
+- Every call is `kubectl --context C --request-timeout=10s …`, its process
+  group killed at the deadline: a kubelogin prompt cannot hang.
 - A new kubectl flag may need teaching `scripts/fake/kubectl` (it reads
   `-l`, `--field-selector` and `api-resources`).
-- `secret list` rows never carry values; only `secret get` (a `Reveal`)
-  does. `pod get` lists `secret_refs` with the Key Vault ids (`kv`) a
+- Only `secret get` (a `Reveal`) prints values. `pod get` lists `secret_refs` with the Key Vault ids (`kv`) a
   SecretProviderClass maps. `ingress get` checks a TLS secret by `-o name`.
 
 ## Never needed

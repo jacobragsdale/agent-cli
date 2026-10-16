@@ -8,6 +8,8 @@ pub(crate) mod get;
 pub(crate) mod list;
 pub(crate) mod logs;
 
+use std::collections::BTreeMap;
+
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::Value;
@@ -33,7 +35,7 @@ pub struct PodRow {
     owner: Option<String>,
 }
 
-fn row(target: &Target, item: &Value) -> Option<PodRow> {
+pub(crate) fn row(target: &Target, item: &Value) -> Option<PodRow> {
     let name = item["metadata"]["name"].as_str()?;
     let containers = containers(item);
     Some(PodRow {
@@ -149,6 +151,25 @@ pub(crate) fn previous_logs(id: &str, containers: &[ContainerRow]) -> Option<Str
     ))
 }
 
+/// Whether a pod's Ready condition holds: what a Service's endpoints and a
+/// workload's ready count go by.
+pub(crate) fn ready(pod: &Value) -> bool {
+    pod["status"]["conditions"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .any(|condition| condition["type"] == "Ready" && condition["status"] == "True")
+}
+
+/// What a workload short of ready pods asks next: the first of its pods that
+/// is not ready, whose own `pod get` note leads on to its log, and whose
+/// events say why it is not scheduled.
+pub(crate) fn first_unready(target: &Target, pods: &[&Value]) -> Option<String> {
+    pods.iter()
+        .find(|pod| !ready(pod))
+        .map(|pod| format!("agent-cli k8s pod get {}", target.id(pod)))
+}
+
 /// The SecretProviderClasses a pod's Secrets Store CSI volumes mount.
 pub(crate) fn csi_classes(item: &Value) -> Vec<&str> {
     item["spec"]["volumes"]
@@ -192,6 +213,141 @@ pub(crate) fn key_vault_ids(class: &Value) -> Vec<String> {
         .into_iter()
         .filter(|(name, kind)| !name.is_empty() && matches!(kind.as_str(), "secret" | "cert"))
         .map(|(name, _)| format!("{vault}/{name}"))
+        .collect()
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct Probe {
+    container: String,
+    /// liveness, readiness or startup.
+    kind: &'static str,
+    /// `GET :http/healthz`, `TCP :8080`, `exec cat /tmp/ready`, `gRPC :9000`.
+    action: String,
+    initial_delay: Option<i64>,
+    period: Option<i64>,
+    failure_threshold: Option<i64>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct Volume {
+    name: String,
+    /// persistentVolumeClaim, configMap, secret, csi, emptyDir, projected…
+    kind: String,
+    /// The PVC, configmap or secret's id; a CSI volume's driver and class.
+    source: Option<String>,
+}
+
+pub(crate) fn strings(map: &Value) -> BTreeMap<String, String> {
+    map.as_object()
+        .into_iter()
+        .flatten()
+        .filter_map(|(key, value)| Some((key.clone(), value.as_str()?.to_owned())))
+        .collect()
+}
+
+/// The containers (and native sidecars) a pod runs, by name.
+pub(crate) fn running(spec: &Value) -> impl Iterator<Item = (&str, &Value)> {
+    spec["initContainers"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|held| held["restartPolicy"] == "Always")
+        .chain(spec["containers"].as_array().into_iter().flatten())
+        .filter_map(|held| Some((non_empty(&held["name"])?, held)))
+}
+
+pub(crate) fn probes(spec: &Value) -> Vec<Probe> {
+    let mut found = Vec::new();
+    for (container, held) in running(spec) {
+        for (key, kind) in [
+            ("livenessProbe", "liveness"),
+            ("readinessProbe", "readiness"),
+            ("startupProbe", "startup"),
+        ] {
+            let probe = &held[key];
+            if !probe.is_object() {
+                continue;
+            }
+            let port = |handler: &Value| match &handler["port"] {
+                Value::String(name) => name.clone(),
+                other => other.to_string(),
+            };
+            let action = if probe["httpGet"].is_object() {
+                let get = &probe["httpGet"];
+                format!("GET :{}{}", port(get), get["path"].as_str().unwrap_or("/"))
+            } else if probe["tcpSocket"].is_object() {
+                format!("TCP :{}", port(&probe["tcpSocket"]))
+            } else if probe["grpc"].is_object() {
+                format!("gRPC :{}", port(&probe["grpc"]))
+            } else {
+                let command: Vec<&str> = probe["exec"]["command"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(Value::as_str)
+                    .collect();
+                format!("exec {}", command.join(" "))
+            };
+            found.push(Probe {
+                container: container.to_owned(),
+                kind,
+                action,
+                initial_delay: probe["initialDelaySeconds"].as_i64(),
+                period: probe["periodSeconds"].as_i64(),
+                failure_threshold: probe["failureThreshold"].as_i64(),
+            });
+        }
+    }
+    found
+}
+
+/// Each container's `resources.requests` or `.limits`, for those that set any.
+pub(crate) fn sized(spec: &Value, key: &str) -> BTreeMap<String, BTreeMap<String, String>> {
+    running(spec)
+        .map(|(container, held)| (container.to_owned(), strings(&held["resources"][key])))
+        .filter(|(_, sizes)| !sizes.is_empty())
+        .collect()
+}
+
+/// Each volume by the kind of its source; a PVC, configmap or secret by
+/// its id, which its own command takes.
+pub(crate) fn volumes(spec: &Value, in_namespace: &dyn Fn(&str) -> String) -> Vec<Volume> {
+    spec["volumes"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|volume| {
+            let (kind, held) = volume
+                .as_object()?
+                .iter()
+                .find(|(key, _)| key.as_str() != "name")?;
+            let named = |key: &str| non_empty(&held[key]).map(in_namespace);
+            let source = match kind.as_str() {
+                "persistentVolumeClaim" => named("claimName"),
+                "configMap" => named("name"),
+                "secret" => named("secretName"),
+                "csi" => non_empty(&held["driver"]).map(|driver| {
+                    non_empty(&held["volumeAttributes"]["secretProviderClass"])
+                        .map_or_else(|| driver.to_owned(), |class| format!("{driver} ({class})"))
+                }),
+                _ => None,
+            };
+            Some(Volume {
+                name: volume["name"].as_str().unwrap_or_default().to_owned(),
+                kind: kind.clone(),
+                source,
+            })
+        })
+        .collect()
+}
+
+/// The images a pod template's containers run, as it names them.
+pub(crate) fn images(spec: &Value) -> Vec<String> {
+    spec["containers"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|container| non_empty(&container["image"]).map(str::to_owned))
         .collect()
 }
 

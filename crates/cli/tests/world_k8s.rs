@@ -39,6 +39,10 @@ fn the_world_answers_what_a_trial_asks_of_k8s() {
         ],
         &["k8s", "storageclass", "list"],
         &["k8s", "event", "list", "--object", "pvc/data-orders-db-0"],
+        &["k8s", "statefulset", "list"],
+        &["k8s", "job", "list"],
+        &["k8s", "cronjob", "list"],
+        &["k8s", "daemonset", "get", "prod/kube-system/kube-proxy"],
     ] {
         ok(args);
     }
@@ -313,5 +317,125 @@ fn the_database_pod_stuck_creating_has_its_disk_still_on_the_old_node_which_is_n
     assert_eq!(
         events,
         json!([{"reason": "NodeNotReady"}, {"reason": "NodeNotSchedulable"}])
+    );
+}
+
+#[test]
+fn the_api_deployment_rolled_from_v1_4_1_to_v1_4_2_and_the_worker_leads_to_its_crashing_pod() {
+    let api = ok(&[
+        "k8s",
+        "deployment",
+        "get",
+        "prod/web/api",
+        "--fields",
+        "revisions,containers",
+    ]);
+    assert_eq!(
+        api["revisions"],
+        json!([
+            {"revision": 7, "images": ["contosoacr.azurecr.io/api:v1.4.2"],
+                "change_cause": "image api:v1.4.2 (api-ci run 8812)", "created": "2026-09-28T21:34:12Z", "replicas": 3},
+            {"revision": 6, "images": ["contosoacr.azurecr.io/api:v1.4.1"],
+                "created": "2026-09-15T16:20:00Z", "replicas": 0},
+        ])
+    );
+    assert_eq!(
+        api["containers"][0]["env"][0],
+        json!({"name": "DB_USER", "secret": "prod/web/api-env", "key": "DB_USER"})
+    );
+
+    let walked = follow(&["k8s", "deployment", "get", "prod/web/worker"]);
+    assert_eq!(
+        walked.len(),
+        3,
+        "deployment get, its pod, then its previous log"
+    );
+    assert_eq!(walked[0].json()["strategy"], "Recreate");
+    assert!(
+        walked[2].json()["text"]
+            .as_str()
+            .unwrap()
+            .contains("password authentication failed for user \"worker\"")
+    );
+}
+
+#[test]
+fn the_database_statefulset_is_unready_and_its_budget_allows_no_eviction() {
+    let walked = follow(&["k8s", "statefulset", "get", "prod/web/orders-db"]);
+    assert_eq!(walked.len(), 2, "statefulset get, then its pod");
+    let set = walked[0].json();
+    assert_eq!(set["ready"], "0/1");
+    assert_eq!(
+        set["claims"][0]["pvcs"],
+        json!(["prod/web/data-orders-db-0"])
+    );
+    assert_eq!(walked[1].json()["status"], "ContainerCreating");
+    let budgets = ok(&[
+        "k8s",
+        "pdb",
+        "list",
+        "--fields",
+        "id,selector,allowed_disruptions",
+    ]);
+    assert_eq!(
+        budgets,
+        json!([{"id": "prod/web/orders-db", "selector": "app=orders-db", "allowed_disruptions": 0}])
+    );
+}
+
+#[test]
+fn the_failed_export_leads_by_notes_from_its_cronjob_to_the_timeout_in_its_log() {
+    let walked = follow(&["k8s", "cronjob", "get", "prod/web/orders-export"]);
+    assert_eq!(
+        walked.len(),
+        3,
+        "cronjob get, the failed job, then its pod's log"
+    );
+    let cronjob = walked[0].json();
+    assert_eq!(cronjob["last_success"], "2026-09-28T01:06:12Z");
+    assert_eq!(cronjob["jobs"][0]["status"], "Failed");
+    let job = walked[1].json();
+    assert_eq!(job["conditions"][0]["reason"], "BackoffLimitExceeded");
+    assert_eq!(job["pods"][0]["owner"], "CronJob/orders-export");
+    assert!(
+        walked[2].json()["text"]
+            .as_str()
+            .unwrap()
+            .contains("in /app/src/Orders/OrderClient.cs:line 19")
+    );
+}
+
+#[test]
+fn reports_api_has_pending_pods_no_node_fits_and_its_autoscaler_is_at_its_maximum() {
+    let walked = follow(&["k8s", "deployment", "get", "prod/web/reports-api"]);
+    assert_eq!(walked.len(), 2, "deployment get, then a pending pod");
+    assert_eq!(walked[0].json()["ready"], "3/5");
+    let pod = walked[1].json();
+    assert_eq!(pod["status"], "Pending");
+    assert_eq!(pod["events"][0]["reason"], "FailedScheduling");
+    assert!(
+        pod["events"][0]["message"].as_str().unwrap().starts_with(
+            "0/6 nodes are available: 1 node(s) were unschedulable, 2 Insufficient cpu"
+        ),
+        "{pod}"
+    );
+    let autoscalers = ok(&["k8s", "hpa", "list", "--fields", "id,max,current,metrics"]);
+    assert_eq!(
+        autoscalers,
+        json!([{"id": "prod/web/reports-api", "max": 5, "current": 5,
+            "metrics": [{"metric": "cpu", "current": "96%", "target": "70%"}]}])
+    );
+    let daemonsets = ok(&[
+        "k8s",
+        "daemonset",
+        "list",
+        "--namespace",
+        "kube-system",
+        "--fields",
+        "id,unavailable",
+    ]);
+    assert_eq!(
+        daemonsets[0],
+        json!({"id": "prod/kube-system/azure-cns", "unavailable": 1})
     );
 }

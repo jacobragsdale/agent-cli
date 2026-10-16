@@ -5,9 +5,9 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::kubectl::{At, items};
-use crate::shape::{EventRow, events_for, selects};
+use crate::shape::{EventRow, events_for, selector_text, selects};
 
-use super::{default_deny, pod_selector, rules, selector_text, types};
+use super::{default_deny, pod_selector, rules, types};
 
 /// The most selected pods a policy prints; a policy for every pod in a big
 /// namespace would otherwise print them all.

@@ -1,5 +1,6 @@
 //! `k8s deployment`: workloads, and the changes made to them.
 
+pub(crate) mod get;
 pub(crate) mod list;
 pub(crate) mod restart;
 pub(crate) mod scale;

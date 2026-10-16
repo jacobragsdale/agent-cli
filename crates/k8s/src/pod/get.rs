@@ -10,7 +10,8 @@ use crate::kubectl::{At, Target, non_empty};
 use crate::shape::{Condition, EventRow, conditions, events_for};
 
 use super::{
-    ContainerRow, PodRow, containers, csi_classes, key_vault_ids, previous_logs, row, status_word,
+    ContainerRow, PodRow, Probe, Volume, containers, csi_classes, key_vault_ids, previous_logs,
+    probes, row, running, sized, status_word, strings, volumes,
 };
 
 #[derive(clap::Args)]
@@ -90,27 +91,6 @@ pub struct PortRow {
     protocol: String,
 }
 
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct Probe {
-    container: String,
-    /// liveness, readiness or startup.
-    kind: &'static str,
-    /// `GET :http/healthz`, `TCP :8080`, `exec cat /tmp/ready`, `gRPC :9000`.
-    action: String,
-    initial_delay: Option<i64>,
-    period: Option<i64>,
-    failure_threshold: Option<i64>,
-}
-
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct Volume {
-    name: String,
-    /// persistentVolumeClaim, configMap, secret, csi, emptyDir, projected…
-    kind: String,
-    /// The PVC, configmap or secret's id; a CSI volume's driver and class.
-    source: Option<String>,
-}
-
 fn pod_get(ctx: &Ctx, args: PodGetArgs) -> Result<PodDetail> {
     let (target, pod) = args.at.named(ctx, &args.pod)?;
     let namespace = target.namespace.clone().unwrap_or_default();
@@ -183,25 +163,6 @@ fn pod_get(ctx: &Ctx, args: PodGetArgs) -> Result<PodDetail> {
     })
 }
 
-fn strings(map: &Value) -> BTreeMap<String, String> {
-    map.as_object()
-        .into_iter()
-        .flatten()
-        .filter_map(|(key, value)| Some((key.clone(), value.as_str()?.to_owned())))
-        .collect()
-}
-
-/// The containers (and native sidecars) a pod runs, by name.
-fn running(spec: &Value) -> impl Iterator<Item = (&str, &Value)> {
-    spec["initContainers"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter(|held| held["restartPolicy"] == "Always")
-        .chain(spec["containers"].as_array().into_iter().flatten())
-        .filter_map(|held| Some((non_empty(&held["name"])?, held)))
-}
-
 fn ports(spec: &Value) -> Vec<PortRow> {
     running(spec)
         .flat_map(|(container, held)| {
@@ -215,91 +176,6 @@ fn ports(spec: &Value) -> Vec<PortRow> {
                     port: port["containerPort"].as_i64().unwrap_or_default(),
                     protocol: port["protocol"].as_str().unwrap_or("TCP").to_owned(),
                 })
-        })
-        .collect()
-}
-
-fn probes(spec: &Value) -> Vec<Probe> {
-    let mut found = Vec::new();
-    for (container, held) in running(spec) {
-        for (key, kind) in [
-            ("livenessProbe", "liveness"),
-            ("readinessProbe", "readiness"),
-            ("startupProbe", "startup"),
-        ] {
-            let probe = &held[key];
-            if !probe.is_object() {
-                continue;
-            }
-            let port = |handler: &Value| match &handler["port"] {
-                Value::String(name) => name.clone(),
-                other => other.to_string(),
-            };
-            let action = if probe["httpGet"].is_object() {
-                let get = &probe["httpGet"];
-                format!("GET :{}{}", port(get), get["path"].as_str().unwrap_or("/"))
-            } else if probe["tcpSocket"].is_object() {
-                format!("TCP :{}", port(&probe["tcpSocket"]))
-            } else if probe["grpc"].is_object() {
-                format!("gRPC :{}", port(&probe["grpc"]))
-            } else {
-                let command: Vec<&str> = probe["exec"]["command"]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .filter_map(Value::as_str)
-                    .collect();
-                format!("exec {}", command.join(" "))
-            };
-            found.push(Probe {
-                container: container.to_owned(),
-                kind,
-                action,
-                initial_delay: probe["initialDelaySeconds"].as_i64(),
-                period: probe["periodSeconds"].as_i64(),
-                failure_threshold: probe["failureThreshold"].as_i64(),
-            });
-        }
-    }
-    found
-}
-
-/// Each container's `resources.requests` or `.limits`, for those that set any.
-fn sized(spec: &Value, key: &str) -> BTreeMap<String, BTreeMap<String, String>> {
-    running(spec)
-        .map(|(container, held)| (container.to_owned(), strings(&held["resources"][key])))
-        .filter(|(_, sizes)| !sizes.is_empty())
-        .collect()
-}
-
-/// Each volume by the kind of its source; a PVC, configmap or secret by
-/// its id, which its own command takes.
-fn volumes(spec: &Value, in_namespace: &dyn Fn(&str) -> String) -> Vec<Volume> {
-    spec["volumes"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|volume| {
-            let (kind, held) = volume
-                .as_object()?
-                .iter()
-                .find(|(key, _)| key.as_str() != "name")?;
-            let named = |key: &str| non_empty(&held[key]).map(in_namespace);
-            let source = match kind.as_str() {
-                "persistentVolumeClaim" => named("claimName"),
-                "configMap" => named("name"),
-                "secret" => named("secretName"),
-                "csi" => non_empty(&held["driver"]).map(|driver| {
-                    non_empty(&held["volumeAttributes"]["secretProviderClass"])
-                        .map_or_else(|| driver.to_owned(), |class| format!("{driver} ({class})"))
-                }),
-                _ => None,
-            };
-            Some(Volume {
-                name: volume["name"].as_str().unwrap_or_default().to_owned(),
-                kind: kind.clone(),
-                source,
-            })
         })
         .collect()
 }
