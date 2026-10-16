@@ -28,6 +28,8 @@ pub struct NodeRow {
     schedulable: bool,
     /// The AKS node pool, from its agentpool label.
     pool: Option<String>,
+    /// The AKS node pool as CLUSTER/POOL: what `aks nodepool get` takes.
+    pub(crate) nodepool: Option<String>,
     zone: Option<String>,
     /// The kubelet's version.
     version: Option<String>,
@@ -201,6 +203,8 @@ pub(crate) fn row(target: &Target, item: &Value, pods: &[&Value], used: Option<&
         .as_array()
         .into_iter()
         .flatten();
+    let pool = non_empty(&labels["kubernetes.azure.com/agentpool"])
+        .or_else(|| non_empty(&labels["agentpool"]));
     NodeRow {
         id: target.id(item),
         name: name.to_owned(),
@@ -208,9 +212,17 @@ pub(crate) fn row(target: &Target, item: &Value, pods: &[&Value], used: Option<&
             .clone()
             .any(|held| held["type"] == "Ready" && held["status"] == "True"),
         schedulable: item["spec"]["unschedulable"].as_bool() != Some(true),
-        pool: non_empty(&labels["kubernetes.azure.com/agentpool"])
-            .or_else(|| non_empty(&labels["agentpool"]))
-            .map(str::to_owned),
+        nodepool: vm(item).zip(pool).map(|(vm, pool)| {
+            let group = vm
+                .split('/')
+                .skip_while(|part| !part.eq_ignore_ascii_case("resourceGroups"))
+                .nth(1);
+            format!(
+                "{}/{pool}",
+                cluster(&target.context, group.unwrap_or_default())
+            )
+        }),
+        pool: pool.map(str::to_owned),
         zone: non_empty(&labels["topology.kubernetes.io/zone"]).map(str::to_owned),
         version: non_empty(&item["status"]["nodeInfo"]["kubeletVersion"]).map(str::to_owned),
         taints: item["spec"]["taints"]
@@ -247,6 +259,38 @@ pub(crate) fn row(target: &Target, item: &Value, pods: &[&Value], used: Option<&
     }
 }
 
+/// The Azure VM (a scale set instance) from the node's providerID: what
+/// `arm resource get` takes.
+pub(crate) fn vm(item: &Value) -> Option<&str> {
+    non_empty(&item["spec"]["providerID"])
+        .and_then(|held| held.strip_prefix("azure://"))
+        .filter(|held| held.starts_with("/subscriptions/"))
+}
+
+/// The AKS cluster the node is in. `az aks get-credentials` names the kube
+/// context after the cluster, so the context is it unless the node resource
+/// group, AKS's `MC_<group>_<cluster>_<region>`, names another.
+// ponytail: for a context renamed from its cluster, the cluster is read as
+// the node group's part before the region, which a cluster name holding an
+// underscore breaks; `aks cluster get`'s node group says for sure.
+fn cluster<'a>(context: &'a str, group: &'a str) -> &'a str {
+    let front = group
+        .get(..3)
+        .filter(|prefix| prefix.eq_ignore_ascii_case("mc_"))
+        .and_then(|_| group[3..].rsplit_once('_'))
+        .map(|(front, _region)| front);
+    match front {
+        Some(front)
+            if !front
+                .to_ascii_lowercase()
+                .ends_with(&format!("_{}", context.to_ascii_lowercase())) =>
+        {
+            front.rsplit_once('_').map_or(front, |(_, cluster)| cluster)
+        }
+        _ => context,
+    }
+}
+
 impl NodeRow {
     /// A node an agent should look at: not Ready, or under pressure.
     pub(crate) fn needs_attention(&self) -> bool {
@@ -257,6 +301,18 @@ impl NodeRow {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_cluster_is_the_context_unless_the_node_group_names_another() {
+        let group = "MC_rg-contoso-prod_aks-contoso-prod_westeurope";
+        assert_eq!(cluster("aks-contoso-prod", group), "aks-contoso-prod");
+        assert_eq!(
+            cluster("AKS-Contoso-Prod", &group.to_lowercase()),
+            "AKS-Contoso-Prod"
+        );
+        assert_eq!(cluster("prod", group), "aks-contoso-prod");
+        assert_eq!(cluster("prod", "rg-nodes-custom"), "prod");
+    }
 
     #[test]
     fn quantities_read_in_cores_and_bytes_whatever_their_suffix() {

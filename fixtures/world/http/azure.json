@@ -3,9 +3,22 @@
   "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
   "note": "the Resource Graph inventory every kv, acr, aks and aisearch command starts from; any body",
   "answer": {
-   "totalRecords": 5,
-   "count": 5,
+   "totalRecords": 6,
+   "count": 6,
    "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-billing",
+     "name": "kv-contoso-billing",
+     "type": "microsoft.keyvault/vaults",
+     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "loginServer": "",
+     "vaultUri": "https://kv-contoso-billing.vault.azure.net/",
+     "kubernetesVersion": "",
+     "currentKubernetesVersion": "",
+     "powerState": ""
+    },
     {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod",
      "name": "kv-contoso-prod",
@@ -1262,8 +1275,8 @@
    }
   },
   "answer": {
-   "totalRecords": 22,
-   "count": 22,
+   "totalRecords": 26,
+   "count": 26,
    "data": [
     {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/publicIPAddresses/00000000-0000-4000-8000-00000000e1b1",
@@ -1356,12 +1369,30 @@
      "provisioningState": "Succeeded"
     },
     {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-billing",
+     "name": "kv-contoso-billing",
+     "type": "microsoft.keyvault/vaults",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "standard",
+     "provisioningState": "Succeeded"
+    },
+    {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod",
      "name": "kv-contoso-prod",
      "type": "microsoft.keyvault/vaults",
      "resourceGroup": "rg-contoso-prod",
      "location": "westeurope",
      "sku": "standard",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-aks",
+     "name": "link-aks",
+     "type": "microsoft.network/privatednszones/virtualnetworklinks",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "global",
+     "sku": "",
      "provisioningState": "Succeeded"
     },
     {
@@ -1377,6 +1408,24 @@
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkSecurityGroups/nsg-contoso-aks",
      "name": "nsg-contoso-aks",
      "type": "microsoft.network/networksecuritygroups",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-billing",
+     "name": "pe-kv-contoso-billing",
+     "type": "microsoft.network/privateendpoints",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-billing.nic.00000000-0000-4000-8000-00000000e0e3",
+     "name": "pe-kv-contoso-billing.nic.00000000-0000-4000-8000-00000000e0e3",
+     "type": "microsoft.network/networkinterfaces",
      "resourceGroup": "rg-contoso-prod",
      "location": "westeurope",
      "sku": "",
@@ -1545,7 +1594,7 @@
     },
     {
      "type": "microsoft.keyvault/vaults",
-     "count_": 1
+     "count_": 2
     },
     {
      "type": "microsoft.search/searchservices",
@@ -1561,11 +1610,11 @@
     },
     {
      "type": "microsoft.network/privateendpoints",
-     "count_": 1
+     "count_": 2
     },
     {
      "type": "microsoft.network/networkinterfaces",
-     "count_": 1
+     "count_": 2
     },
     {
      "type": "microsoft.network/routetables",
@@ -1577,7 +1626,7 @@
     },
     {
      "type": "microsoft.network/privatednszones/virtualnetworklinks",
-     "count_": 1
+     "count_": 2
     },
     {
      "type": "microsoft.network/dnszones",
@@ -2432,11 +2481,17 @@
        "ipConfigurations": [
         {
          "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-prod.nic.00000000-0000-4000-8000-00000000e0e1/ipConfigurations/privateEndpointIpConfig.00000000-0000-4000-8000-00000000e0e2"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-billing.nic.00000000-0000-4000-8000-00000000e0e3/ipConfigurations/privateEndpointIpConfig.00000000-0000-4000-8000-00000000e0e4"
         }
        ],
        "privateEndpoints": [
         {
          "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-billing"
         }
        ],
        "privateEndpointNetworkPolicies": "Disabled",
@@ -2504,7 +2559,7 @@
      "unit": "Count"
     },
     {
-     "currentValue": 1,
+     "currentValue": 2,
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/private-endpoints",
      "limit": 27,
      "name": {
@@ -2539,11 +2594,17 @@
     "ipConfigurations": [
      {
       "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-prod.nic.00000000-0000-4000-8000-00000000e0e1/ipConfigurations/privateEndpointIpConfig.00000000-0000-4000-8000-00000000e0e2"
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-billing.nic.00000000-0000-4000-8000-00000000e0e3/ipConfigurations/privateEndpointIpConfig.00000000-0000-4000-8000-00000000e0e4"
      }
     ],
     "privateEndpoints": [
      {
       "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod"
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-billing"
      }
     ],
     "privateEndpointNetworkPolicies": "Disabled",
@@ -2606,7 +2667,7 @@
  },
  {
   "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
-  "note": "net subnet get …/private-endpoints: the Key Vault endpoint's NIC",
+  "note": "net subnet get …/private-endpoints: the two Key Vault endpoints' NICs",
   "body": {
    "query": "resources\n| where type =~ 'microsoft.network/networkinterfaces'\n| mv-expand ip = properties.ipConfigurations\n| where tostring(ip.properties.subnet.id) =~ '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/private-endpoints'\n| summarize ips = count() by holder = coalesce(tostring(properties.privateEndpoint.id), tostring(properties.virtualMachine.id), id)\n| order by holder asc",
    "subscriptions": [
@@ -2618,9 +2679,13 @@
    }
   },
   "answer": {
-   "totalRecords": 1,
-   "count": 1,
+   "totalRecords": 2,
+   "count": 2,
    "data": [
+    {
+     "holder": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-billing",
+     "ips": 1
+    },
     {
      "holder": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod",
      "ips": 1
@@ -3032,7 +3097,7 @@
  },
  {
   "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
-  "note": "net endpoint list: Key Vault's endpoint and its NIC's IP",
+  "note": "net endpoint list: the two Key Vault endpoints and their NICs' IPs",
   "body": {
    "query": "resources\n| where type =~ 'Microsoft.Network/privateEndpoints'\n| extend nic = tolower(tostring(properties.networkInterfaces[0].id))\n| join kind=leftouter (resources | where type =~ 'microsoft.network/networkinterfaces' | mv-expand ip = properties.ipConfigurations | summarize ips = make_list(tostring(ip.properties.privateIPAddress)) by nic = tolower(id)) on nic\n| project id, name, resourceGroup, subnet = tostring(properties.subnet.id), auto = properties.privateLinkServiceConnections, manual = properties.manualPrivateLinkServiceConnections, ips\n| order by name asc, id asc",
    "subscriptions": [
@@ -3044,9 +3109,37 @@
    }
   },
   "answer": {
-   "totalRecords": 1,
-   "count": 1,
+   "totalRecords": 2,
+   "count": 2,
    "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-billing",
+     "name": "pe-kv-contoso-billing",
+     "resourceGroup": "rg-contoso-prod",
+     "subnet": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/private-endpoints",
+     "auto": [
+      {
+       "name": "pe-kv-contoso-billing",
+       "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-billing/privateLinkServiceConnections/pe-kv-contoso-billing",
+       "properties": {
+        "provisioningState": "Succeeded",
+        "privateLinkServiceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-billing",
+        "groupIds": [
+         "vault"
+        ],
+        "privateLinkServiceConnectionState": {
+         "status": "Approved",
+         "description": "Auto-Approved",
+         "actionsRequired": "None"
+        }
+       }
+      }
+     ],
+     "manual": [],
+     "ips": [
+      "10.1.4.5"
+     ]
+    },
     {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod",
      "name": "pe-kv-contoso-prod",
@@ -3220,10 +3313,136 @@
   }
  },
  {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net endpoint get pe-kv-contoso-billing: the name, found",
+  "body": {
+   "query": "resources\n| where name =~ 'pe-kv-contoso-billing'\n| where type =~ 'Microsoft.Network/privateEndpoints'\n| project id\n| order by id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-billing"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-billing?api-version=2024-05-01",
+  "note": "net endpoint get: kv-contoso-billing's endpoint, made without a DNS zone group (trace 1)",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-billing",
+   "name": "pe-kv-contoso-billing",
+   "type": "Microsoft.Network/privateEndpoints",
+   "location": "westeurope",
+   "properties": {
+    "provisioningState": "Succeeded",
+    "subnet": {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/private-endpoints"
+    },
+    "networkInterfaces": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-billing.nic.00000000-0000-4000-8000-00000000e0e3"
+     }
+    ],
+    "privateLinkServiceConnections": [
+     {
+      "name": "pe-kv-contoso-billing",
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-billing/privateLinkServiceConnections/pe-kv-contoso-billing",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "privateLinkServiceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-billing",
+       "groupIds": [
+        "vault"
+       ],
+       "privateLinkServiceConnectionState": {
+        "status": "Approved",
+        "description": "Auto-Approved",
+        "actionsRequired": "None"
+       }
+      }
+     }
+    ],
+    "manualPrivateLinkServiceConnections": [],
+    "customDnsConfigs": [],
+    "ipConfigurations": [],
+    "customNetworkInterfaceName": ""
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-billing.nic.00000000-0000-4000-8000-00000000e0e3?api-version=2024-05-01",
+  "note": "net endpoint get: the billing endpoint's NIC, 10.1.4.5 for the vault's name",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-billing.nic.00000000-0000-4000-8000-00000000e0e3",
+   "name": "pe-kv-contoso-billing.nic.00000000-0000-4000-8000-00000000e0e3",
+   "type": "Microsoft.Network/networkInterfaces",
+   "location": "westeurope",
+   "properties": {
+    "provisioningState": "Succeeded",
+    "ipConfigurations": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-billing.nic.00000000-0000-4000-8000-00000000e0e3/ipConfigurations/privateEndpointIpConfig.00000000-0000-4000-8000-00000000e0e4",
+      "name": "privateEndpointIpConfig.00000000-0000-4000-8000-00000000e0e4",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "privateIPAddress": "10.1.4.5",
+       "privateIPAllocationMethod": "Dynamic",
+       "subnet": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/private-endpoints"
+       },
+       "primary": true,
+       "privateIPAddressVersion": "IPv4",
+       "privateLinkConnectionProperties": {
+        "groupId": "vault",
+        "requiredMemberName": "default",
+        "fqdns": [
+         "kv-contoso-billing.vault.azure.net"
+        ]
+       }
+      }
+     }
+    ],
+    "privateEndpoint": {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-billing"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-billing/privateDnsZoneGroups?api-version=2024-05-01",
+  "note": "net endpoint get: the billing endpoint has no zone group, so no A record went into the zone",
+  "answer": {
+   "value": []
+  }
+ },
+ {
   "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks?api-version=2020-06-01",
-  "note": "net endpoint get: the zone is linked to the hub's vnet only, not vnet-contoso-prod",
+  "note": "net endpoint get: the zone is linked to the hub and to vnet-contoso-prod",
   "answer": {
    "value": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-aks",
+     "name": "link-aks",
+     "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+     "location": "global",
+     "properties": {
+      "provisioningState": "Succeeded",
+      "virtualNetwork": {
+       "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod"
+      },
+      "registrationEnabled": false,
+      "virtualNetworkLinkState": "Completed"
+     }
+    },
     {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-hub",
      "name": "link-hub",
@@ -3262,7 +3481,7 @@
  },
  {
   "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
-  "note": "net zone list: the public zone and the private one, linked to the hub only",
+  "note": "net zone list: the public zone and the private one, linked to the hub and the AKS vnet",
   "body": {
    "query": "resources\n| where type in~ ('Microsoft.Network/dnsZones', 'Microsoft.Network/privateDnsZones')\n| extend zone = tolower(id)\n| join kind=leftouter (resources | where type =~ 'microsoft.network/privatednszones/virtualnetworklinks' | extend zone = tolower(substring(id, 0, indexof(tolower(id), '/virtualnetworklinks/'))) | summarize links = make_list(pack('vnet', tostring(properties.virtualNetwork.id), 'registration', tobool(properties.registrationEnabled), 'state', tostring(properties.virtualNetworkLinkState))) by zone) on zone\n| project id, name, type, resourceGroup, records = tolong(properties.numberOfRecordSets), links\n| order by name asc, id asc",
    "subscriptions": [
@@ -3294,6 +3513,11 @@
      "links": [
       {
        "vnet": "/subscriptions/00000000-0000-4000-8000-000000005b02/resourceGroups/rg-contoso-hub/providers/Microsoft.Network/virtualNetworks/vnet-contoso-hub",
+       "registration": false,
+       "state": "Completed"
+      },
+      {
+       "vnet": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod",
        "registration": false,
        "state": "Completed"
       }
@@ -3328,6 +3552,50 @@
      "links": [
       {
        "vnet": "/subscriptions/00000000-0000-4000-8000-000000005b02/resourceGroups/rg-contoso-hub/providers/Microsoft.Network/virtualNetworks/vnet-contoso-hub",
+       "registration": false,
+       "state": "Completed"
+      },
+      {
+       "vnet": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod",
+       "registration": false,
+       "state": "Completed"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net zone list privatelink, which net endpoint get names for an endpoint without a zone group",
+  "body": {
+   "query": "resources\n| where type in~ ('Microsoft.Network/dnsZones', 'Microsoft.Network/privateDnsZones')\n| where name contains 'privatelink'\n| extend zone = tolower(id)\n| join kind=leftouter (resources | where type =~ 'microsoft.network/privatednszones/virtualnetworklinks' | extend zone = tolower(substring(id, 0, indexof(tolower(id), '/virtualnetworklinks/'))) | summarize links = make_list(pack('vnet', tostring(properties.virtualNetwork.id), 'registration', tobool(properties.registrationEnabled), 'state', tostring(properties.virtualNetworkLinkState))) by zone) on zone\n| project id, name, type, resourceGroup, records = tolong(properties.numberOfRecordSets), links\n| order by name asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net",
+     "name": "privatelink.vaultcore.azure.net",
+     "type": "microsoft.network/privatednszones",
+     "resourceGroup": "rg-contoso-prod",
+     "records": 2,
+     "links": [
+      {
+       "vnet": "/subscriptions/00000000-0000-4000-8000-000000005b02/resourceGroups/rg-contoso-hub/providers/Microsoft.Network/virtualNetworks/vnet-contoso-hub",
+       "registration": false,
+       "state": "Completed"
+      },
+      {
+       "vnet": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod",
        "registration": false,
        "state": "Completed"
       }

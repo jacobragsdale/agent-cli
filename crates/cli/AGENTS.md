@@ -32,7 +32,8 @@ a trial does (`agent_cli`, `ok`; `follow` walks `[next: …]` notes).
 `tests/world_<domain>.rs` holds what each domain must answer;
 `tests/world_cross.rs` the traces that hop domains (the deploy trace, the
 failed DAG, the Datadog alert, an exception to its PR, an expired secret,
-an import error, ship and verify) and what a miss says. Run one:
+an import error, ship and verify, the four cluster traces) and what a miss
+says. Run one:
 `cargo test -p agent-cli --features fixtures --test world_dd`.
 `tests/ado.rs`, `sql.rs`, `e2e.rs`: end-to-end runs of the real binary.
 `tests/live_ado.rs`: the work item commands against a live sandbox, off

@@ -10,7 +10,7 @@ use crate::kubectl::{At, Target, items, non_empty};
 use crate::pod::{status_word, strings};
 use crate::shape::{Condition, EventRow, conditions, newest};
 
-use super::{NodeRow, holds, mebibytes, millicores, requests, row, top};
+use super::{NodeRow, holds, mebibytes, millicores, requests, row, top, vm};
 
 #[derive(clap::Args)]
 pub struct NodeGetArgs {
@@ -27,8 +27,6 @@ pub struct NodeDetail {
     /// The Azure VM (a scale set instance) from its providerID: what
     /// `arm resource get` takes.
     vm: Option<String>,
-    /// The AKS node pool as CLUSTER/POOL: what `aks nodepool get` takes.
-    nodepool: Option<String>,
     conditions: Vec<Condition>,
     /// Its InternalIP, and an ExternalIP if it has one.
     ips: Vec<String>,
@@ -70,22 +68,9 @@ fn node_get(ctx: &Ctx, args: NodeGetArgs) -> Result<NodeDetail> {
     let pods: Vec<&Value> = items(&listed).filter(|pod| holds(pod)).collect();
     let used = top(ctx, &target, &["node", &name]).unwrap_or_default();
     let node = row(&target, &item, &pods, used.get(&name));
-    let vm = non_empty(&item["spec"]["providerID"])
-        .and_then(|held| held.strip_prefix("azure://"))
-        .filter(|held| held.starts_with("/subscriptions/"))
-        .map(str::to_owned);
-    let nodepool = vm.as_deref().zip(node.pool.as_deref()).map(|(vm, pool)| {
-        let group = vm
-            .split('/')
-            .skip_while(|part| !part.eq_ignore_ascii_case("resourceGroups"))
-            .nth(1);
-        format!(
-            "{}/{pool}",
-            cluster(&target.context, group.unwrap_or_default())
-        )
-    });
+    let vm = vm(&item).map(str::to_owned);
     if node.needs_attention() {
-        let next = match (&nodepool, &vm) {
+        let next = match (&node.nodepool, &vm) {
             (Some(pool), _) => format!("agent-cli aks nodepool get {pool}"),
             (None, Some(vm)) => format!("agent-cli arm resource get {vm}"),
             _ => format!(
@@ -98,7 +83,6 @@ fn node_get(ctx: &Ctx, args: NodeGetArgs) -> Result<NodeDetail> {
     let status = &item["status"];
     Ok(NodeDetail {
         vm,
-        nodepool,
         conditions: conditions(&item),
         ips: status["addresses"]
             .as_array()
@@ -130,30 +114,6 @@ fn node_get(ctx: &Ctx, args: NodeGetArgs) -> Result<NodeDetail> {
         events: events(ctx, &target, &name),
         node,
     })
-}
-
-/// The AKS cluster the node is in. `az aks get-credentials` names the kube
-/// context after the cluster, so the context is it unless the node resource
-/// group, AKS's `MC_<group>_<cluster>_<region>`, names another.
-// ponytail: for a context renamed from its cluster, the cluster is read as
-// the node group's part before the region, which a cluster name holding an
-// underscore breaks; `aks cluster get`'s node group says for sure.
-fn cluster<'a>(context: &'a str, group: &'a str) -> &'a str {
-    let front = group
-        .get(..3)
-        .filter(|prefix| prefix.eq_ignore_ascii_case("mc_"))
-        .and_then(|_| group[3..].rsplit_once('_'))
-        .map(|(front, _region)| front);
-    match front {
-        Some(front)
-            if !front
-                .to_ascii_lowercase()
-                .ends_with(&format!("_{}", context.to_ascii_lowercase())) =>
-        {
-            front.rsplit_once('_').map_or(front, |(_, cluster)| cluster)
-        }
-        _ => context,
-    }
 }
 
 /// A node's events. The kubelet and node controller write them with the
@@ -191,7 +151,6 @@ command! {
 mod tests {
     use serde_json::json;
 
-    use super::cluster;
     use crate::testing::k8s;
 
     #[test]
@@ -250,17 +209,5 @@ mod tests {
             "{}",
             outcome.stderr
         );
-    }
-
-    #[test]
-    fn the_cluster_is_the_context_unless_the_node_group_names_another() {
-        let group = "MC_rg-contoso-prod_aks-contoso-prod_westeurope";
-        assert_eq!(cluster("aks-contoso-prod", group), "aks-contoso-prod");
-        assert_eq!(
-            cluster("AKS-Contoso-Prod", &group.to_lowercase()),
-            "AKS-Contoso-Prod"
-        );
-        assert_eq!(cluster("prod", group), "aks-contoso-prod");
-        assert_eq!(cluster("prod", "rg-nodes-custom"), "prod");
     }
 }

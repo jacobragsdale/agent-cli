@@ -13,11 +13,12 @@ when you add a fact.
   `contosoacr`, `kv-contoso-prod`, `srch-contoso-prod` in `rg-contoso-prod`,
   `srch-contoso-dev` in `rg-contoso-dev`), plus `vnet-contoso-prod` and the
   network around it (facts/net.md): `nsg-contoso-aks`, `rt-contoso-aks`,
-  `pe-kv-contoso-prod` and its NIC, `privatelink.vaultcore.azure.net` and its
-  link `link-hub`, `contoso.example`, `agw-contoso-prod` and its public IP,
-  and in the node group the load balancer `kubernetes` and its two public
-  IPs, plus three user-assigned identities and the orders-db disk (below):
-  twenty-two rows.
+  `pe-kv-contoso-prod` and `pe-kv-contoso-billing` and their NICs,
+  `privatelink.vaultcore.azure.net` and its links `link-hub` and `link-aks`,
+  `contoso.example`, `agw-contoso-prod` and its public IP, and in the node
+  group the load balancer `kubernetes` and its two public IPs, plus
+  `kv-contoso-billing` (trace 1, facts/net.md), three user-assigned
+  identities and the orders-db disk (below): twenty-six rows.
 - `arm resource get aks-contoso-prod` reads the cluster at `2026-07-01`, the
   newest stable version Microsoft.ContainerService lists (a newer
   `2026-07-02-preview` is passed over): Kubernetes 1.30.4, Azure CNI overlay,
@@ -26,7 +27,8 @@ when you add a fact.
 - That subnet, `arm resource get …/virtualNetworks/vnet-contoso-prod/subnets/aks`,
   is `10.1.0.0/22`, read at `2024-05-01`, as `net subnet get` reads it.
 - `arm query run 'resources | summarize count() by type'` answers one row per
-  type (seventeen): two search services, three public IPs, three identities.
+  type (seventeen): two vaults, two search services, two private endpoints,
+  two NICs, two zone links, three public IPs, three identities.
 - Identities (`arm identity list`): the kubelet's `aks-contoso-prod-agentpool`
   (client `…c002`, principal `…c003`) and the Key Vault CSI add-on's
   `azurekeyvaultsecretsprovider-aks-contoso-prod` (`…c004`, `…c005`) in the
@@ -45,13 +47,10 @@ when you add a fact.
   `kv-contoso-prod` (assignment `…0a5e05`) was deleted at 2026-09-28T16:42:11Z
   by `dana@contoso.example`. `arm activity list` (the last day, `--group
   rg-contoso-prod` or `--resource kv-contoso-prod`) shows it, and `arm change
-  list` (`--resource kv-contoso-prod` too) shows the Delete. For phase 5 and
-  the traces step, the k8s side must add: in `prod/web`, a serviceaccount
-  `notifier` annotated `azure.workload.identity/client-id:
-  00000000-0000-4000-8000-00000000b0f1`, and a pod of a Deployment `notifier`
-  (label `azure.workload.identity/use: "true"`, service account `notifier`)
-  whose log says Key Vault answered 403 Forbidden for
-  `https://kv-contoso-prod.vault.azure.net/secrets/…` (code Forbidden,
+  list` (`--resource kv-contoso-prod` too) shows the Delete. The k8s side
+  (facts/k8s.md): serviceaccount `prod/web/notifier` carries the client id,
+  and the pod of Deployment `notifier` logs Key Vault's 403 for
+  `https://kv-contoso-prod.vault.azure.net/secrets/api-key` (code Forbidden,
   `ForbiddenByRbac`, caller oid `…b0f2`).
 - The activity log also holds `sam@contoso.example` failing to create the
   storage account `stcontosoreports` at 2026-09-29T09:14:31Z with
@@ -60,7 +59,7 @@ when you add a fact.
 - `arm policy list` (and `--group rg-contoso-prod`): one non-compliant state,
   `kv-contoso-prod` against the built-in "Azure Key Vault should disable
   public network access" (audit, assignment `kv-private-access`), consistent
-  with trace 1's public vault address.
+  with its public network access left Enabled (facts/kv.md).
 - `arm change list` (14 days) also has the user pool's count going 2 to 3 at
   2026-09-27T03:10:42Z, no changed_by (the autoscaler).
 - The orders-db disk from trace 2 (`k8s pvc get`'s `pv.disk`,

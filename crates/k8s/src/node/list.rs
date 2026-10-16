@@ -62,7 +62,7 @@ mod tests {
         assert_eq!(
             rows[0],
             json!({"id": "qa/aks-np1-vmss000000", "name": "aks-np1-vmss000000", "ready": true,
-                "schedulable": true, "pool": "np1", "zone": "westeurope-1", "version": "v1.30.4",
+                "schedulable": true, "pool": "np1", "nodepool": "aks-qa/np1", "zone": "westeurope-1", "version": "v1.30.4",
                 "taints": ["node.kubernetes.io/disk-pressure:NoSchedule"],
                 "cpu": {"requested": "250m", "allocatable": "1900m", "requested_percent": 13,
                     "usage": "320m", "usage_percent": 16},

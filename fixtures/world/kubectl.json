@@ -3110,6 +3110,191 @@
     }
    },
    {
+    "kind": "Deployment",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "billing-sync",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T10:58:00Z",
+     "labels": {
+      "app": "billing-sync"
+     },
+     "annotations": {
+      "deployment.kubernetes.io/revision": "1"
+     }
+    },
+    "spec": {
+     "replicas": 1,
+     "selector": {
+      "matchLabels": {
+       "app": "billing-sync"
+      }
+     },
+     "template": {
+      "metadata": {
+       "labels": {
+        "app": "billing-sync"
+       }
+      },
+      "spec": {
+       "containers": [
+        {
+         "name": "billing-sync",
+         "image": "contosoacr.azurecr.io/api:v1.4.2",
+         "command": [
+          "dotnet",
+          "Api.dll",
+          "sync-billing"
+         ],
+         "env": [
+          {
+           "name": "LOG_LEVEL",
+           "valueFrom": {
+            "configMapKeyRef": {
+             "name": "api-config",
+             "key": "LOG_LEVEL"
+            }
+           }
+          }
+         ],
+         "resources": {
+          "requests": {
+           "cpu": "100m",
+           "memory": "128Mi"
+          },
+          "limits": {
+           "memory": "256Mi"
+          }
+         }
+        }
+       ],
+       "serviceAccountName": "default",
+       "dnsPolicy": "ClusterFirst"
+      }
+     },
+     "strategy": {
+      "type": "RollingUpdate",
+      "rollingUpdate": {
+       "maxSurge": "25%",
+       "maxUnavailable": "25%"
+      }
+     }
+    },
+    "status": {
+     "replicas": 1,
+     "readyReplicas": 1,
+     "updatedReplicas": 1,
+     "availableReplicas": 1,
+     "conditions": [
+      {
+       "type": "Available",
+       "status": "True",
+       "lastUpdateTime": "2026-09-29T11:00:08Z",
+       "reason": "MinimumReplicasAvailable"
+      },
+      {
+       "type": "Progressing",
+       "status": "True",
+       "lastUpdateTime": "2026-09-29T11:00:08Z",
+       "reason": "NewReplicaSetAvailable"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Deployment",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "notifier",
+     "namespace": "web",
+     "creationTimestamp": "2026-08-12T09:31:00Z",
+     "labels": {
+      "app": "notifier"
+     },
+     "annotations": {
+      "deployment.kubernetes.io/revision": "1"
+     }
+    },
+    "spec": {
+     "replicas": 1,
+     "selector": {
+      "matchLabels": {
+       "app": "notifier"
+      }
+     },
+     "template": {
+      "metadata": {
+       "labels": {
+        "app": "notifier",
+        "azure.workload.identity/use": "true"
+       }
+      },
+      "spec": {
+       "containers": [
+        {
+         "name": "notifier",
+         "image": "contosoacr.azurecr.io/api:v1.4.2",
+         "command": [
+          "dotnet",
+          "Api.dll",
+          "notify"
+         ],
+         "env": [
+          {
+           "name": "LOG_LEVEL",
+           "valueFrom": {
+            "configMapKeyRef": {
+             "name": "api-config",
+             "key": "LOG_LEVEL"
+            }
+           }
+          }
+         ],
+         "resources": {
+          "requests": {
+           "cpu": "100m",
+           "memory": "128Mi"
+          },
+          "limits": {
+           "memory": "256Mi"
+          }
+         }
+        }
+       ],
+       "serviceAccountName": "notifier",
+       "dnsPolicy": "ClusterFirst"
+      }
+     },
+     "strategy": {
+      "type": "RollingUpdate",
+      "rollingUpdate": {
+       "maxSurge": "25%",
+       "maxUnavailable": "25%"
+      }
+     }
+    },
+    "status": {
+     "replicas": 1,
+     "readyReplicas": 1,
+     "updatedReplicas": 1,
+     "availableReplicas": 1,
+     "conditions": [
+      {
+       "type": "Available",
+       "status": "True",
+       "lastUpdateTime": "2026-09-24T08:00:12Z",
+       "reason": "MinimumReplicasAvailable"
+      },
+      {
+       "type": "Progressing",
+       "status": "True",
+       "lastUpdateTime": "2026-09-24T08:00:12Z",
+       "reason": "NewReplicaSetAvailable"
+      }
+     ]
+    }
+   },
+   {
     "kind": "ReplicaSet",
     "apiVersion": "apps/v1",
     "metadata": {
@@ -3197,6 +3382,170 @@
      "replicas": 5,
      "readyReplicas": 5,
      "availableReplicas": 5
+    }
+   },
+   {
+    "kind": "ReplicaSet",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "billing-sync-5f8b6c9d7",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T10:58:00Z",
+     "labels": {
+      "app": "billing-sync",
+      "pod-template-hash": "5f8b6c9d7"
+     },
+     "annotations": {
+      "deployment.kubernetes.io/revision": "1"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "Deployment",
+       "name": "billing-sync",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "replicas": 1,
+     "selector": {
+      "matchLabels": {
+       "app": "billing-sync",
+       "pod-template-hash": "5f8b6c9d7"
+      }
+     },
+     "template": {
+      "metadata": {
+       "labels": {
+        "app": "billing-sync",
+        "pod-template-hash": "5f8b6c9d7"
+       }
+      },
+      "spec": {
+       "containers": [
+        {
+         "name": "billing-sync",
+         "image": "contosoacr.azurecr.io/api:v1.4.2",
+         "command": [
+          "dotnet",
+          "Api.dll",
+          "sync-billing"
+         ],
+         "env": [
+          {
+           "name": "LOG_LEVEL",
+           "valueFrom": {
+            "configMapKeyRef": {
+             "name": "api-config",
+             "key": "LOG_LEVEL"
+            }
+           }
+          }
+         ],
+         "resources": {
+          "requests": {
+           "cpu": "100m",
+           "memory": "128Mi"
+          },
+          "limits": {
+           "memory": "256Mi"
+          }
+         }
+        }
+       ],
+       "serviceAccountName": "default",
+       "dnsPolicy": "ClusterFirst"
+      }
+     }
+    },
+    "status": {
+     "replicas": 1,
+     "readyReplicas": 1,
+     "availableReplicas": 1
+    }
+   },
+   {
+    "kind": "ReplicaSet",
+    "apiVersion": "apps/v1",
+    "metadata": {
+     "name": "notifier-6b9c7d8f5",
+     "namespace": "web",
+     "creationTimestamp": "2026-08-12T09:31:00Z",
+     "labels": {
+      "app": "notifier",
+      "azure.workload.identity/use": "true",
+      "pod-template-hash": "6b9c7d8f5"
+     },
+     "annotations": {
+      "deployment.kubernetes.io/revision": "1"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "Deployment",
+       "name": "notifier",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "replicas": 1,
+     "selector": {
+      "matchLabels": {
+       "app": "notifier",
+       "pod-template-hash": "6b9c7d8f5"
+      }
+     },
+     "template": {
+      "metadata": {
+       "labels": {
+        "app": "notifier",
+        "azure.workload.identity/use": "true",
+        "pod-template-hash": "6b9c7d8f5"
+       }
+      },
+      "spec": {
+       "containers": [
+        {
+         "name": "notifier",
+         "image": "contosoacr.azurecr.io/api:v1.4.2",
+         "command": [
+          "dotnet",
+          "Api.dll",
+          "notify"
+         ],
+         "env": [
+          {
+           "name": "LOG_LEVEL",
+           "valueFrom": {
+            "configMapKeyRef": {
+             "name": "api-config",
+             "key": "LOG_LEVEL"
+            }
+           }
+          }
+         ],
+         "resources": {
+          "requests": {
+           "cpu": "100m",
+           "memory": "128Mi"
+          },
+          "limits": {
+           "memory": "256Mi"
+          }
+         }
+        }
+       ],
+       "serviceAccountName": "notifier",
+       "dnsPolicy": "ClusterFirst"
+      }
+     }
+    },
+    "status": {
+     "replicas": 1,
+     "readyReplicas": 1,
+     "availableReplicas": 1
     }
    },
    {
@@ -4553,6 +4902,219 @@
     }
    },
    {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "billing-sync-5f8b6c9d7-b2s9x",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-29T11:00:08Z",
+     "labels": {
+      "app": "billing-sync",
+      "pod-template-hash": "5f8b6c9d7"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "ReplicaSet",
+       "name": "billing-sync-5f8b6c9d7",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "containers": [
+      {
+       "name": "billing-sync",
+       "image": "contosoacr.azurecr.io/api:v1.4.2",
+       "command": [
+        "dotnet",
+        "Api.dll",
+        "sync-billing"
+       ],
+       "env": [
+        {
+         "name": "LOG_LEVEL",
+         "valueFrom": {
+          "configMapKeyRef": {
+           "name": "api-config",
+           "key": "LOG_LEVEL"
+          }
+         }
+        }
+       ],
+       "resources": {
+        "requests": {
+         "cpu": "100m",
+         "memory": "128Mi"
+        },
+        "limits": {
+         "memory": "256Mi"
+        }
+       }
+      }
+     ],
+     "serviceAccountName": "default",
+     "dnsPolicy": "ClusterFirst",
+     "nodeName": "aks-system-31415926-vmss000002"
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.2.22",
+     "podIPs": [
+      {
+       "ip": "10.244.2.22"
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ],
+     "containerStatuses": [
+      {
+       "name": "billing-sync",
+       "image": "contosoacr.azurecr.io/api:v1.4.2",
+       "imageID": "contosoacr.azurecr.io/api@sha256:7a72fa7948c3b5e299c40bdb1ebeb125e313c32d4262e130a8206115054663d3",
+       "ready": true,
+       "restartCount": 0,
+       "state": {
+        "running": {
+         "startedAt": "2026-09-29T11:00:08Z"
+        }
+       }
+      }
+     ]
+    }
+   },
+   {
+    "kind": "Pod",
+    "apiVersion": "v1",
+    "metadata": {
+     "name": "notifier-6b9c7d8f5-n4f7k",
+     "namespace": "web",
+     "creationTimestamp": "2026-09-24T08:00:12Z",
+     "labels": {
+      "app": "notifier",
+      "azure.workload.identity/use": "true",
+      "pod-template-hash": "6b9c7d8f5"
+     },
+     "ownerReferences": [
+      {
+       "apiVersion": "apps/v1",
+       "kind": "ReplicaSet",
+       "name": "notifier-6b9c7d8f5",
+       "controller": true
+      }
+     ]
+    },
+    "spec": {
+     "containers": [
+      {
+       "name": "notifier",
+       "image": "contosoacr.azurecr.io/api:v1.4.2",
+       "command": [
+        "dotnet",
+        "Api.dll",
+        "notify"
+       ],
+       "env": [
+        {
+         "name": "LOG_LEVEL",
+         "valueFrom": {
+          "configMapKeyRef": {
+           "name": "api-config",
+           "key": "LOG_LEVEL"
+          }
+         }
+        },
+        {
+         "name": "AZURE_CLIENT_ID",
+         "value": "00000000-0000-4000-8000-00000000b0f1"
+        },
+        {
+         "name": "AZURE_TENANT_ID",
+         "value": "00000000-0000-4000-8000-00000000a001"
+        },
+        {
+         "name": "AZURE_FEDERATED_TOKEN_FILE",
+         "value": "/var/run/secrets/azure/tokens/azure-identity-token"
+        },
+        {
+         "name": "AZURE_AUTHORITY_HOST",
+         "value": "https://login.microsoftonline.com/"
+        }
+       ],
+       "resources": {
+        "requests": {
+         "cpu": "100m",
+         "memory": "128Mi"
+        },
+        "limits": {
+         "memory": "256Mi"
+        }
+       },
+       "volumeMounts": [
+        {
+         "name": "azure-identity-token",
+         "mountPath": "/var/run/secrets/azure/tokens",
+         "readOnly": true
+        }
+       ]
+      }
+     ],
+     "serviceAccountName": "notifier",
+     "dnsPolicy": "ClusterFirst",
+     "nodeName": "aks-system-31415926-vmss000002",
+     "volumes": [
+      {
+       "name": "azure-identity-token",
+       "projected": {
+        "defaultMode": 420,
+        "sources": [
+         {
+          "serviceAccountToken": {
+           "audience": "api://AzureADTokenExchange",
+           "expirationSeconds": 3600,
+           "path": "azure-identity-token"
+          }
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "status": {
+     "phase": "Running",
+     "podIP": "10.244.2.21",
+     "podIPs": [
+      {
+       "ip": "10.244.2.21"
+      }
+     ],
+     "conditions": [
+      {
+       "type": "Ready",
+       "status": "True"
+      }
+     ],
+     "containerStatuses": [
+      {
+       "name": "notifier",
+       "image": "contosoacr.azurecr.io/api:v1.4.2",
+       "imageID": "contosoacr.azurecr.io/api@sha256:7a72fa7948c3b5e299c40bdb1ebeb125e313c32d4262e130a8206115054663d3",
+       "ready": true,
+       "restartCount": 0,
+       "state": {
+        "running": {
+         "startedAt": "2026-09-24T08:00:12Z"
+        }
+       }
+      }
+     ]
+    }
+   },
+   {
     "kind": "Namespace",
     "apiVersion": "v1",
     "metadata": {
@@ -4647,9 +5209,9 @@
       "pods": "30"
      },
      "used": {
-      "requests.cpu": "6500m",
-      "requests.memory": "7Gi",
-      "pods": "10"
+      "requests.cpu": "6700m",
+      "requests.memory": "7424Mi",
+      "pods": "12"
      }
     }
    },
@@ -4729,7 +5291,9 @@
   "aks-contoso-prod/web/worker-5c4d3e9f1-q8zt1/worker": "2026-09-29T11:47:10.100Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:11.137Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:12.174Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:13.211Z INFO  worker starting (version v1.4.2, commit 4be1c0d)\n2026-09-29T11:47:12.512Z INFO  reading database password from /mnt/secrets/worker-db-password\n2026-09-29T11:47:12.874Z INFO  connecting to orders-db.contoso.example:5432 as worker\n",
   "aks-contoso-prod/web/api-7d9f8c6b5-x2k4q/api": "2026-09-29T11:50:00.000Z INFO  GET /orders/1050 200 13ms\n2026-09-29T11:51:00.000Z INFO  GET /orders/1051 200 14ms\n2026-09-29T11:52:00.000Z INFO  GET /orders/1052 200 15ms\n2026-09-29T11:53:00.000Z INFO  GET /orders/1053 200 16ms\n2026-09-29T11:54:00.000Z INFO  GET /orders/1054 200 17ms\n2026-09-29T11:55:00.000Z INFO  GET /orders/1055 200 18ms\n2026-09-29T11:56:00.000Z INFO  GET /orders/1056 200 12ms\n2026-09-29T11:57:00.000Z INFO  GET /orders/1057 200 13ms\n2026-09-29T11:58:00.000Z INFO  GET /orders/1058 200 14ms\n2026-09-29T11:59:00.000Z INFO  GET /orders/1059 200 15ms\n",
   "aks-contoso-prod/web/etl-nightly-load-orders-q8x1k2vz/base": "{\"timestamp\":\"2026-09-29T00:41:07.120511Z\",\"level\":\"info\",\"event\":\"Task instance is in running state\",\"logger\":\"airflow.sdk.execution_time.task_runner\"}\n{\"timestamp\":\"2026-09-29T00:41:07.244103Z\",\"level\":\"info\",\"event\":\"Loading orders for 2026-09-28\",\"rows\":48213,\"logger\":\"task\"}\n{\"timestamp\":\"2026-09-29T00:43:54.991870Z\",\"level\":\"warning\",\"event\":\"Order without a customer\",\"order_id\":88123,\"logger\":\"task\"}\n{\"timestamp\":\"2026-09-29T00:43:55.004213Z\",\"level\":\"error\",\"event\":\"Task failed with exception\",\"logger\":\"task\"}\nTraceback (most recent call last):\n  File \"/home/airflow/.local/lib/python3.12/site-packages/airflow/sdk/execution_time/task_runner.py\", line 875, in run\n  File \"/opt/airflow/dags/etl_nightly.py\", line 42, in load_orders\n    raise ValueError(f\"order {order_id} has no customer_id\")\nValueError: order 88123 has no customer_id\n",
-  "aks-contoso-prod/web/orders-export-29844060-k2v9w/export": "2026-09-29T01:00:05.112Z info: Contoso.Api.Export[0] Exporting orders since 2026-09-28T01:00:00Z for 212 customers\n2026-09-29T01:00:41.870Z info: Contoso.Api.Export[0] Customer 4402: 1,204 orders written\n2026-09-29T01:00:58.311Z info: Contoso.Api.Export[0] Customer 4417: 12,380 orders, paging\n2026-09-29T01:05:08.004Z fail: Contoso.Api.Export[0] Export failed at customer 4417\nUnhandled exception. System.TimeoutException: The orders request for customer 4417 timed out after 00:04:00\n   at Contoso.Api.Orders.OrderClient.GetOrdersAsync(Int32 customerId, CancellationToken ct) in /app/src/Orders/OrderClient.cs:line 19\n   at Program.<Main>$(String[] args)\n"
+  "aks-contoso-prod/web/orders-export-29844060-k2v9w/export": "2026-09-29T01:00:05.112Z info: Contoso.Api.Export[0] Exporting orders since 2026-09-28T01:00:00Z for 212 customers\n2026-09-29T01:00:41.870Z info: Contoso.Api.Export[0] Customer 4402: 1,204 orders written\n2026-09-29T01:00:58.311Z info: Contoso.Api.Export[0] Customer 4417: 12,380 orders, paging\n2026-09-29T01:05:08.004Z fail: Contoso.Api.Export[0] Export failed at customer 4417\nUnhandled exception. System.TimeoutException: The orders request for customer 4417 timed out after 00:04:00\n   at Contoso.Api.Orders.OrderClient.GetOrdersAsync(Int32 customerId, CancellationToken ct) in /app/src/Orders/OrderClient.cs:line 19\n   at Program.<Main>$(String[] args)\n",
+  "aks-contoso-prod/web/notifier-6b9c7d8f5-n4f7k/notifier": "2026-09-29T11:50:00.118Z info: Notifier.Worker[0] Sending 3 queued order notifications\n2026-09-29T11:50:00.402Z fail: Notifier.Secrets[0] GET https://kv-contoso-prod.vault.azure.net/secrets/api-key answered 403 Forbidden\nAzure.RequestFailedException: Caller is not authorized to perform action on resource.\nIf role assignments, deny assignments or role definitions were changed recently, please observe propagation time.\nCaller: appid=00000000-0000-4000-8000-00000000b0f1;oid=00000000-0000-4000-8000-00000000b0f2;iss=https://sts.windows.net/00000000-0000-4000-8000-00000000a001/\nAction: 'Microsoft.KeyVault/vaults/secrets/getSecret/action'\nResource: '/subscriptions/00000000-0000-4000-8000-000000005b01/resourcegroups/rg-contoso-prod/providers/microsoft.keyvault/vaults/kv-contoso-prod/secrets/api-key'\nAssignment: (not found)\nDenyAssignmentId: null\nVault: kv-contoso-prod;location=westeurope\n\nStatus: 403 (Forbidden)\nErrorCode: Forbidden\n\nContent:\n{\"error\":{\"code\":\"Forbidden\",\"message\":\"Caller is not authorized to perform action on resource.\",\"innererror\":{\"code\":\"ForbiddenByRbac\"}}}\n   at Azure.Security.KeyVault.KeyVaultPipeline.SendRequestAsync(Request request, CancellationToken cancellationToken)\n   at Azure.Security.KeyVault.Secrets.SecretClient.GetSecretAsync(String name, String version, CancellationToken cancellationToken)\n2026-09-29T11:50:00.403Z warn: Notifier.Worker[0] 3 notifications left queued; retrying in 5 minutes\n2026-09-29T11:55:00.118Z info: Notifier.Worker[0] Sending 3 queued order notifications\n2026-09-29T11:55:00.402Z fail: Notifier.Secrets[0] GET https://kv-contoso-prod.vault.azure.net/secrets/api-key answered 403 Forbidden\nAzure.RequestFailedException: Caller is not authorized to perform action on resource.\nIf role assignments, deny assignments or role definitions were changed recently, please observe propagation time.\nCaller: appid=00000000-0000-4000-8000-00000000b0f1;oid=00000000-0000-4000-8000-00000000b0f2;iss=https://sts.windows.net/00000000-0000-4000-8000-00000000a001/\nAction: 'Microsoft.KeyVault/vaults/secrets/getSecret/action'\nResource: '/subscriptions/00000000-0000-4000-8000-000000005b01/resourcegroups/rg-contoso-prod/providers/microsoft.keyvault/vaults/kv-contoso-prod/secrets/api-key'\nAssignment: (not found)\nDenyAssignmentId: null\nVault: kv-contoso-prod;location=westeurope\n\nStatus: 403 (Forbidden)\nErrorCode: Forbidden\n\nContent:\n{\"error\":{\"code\":\"Forbidden\",\"message\":\"Caller is not authorized to perform action on resource.\",\"innererror\":{\"code\":\"ForbiddenByRbac\"}}}\n   at Azure.Security.KeyVault.KeyVaultPipeline.SendRequestAsync(Request request, CancellationToken cancellationToken)\n   at Azure.Security.KeyVault.Secrets.SecretClient.GetSecretAsync(String name, String version, CancellationToken cancellationToken)\n2026-09-29T11:55:00.403Z warn: Notifier.Worker[0] 3 notifications left queued; retrying in 5 minutes\n",
+  "aks-contoso-prod/web/billing-sync-5f8b6c9d7-b2s9x/billing-sync": "2026-09-29T11:50:00.204Z info: Billing.Sync[0] Syncing invoices from the billing provider\n2026-09-29T11:50:00.231Z fail: Billing.Sync[0] Reading secret billing-api-key from https://kv-contoso-billing.vault.azure.net/ failed\nSystem.Net.Http.HttpRequestException: Name or service not known (kv-contoso-billing.vault.azure.net:443)\n ---> System.Net.Sockets.SocketException (0xFFFDFFFE): Name or service not known\n   at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.ThrowException(SocketError error, CancellationToken cancellationToken)\n   at System.Net.Http.HttpConnectionPool.ConnectToTcpHostAsync(String host, Int32 port, HttpRequestMessage initialRequest, Boolean async, CancellationToken cancellationToken)\n   --- End of inner exception stack trace ---\n   at Azure.Security.KeyVault.Secrets.SecretClient.GetSecretAsync(String name, String version, CancellationToken cancellationToken)\n2026-09-29T11:50:00.232Z warn: Billing.Sync[0] Sync skipped; retrying in 5 minutes\n2026-09-29T11:55:00.204Z info: Billing.Sync[0] Syncing invoices from the billing provider\n2026-09-29T11:55:00.231Z fail: Billing.Sync[0] Reading secret billing-api-key from https://kv-contoso-billing.vault.azure.net/ failed\nSystem.Net.Http.HttpRequestException: Name or service not known (kv-contoso-billing.vault.azure.net:443)\n ---> System.Net.Sockets.SocketException (0xFFFDFFFE): Name or service not known\n   at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.ThrowException(SocketError error, CancellationToken cancellationToken)\n   at System.Net.Http.HttpConnectionPool.ConnectToTcpHostAsync(String host, Int32 port, HttpRequestMessage initialRequest, Boolean async, CancellationToken cancellationToken)\n   --- End of inner exception stack trace ---\n   at Azure.Security.KeyVault.Secrets.SecretClient.GetSecretAsync(String name, String version, CancellationToken cancellationToken)\n2026-09-29T11:55:00.232Z warn: Billing.Sync[0] Sync skipped; retrying in 5 minutes\n"
  },
  "server": {
   "aks-contoso-prod": {
@@ -4811,6 +5375,14 @@
     "app-routing-system/nginx-5d8f9b7c6-k4m2p": [
      "31m",
      "142Mi"
+    ],
+    "web/billing-sync-5f8b6c9d7-b2s9x": [
+     "3m",
+     "88Mi"
+    ],
+    "web/notifier-6b9c7d8f5-n4f7k": [
+     "6m",
+     "92Mi"
     ]
    }
   }
@@ -4944,6 +5516,15 @@
     },
     "cat /etc/resolv.conf": {
      "stdout": "search web.svc.cluster.local svc.cluster.local cluster.local\nnameserver 10.0.0.10\noptions ndots:5\n"
+    }
+   },
+   "web/billing-sync-5f8b6c9d7-b2s9x/billing-sync": {
+    "nslookup kv-contoso-billing.vault.azure.net": {
+     "stdout": "Server:\t\t10.0.0.10\nAddress:\t10.0.0.10#53\n\nNon-authoritative answer:\nkv-contoso-billing.vault.azure.net\tcanonical name = kv-contoso-billing.privatelink.vaultcore.azure.net.\n** server can't find kv-contoso-billing.privatelink.vaultcore.azure.net: NXDOMAIN\n",
+     "exit": 1
+    },
+    "nslookup kv-contoso-prod.vault.azure.net": {
+     "stdout": "Server:\t\t10.0.0.10\nAddress:\t10.0.0.10#53\n\nNon-authoritative answer:\nkv-contoso-prod.vault.azure.net\tcanonical name = kv-contoso-prod.privatelink.vaultcore.azure.net.\nName:\tkv-contoso-prod.privatelink.vaultcore.azure.net\nAddress: 10.1.4.4\n"
     }
    }
   }

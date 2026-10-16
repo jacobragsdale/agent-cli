@@ -66,6 +66,24 @@ agent-cli confluence page list "runbook etl_nightly" --fields id,title       # 1
 agent-cli confluence page get 1101 --section "An order without customer_id" --fields body
 ```
 
+The four cluster traces (`crates/cli/tests/world_cross.rs`), each from the
+symptom to its cause:
+
+```sh
+# 1. Private DNS: billing-sync cannot resolve its vault
+agent-cli k8s pod run prod/web/billing-sync-5f8b6c9d7-b2s9x --yes -- nslookup kv-contoso-billing.vault.azure.net
+agent-cli net endpoint list --fields id,target        # pe-kv-contoso-billing: no zone group, no record
+# 2. Multi-Attach: orders-db-0 stuck creating, its disk on the NotReady node
+agent-cli k8s pvc get prod/web/data-orders-db-0       # notes node get, then aks nodepool get
+# 3. Pending pods: reports-api's two new pods fit nowhere
+agent-cli k8s node list aks-user --fields id,nodepool,cpu
+agent-cli aks nodepool get aks-contoso-prod/user      # the autoscaler at its maximum
+# 4. Workload identity 403: the notifier's Key Vault reads refused
+agent-cli k8s serviceaccount get prod/web/notifier --fields client_id
+agent-cli arm identity get 00000000-0000-4000-8000-00000000b0f1 --fields principal_id,roles
+agent-cli arm activity list --resource kv-contoso-prod     # dana deleted its role
+```
+
 ## Files
 
 ```

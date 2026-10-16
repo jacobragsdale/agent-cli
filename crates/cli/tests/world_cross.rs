@@ -547,3 +547,296 @@ fn an_order_missing_from_search_leads_to_the_indexer_the_runbook_and_last_nights
         "the search miss and last night's failed load are the same order: {log}"
     );
 }
+
+/// The `id` of the one row of `listed` whose `field` ends with `suffix`.
+fn id_where(listed: &Value, field: &str, suffix: &str) -> String {
+    let rows: Vec<&Value> = listed
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|row| {
+            row[field]
+                .as_str()
+                .is_some_and(|held| held.ends_with(suffix))
+        })
+        .collect();
+    assert_eq!(rows.len(), 1, "{field} ending {suffix}: {listed}");
+    rows[0]["id"].as_str().unwrap().to_owned()
+}
+
+/// Trace 1, private DNS: billing-sync cannot resolve its vault; from the pod
+/// the name is a CNAME into the privatelink zone that holds no record for
+/// it, because the vault's private endpoint was made without a DNS zone
+/// group, though the zone is linked to the AKS vnet.
+#[test]
+fn a_vault_name_that_does_not_resolve_from_a_pod_leads_to_its_endpoint_without_a_zone_group() {
+    let pods = ok(&["k8s", "pod", "list", "billing-sync", "--fields", "id"]);
+    let pod = pods[0]["id"].as_str().unwrap();
+    let log = ok(&[
+        "k8s", "pod", "logs", pod, "--tail", "20", "--fields", "text",
+    ]);
+    assert!(
+        log["text"]
+            .as_str()
+            .unwrap()
+            .contains("Name or service not known (kv-contoso-billing.vault.azure.net:443)"),
+        "{log}"
+    );
+
+    let lookup = agent_cli(&[
+        "k8s",
+        "pod",
+        "run",
+        pod,
+        "--yes",
+        "--",
+        "nslookup",
+        "kv-contoso-billing.vault.azure.net",
+    ]);
+    assert_eq!(lookup.code, 1, "{}", lookup.stderr);
+    let stdout = lookup.json()["stdout"].as_str().unwrap().to_owned();
+    assert!(
+        stdout.contains("canonical name = kv-contoso-billing.privatelink.vaultcore.azure.net.")
+            && stdout.contains("NXDOMAIN"),
+        "{stdout}"
+    );
+    let working = ok(&[
+        "k8s",
+        "pod",
+        "run",
+        pod,
+        "--yes",
+        "--",
+        "nslookup",
+        "kv-contoso-prod.vault.azure.net",
+    ]);
+    assert!(
+        working["stdout"]
+            .as_str()
+            .unwrap()
+            .ends_with("Address: 10.1.4.4"),
+        "the other vault resolves privately from the same pod: {working}"
+    );
+
+    let endpoints = ok(&["net", "endpoint", "list", "--fields", "id,target"]);
+    let endpoint = id_where(&endpoints, "target", "/vaults/kv-contoso-billing");
+    let walked = follow(&["net", "endpoint", "get", &endpoint]);
+    assert_eq!(walked.len(), 2, "endpoint get, then zone list");
+    let got = walked[0].json();
+    assert_eq!(got["fqdns"], json!(["kv-contoso-billing.vault.azure.net"]));
+    assert!(got.get("dns").is_none(), "no zone group: {got}");
+    let zones = walked[1].json();
+    assert_eq!(zones[0]["name"], "privatelink.vaultcore.azure.net");
+    assert!(
+        zones[0]["links"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|link| link["vnet"] == got["vnet"]),
+        "the zone is linked where the pods are, so its answer is final: {zones}"
+    );
+    let records = ok(&[
+        "net",
+        "record",
+        "list",
+        zones[0]["id"].as_str().unwrap(),
+        "kv-contoso",
+        "--fields",
+        "name",
+    ]);
+    assert_eq!(records, json!([{"name": "kv-contoso-prod"}]));
+}
+
+/// Trace 2, Multi-Attach: orders-db-0 waits on a disk still attached to the
+/// node the pool upgrade cordoned, which has stopped reporting; Azure says
+/// the same VM holds the disk.
+#[test]
+fn a_pod_stuck_creating_leads_to_its_disk_on_a_not_ready_node_and_that_nodes_pool() {
+    let pod = ok(&[
+        "k8s",
+        "pod",
+        "get",
+        "prod/web/orders-db-0",
+        "--fields",
+        "status,volumes,events",
+    ]);
+    assert_eq!(pod["status"], "ContainerCreating");
+    assert!(
+        pod["events"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|event| event["message"]
+                .as_str()
+                .unwrap()
+                .starts_with("Multi-Attach error")),
+        "{pod}"
+    );
+    let claim = pod["volumes"][0]["source"].as_str().unwrap();
+
+    let walked = follow(&["k8s", "pvc", "get", claim]);
+    assert_eq!(
+        walked.len(),
+        4,
+        "pvc get, node get, aks nodepool get, event list"
+    );
+    let claim = walked[0].json();
+    let node = walked[1].json();
+    assert_eq!(node["id"], claim["attached_to"]);
+    assert_eq!(
+        (&node["ready"], &node["schedulable"]),
+        (&json!(false), &json!(false)),
+        "{node}"
+    );
+    assert_eq!(walked[2].json()["id"], node["nodepool"]);
+
+    let disk = ok(&[
+        "arm",
+        "resource",
+        "get",
+        claim["pv"]["disk"].as_str().unwrap(),
+        "--fields",
+        "managedBy",
+    ]);
+    assert_eq!(
+        disk["managedBy"], node["vm"],
+        "Azure has the disk on the node k8s says holds it"
+    );
+}
+
+/// Trace 3, pending pods: reports-api's HPA asked for five pods, the two
+/// new ones fit on no node, and the user pool's autoscaler is at its
+/// maximum.
+#[test]
+fn pending_pods_lead_to_full_nodes_a_pool_at_its_maximum_and_an_hpa_at_its_own() {
+    let walked = follow(&["k8s", "deployment", "get", "prod/web/reports-api"]);
+    assert_eq!(walked.len(), 2, "deployment get, then a pending pod");
+    let pending = walked[1].json();
+    assert_eq!(pending["status"], "Pending");
+    assert!(
+        pending["events"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("2 Insufficient cpu"),
+        "{pending}"
+    );
+
+    let nodes = ok(&[
+        "k8s",
+        "node",
+        "list",
+        "aks-user",
+        "--fields",
+        "id,schedulable,nodepool,cpu",
+    ]);
+    let full: Vec<&Value> = nodes
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|node| node["schedulable"] == true)
+        .collect();
+    assert_eq!(full.len(), 2, "{nodes}");
+    assert!(
+        full.iter()
+            .all(|node| node["cpu"]["requested_percent"] == 96),
+        "a 1-CPU pod fits on neither: {nodes}"
+    );
+
+    let walked = follow(&[
+        "aks",
+        "nodepool",
+        "get",
+        full[0]["nodepool"].as_str().unwrap(),
+    ]);
+    assert_eq!(walked.len(), 2, "nodepool get, then the cluster's events");
+    let pool = walked[0].json();
+    assert_eq!(pool["count"], pool["autoscale"]["max"], "{pool}");
+    assert!(
+        walked[1].stdout.contains("max node group size reached"),
+        "{}",
+        walked[1].stdout
+    );
+
+    let autoscalers = ok(&[
+        "k8s",
+        "hpa",
+        "list",
+        "--fields",
+        "id,max,current,conditions",
+    ]);
+    let hpa = &autoscalers[0];
+    assert_eq!(hpa["id"], "prod/web/reports-api");
+    assert_eq!(hpa["current"], hpa["max"]);
+    assert!(
+        hpa["conditions"].as_array().unwrap().contains(
+            &json!({"type": "ScalingLimited", "status": "True", "reason": "TooManyReplicas",
+                "message": "the desired replica count is more than the maximum replica count"})
+        ),
+        "{hpa}"
+    );
+}
+
+/// Trace 4, workload identity 403: the notifier's Key Vault reads are
+/// refused; its serviceaccount names the identity the cluster's issuer is
+/// trusted for, which holds no Key Vault role since dana deleted it.
+#[test]
+fn a_key_vault_403_leads_from_the_pod_to_its_identity_and_who_deleted_its_role() {
+    let pods = ok(&["k8s", "pod", "list", "notifier", "--fields", "id"]);
+    let pod = pods[0]["id"].as_str().unwrap();
+    let log = ok(&[
+        "k8s", "pod", "logs", pod, "--tail", "30", "--fields", "text",
+    ]);
+    let text = log["text"].as_str().unwrap().to_owned();
+    assert!(text.contains("ForbiddenByRbac"), "{text}");
+
+    let account = ok(&["k8s", "pod", "get", pod, "--fields", "service_account"]);
+    let account = account["service_account"].as_str().unwrap();
+    let client = ok(&[
+        "k8s",
+        "serviceaccount",
+        "get",
+        account,
+        "--fields",
+        "client_id",
+    ]);
+    let identity = ok(&[
+        "arm",
+        "identity",
+        "get",
+        client["client_id"].as_str().unwrap(),
+    ]);
+    assert_eq!(
+        identity["federated_credentials"][0]["serviceaccount"], "aks-contoso-prod/web/notifier",
+        "the issuer trusts this pod's serviceaccount: {identity}"
+    );
+    let principal = identity["principal_id"].as_str().unwrap();
+    assert!(
+        text.contains(&format!("oid={principal}")),
+        "the caller Key Vault refused is this identity"
+    );
+
+    let roles = ok(&[
+        "arm",
+        "role",
+        "list",
+        "--principal",
+        principal,
+        "--fields",
+        "role",
+    ]);
+    assert_eq!(roles, json!([{"role": "Monitoring Metrics Publisher"}]));
+    let log = ok(&[
+        "arm",
+        "activity",
+        "list",
+        "--resource",
+        "kv-contoso-prod",
+        "--fields",
+        "when,caller,operation",
+    ]);
+    assert_eq!(
+        log[0],
+        json!({"when": "2026-09-28T16:42:11Z", "caller": "dana@contoso.example",
+            "operation": "Microsoft.Authorization/roleAssignments/delete"})
+    );
+}

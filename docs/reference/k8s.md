@@ -556,7 +556,7 @@ agent-cli k8s node list — List nodes: ready, cordoned, taints, CPU and memory 
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --limit int      (default 50)
-Returns: [{id,name,ready,schedulable,pool,zone,version,taints[],cpu{requested,allocatable,requested_percent,usage,usage_percent},memory{requested,allocatable,requested_percent,usage,usage_percent},pressure[],pod_count,age}]
+Returns: [{id,name,ready,schedulable,pool,nodepool,zone,version,taints[],cpu{requested,allocatable,requested_percent,usage,usage_percent},memory{requested,allocatable,requested_percent,usage,usage_percent},pressure[],pod_count,age}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s node list --cluster prod --fields id,ready,schedulable,pool,cpu
 ```
@@ -568,7 +568,7 @@ agent-cli k8s node get — Show a node: conditions, requests, its Azure VM and A
  *<node> str       The node: its id (cluster/name) or name
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
-Returns: {id,name,ready,schedulable,pool,zone,version,taints[],cpu{requested,allocatable,requested_percent,usage,usage_percent},memory{requested,allocatable,requested_percent,usage,usage_percent},pressure[],pod_count,age,vm,nodepool,conditions[{type,status,reason,message}],ips[],pod_cidr,capacity,allocatable,pods[{id,status,cpu,memory}],events[{type,reason,object,message,count,last_seen,namespace}]}
+Returns: {id,name,ready,schedulable,pool,nodepool,zone,version,taints[],cpu{requested,allocatable,requested_percent,usage,usage_percent},memory{requested,allocatable,requested_percent,usage,usage_percent},pressure[],pod_count,age,vm,conditions[{type,status,reason,message}],ips[],pod_cidr,capacity,allocatable,pods[{id,status,cpu,memory}],events[{type,reason,object,message,count,last_seen,namespace}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s node get prod/aks-user-27182818-vmss000001 --fields ready,conditions,vm,nodepool
 ```

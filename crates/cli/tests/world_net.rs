@@ -5,7 +5,7 @@
 #[path = "common/world.rs"]
 mod world;
 
-use world::{agent_cli, follow, ok};
+use world::{agent_cli, ok};
 
 const RG: &str =
     "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod";
@@ -89,7 +89,7 @@ fn a_subnet_names_its_holders_by_ids_other_commands_take() {
         &format!("{}/subnets/private-endpoints", vnet()),
     ]);
     assert_eq!(
-        endpoints["holders"][0]["id"],
+        endpoints["holders"][1]["id"],
         format!("{RG}/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod")
     );
     let listed = ok(&["net", "nsg", "list"]);
@@ -130,10 +130,14 @@ fn an_aks_nodes_nic_falls_back_to_its_subnets_rules_and_routes_and_says_so() {
     );
 }
 
+/// kv-contoso-prod's endpoint resolves from the AKS vnet, as trace 4's 403
+/// needs; trace 1's vault, whose endpoint has no zone group, is in
+/// world_cross.rs.
 #[test]
-fn the_vaults_endpoint_resolves_from_the_hub_only_and_its_note_shows_the_link() {
-    let walked = follow(&["net", "endpoint", "get", "pe-kv-contoso-prod"]);
-    let endpoint = walked[0].json();
+fn the_vaults_endpoint_resolves_from_the_aks_vnet_and_needs_no_next_step() {
+    let ran = agent_cli(&["net", "endpoint", "get", "pe-kv-contoso-prod"]);
+    assert_eq!(ran.code, 0, "{}", ran.stderr);
+    let endpoint = ran.json();
     assert_eq!(endpoint["ips"][0], "10.1.4.4", "{endpoint}");
     assert_eq!(endpoint["fqdns"][0], "kv-contoso-prod.vault.azure.net");
     assert_eq!(
@@ -141,24 +145,12 @@ fn the_vaults_endpoint_resolves_from_the_hub_only_and_its_note_shows_the_link() 
             endpoint["dns"][0]["resolves"].clone(),
             endpoint["dns"][0]["linked"].clone()
         ),
-        (true.into(), false.into()),
-        "the record is right, the link is missing: {endpoint}"
+        (true.into(), true.into()),
+        "{endpoint}"
     );
-    assert_eq!(walked.len(), 2, "then net zone list: {}", walked[0].stderr);
-    let zones = walked[1].json();
+    assert!(!ran.stderr.contains("[next: "), "{}", ran.stderr);
+    let zones = ok(&["net", "zone", "list", "--vnet", "vnet-contoso-prod"]);
     assert_eq!(zones[0]["name"], "privatelink.vaultcore.azure.net");
-    assert!(
-        zones[0]["links"][0]["vnet"]
-            .as_str()
-            .unwrap()
-            .ends_with("/vnet-contoso-hub"),
-        "{zones}"
-    );
-    assert_eq!(
-        ok(&["net", "zone", "list", "--vnet", "vnet-contoso-prod"]),
-        serde_json::json!([]),
-        "no private zone is linked to the AKS vnet"
-    );
     let records = ok(&[
         "net",
         "record",
@@ -168,7 +160,7 @@ fn the_vaults_endpoint_resolves_from_the_hub_only_and_its_note_shows_the_link() 
     ]);
     assert_eq!(records[0]["values"][0], "10.1.4.4", "{records}");
     let listed = ok(&["net", "endpoint", "list"]);
-    assert_eq!(listed[0]["id"], endpoint["id"]);
+    assert_eq!(listed[1]["id"], endpoint["id"]);
 }
 
 #[test]

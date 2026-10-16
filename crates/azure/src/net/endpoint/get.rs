@@ -166,7 +166,7 @@ fn next(row: &EndpointRow) -> Option<String> {
     let service = row.fqdns.first().unwrap_or(&row.name);
     if row.dns.is_empty() {
         return Some(format!(
-            "[next: agent-cli net zone list privatelink  (the endpoint has no DNS zone group, so {service} resolves to its public address unless the clients' DNS server answers it)]"
+            "[next: agent-cli net zone list privatelink  (the endpoint has no DNS zone group, so no private zone holds a record for {service}: a vnet linked to its privatelink zone gets no such host, any other its public address)]"
         ));
     }
     if let Some(dns) = row.dns.iter().find(|dns| !dns.linked) {

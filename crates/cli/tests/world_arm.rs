@@ -31,6 +31,13 @@ fn the_world_answers_what_a_trial_asks_of_arm() {
         "resources | summarize count() by type",
     ]);
     assert_eq!(counts.as_array().map(Vec::len), Some(17), "{counts}");
+    assert!(
+        counts
+            .as_array()
+            .unwrap()
+            .contains(&serde_json::json!({"type": "microsoft.keyvault/vaults", "count_": 2})),
+        "kv-contoso-prod and kv-contoso-billing: {counts}"
+    );
 }
 
 #[test]
@@ -42,7 +49,7 @@ fn every_resource_list_id_is_what_resource_get_takes() {
         .iter()
         .map(|row| row["id"].as_str().unwrap())
         .collect();
-    assert_eq!(ids.len(), 22, "{listed}");
+    assert_eq!(ids.len(), 26, "{listed}");
     let aks = ids
         .iter()
         .find(|id| id.ends_with("/aks-contoso-prod"))

@@ -115,7 +115,11 @@ fn the_deployments_running_an_image_are_found_by_repo_and_tag() {
         "--fields",
         "id",
     ]);
-    assert_eq!(running, json!([{"id": "prod/web/api"}]));
+    assert_eq!(
+        running,
+        json!([{"id": "prod/web/api"}, {"id": "prod/web/billing-sync"}, {"id": "prod/web/notifier"}]),
+        "billing-sync and notifier run commands of the api image"
+    );
 }
 
 #[test]
@@ -505,7 +509,7 @@ fn the_web_namespace_has_a_quota_and_its_service_accounts_say_what_they_may_do()
     assert_eq!(
         namespaces[4],
         json!({"name": "web", "in_scope": true,
-            "quota": {"pods": "10/30", "requests.cpu": "6500m/12", "requests.memory": "7Gi/24Gi"}})
+            "quota": {"pods": "12/30", "requests.cpu": "6700m/12", "requests.memory": "7424Mi/24Gi"}})
     );
     assert_eq!(namespaces[2], json!({"name": "ingest", "in_scope": false}));
     let limits = ok(&[
