@@ -1,3 +1,3 @@
-//! TODO: what `route` holds that its commands share.
+//! `net route`: route tables, a row per route.
 
 pub(crate) mod list;

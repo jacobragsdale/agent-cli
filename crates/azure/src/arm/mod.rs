@@ -135,6 +135,17 @@ pub(crate) fn quote(raw: &str) -> String {
     format!("'{}'", raw.replace('\\', "\\\\").replace('\'', "\\'"))
 }
 
+/// A KQL test that `type` is one of `kinds`, in any case.
+pub(crate) fn of_type(kinds: &[&str]) -> String {
+    match kinds {
+        [one] => format!("type =~ {}", quote(one)),
+        many => {
+            let quoted: Vec<String> = many.iter().map(|kind| quote(kind)).collect();
+            format!("type in~ ({})", quoted.join(", "))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

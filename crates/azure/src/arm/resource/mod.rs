@@ -8,7 +8,7 @@ pub(crate) mod list;
 use agent_cli_core::{Ctx, Failure};
 use anyhow::Result;
 
-use crate::arm::{quote, scope};
+use crate::arm::{of_type, quote, scope};
 use crate::client::{decode, text};
 use crate::config::Azure;
 use crate::graph::rows;
@@ -132,7 +132,7 @@ fn portal(raw: &str) -> Option<String> {
 /// What a ref is read within: the types it may be, the flags that place a
 /// name, and the commands a hint names.
 pub(crate) struct Lookup<'a> {
-    /// The types an id may be, any case; a name is searched as the first.
+    /// The types an id may be, any case; a name is searched among them.
     /// Empty: any type.
     pub kinds: &'a [&'a str],
     pub group: Option<&'a str>,
@@ -248,8 +248,8 @@ fn agree(ctx: &Ctx, azure: &Azure, lookup: &Lookup, target: &Target) -> Result<(
 /// (several, listed by id).
 fn named(ctx: &Ctx, azure: &Azure, lookup: &Lookup, name: &str) -> Result<Target> {
     let mut kql = format!("resources\n| where name =~ {}", quote(name));
-    if let Some(kind) = lookup.kinds.first() {
-        kql.push_str(&format!("\n| where type =~ {}", quote(kind)));
+    if !lookup.kinds.is_empty() {
+        kql.push_str(&format!("\n| where {}", of_type(lookup.kinds)));
     }
     if let Some(group) = lookup.group {
         kql.push_str(&format!("\n| where resourceGroup =~ {}", quote(group)));

@@ -31,10 +31,12 @@ domain's module doc (`kv/mod.rs` …) gives its ids, helpers and quirks.
   `cluster/pool`; `locate`, `Located`. `aks/nodepool/mod.rs`: `pool`.
 - `aisearch/mod.rs`: `Search`, the door; ids in `aisearch/refs.rs`.
 - `arm/mod.rs`: `subscriptions`, `scope` (`--subscription`), `quote`
-  (KQL), `scrub`. `arm/resource/mod.rs`: `resolve`, any ARM ref (an id, a
-  portal link, a name within a `Lookup`), for arm and net.
-- `net/mod.rs`: `Place` (`--group`, `--subscription`), `read`, `usages`,
-  `rule` (an NSG rule as written or in effect).
+  and `of_type` (KQL), `scrub`. `arm/resource/mod.rs`: `resolve`, any ARM
+  ref (an id, a portal link, a name within a `Lookup`), for arm and net.
+- `net/mod.rs`: `Place` (`--group`, `--subscription`; `rows`, any Resource
+  Graph tail), `read`, `found` (a 404 is `None`), `leaf`, `usages`, `rule`
+  (an NSG rule as written or in effect). `net/ip/mod.rs`: `public_ips`,
+  each with its k8s service.
 
 ## Fixtures
 `fixtures/world/http/{azure,aisearch}.json`; facts in

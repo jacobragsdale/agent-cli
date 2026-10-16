@@ -26,5 +26,33 @@ when you add a fact.
   is `10.1.0.5`, read at `2018-10-01`. Azure refuses its effective rules and
   routes (a stand-in 404 until work shows the real answer), so `net nic get`
   prints the subnet's NSG rules and route table and says so in two notes.
-- `arm resource list` lists the NSG, route table, endpoint and its NIC
-  beside the earlier six; the node group's scale sets are not in it.
+- Subnet `appgw` (`10.1.5.0/24`): two IPs used of 251, by `agw-contoso-prod`.
+- `pe-kv-contoso-prod` reaches `kv-contoso-prod` (group `vault`, Approved)
+  at `10.1.4.4`, the IP `kv-contoso-prod.vault.azure.net` should resolve to.
+  Its zone group keeps the A record `kv-contoso-prod` in the private zone
+  `privatelink.vaultcore.azure.net` (rg-contoso-prod), which holds it at
+  `10.1.4.4`. The zone's only vnet link is `link-hub`, to `vnet-contoso-hub`:
+  nothing links it to `vnet-contoso-prod`, so the AKS pods resolve the
+  vault's public address, and the route to the firewall makes that time out
+  (trace 1, private DNS). `net endpoint get` says so and names
+  `net zone list privatelink.vaultcore.azure.net`;
+  `net zone list --vnet vnet-contoso-prod` is empty.
+- The public zone `contoso.example` holds NS, SOA, `api` at `203.0.113.10`
+  (the app-routing ingress, facts/k8s.md) and `www` at `198.51.100.30` (the
+  gateway).
+- AKS's load balancer `kubernetes` (node group, Standard) has two frontends:
+  the cluster's outbound IP `…e1b1` (`198.51.100.20`, aks cluster get's
+  outbound IP) and `a0f6b1c2…`, whose public IP `203.0.113.10` AKS tagged
+  `k8s-azure-service: app-routing-system/nginx`, the app-routing ingress
+  controller's service (outside the k8s scope's namespaces), with rules and
+  probes on 80 and 443. Its pools `kubernetes` and `aksOutboundBackendPool`
+  hold the six nodes. `net ip list` lists the three public IPs.
+- `agw-contoso-prod` (WAF_v2, Prevention, autoscaled 1 to 3) serves
+  `www.contoso.example` on 443 (`www-https`, rule `www`) from pool `web`
+  (`web-1.contoso.example`, `web-2.contoso.example`) over `web-https` with
+  probe `web-health` (`/healthz`, 200-399). `--health` finds web-1 Healthy
+  and web-2 Unhealthy: it answers the probe with 502.
+- `arm resource list` lists the NSG, route table, endpoint and its NIC, the
+  two zones and the private zone's link, the load balancer, the three public
+  IPs and the gateway beside the earlier six; the node group's scale sets
+  are not in it.

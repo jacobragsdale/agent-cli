@@ -102,7 +102,7 @@ fn vnet_get(ctx: &Ctx, args: VnetGetArgs) -> Result<VnetRow> {
 command! {
     pub VNET_GET = ["net", "vnet", "get"], Read,
     "Show a vnet's subnets with their used and free IPs, NSGs and route tables",
-    keywords: ["virtual", "network", "usage", "capacity", "address", "exhausted", "cidr"],
+    keywords: ["virtual", "network", "usage", "capacity", "address", "exhausted", "cidr", "state"],
     example: "net vnet get vnet-contoso-prod --fields subnets",
     run: vnet_get,
 }

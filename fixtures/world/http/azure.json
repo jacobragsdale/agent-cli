@@ -432,9 +432,27 @@
    }
   },
   "answer": {
-   "totalRecords": 10,
-   "count": 10,
+   "totalRecords": 18,
+   "count": 18,
    "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/publicIPAddresses/00000000-0000-4000-8000-00000000e1b1",
+     "name": "00000000-0000-4000-8000-00000000e1b1",
+     "type": "microsoft.network/publicipaddresses",
+     "resourceGroup": "mc_rg-contoso-prod_aks-contoso-prod_westeurope",
+     "location": "westeurope",
+     "sku": "Standard",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod",
+     "name": "agw-contoso-prod",
+     "type": "microsoft.network/applicationgateways",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "",
+     "provisioningState": "Succeeded"
+    },
     {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod",
      "name": "aks-contoso-prod",
@@ -442,6 +460,15 @@
      "resourceGroup": "rg-contoso-prod",
      "location": "westeurope",
      "sku": "Base",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/dnszones/contoso.example",
+     "name": "contoso.example",
+     "type": "microsoft.network/dnszones",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "global",
+     "sku": "",
      "provisioningState": "Succeeded"
     },
     {
@@ -454,12 +481,39 @@
      "provisioningState": "Succeeded"
     },
     {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes",
+     "name": "kubernetes",
+     "type": "microsoft.network/loadbalancers",
+     "resourceGroup": "mc_rg-contoso-prod_aks-contoso-prod_westeurope",
+     "location": "westeurope",
+     "sku": "Standard",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/publicIPAddresses/kubernetes-a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d",
+     "name": "kubernetes-a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d",
+     "type": "microsoft.network/publicipaddresses",
+     "resourceGroup": "mc_rg-contoso-prod_aks-contoso-prod_westeurope",
+     "location": "westeurope",
+     "sku": "Standard",
+     "provisioningState": "Succeeded"
+    },
+    {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod",
      "name": "kv-contoso-prod",
      "type": "microsoft.keyvault/vaults",
      "resourceGroup": "rg-contoso-prod",
      "location": "westeurope",
      "sku": "standard",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-hub",
+     "name": "link-hub",
+     "type": "microsoft.network/privatednszones/virtualnetworklinks",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "global",
+     "sku": "",
      "provisioningState": "Succeeded"
     },
     {
@@ -486,6 +540,24 @@
      "type": "microsoft.network/networkinterfaces",
      "resourceGroup": "rg-contoso-prod",
      "location": "westeurope",
+     "sku": "",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/publicIPAddresses/pip-agw-contoso-prod",
+     "name": "pip-agw-contoso-prod",
+     "type": "microsoft.network/publicipaddresses",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "Standard",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net",
+     "name": "privatelink.vaultcore.azure.net",
+     "type": "microsoft.network/privatednszones",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "global",
      "sku": "",
      "provisioningState": "Succeeded"
     },
@@ -594,8 +666,8 @@
    }
   },
   "answer": {
-   "totalRecords": 9,
-   "count": 9,
+   "totalRecords": 15,
+   "count": 15,
    "data": [
     {
      "type": "microsoft.containerservice/managedclusters",
@@ -631,6 +703,30 @@
     },
     {
      "type": "microsoft.network/routetables",
+     "count_": 1
+    },
+    {
+     "type": "microsoft.network/privatednszones",
+     "count_": 1
+    },
+    {
+     "type": "microsoft.network/privatednszones/virtualnetworklinks",
+     "count_": 1
+    },
+    {
+     "type": "microsoft.network/dnszones",
+     "count_": 1
+    },
+    {
+     "type": "microsoft.network/loadbalancers",
+     "count_": 1
+    },
+    {
+     "type": "microsoft.network/publicipaddresses",
+     "count_": 3
+    },
+    {
+     "type": "microsoft.network/applicationgateways",
      "count_": 1
     }
    ]
@@ -1299,6 +1395,22 @@
         "privateEndpointNetworkPolicies": "Disabled",
         "privateLinkServiceNetworkPolicies": "Enabled"
        }
+      },
+      {
+       "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/appgw",
+       "name": "appgw",
+       "type": "Microsoft.Network/virtualNetworks/subnets",
+       "properties": {
+        "provisioningState": "Succeeded",
+        "addressPrefix": "10.1.5.0/24",
+        "applicationGatewayIPConfigurations": [
+         {
+          "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/gatewayIPConfigurations/appGatewayIpConfig"
+         }
+        ],
+        "privateEndpointNetworkPolicies": "Disabled",
+        "privateLinkServiceNetworkPolicies": "Enabled"
+       }
       }
      ],
      "peerings": [
@@ -1456,6 +1568,22 @@
        "privateEndpointNetworkPolicies": "Disabled",
        "privateLinkServiceNetworkPolicies": "Enabled"
       }
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/appgw",
+      "name": "appgw",
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "addressPrefix": "10.1.5.0/24",
+       "applicationGatewayIPConfigurations": [
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/gatewayIPConfigurations/appGatewayIpConfig"
+        }
+       ],
+       "privateEndpointNetworkPolicies": "Disabled",
+       "privateLinkServiceNetworkPolicies": "Enabled"
+      }
      }
     ],
     "virtualNetworkPeerings": [
@@ -1505,6 +1633,16 @@
      "currentValue": 1,
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/private-endpoints",
      "limit": 27,
+     "name": {
+      "localizedValue": "Subnet size and usage",
+      "value": "Subnet size and usage"
+     },
+     "unit": "Count"
+    },
+    {
+     "currentValue": 2,
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/appgw",
+     "limit": 251,
      "name": {
       "localizedValue": "Subnet size and usage",
       "value": "Subnet size and usage"
@@ -2016,6 +2154,1088 @@
     "code": "InvalidResourceType",
     "message": "The resource type 'virtualMachineScaleSets/virtualMachines/networkInterfaces/effectiveRouteTable' could not be found in the namespace 'Microsoft.Compute' for api version '2018-10-01'."
    }
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net endpoint list: Key Vault's endpoint and its NIC's IP",
+  "body": {
+   "query": "resources\n| where type =~ 'Microsoft.Network/privateEndpoints'\n| extend nic = tolower(tostring(properties.networkInterfaces[0].id))\n| join kind=leftouter (resources | where type =~ 'microsoft.network/networkinterfaces' | mv-expand ip = properties.ipConfigurations | summarize ips = make_list(tostring(ip.properties.privateIPAddress)) by nic = tolower(id)) on nic\n| project id, name, resourceGroup, subnet = tostring(properties.subnet.id), auto = properties.privateLinkServiceConnections, manual = properties.manualPrivateLinkServiceConnections, ips\n| order by name asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod",
+     "name": "pe-kv-contoso-prod",
+     "resourceGroup": "rg-contoso-prod",
+     "subnet": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/private-endpoints",
+     "auto": [
+      {
+       "name": "pe-kv-contoso-prod",
+       "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod/privateLinkServiceConnections/pe-kv-contoso-prod",
+       "properties": {
+        "provisioningState": "Succeeded",
+        "privateLinkServiceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod",
+        "groupIds": [
+         "vault"
+        ],
+        "privateLinkServiceConnectionState": {
+         "status": "Approved",
+         "description": "Auto-Approved",
+         "actionsRequired": "None"
+        }
+       }
+      }
+     ],
+     "manual": [],
+     "ips": [
+      "10.1.4.4"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net endpoint get pe-kv-contoso-prod: the name, found",
+  "body": {
+   "query": "resources\n| where name =~ 'pe-kv-contoso-prod'\n| where type =~ 'Microsoft.Network/privateEndpoints'\n| project id\n| order by id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod?api-version=2024-05-01",
+  "note": "net endpoint get: Key Vault's endpoint in the private-endpoints subnet",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod",
+   "name": "pe-kv-contoso-prod",
+   "type": "Microsoft.Network/privateEndpoints",
+   "location": "westeurope",
+   "properties": {
+    "provisioningState": "Succeeded",
+    "subnet": {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/private-endpoints"
+    },
+    "networkInterfaces": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-prod.nic.00000000-0000-4000-8000-00000000e0e1"
+     }
+    ],
+    "privateLinkServiceConnections": [
+     {
+      "name": "pe-kv-contoso-prod",
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod/privateLinkServiceConnections/pe-kv-contoso-prod",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "privateLinkServiceId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod",
+       "groupIds": [
+        "vault"
+       ],
+       "privateLinkServiceConnectionState": {
+        "status": "Approved",
+        "description": "Auto-Approved",
+        "actionsRequired": "None"
+       }
+      }
+     }
+    ],
+    "manualPrivateLinkServiceConnections": [],
+    "customDnsConfigs": [],
+    "ipConfigurations": [],
+    "customNetworkInterfaceName": ""
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-prod.nic.00000000-0000-4000-8000-00000000e0e1?api-version=2024-05-01",
+  "note": "net endpoint get: the endpoint's NIC, 10.1.4.4 for the vault's name",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-prod.nic.00000000-0000-4000-8000-00000000e0e1",
+   "name": "pe-kv-contoso-prod.nic.00000000-0000-4000-8000-00000000e0e1",
+   "type": "Microsoft.Network/networkInterfaces",
+   "location": "westeurope",
+   "properties": {
+    "provisioningState": "Succeeded",
+    "ipConfigurations": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/networkInterfaces/pe-kv-contoso-prod.nic.00000000-0000-4000-8000-00000000e0e1/ipConfigurations/privateEndpointIpConfig.00000000-0000-4000-8000-00000000e0e2",
+      "name": "privateEndpointIpConfig.00000000-0000-4000-8000-00000000e0e2",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "privateIPAddress": "10.1.4.4",
+       "privateIPAllocationMethod": "Dynamic",
+       "subnet": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/private-endpoints"
+       },
+       "primary": true,
+       "privateIPAddressVersion": "IPv4",
+       "privateLinkConnectionProperties": {
+        "groupId": "vault",
+        "requiredMemberName": "default",
+        "fqdns": [
+         "kv-contoso-prod.vault.azure.net"
+        ]
+       }
+      }
+     }
+    ],
+    "privateEndpoint": {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod/privateDnsZoneGroups?api-version=2024-05-01",
+  "note": "net endpoint get: the zone group registered the vault's A record",
+  "answer": {
+   "value": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod/privateDnsZoneGroups/default",
+     "name": "default",
+     "properties": {
+      "provisioningState": "Succeeded",
+      "privateDnsZoneConfigs": [
+       {
+        "name": "privatelink-vaultcore-azure-net",
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-kv-contoso-prod/privateDnsZoneGroups/default/privateDnsZoneConfigs/privatelink-vaultcore-azure-net",
+        "properties": {
+         "privateDnsZoneId": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net",
+         "recordSets": [
+          {
+           "recordType": "A",
+           "recordSetName": "kv-contoso-prod",
+           "fqdn": "kv-contoso-prod.privatelink.vaultcore.azure.net",
+           "ttl": 10,
+           "ipAddresses": [
+            "10.1.4.4"
+           ],
+           "provisioningState": "Succeeded"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks?api-version=2020-06-01",
+  "note": "net endpoint get: the zone is linked to the hub's vnet only, not vnet-contoso-prod",
+  "answer": {
+   "value": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/virtualNetworkLinks/link-hub",
+     "name": "link-hub",
+     "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+     "location": "global",
+     "properties": {
+      "provisioningState": "Succeeded",
+      "virtualNetwork": {
+       "id": "/subscriptions/00000000-0000-4000-8000-000000005b02/resourceGroups/rg-contoso-hub/providers/Microsoft.Network/virtualNetworks/vnet-contoso-hub"
+      },
+      "registrationEnabled": false,
+      "virtualNetworkLinkState": "Completed"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/A/kv-contoso-prod?api-version=2020-06-01",
+  "note": "net endpoint get: the vault's A record, at the endpoint's IP",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/A/kv-contoso-prod",
+   "name": "kv-contoso-prod",
+   "type": "Microsoft.Network/privateDnsZones/A",
+   "properties": {
+    "ttl": 10,
+    "fqdn": "kv-contoso-prod.privatelink.vaultcore.azure.net.",
+    "isAutoRegistered": false,
+    "aRecords": [
+     {
+      "ipv4Address": "10.1.4.4"
+     }
+    ]
+   }
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net zone list: the public zone and the private one, linked to the hub only",
+  "body": {
+   "query": "resources\n| where type in~ ('Microsoft.Network/dnsZones', 'Microsoft.Network/privateDnsZones')\n| extend zone = tolower(id)\n| join kind=leftouter (resources | where type =~ 'microsoft.network/privatednszones/virtualnetworklinks' | extend zone = tolower(substring(id, 0, indexof(tolower(id), '/virtualnetworklinks/'))) | summarize links = make_list(pack('vnet', tostring(properties.virtualNetwork.id), 'registration', tobool(properties.registrationEnabled), 'state', tostring(properties.virtualNetworkLinkState))) by zone) on zone\n| project id, name, type, resourceGroup, records = tolong(properties.numberOfRecordSets), links\n| order by name asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 2,
+   "count": 2,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/dnszones/contoso.example",
+     "name": "contoso.example",
+     "type": "microsoft.network/dnszones",
+     "resourceGroup": "rg-contoso-prod",
+     "records": 4,
+     "links": null
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net",
+     "name": "privatelink.vaultcore.azure.net",
+     "type": "microsoft.network/privatednszones",
+     "resourceGroup": "rg-contoso-prod",
+     "records": 2,
+     "links": [
+      {
+       "vnet": "/subscriptions/00000000-0000-4000-8000-000000005b02/resourceGroups/rg-contoso-hub/providers/Microsoft.Network/virtualNetworks/vnet-contoso-hub",
+       "registration": false,
+       "state": "Completed"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net zone list privatelink.vaultcore.azure.net, which net endpoint get names next",
+  "body": {
+   "query": "resources\n| where type in~ ('Microsoft.Network/dnsZones', 'Microsoft.Network/privateDnsZones')\n| where name contains 'privatelink.vaultcore.azure.net'\n| extend zone = tolower(id)\n| join kind=leftouter (resources | where type =~ 'microsoft.network/privatednszones/virtualnetworklinks' | extend zone = tolower(substring(id, 0, indexof(tolower(id), '/virtualnetworklinks/'))) | summarize links = make_list(pack('vnet', tostring(properties.virtualNetwork.id), 'registration', tobool(properties.registrationEnabled), 'state', tostring(properties.virtualNetworkLinkState))) by zone) on zone\n| project id, name, type, resourceGroup, records = tolong(properties.numberOfRecordSets), links\n| order by name asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net",
+     "name": "privatelink.vaultcore.azure.net",
+     "type": "microsoft.network/privatednszones",
+     "resourceGroup": "rg-contoso-prod",
+     "records": 2,
+     "links": [
+      {
+       "vnet": "/subscriptions/00000000-0000-4000-8000-000000005b02/resourceGroups/rg-contoso-hub/providers/Microsoft.Network/virtualNetworks/vnet-contoso-hub",
+       "registration": false,
+       "state": "Completed"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net record list privatelink.vaultcore.azure.net: the name, found",
+  "body": {
+   "query": "resources\n| where name =~ 'privatelink.vaultcore.azure.net'\n| where type in~ ('Microsoft.Network/privateDnsZones', 'Microsoft.Network/dnsZones')\n| project id\n| order by id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/ALL?api-version=2020-06-01",
+  "note": "net record list on the private zone",
+  "answer": {
+   "value": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/SOA/@",
+     "name": "@",
+     "type": "Microsoft.Network/privateDnsZones/SOA",
+     "properties": {
+      "ttl": 3600,
+      "fqdn": "privatelink.vaultcore.azure.net.",
+      "isAutoRegistered": false,
+      "soaRecord": {
+       "host": "azureprivatedns.net",
+       "email": "azureprivatedns-host.microsoft.com",
+       "serialNumber": 1,
+       "refreshTime": 3600,
+       "retryTime": 300,
+       "expireTime": 2419200,
+       "minimumTtl": 10
+      }
+     }
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net/A/kv-contoso-prod",
+     "name": "kv-contoso-prod",
+     "type": "Microsoft.Network/privateDnsZones/A",
+     "properties": {
+      "ttl": 10,
+      "fqdn": "kv-contoso-prod.privatelink.vaultcore.azure.net.",
+      "isAutoRegistered": false,
+      "aRecords": [
+       {
+        "ipv4Address": "10.1.4.4"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/dnszones/contoso.example/recordsets?api-version=2018-05-01",
+  "note": "net record list on the public zone: api at the ingress, www at the gateway",
+  "answer": {
+   "value": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/dnszones/contoso.example/NS/@",
+     "name": "@",
+     "type": "Microsoft.Network/dnszones/NS",
+     "properties": {
+      "TTL": 172800,
+      "fqdn": "contoso.example.",
+      "NSRecords": [
+       {
+        "nsdname": "ns1-01.azure-dns.com."
+       },
+       {
+        "nsdname": "ns2-01.azure-dns.net."
+       }
+      ]
+     }
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/dnszones/contoso.example/SOA/@",
+     "name": "@",
+     "type": "Microsoft.Network/dnszones/SOA",
+     "properties": {
+      "TTL": 3600,
+      "fqdn": "contoso.example.",
+      "SOARecord": {
+       "host": "ns1-01.azure-dns.com.",
+       "email": "azuredns-hostmaster.microsoft.com",
+       "serialNumber": 1,
+       "refreshTime": 3600,
+       "retryTime": 300,
+       "expireTime": 2419200,
+       "minimumTtl": 300
+      }
+     }
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/dnszones/contoso.example/A/api",
+     "name": "api",
+     "type": "Microsoft.Network/dnszones/A",
+     "properties": {
+      "TTL": 300,
+      "fqdn": "api.contoso.example.",
+      "ARecords": [
+       {
+        "ipv4Address": "203.0.113.10"
+       }
+      ]
+     }
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/dnszones/contoso.example/A/www",
+     "name": "www",
+     "type": "Microsoft.Network/dnszones/A",
+     "properties": {
+      "TTL": 300,
+      "fqdn": "www.contoso.example.",
+      "ARecords": [
+       {
+        "ipv4Address": "198.51.100.30"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net ip list: the cluster's outbound IP, the app-routing ingress's IP and the gateway's",
+  "body": {
+   "query": "resources\n| where type =~ 'Microsoft.Network/publicIPAddresses'\n| extend nodeGroup = tolower(resourceGroup)\n| join kind=leftouter (resources | where type =~ 'microsoft.containerservice/managedclusters' | project cluster = name, nodeGroup = tolower(tostring(properties.nodeResourceGroup))) on nodeGroup\n| project id, name, resourceGroup, address = tostring(properties.ipAddress), sku = tostring(sku.name), allocation = tostring(properties.publicIPAllocationMethod), heldBy = coalesce(tostring(properties.ipConfiguration.id), tostring(properties.natGateway.id)), service = tostring(tags['k8s-azure-service']), cluster\n| order by name asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 3,
+   "count": 3,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/publicIPAddresses/00000000-0000-4000-8000-00000000e1b1",
+     "name": "00000000-0000-4000-8000-00000000e1b1",
+     "resourceGroup": "mc_rg-contoso-prod_aks-contoso-prod_westeurope",
+     "address": "198.51.100.20",
+     "sku": "Standard",
+     "allocation": "Static",
+     "heldBy": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/frontendIPConfigurations/00000000-0000-4000-8000-00000000e1b1",
+     "service": "",
+     "cluster": "aks-contoso-prod"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/publicIPAddresses/kubernetes-a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d",
+     "name": "kubernetes-a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d",
+     "resourceGroup": "mc_rg-contoso-prod_aks-contoso-prod_westeurope",
+     "address": "203.0.113.10",
+     "sku": "Standard",
+     "allocation": "Static",
+     "heldBy": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/frontendIPConfigurations/a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d",
+     "service": "app-routing-system/nginx",
+     "cluster": "aks-contoso-prod"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/publicIPAddresses/pip-agw-contoso-prod",
+     "name": "pip-agw-contoso-prod",
+     "resourceGroup": "rg-contoso-prod",
+     "address": "198.51.100.30",
+     "sku": "Standard",
+     "allocation": "Static",
+     "heldBy": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/frontendIPConfigurations/appGwPublicFrontendIp",
+     "service": "",
+     "cluster": ""
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net lb list",
+  "body": {
+   "query": "resources\n| where type =~ 'Microsoft.Network/loadBalancers'\n| project id, name, resourceGroup, location, sku = tostring(sku.name), frontends = array_length(properties.frontendIPConfigurations), rules = array_length(properties.loadBalancingRules), pools = array_length(properties.backendAddressPools)\n| order by name asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes",
+     "name": "kubernetes",
+     "resourceGroup": "mc_rg-contoso-prod_aks-contoso-prod_westeurope",
+     "location": "westeurope",
+     "sku": "Standard",
+     "frontends": 2,
+     "rules": 2,
+     "pools": 2
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net lb get kubernetes: the name, found",
+  "body": {
+   "query": "resources\n| where name =~ 'kubernetes'\n| where type =~ 'Microsoft.Network/loadBalancers'\n| project id\n| order by id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes?api-version=2024-05-01",
+  "note": "net lb get: AKS's load balancer, the app-routing ingress's frontend and the outbound one",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes",
+   "name": "kubernetes",
+   "type": "Microsoft.Network/loadBalancers",
+   "location": "westeurope",
+   "sku": {
+    "name": "Standard",
+    "tier": "Regional"
+   },
+   "properties": {
+    "provisioningState": "Succeeded",
+    "frontendIPConfigurations": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/frontendIPConfigurations/00000000-0000-4000-8000-00000000e1b1",
+      "name": "00000000-0000-4000-8000-00000000e1b1",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "privateIPAllocationMethod": "Dynamic",
+       "publicIPAddress": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/publicIPAddresses/00000000-0000-4000-8000-00000000e1b1"
+       },
+       "outboundRules": [
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/outboundRules/aksOutboundRule"
+        }
+       ]
+      }
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/frontendIPConfigurations/a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d",
+      "name": "a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "privateIPAllocationMethod": "Dynamic",
+       "publicIPAddress": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/publicIPAddresses/kubernetes-a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d"
+       },
+       "loadBalancingRules": [
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/loadBalancingRules/a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d-TCP-80"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/loadBalancingRules/a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d-TCP-443"
+        }
+       ]
+      }
+     }
+    ],
+    "backendAddressPools": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/backendAddressPools/kubernetes",
+      "name": "kubernetes",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "backendIPConfigurations": [
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/0/networkInterfaces/aks-system-31415926-vmss/ipConfigurations/ipconfig1"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/1/networkInterfaces/aks-system-31415926-vmss/ipConfigurations/ipconfig1"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/2/networkInterfaces/aks-system-31415926-vmss/ipConfigurations/ipconfig1"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/0/networkInterfaces/aks-user-27182818-vmss/ipConfigurations/ipconfig1"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/1/networkInterfaces/aks-user-27182818-vmss/ipConfigurations/ipconfig1"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/2/networkInterfaces/aks-user-27182818-vmss/ipConfigurations/ipconfig1"
+        }
+       ]
+      }
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/backendAddressPools/aksOutboundBackendPool",
+      "name": "aksOutboundBackendPool",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "backendIPConfigurations": [
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/0/networkInterfaces/aks-system-31415926-vmss/ipConfigurations/ipconfig1"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/1/networkInterfaces/aks-system-31415926-vmss/ipConfigurations/ipconfig1"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-system-31415926-vmss/virtualMachines/2/networkInterfaces/aks-system-31415926-vmss/ipConfigurations/ipconfig1"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/0/networkInterfaces/aks-user-27182818-vmss/ipConfigurations/ipconfig1"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/1/networkInterfaces/aks-user-27182818-vmss/ipConfigurations/ipconfig1"
+        },
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-27182818-vmss/virtualMachines/2/networkInterfaces/aks-user-27182818-vmss/ipConfigurations/ipconfig1"
+        }
+       ]
+      }
+     }
+    ],
+    "loadBalancingRules": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/loadBalancingRules/a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d-TCP-80",
+      "name": "a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d-TCP-80",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "frontendIPConfiguration": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/frontendIPConfigurations/a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d"
+       },
+       "backendAddressPool": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/backendAddressPools/kubernetes"
+       },
+       "backendAddressPools": [
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/backendAddressPools/kubernetes"
+        }
+       ],
+       "probe": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/probes/a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d-TCP-80"
+       },
+       "protocol": "Tcp",
+       "frontendPort": 80,
+       "backendPort": 80,
+       "enableFloatingIP": true,
+       "idleTimeoutInMinutes": 4,
+       "disableOutboundSnat": true,
+       "loadDistribution": "Default",
+       "enableTcpReset": true
+      }
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/loadBalancingRules/a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d-TCP-443",
+      "name": "a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d-TCP-443",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "frontendIPConfiguration": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/frontendIPConfigurations/a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d"
+       },
+       "backendAddressPool": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/backendAddressPools/kubernetes"
+       },
+       "backendAddressPools": [
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/backendAddressPools/kubernetes"
+        }
+       ],
+       "probe": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/probes/a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d-TCP-443"
+       },
+       "protocol": "Tcp",
+       "frontendPort": 443,
+       "backendPort": 443,
+       "enableFloatingIP": true,
+       "idleTimeoutInMinutes": 4,
+       "disableOutboundSnat": true,
+       "loadDistribution": "Default",
+       "enableTcpReset": true
+      }
+     }
+    ],
+    "probes": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/probes/a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d-TCP-80",
+      "name": "a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d-TCP-80",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "protocol": "Tcp",
+       "port": 30080,
+       "intervalInSeconds": 5,
+       "numberOfProbes": 2,
+       "probeThreshold": 1,
+       "loadBalancingRules": [
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/loadBalancingRules/a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d-TCP-80"
+        }
+       ]
+      }
+     },
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/probes/a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d-TCP-443",
+      "name": "a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d-TCP-443",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "protocol": "Tcp",
+       "port": 30443,
+       "intervalInSeconds": 5,
+       "numberOfProbes": 2,
+       "probeThreshold": 1,
+       "loadBalancingRules": [
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/loadBalancingRules/a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d-TCP-443"
+        }
+       ]
+      }
+     }
+    ],
+    "outboundRules": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/outboundRules/aksOutboundRule",
+      "name": "aksOutboundRule",
+      "properties": {
+       "provisioningState": "Succeeded",
+       "allocatedOutboundPorts": 0,
+       "protocol": "All",
+       "enableTcpReset": true,
+       "idleTimeoutInMinutes": 30,
+       "backendAddressPool": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/backendAddressPools/aksOutboundBackendPool"
+       },
+       "frontendIPConfigurations": [
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/frontendIPConfigurations/00000000-0000-4000-8000-00000000e1b1"
+        }
+       ]
+      }
+     }
+    ]
+   }
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net lb get: its frontends' public IPs and the services AKS made them for",
+  "body": {
+   "query": "resources\n| where type =~ 'Microsoft.Network/publicIPAddresses'\n| where id in~ ('/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/publicIPAddresses/00000000-0000-4000-8000-00000000e1b1', '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/publicIPAddresses/kubernetes-a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d')\n| extend nodeGroup = tolower(resourceGroup)\n| join kind=leftouter (resources | where type =~ 'microsoft.containerservice/managedclusters' | project cluster = name, nodeGroup = tolower(tostring(properties.nodeResourceGroup))) on nodeGroup\n| project id, name, resourceGroup, address = tostring(properties.ipAddress), sku = tostring(sku.name), allocation = tostring(properties.publicIPAllocationMethod), heldBy = coalesce(tostring(properties.ipConfiguration.id), tostring(properties.natGateway.id)), service = tostring(tags['k8s-azure-service']), cluster\n| order by name asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 2,
+   "count": 2,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/publicIPAddresses/00000000-0000-4000-8000-00000000e1b1",
+     "name": "00000000-0000-4000-8000-00000000e1b1",
+     "resourceGroup": "mc_rg-contoso-prod_aks-contoso-prod_westeurope",
+     "address": "198.51.100.20",
+     "sku": "Standard",
+     "allocation": "Static",
+     "heldBy": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/frontendIPConfigurations/00000000-0000-4000-8000-00000000e1b1",
+     "service": "",
+     "cluster": "aks-contoso-prod"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/publicIPAddresses/kubernetes-a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d",
+     "name": "kubernetes-a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d",
+     "resourceGroup": "mc_rg-contoso-prod_aks-contoso-prod_westeurope",
+     "address": "203.0.113.10",
+     "sku": "Standard",
+     "allocation": "Static",
+     "heldBy": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/loadBalancers/kubernetes/frontendIPConfigurations/a0f6b1c2d3e4f4a5b8c6d7e8f9a0b1c2d",
+     "service": "app-routing-system/nginx",
+     "cluster": "aks-contoso-prod"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net appgw list",
+  "body": {
+   "query": "resources\n| where type =~ 'Microsoft.Network/applicationGateways'\n| project id, name, resourceGroup, location, sku = tostring(properties.sku.name), status = tostring(properties.operationalState), wafMode = tostring(properties.webApplicationFirewallConfiguration.firewallMode), wafPolicy = tostring(properties.firewallPolicy.id), listeners = array_length(properties.httpListeners), pools = array_length(properties.backendAddressPools)\n| order by name asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod",
+     "name": "agw-contoso-prod",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "WAF_v2",
+     "status": "Running",
+     "wafMode": "Prevention",
+     "wafPolicy": "",
+     "listeners": 1,
+     "pools": 1
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "net appgw get agw-contoso-prod: the name, found",
+  "body": {
+   "query": "resources\n| where name =~ 'agw-contoso-prod'\n| where type =~ 'Microsoft.Network/applicationGateways'\n| project id\n| order by id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod?api-version=2024-05-01",
+  "note": "net appgw get: www.contoso.example on 443 to pool web",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod",
+   "name": "agw-contoso-prod",
+   "type": "Microsoft.Network/applicationGateways",
+   "location": "westeurope",
+   "properties": {
+    "provisioningState": "Succeeded",
+    "operationalState": "Running",
+    "sku": {
+     "name": "WAF_v2",
+     "tier": "WAF_v2",
+     "family": "Generation_1"
+    },
+    "autoscaleConfiguration": {
+     "minCapacity": 1,
+     "maxCapacity": 3
+    },
+    "gatewayIPConfigurations": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/gatewayIPConfigurations/appGatewayIpConfig",
+      "name": "appGatewayIpConfig",
+      "properties": {
+       "subnet": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/virtualNetworks/vnet-contoso-prod/subnets/appgw"
+       }
+      }
+     }
+    ],
+    "frontendIPConfigurations": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/frontendIPConfigurations/appGwPublicFrontendIp",
+      "name": "appGwPublicFrontendIp",
+      "properties": {
+       "privateIPAllocationMethod": "Dynamic",
+       "publicIPAddress": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/publicIPAddresses/pip-agw-contoso-prod"
+       },
+       "httpListeners": [
+        {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/httpListeners/www-https"
+        }
+       ]
+      }
+     }
+    ],
+    "frontendPorts": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/frontendPorts/port-443",
+      "name": "port-443",
+      "properties": {
+       "port": 443
+      }
+     }
+    ],
+    "sslCertificates": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/sslCertificates/www-contoso-example",
+      "name": "www-contoso-example",
+      "properties": {
+       "provisioningState": "Succeeded"
+      }
+     }
+    ],
+    "httpListeners": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/httpListeners/www-https",
+      "name": "www-https",
+      "properties": {
+       "frontendIPConfiguration": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/frontendIPConfigurations/appGwPublicFrontendIp"
+       },
+       "frontendPort": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/frontendPorts/port-443"
+       },
+       "protocol": "Https",
+       "hostNames": [
+        "www.contoso.example"
+       ],
+       "requireServerNameIndication": true,
+       "sslCertificate": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/sslCertificates/www-contoso-example"
+       }
+      }
+     }
+    ],
+    "backendAddressPools": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/backendAddressPools/web",
+      "name": "web",
+      "properties": {
+       "backendAddresses": [
+        {
+         "fqdn": "web-1.contoso.example"
+        },
+        {
+         "fqdn": "web-2.contoso.example"
+        }
+       ]
+      }
+     }
+    ],
+    "backendHttpSettingsCollection": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/backendHttpSettingsCollection/web-https",
+      "name": "web-https",
+      "properties": {
+       "port": 443,
+       "protocol": "Https",
+       "cookieBasedAffinity": "Disabled",
+       "pickHostNameFromBackendAddress": true,
+       "requestTimeout": 30,
+       "probe": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/probes/web-health"
+       }
+      }
+     }
+    ],
+    "probes": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/probes/web-health",
+      "name": "web-health",
+      "properties": {
+       "protocol": "Https",
+       "path": "/healthz",
+       "interval": 30,
+       "timeout": 30,
+       "unhealthyThreshold": 3,
+       "pickHostNameFromBackendHttpSettings": true,
+       "minServers": 0,
+       "match": {
+        "statusCodes": [
+         "200-399"
+        ]
+       }
+      }
+     }
+    ],
+    "requestRoutingRules": [
+     {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/requestRoutingRules/www",
+      "name": "www",
+      "properties": {
+       "ruleType": "Basic",
+       "priority": 100,
+       "httpListener": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/httpListeners/www-https"
+       },
+       "backendAddressPool": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/backendAddressPools/web"
+       },
+       "backendHttpSettings": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/backendHttpSettingsCollection/web-https"
+       }
+      }
+     }
+    ],
+    "webApplicationFirewallConfiguration": {
+     "enabled": true,
+     "firewallMode": "Prevention",
+     "ruleSetType": "OWASP",
+     "ruleSetVersion": "3.2"
+    }
+   }
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/backendhealth?api-version=2024-05-01",
+  "note": "net appgw get --health: accepted, then polled at its Location (VERIFY(work))",
+  "status": 202,
+  "headers": {
+   "Location": "https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Network/locations/westeurope/operationResults/00000000-0000-4000-8000-00000000a6a1?api-version=2024-05-01",
+   "Retry-After": "1"
+  },
+  "text": ""
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/providers/Microsoft.Network/locations/westeurope/operationResults/00000000-0000-4000-8000-00000000a6a1?api-version=2024-05-01",
+  "note": "net appgw get --health: web-2 answers the probe with 502",
+  "answer": {
+   "backendAddressPools": [
+    {
+     "backendAddressPool": {
+      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/backendAddressPools/web"
+     },
+     "backendHttpSettingsCollection": [
+      {
+       "backendHttpSettings": {
+        "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/applicationGateways/agw-contoso-prod/backendHttpSettingsCollection/web-https"
+       },
+       "servers": [
+        {
+         "address": "web-1.contoso.example",
+         "health": "Healthy",
+         "healthProbeLog": "Success. Received 200 status code"
+        },
+        {
+         "address": "web-2.contoso.example",
+         "health": "Unhealthy",
+         "healthProbeLog": "Received invalid status code: 502 in the backend server's HTTP response. As per the health probe configuration, 200-399 is the acceptable status code."
+        }
+       ]
+      }
+     ]
+    }
+   ]
   }
  }
 ]

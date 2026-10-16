@@ -5,7 +5,7 @@
 #[path = "common/world.rs"]
 mod world;
 
-use world::{agent_cli, ok};
+use world::{agent_cli, follow, ok};
 
 const RG: &str =
     "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod";
@@ -128,4 +128,77 @@ fn an_aks_nodes_nic_falls_back_to_its_subnets_rules_and_routes_and_says_so() {
             .ends_with("aks-system-31415926-vmss/virtualMachines/1"),
         "the node's VM, as k8s prints it from providerID: {nic}"
     );
+}
+
+#[test]
+fn the_vaults_endpoint_resolves_from_the_hub_only_and_its_note_shows_the_link() {
+    let walked = follow(&["net", "endpoint", "get", "pe-kv-contoso-prod"]);
+    let endpoint = walked[0].json();
+    assert_eq!(endpoint["ips"][0], "10.1.4.4", "{endpoint}");
+    assert_eq!(endpoint["fqdns"][0], "kv-contoso-prod.vault.azure.net");
+    assert_eq!(
+        (
+            endpoint["dns"][0]["resolves"].clone(),
+            endpoint["dns"][0]["linked"].clone()
+        ),
+        (true.into(), false.into()),
+        "the record is right, the link is missing: {endpoint}"
+    );
+    assert_eq!(walked.len(), 2, "then net zone list: {}", walked[0].stderr);
+    let zones = walked[1].json();
+    assert_eq!(zones[0]["name"], "privatelink.vaultcore.azure.net");
+    assert!(
+        zones[0]["links"][0]["vnet"]
+            .as_str()
+            .unwrap()
+            .ends_with("/vnet-contoso-hub"),
+        "{zones}"
+    );
+    assert_eq!(
+        ok(&["net", "zone", "list", "--vnet", "vnet-contoso-prod"]),
+        serde_json::json!([]),
+        "no private zone is linked to the AKS vnet"
+    );
+    let records = ok(&[
+        "net",
+        "record",
+        "list",
+        zones[0]["id"].as_str().unwrap(),
+        "kv",
+    ]);
+    assert_eq!(records[0]["values"][0], "10.1.4.4", "{records}");
+    let listed = ok(&["net", "endpoint", "list"]);
+    assert_eq!(listed[0]["id"], endpoint["id"]);
+}
+
+#[test]
+fn the_ingress_ip_names_its_k8s_service_and_the_gateway_shows_a_backend_down() {
+    let ips = ok(&["net", "ip", "list"]);
+    let ingress = ips
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|ip| ip["address"] == "203.0.113.10")
+        .unwrap_or_else(|| panic!("{ips}"));
+    assert_eq!(
+        ingress["service"],
+        "aks-contoso-prod/app-routing-system/nginx"
+    );
+    let lbs = ok(&["net", "lb", "list"]);
+    let lb = ok(&["net", "lb", "get", lbs[0]["id"].as_str().unwrap()]);
+    assert_eq!(lb["frontends"][1]["service"], ingress["service"], "{lb}");
+    assert_eq!(lb["pools"][0]["members"], 6);
+    assert_eq!(ok(&["net", "lb", "get", "kubernetes"])["id"], lb["id"]);
+
+    let gateways = ok(&["net", "appgw", "list"]);
+    assert_eq!(gateways[0]["waf_mode"], "Prevention");
+    let gateway = ok(&["net", "appgw", "get", "agw-contoso-prod", "--health"]);
+    let down: Vec<&str> = gateway["health"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|server| server["health"] != "Healthy")
+        .map(|server| server["address"].as_str().unwrap())
+        .collect();
+    assert_eq!(down, ["web-2.contoso.example"], "{gateway}");
 }

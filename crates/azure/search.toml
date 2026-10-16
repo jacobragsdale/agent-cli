@@ -485,3 +485,100 @@ expect = "net route list"
 [[query]]
 text = "which next hop does the subnet's route table send traffic to"
 expect = "net route list"
+
+
+[[query]]
+text = "list private endpoints"
+expect = "net endpoint list"
+
+[[query]]
+text = "which private endpoints are pending approval"
+expect = "net endpoint list"
+
+[[query]]
+text = "what is the private ip of the key vault private endpoint"
+expect = "net endpoint list"
+
+[[query]]
+text = "private endpoint dns not resolving"
+expect = "net endpoint get"
+
+[[query]]
+text = "does the private endpoint's dns record point at its ip"
+expect = "net endpoint get"
+
+[[query]]
+text = "key vault resolves to its public address instead of the private endpoint"
+expect = "net endpoint get"
+
+[[query]]
+text = "private dns zone vnet link"
+expect = "net zone list"
+
+[[query]]
+text = "list dns zones"
+expect = "net zone list"
+
+[[query]]
+text = "is the privatelink zone linked to the aks vnet"
+expect = "net zone list"
+
+[[query]]
+text = "list the records in a dns zone"
+expect = "net record list"
+
+[[query]]
+text = "what A record does the private dns zone hold for the vault"
+expect = "net record list"
+
+[[query]]
+text = "cname records of contoso.example"
+expect = "net record list"
+
+[[query]]
+text = "which service owns this public ip"
+expect = "net ip list"
+
+[[query]]
+text = "list public ip addresses"
+expect = "net ip list"
+
+[[query]]
+text = "static public ip allocation and sku"
+expect = "net ip list"
+
+[[query]]
+text = "list load balancers"
+expect = "net lb list"
+
+[[query]]
+text = "how many frontends and rules does each load balancer have"
+expect = "net lb list"
+
+[[query]]
+text = "which kubernetes service is behind the load balancer frontend"
+expect = "net lb get"
+
+[[query]]
+text = "load balancer health probes and backend pool members"
+expect = "net lb get"
+
+[[query]]
+text = "list application gateways"
+expect = "net appgw list"
+
+[[query]]
+text = "is the waf in prevention or detection mode on each app gateway"
+expect = "net appgw list"
+
+[[query]]
+text = "application gateway backend health"
+expect = "net appgw get"
+
+[[query]]
+text = "why does the app gateway return 502"
+expect = "net appgw get"
+
+[[query]]
+text = "listeners and routing rules of the application gateway"
+expect = "net appgw get"

@@ -1,23 +1,35 @@
-//! `net`: virtual networks, subnets, NSGs, NICs and route tables, read the
-//! way `arm` reads anything (Resource Graph for lists, ARM GET for one), and
-//! joined where the raw object stops short: a subnet with its used and free
-//! IPs and who holds them, an NSG's rules in the order Azure applies them, a
-//! NIC with its effective rules and routes.
+//! `net`: virtual networks, subnets, NSGs, NICs, route tables, private
+//! endpoints, DNS zones, public IPs, load balancers and application
+//! gateways, read the way `arm` reads anything (Resource Graph for lists, ARM
+//! GET for one), and joined where the raw object stops short: a subnet with
+//! its used and free IPs and who holds them, an NSG's rules in the order
+//! Azure applies them, a NIC with its effective rules and routes, a private
+//! endpoint with whether its name resolves to it, a public IP or a load
+//! balancer frontend with the k8s service that owns it.
 //!
 //! Every ref is what `arm resource get` takes: an ARM id or URL, a portal
 //! link (parsed, never fetched), or a name with `--group` and
 //! `--subscription`, where two holders is exit 2 listing their ids
 //! (`arm/resource/mod.rs`'s `resolve`). A subnet is its ARM id, or
 //! `VNET/SUBNET`; a NIC may be a VMSS instance's (an AKS node's), whose id is
-//! under `Microsoft.Compute`. Reads are at one api-version, so a field never
-//! moves under a command; ids in rows are ARM ids, which every get here and
-//! `arm resource get` take.
+//! under `Microsoft.Compute`; a zone is a public or a private DNS zone. Reads
+//! are at one api-version per provider (`API`, `DNS_API`, `PRIVATE_DNS_API`),
+//! so a field never moves under a command; ids in rows are ARM ids, which
+//! every get here and `arm resource get` take. A k8s service is named as k8s
+//! prints its id, `cluster/namespace/name`, from the tag AKS puts on the
+//! public IPs it makes (`ip/mod.rs`).
 
+pub(crate) mod appgw;
+pub(crate) mod endpoint;
+pub(crate) mod ip;
+pub(crate) mod lb;
 pub(crate) mod nic;
 pub(crate) mod nsg;
+pub(crate) mod record;
 pub(crate) mod route;
 pub(crate) mod subnet;
 pub(crate) mod vnet;
+pub(crate) mod zone;
 
 use agent_cli_core::{Ctx, Failure, Request};
 use anyhow::Result;
@@ -26,7 +38,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::arm::resource::{Lookup, Target, resolve};
-use crate::arm::{quote, scope};
+use crate::arm::{of_type, quote, scope};
 use crate::client::{ARM, arm_only, bearer, refused_with, text};
 use crate::config::Azure;
 use crate::graph::rows;
@@ -38,9 +50,20 @@ pub(crate) const VNET: &str = "Microsoft.Network/virtualNetworks";
 pub(crate) const SUBNET: &str = "Microsoft.Network/virtualNetworks/subnets";
 pub(crate) const NSG: &str = "Microsoft.Network/networkSecurityGroups";
 pub(crate) const NIC: &str = "Microsoft.Network/networkInterfaces";
+pub(crate) const ENDPOINT: &str = "Microsoft.Network/privateEndpoints";
+pub(crate) const ZONE: &str = "Microsoft.Network/dnsZones";
+pub(crate) const PRIVATE_ZONE: &str = "Microsoft.Network/privateDnsZones";
+pub(crate) const PUBLIC_IP: &str = "Microsoft.Network/publicIPAddresses";
+pub(crate) const LB: &str = "Microsoft.Network/loadBalancers";
+pub(crate) const APPGW: &str = "Microsoft.Network/applicationGateways";
+
+/// Public DNS's newest stable api-version.
+pub(crate) const DNS_API: &str = "2018-05-01";
+/// Private DNS's long-standing stable api-version.
+pub(crate) const PRIVATE_DNS_API: &str = "2020-06-01";
 
 /// Where a named resource is, or what a list keeps to.
-#[derive(clap::Args)]
+#[derive(clap::Args, Default)]
 pub struct Place {
     /// Its resource group: where a name is looked for, or the one a list keeps to
     #[arg(long)]
@@ -82,16 +105,45 @@ impl Place {
         project: &str,
         limit: usize,
     ) -> Result<Vec<Value>> {
-        let mut kql = format!("resources\n| where type =~ {}", quote(kind));
+        let tail = format!("\n| project {project}\n| order by name asc, id asc");
+        self.rows(ctx, azure, &[kind], &tail, limit)
+    }
+
+    /// Resource Graph's rows of `kinds` within the place, then `tail` (KQL
+    /// from a newline and a pipe on).
+    pub fn rows(
+        &self,
+        ctx: &Ctx,
+        azure: &Azure,
+        kinds: &[&str],
+        tail: &str,
+        limit: usize,
+    ) -> Result<Vec<Value>> {
+        let mut kql = format!("resources\n| where {}", of_type(kinds));
         if let Some(group) = &self.group {
             kql.push_str(&format!("\n| where resourceGroup =~ {}", quote(group)));
         }
-        kql.push_str(&format!(
-            "\n| project {project}\n| order by name asc, id asc"
-        ));
+        kql.push_str(tail);
         let scope = scope(ctx, azure, self.subscription.as_deref())?;
         rows(ctx, &scope, &kql, limit)
     }
+}
+
+/// ARM's GET of `path` at `api`, or `None` for a 404: what may well not be
+/// there, such as a DNS record.
+pub(crate) fn found(ctx: &Ctx, path: &str, api: &str) -> Result<Option<Value>> {
+    let url = format!("https://management.azure.com{path}?api-version={api}");
+    match ctx.read(Request::get(arm_only(&url)?).auth(&bearer(ctx, ARM))) {
+        Ok(answer) => answer.json().map(Some),
+        Err(error) if refused_with(&error) == Some(404) => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
+/// The name at the end of the id at `value`: a sub-resource's, as an
+/// application gateway's rule names its listener.
+pub(crate) fn leaf(value: &Value) -> Option<String> {
+    text(value).and_then(|id| id.rsplit('/').next().map(str::to_owned))
 }
 
 /// ARM's GET of `path` at `api`; a 404 is exit 4 naming `list`.

@@ -27,7 +27,7 @@ fn the_world_answers_what_a_trial_asks_of_arm() {
         "run",
         "resources | summarize count() by type",
     ]);
-    assert_eq!(counts.as_array().map(Vec::len), Some(9), "{counts}");
+    assert_eq!(counts.as_array().map(Vec::len), Some(15), "{counts}");
 }
 
 #[test]
@@ -39,8 +39,12 @@ fn every_resource_list_id_is_what_resource_get_takes() {
         .iter()
         .map(|row| row["id"].as_str().unwrap())
         .collect();
-    assert_eq!(ids.len(), 10, "{listed}");
-    let cluster = ok(&["arm", "resource", "get", ids[0]]);
+    assert_eq!(ids.len(), 18, "{listed}");
+    let aks = ids
+        .iter()
+        .find(|id| id.ends_with("/aks-contoso-prod"))
+        .unwrap();
+    let cluster = ok(&["arm", "resource", "get", aks]);
     assert_eq!(cluster["properties"]["currentKubernetesVersion"], "1.30.4");
     let by_name = ok(&["arm", "resource", "get", "aks-contoso-prod"]);
     assert_eq!(by_name["id"], cluster["id"]);
