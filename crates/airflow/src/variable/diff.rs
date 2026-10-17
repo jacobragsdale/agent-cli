@@ -1,13 +1,14 @@
 //! `airflow variable diff`: two instances' Variables by key: keys on one
 //! side only, descriptions, and each value compared in memory, printed only
 //! as `same: true|false`; a value Airflow masks (a key named like a secret)
-//! has no `same`, since its equality is unknown.
+//! has no `same`, since its equality is unknown. A JSON object's values are
+//! compared one by one, so feature flags say which flag differs.
 
 use std::collections::BTreeMap;
 
-use agent_cli_core::{Ctx, Diff, Rules, command};
+use agent_cli_core::{Ctx, Diff, Rules, Secret, command};
 use anyhow::Result;
-use serde_json::json;
+use serde_json::{Value, json};
 
 use crate::client::{Client, segment};
 use crate::diff::{Instances, Read, unmasked};
@@ -27,19 +28,42 @@ fn variables(client: &Client) -> Result<Read> {
         let Some(key) = item["key"].as_str().map(str::to_owned) else {
             continue;
         };
-        // Airflow 2 lists keys only; its value is the variable's own GET.
-        // VERIFY(work): 2.9's collection leaves out `value`.
+        // A list without values gets each from the variable's own GET. 2.9
+        // lists them, unmasked even where 3 sends `***`: never printed.
         let value = match item.get("value") {
             Some(value) => value.clone(),
             None => client.get(&format!("variables/{}", segment(&key)))?["value"].clone(),
         };
-        values.insert(format!("{key}.value"), unmasked(&value));
-        rows.insert(
-            key,
-            json!({"description": item["description"], "encrypted": item["is_encrypted"]}),
-        );
+        let object = value
+            .as_str()
+            .filter(|text| text.trim_start().starts_with('{'))
+            .and_then(|text| serde_json::from_str::<Value>(text).ok())
+            .filter(Value::is_object);
+        match object {
+            Some(object) => leaves(&format!("{key}.value"), &object, &mut values),
+            None => {
+                values.insert(format!("{key}.value"), unmasked(&value));
+            }
+        }
+        // Whether a value is encrypted is the instance's Fernet setting, and
+        // 2.9 does not list it: no difference between two Variables.
+        rows.insert(key, json!({"description": item["description"]}));
     }
-    Ok((rows, values))
+    Ok((rows.into_iter().collect(), values))
+}
+
+/// Each value of a JSON object by its path under `at`.
+fn leaves(at: &str, value: &Value, into: &mut BTreeMap<String, Option<Secret>>) {
+    match value {
+        Value::Object(map) if !map.is_empty() => {
+            for (key, value) in map {
+                leaves(&format!("{at}.{key}"), value, into);
+            }
+        }
+        other => {
+            into.insert(at.to_owned(), unmasked(other));
+        }
+    }
 }
 
 command! {
@@ -58,16 +82,19 @@ mod tests {
     use crate::testing::{TWO, airflow_with};
 
     #[test]
-    fn variables_missing_on_one_side_and_values_that_differ_print_no_value() {
+    fn variables_missing_on_one_side_and_values_that_differ_print_no_value_and_json_ones_name_the_key()
+     {
         let qa = json!({"variables": [
             {"key": "orders_api_token", "value": "***", "description": "Bearer token", "is_encrypted": true},
             {"key": "report_recipients", "value": "[\"qa-team@contoso.example\"]", "description": null, "is_encrypted": false},
-        ], "total_entries": 2});
+            {"key": "feature_flags", "value": "{\"new_checkout\": true, \"beta\": {\"on\": false}}", "description": null},
+        ], "total_entries": 3});
         let prod = json!({"variables": [
             {"key": "orders_batch_size", "value": "5000", "description": "Orders per page", "is_encrypted": false},
             {"key": "orders_api_token", "value": "***", "description": "Bearer token", "is_encrypted": true},
             {"key": "report_recipients", "value": "[\"data-eng@contoso.example\"]", "description": null, "is_encrypted": false},
-        ], "total_entries": 3});
+            {"key": "feature_flags", "value": "{\"beta\": {\"on\": false}, \"new_checkout\": false}", "description": null, "is_encrypted": true},
+        ], "total_entries": 4});
         let (outcome, _) = airflow_with(
             TWO,
             &["airflow", "variable", "diff", "qa", "prod"],
@@ -77,7 +104,8 @@ mod tests {
         assert_eq!(
             outcome.json()["changes"],
             json!([
-                {"path": "orders_batch_size", "right": {"description": "Orders per page", "encrypted": false}},
+                {"path": "orders_batch_size", "right": {"description": "Orders per page"}},
+                {"path": "feature_flags.value.new_checkout", "redacted": true, "same": false},
                 {"path": "orders_api_token.value", "redacted": true},
                 {"path": "orders_batch_size.value", "right": "(set)", "redacted": true},
                 {"path": "report_recipients.value", "redacted": true, "same": false},

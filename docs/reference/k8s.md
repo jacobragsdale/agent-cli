@@ -193,8 +193,8 @@ agent-cli k8s service diff — Compare two services across environments: type, p
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]   Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
@@ -235,8 +235,8 @@ agent-cli k8s ingress diff — Compare two ingresses across environments: class,
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]   Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
@@ -278,8 +278,8 @@ agent-cli k8s networkpolicy diff — Compare two network policies across environ
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]   Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
@@ -386,8 +386,8 @@ agent-cli k8s deployment diff — Compare two deployments across environments, o
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]   Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
@@ -479,8 +479,8 @@ agent-cli k8s statefulset diff — Compare two statefulsets across environments:
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]   Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
@@ -547,8 +547,8 @@ agent-cli k8s daemonset diff — Compare two daemonsets across environments (CNI
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]   Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
@@ -602,8 +602,8 @@ agent-cli k8s job diff — Compare two jobs (a failed run and a good one): image
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]   Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
@@ -657,8 +657,8 @@ agent-cli k8s cronjob diff — Compare two cronjobs across environments: schedul
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]   Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
@@ -838,8 +838,8 @@ agent-cli k8s configmap diff — Compare two configmaps across environments: key
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]   Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
@@ -881,8 +881,8 @@ agent-cli k8s secret diff — Compare two Kubernetes secrets: keys, type, each v
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]   Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
@@ -962,8 +962,8 @@ agent-cli k8s object diff — Compare two objects of any kind, custom resources 
   --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
   --namespace str  Defaults to the scope's only namespace
   --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]   Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}

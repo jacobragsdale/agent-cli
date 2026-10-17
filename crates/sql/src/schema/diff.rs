@@ -1,7 +1,7 @@
 //! `sql schema diff`: two schemas (one in qa's database and one in prod's,
-//! or two in one): the objects on one side only, each table's columns, and
-//! each view's, procedure's, function's and package's source by lines. Keys,
-//! indexes and triggers are one table's question: `sql object diff`.
+//! or two in one): the objects on one side only, and each table, module and
+//! sequence as `sql object diff` compares it, read for the whole schema in
+//! one query per part, so a schema of 500 tables costs what one table does.
 
 use std::collections::BTreeMap;
 
@@ -10,8 +10,9 @@ use anyhow::Result;
 use serde_json::{Map, Value, json};
 
 use crate::catalog::{
-    ColumnInfo, Filter, ObjectKind, ObjectRow, objects_sql, parse_columns, parse_objects,
-    parse_source, rows, schema_columns_sql, schema_sources_sql,
+    Filter, ObjectKind, ObjectRow, TableRows, by_table, constraints_sql, extras_sql, grants_sql,
+    indexes_sql, objects_sql, parse_columns, parse_objects, parse_source, rows, rows_sql,
+    schema_columns_sql, schema_sources_sql, sequence_row, sequence_sql, table_row, triggers_sql,
 };
 use crate::config::{Connection, Kind, Sql};
 use crate::db::{OnConnection, Session, text};
@@ -52,26 +53,24 @@ fn schema_diff(ctx: &Ctx, args: SchemaDiffArgs) -> Result<Diff> {
         };
         Ok(Side::new(format!("{}:{schema}", spec.name), ctx.read(op)?))
     };
-    let (left_side, right_side) = (side(left.clone())?, side(right.clone())?);
-    let (left_id, right_id) = (left_side.id.clone(), right_side.id.clone());
-    let answer = diff(ctx, &args.diff, &RULES, left_side, right_side)?;
-    // One object apart: its own diff says how, keys and indexes too.
-    let mut objects: Vec<&str> = answer
-        .changes
-        .iter()
-        .filter_map(|change| change.path.split('.').next())
-        .collect();
-    objects.dedup();
-    if let [only] = objects.as_slice() {
-        ctx.note(format!(
-            "[next: agent-cli sql object diff {left_id}.{only} {right_id}.{only}]"
-        ));
-    }
-    Ok(answer)
+    let (left, right) = (side(left)?, side(right)?);
+    diff(ctx, &args.diff, &RULES, left, right)
 }
 
-/// A schema as its diff compares it: each object by name, with a table's
-/// columns and a module's source.
+/// Each part of every table in a schema, by table.
+struct Parts {
+    columns: BTreeMap<String, Vec<Vec<Value>>>,
+    extras: BTreeMap<String, Vec<Vec<Value>>>,
+    constraints: BTreeMap<String, Vec<Vec<Value>>>,
+    indexes: BTreeMap<String, Vec<Vec<Value>>>,
+    triggers: BTreeMap<String, Vec<Vec<Value>>>,
+    grants: BTreeMap<String, Vec<Vec<Value>>>,
+    rows: BTreeMap<String, Vec<Vec<Value>>>,
+    sequences: BTreeMap<String, Vec<Vec<Value>>>,
+}
+
+/// A schema as its diff compares it: each object by name, as `object diff`
+/// compares it.
 fn schema_row(session: &mut Session, schema: &str, ctx: &Ctx) -> Result<Value> {
     let backend = session.kind;
     let filter = Filter {
@@ -84,29 +83,37 @@ fn schema_row(session: &mut Session, schema: &str, ctx: &Ctx) -> Result<Value> {
         backend,
         &rows(session, &objects_sql(backend, &filter), ctx)?,
     );
-    let columns = rows(session, &schema_columns_sql(backend, schema), ctx)?;
+    // The columns read puts the table first; every other read puts it last.
+    let mut columns: BTreeMap<String, Vec<Vec<Value>>> = BTreeMap::new();
+    for row in rows(session, &schema_columns_sql(backend, schema), ctx)? {
+        columns
+            .entry(text(&row, 0))
+            .or_default()
+            .push(row[1..].to_vec());
+    }
+    let mut read = |sql: String| -> Result<BTreeMap<String, Vec<Vec<Value>>>> {
+        Ok(by_table(rows(session, &sql, ctx)?))
+    };
+    let parts = Parts {
+        columns,
+        extras: read(extras_sql(backend, schema, None))?,
+        constraints: read(constraints_sql(backend, schema, None))?,
+        indexes: read(indexes_sql(backend, schema, None))?,
+        triggers: read(triggers_sql(backend, schema, None))?,
+        grants: read(grants_sql(backend, schema, None))?,
+        rows: read(rows_sql(backend, schema, None))?,
+        sequences: read(sequence_sql(backend, schema, None))?,
+    };
     let mut sources = Vec::new();
     for query in schema_sources_sql(backend, schema) {
         sources.extend(rows(session, &query, ctx)?);
     }
-    Ok(assemble(backend, &objects, &columns, &sources))
+    Ok(assemble(backend, &objects, &parts, &sources))
 }
 
-/// The schema's row from its objects, its tables' columns (`table` first)
-/// and its sources (`name` first).
-fn assemble(
-    backend: Kind,
-    objects: &[ObjectRow],
-    columns: &[Vec<Value>],
-    sources: &[Vec<Value>],
-) -> Value {
-    let mut by_table: BTreeMap<String, Vec<Vec<Value>>> = BTreeMap::new();
-    for row in columns {
-        by_table
-            .entry(text(row, 0))
-            .or_default()
-            .push(row[1..].to_vec());
-    }
+/// The schema's row from its objects, its tables' parts and its sources
+/// (`name` first).
+fn assemble(backend: Kind, objects: &[ObjectRow], parts: &Parts, sources: &[Vec<Value>]) -> Value {
     let mut by_name: BTreeMap<String, Vec<Vec<Value>>> = BTreeMap::new();
     for row in sources {
         by_name
@@ -114,17 +121,50 @@ fn assemble(
             .or_default()
             .push(row[1..].to_vec());
     }
+    let none: Vec<Vec<Value>> = Vec::new();
     let mut row = Map::new();
     for object in objects {
         let (schema, name, kind) = (&object.schema, &object.name, object.kind);
-        let mut held = json!({"kind": kind});
-        if kind == ObjectKind::Table {
-            let parsed: Vec<ColumnInfo> =
-                parse_columns(backend, by_table.get(name).map_or(&[][..], Vec::as_slice));
-            held["columns"] = serde_json::to_value(parsed).unwrap_or_default();
-        } else if let Some(source) = by_name.get(name) {
-            held["text"] = json!(parse_source(backend, schema, name, source));
-        }
+        let part = |map: &'_ BTreeMap<String, Vec<Vec<Value>>>| -> Vec<Vec<Value>> {
+            map.get(name).cloned().unwrap_or_default()
+        };
+        let held = match kind {
+            ObjectKind::Table => {
+                let (extras, constraints, indexes) = (
+                    part(&parts.extras),
+                    part(&parts.constraints),
+                    part(&parts.indexes),
+                );
+                let (triggers, grants, counted) = (
+                    part(&parts.triggers),
+                    part(&parts.grants),
+                    part(&parts.rows),
+                );
+                table_row(
+                    backend,
+                    &TableRows {
+                        columns: parse_columns(backend, parts.columns.get(name).unwrap_or(&none)),
+                        extras: &extras,
+                        constraints: &constraints,
+                        indexes: &indexes,
+                        triggers: &triggers,
+                        grants: &grants,
+                        rows: &counted,
+                    },
+                )
+            }
+            ObjectKind::Sequence => parts
+                .sequences
+                .get(name)
+                .and_then(|rows| rows.first())
+                .map_or_else(|| json!({"kind": kind}), |row| sequence_row(backend, row)),
+            _ => match by_name.get(name) {
+                Some(source) => {
+                    json!({"kind": kind, "text": parse_source(backend, schema, name, source)})
+                }
+                None => json!({"kind": kind}),
+            },
+        };
         row.insert(name.clone(), held);
     }
     Value::Object(row)
@@ -132,7 +172,7 @@ fn assemble(
 
 command! {
     pub SCHEMA_DIFF = ["sql", "schema", "diff"], Read,
-    "Compare two schemas: objects on one side only, table columns, procedure source",
+    "Compare two schemas: objects on one side only, columns, keys, indexes, source",
     keywords: ["migration", "ran", "everywhere", "staging", "drift", "tables", "procedures"],
     example: "sql schema diff qa:dbo prod:dbo",
     run: schema_diff,
@@ -149,7 +189,7 @@ mod tests {
     }
 
     #[test]
-    fn a_schema_row_holds_each_tables_columns_and_each_modules_source() {
+    fn a_schema_row_holds_each_table_as_object_diff_reads_it_and_each_modules_source() {
         let object = |name: &str, kind| ObjectRow {
             id: format!("dbo.{name}"),
             schema: "dbo".to_owned(),
@@ -162,42 +202,92 @@ mod tests {
             object("sp_load", ObjectKind::Procedure),
             object("order_seq", ObjectKind::Sequence),
         ];
-        let columns = [
-            cells(&[
-                json!("orders"),
-                json!("id"),
-                json!("int"),
-                json!(4),
-                json!(10),
-                json!(0),
-                json!("N"),
-                json!("Y"),
-            ]),
-            cells(&[
-                json!("orders"),
-                json!("note"),
-                json!("nvarchar"),
-                json!(200),
-                json!(0),
-                json!(0),
-                json!("Y"),
-                json!("N"),
-            ]),
-        ];
+        let one = |table: &str, rows: Vec<Vec<Value>>| BTreeMap::from([(table.to_owned(), rows)]);
+        let parts = Parts {
+            columns: one(
+                "orders",
+                vec![
+                    cells(&[
+                        json!("id"),
+                        json!("int"),
+                        json!(4),
+                        json!(10),
+                        json!(0),
+                        json!("N"),
+                        json!("Y"),
+                    ]),
+                    cells(&[
+                        json!("note"),
+                        json!("nvarchar"),
+                        json!(200),
+                        json!(0),
+                        json!(0),
+                        json!("Y"),
+                        json!("N"),
+                    ]),
+                ],
+            ),
+            extras: BTreeMap::new(),
+            constraints: one(
+                "orders",
+                vec![cells(&[
+                    json!("PK__orders__3213E83F"),
+                    json!("P"),
+                    json!("id"),
+                    Value::Null,
+                    Value::Null,
+                    Value::Null,
+                    Value::Null,
+                    json!(1),
+                    json!("orders"),
+                ])],
+            ),
+            indexes: one(
+                "orders",
+                vec![cells(&[
+                    json!("ix_orders_note"),
+                    json!("index"),
+                    json!("note"),
+                    json!("N"),
+                    Value::Null,
+                    json!("orders"),
+                ])],
+            ),
+            triggers: BTreeMap::new(),
+            grants: BTreeMap::new(),
+            rows: one("orders", vec![cells(&[json!(12), json!("orders")])]),
+            sequences: one(
+                "order_seq",
+                vec![cells(&[
+                    json!("bigint"),
+                    json!("1"),
+                    json!("1"),
+                    json!("1"),
+                    json!("9223372036854775807"),
+                    json!(false),
+                    json!("57"),
+                    json!("50"),
+                    json!("order_seq"),
+                ])],
+            ),
+        };
         let sources = [cells(&[
             json!("sp_load"),
             json!("\r\nCREATE PROCEDURE dbo.sp_load AS SELECT 1\r\n"),
         ])];
-        let row = assemble(Kind::Mssql, &objects, &columns, &sources);
+        let row = assemble(Kind::Mssql, &objects, &parts, &sources);
         assert_eq!(
             row,
             json!({
                 "orders": {"kind": "table", "columns": [
-                    {"name": "id", "type": "int", "nullable": false, "pk": true},
-                    {"name": "note", "type": "nvarchar(100)", "nullable": true, "pk": false},
-                ]},
+                    {"name": "id", "type": "int", "nullable": false},
+                    {"name": "note", "type": "nvarchar(100)", "nullable": true},
+                ], "primary_key": "id", "unique": [], "foreign_keys": {}, "checks": {},
+                "indexes": {"ix_orders_note": {"unique": false, "columns": ["note"], "include": []}},
+                "triggers": {}, "grants": {}, "rows": 12},
                 "sp_load": {"kind": "procedure", "text": "CREATE PROCEDURE dbo.sp_load AS SELECT 1"},
-                "order_seq": {"kind": "sequence"},
+                "order_seq": {"kind": "sequence", "type": "bigint", "increment": "1", "min": "1",
+                    "max": "9223372036854775807", "cycle": false, "cache": "50"},
             })
         );
     }

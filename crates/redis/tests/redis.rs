@@ -320,6 +320,18 @@ fn a_key_in_qa_and_prod_compares_by_content() {
         "orders-prod:big:hash",
     ]);
     assert_eq!(answer["same"], true, "{answer}");
+    // A stream's entry ids are when each instance added them; a string past
+    // 1 MB compares by its whole bytes.
+    for key in ["events", "tags:popular", "big:blob", ":1:report:7"] {
+        let (answer, _) = ok(&[
+            "redis",
+            "key",
+            "diff",
+            &format!("orders-qa:{key}"),
+            &format!("orders-prod:{key}"),
+        ]);
+        assert_eq!(answer["same"], true, "{key}: {answer}");
+    }
 }
 
 #[test]

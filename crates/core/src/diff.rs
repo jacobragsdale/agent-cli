@@ -7,6 +7,7 @@
 //! failure.
 
 mod lines;
+mod names;
 #[cfg(test)]
 mod tests;
 
@@ -15,11 +16,11 @@ use std::collections::BTreeMap;
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::ctx::Ctx;
-use crate::error::Failure;
 use crate::secret::Secret;
+use names::{names, swap};
 
 /// The flags every diff command takes, flattened into its args.
 #[derive(Clone, Debug, Default, clap::Args)]
@@ -28,10 +29,10 @@ pub struct DiffArgs {
     /// turns off the names inferred from the two ids
     #[arg(long = "as", value_name = "A=B")]
     pub as_: Vec<String>,
-    /// Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+    /// Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
     #[arg(long)]
     pub ignore: Vec<String>,
-    /// Keep what is noise for this resource (uids, timestamps, status)
+    /// Keep what this resource's diff leaves out as noise (ids, times, counts)
     #[arg(long)]
     pub all: bool,
     /// Most differences to print
@@ -153,8 +154,9 @@ pub fn diff(ctx: &Ctx, args: &DiffArgs, rules: &Rules, left: Side, right: Side) 
         ));
     }
     if changes.len() > args.limit {
+        // Masked values are changes but no known difference.
         ctx.note(format!(
-            "[{} of {} differences; --limit N]",
+            "[{} of {} changes; --limit N]",
             args.limit,
             changes.len()
         ));
@@ -233,72 +235,6 @@ fn compare(
     (changes, masked)
 }
 
-/// The words treated as one: `--as` pairs, `none`, or those inferred from
-/// the ids (tokens split at non-alphanumerics, differing in place).
-fn names(args: &DiffArgs, rules: &Rules, left: &str, right: &str) -> Result<Vec<(String, String)>> {
-    if args.as_.iter().any(|held| held == "none") {
-        return Ok(Vec::new());
-    }
-    if !args.as_.is_empty() {
-        return args
-            .as_
-            .iter()
-            .map(|held| match held.split_once('=') {
-                Some((a, b)) if !a.is_empty() && !b.is_empty() => Ok((a.to_owned(), b.to_owned())),
-                _ => Err(Failure::usage(format!("--as {held:?} is not A=B (or none)")).into()),
-            })
-            .collect();
-    }
-    if !rules.infer {
-        return Ok(Vec::new());
-    }
-    let tokens = |id: &str| -> Vec<String> {
-        id.split(|c: char| !c.is_alphanumeric())
-            .filter(|token| !token.is_empty())
-            .map(str::to_owned)
-            .collect()
-    };
-    let (a, b) = (tokens(left), tokens(right));
-    if a.len() != b.len() {
-        return Ok(Vec::new());
-    }
-    let numeric = |token: &str| token.chars().all(|c| c.is_ascii_digit());
-    let mut pairs: Vec<(String, String)> = Vec::new();
-    for (x, y) in a.into_iter().zip(b) {
-        if x != y && !(numeric(&x) && numeric(&y)) && !pairs.iter().any(|(held, _)| *held == x) {
-            pairs.push((x, y));
-        }
-    }
-    Ok(pairs)
-}
-
-/// `text` with each pair's left word replaced by its right where it stands
-/// alone: `-qa.`, `_qa`, `/qa/`, never inside `quality`.
-fn swap(text: &str, pairs: &[(String, String)]) -> String {
-    let mut text = text.to_owned();
-    for (from, to) in pairs {
-        let mut out = String::with_capacity(text.len());
-        let mut rest = text.as_str();
-        let mut before: Option<char> = None;
-        while let Some(at) = rest.find(from.as_str()) {
-            let prior = rest[..at].chars().next_back().or(before);
-            let after = rest[at + from.len()..].chars().next();
-            let alone = |c: Option<char>| c.is_none_or(|c| !c.is_alphanumeric());
-            out.push_str(&rest[..at]);
-            if alone(prior) && alone(after) {
-                out.push_str(to);
-            } else {
-                out.push_str(from);
-            }
-            before = from.chars().next_back();
-            rest = &rest[at + from.len()..];
-        }
-        out.push_str(rest);
-        text = out;
-    }
-    text
-}
-
 struct Walk<'a> {
     rules: &'a Rules,
     args: &'a DiffArgs,
@@ -336,11 +272,56 @@ impl Walk<'_> {
             .map(|(_, key)| *key)
     }
 
-    fn value(
+    /// Two keyed collections' entries paired: each left key with the
+    /// right's same key, else with the right's key the names line up with
+    /// (`api.staging.contoso.example` with `api.prod.contoso.example`); then
+    /// the right's unpaired ones. A pair takes the left's key.
+    fn paired<'v>(
+        &self,
+        a: Vec<(String, &'v Value)>,
+        b: Vec<(String, &'v Value)>,
+    ) -> Vec<(String, Option<&'v Value>, Option<&'v Value>)> {
+        let mut at: BTreeMap<&str, usize> = BTreeMap::new();
+        for (index, (key, _)) in b.iter().enumerate().rev() {
+            at.insert(key, index);
+        }
+        let mut used = vec![false; b.len()];
+        // The same key first, so `prod_x` on both sides stays one pair
+        // however a left `qa_x` would line up.
+        let mut found: Vec<Option<usize>> = Vec::with_capacity(a.len());
+        for (key, _) in &a {
+            let index = at.get(key.as_str()).copied().filter(|index| !used[*index]);
+            if let Some(index) = index {
+                used[index] = true;
+            }
+            found.push(index);
+        }
+        for ((key, _), held) in a.iter().zip(&mut found) {
+            if held.is_none()
+                && let Some(index) = at.get(swap(key, self.pairs).as_str()).copied()
+                && !used[index]
+            {
+                used[index] = true;
+                *held = Some(index);
+            }
+        }
+        let mut out = Vec::with_capacity(a.len() + b.len());
+        for ((key, left), held) in a.iter().zip(found) {
+            out.push((key.clone(), Some(*left), held.map(|index| b[index].1)));
+        }
+        for (index, (key, right)) in b.iter().enumerate() {
+            if !used[index] {
+                out.push((key.clone(), None, Some(*right)));
+            }
+        }
+        out
+    }
+
+    fn value<'v>(
         &self,
         path: &mut Vec<String>,
-        l: Option<&Value>,
-        r: Option<&Value>,
+        l: Option<&'v Value>,
+        r: Option<&'v Value>,
         out: &mut Vec<Change>,
     ) {
         if self.skipped(path) {
@@ -350,44 +331,71 @@ impl Walk<'_> {
         match (l, r) {
             (None, None) => {}
             (Some(Value::Object(a)), Some(Value::Object(b))) => {
-                let mut keys: Vec<&String> = a.keys().collect();
-                keys.extend(b.keys().filter(|key| !a.contains_key(*key)));
-                for key in keys {
-                    path.push(key.clone());
-                    self.value(path, a.get(key), b.get(key), out);
+                let entries = |map: &'v Map<String, Value>| -> Vec<(String, &'v Value)> {
+                    map.iter()
+                        .map(|(key, value)| (key.clone(), value))
+                        .collect()
+                };
+                for (key, l, r) in self.paired(entries(a), entries(b)) {
+                    path.push(key);
+                    self.value(path, l, r, out);
                     path.pop();
                 }
             }
             (Some(Value::Array(a)), Some(Value::Array(b))) => match self.key_of(path) {
                 Some(field) => {
-                    let named = |items: &Vec<Value>| -> Vec<(String, Value)> {
+                    let named = |items: &'v [Value]| -> Vec<(String, &'v Value)> {
                         items
                             .iter()
                             .enumerate()
                             .map(|(at, item)| {
-                                let key = match &item[field] {
+                                // A nested field (`metadata.name`) by its path.
+                                let held = field.split('.').fold(item, |value, part| &value[part]);
+                                let key = match held {
                                     Value::String(text) => text.clone(),
                                     Value::Null => at.to_string(),
                                     other => other.to_string(),
                                 };
-                                (key, item.clone())
+                                (key, item)
                             })
                             .collect()
                     };
-                    let (a, b) = (named(a), named(b));
-                    let mut keys: Vec<&String> = a.iter().map(|(key, _)| key).collect();
-                    keys.extend(
-                        b.iter()
-                            .map(|(key, _)| key)
-                            .filter(|key| !a.iter().any(|(k, _)| k == *key)),
-                    );
-                    let find = |items: &[(String, Value)], key: &str| {
-                        items.iter().find(|(k, _)| k == key).map(|(_, v)| v.clone())
-                    };
-                    for key in keys {
-                        path.push(key.clone());
-                        self.value(path, find(&a, key).as_ref(), find(&b, key).as_ref(), out);
+                    for (key, l, r) in self.paired(named(a), named(b)) {
+                        path.push(key);
+                        if l.is_some() && r.is_some() {
+                            self.value(path, l, r, out);
+                        } else {
+                            // On one side only, the path names it: its key
+                            // field again says nothing.
+                            let item = l.or(r).map(|item| without(item, field));
+                            let (l, r) = if l.is_some() {
+                                (item.as_ref(), None)
+                            } else {
+                                (None, item.as_ref())
+                            };
+                            self.value(path, l, r, out);
+                        }
                         path.pop();
+                    }
+                }
+                // Plain values (tags, a command's arguments, an index's
+                // columns) read as one list: `tags.1` against nothing would
+                // say less than the two lists.
+                None if a.iter().chain(b).all(plain) => {
+                    let same = a.len() == b.len()
+                        && a.iter().zip(b).all(|pair| match pair {
+                            (Value::String(x), Value::String(y)) => swap(x, self.pairs) == *y,
+                            (x, y) => x == y,
+                        });
+                    if !same {
+                        out.push(Change {
+                            path: path.join("."),
+                            left: l.cloned(),
+                            right: r.cloned(),
+                            redacted: false,
+                            same: None,
+                            lines: Vec::new(),
+                        });
                     }
                 }
                 None => {
@@ -509,14 +517,29 @@ fn blanked(text: &str, rules: &Rules, exact: bool) -> String {
     out
 }
 
+/// `item` without its top-level `field`.
+fn without(item: &Value, field: &str) -> Value {
+    let mut item = item.clone();
+    if let Some(map) = item.as_object_mut() {
+        map.shift_remove(field);
+    }
+    item
+}
+
+/// Neither an object nor a list.
+fn plain(value: &Value) -> bool {
+    !matches!(value, Value::Object(_) | Value::Array(_))
+}
+
 /// Null, `""`, `[]` and `{}` are left out of every printed row, so a diff
-/// treats them as absent: a defaulted empty list is no difference.
+/// treats them as absent: a defaulted empty list is no difference, and an
+/// object of nothing but those would print as a change with no sides.
 fn blank(value: &Value) -> bool {
     match value {
         Value::Null => true,
         Value::String(text) => text.is_empty(),
         Value::Array(items) => items.is_empty(),
-        Value::Object(map) => map.is_empty(),
+        Value::Object(map) => map.values().all(blank),
         _ => false,
     }
 }

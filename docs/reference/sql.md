@@ -8,7 +8,7 @@
 | [`sql object get`](#sql-object-get) | read | Show a view, procedure, function or package's source, or a table's columns |
 | [`sql object diff`](#sql-object-diff) | read | Compare a table or procedure in two databases: columns, keys, indexes, source |
 | [`sql schema list`](#sql-schema-list) | read | List the schemas (owners) of a database |
-| [`sql schema diff`](#sql-schema-diff) | read | Compare two schemas: objects on one side only, table columns, procedure source |
+| [`sql schema diff`](#sql-schema-diff) | read | Compare two schemas: objects on one side only, columns, keys, indexes, source |
 | [`sql connection list`](#sql-connection-list) | read | List the configured database connections (never their passwords) |
 
 ### sql query run
@@ -56,7 +56,7 @@ e.g. agent-cli sql object list --conn local-mssql customer --kind table --fields
 
 ```text
 agent-cli sql object get — Show a view, procedure, function or package's source, or a table's columns
- *<object> str  schema.name; either part may be quoted as [x] or "x"
+ *<object> str  [CONN:]schema.name, as a diff prints its sides; either part may be quoted as [x] or "x"
   --conn str    Connection name from `sql connection list`; defaults to the only one
 Returns: {kind,schema,name,text,columns[{name,type,nullable,pk}],ddl}
 Read. * required. Globals: --fields --raw --timeout --output
@@ -71,8 +71,8 @@ agent-cli sql object diff — Compare a table or procedure in two databases: col
  *<right> str     The other side, as left
   --conn str      Connection name from `sql connection list`; defaults to the only one
   --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]  Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
@@ -94,13 +94,13 @@ e.g. agent-cli sql schema list --conn local-mssql
 ### sql schema diff
 
 ```text
-agent-cli sql schema diff — Compare two schemas: objects on one side only, table columns, procedure source
+agent-cli sql schema diff — Compare two schemas: objects on one side only, columns, keys, indexes, source
  *<left> str      One side: [CONN:]SCHEMA (qa:dbo); no prefix is --conn's
  *<right> str     The other side, as left
   --conn str      Connection name from `sql connection list`; defaults to the only one
   --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]  Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}

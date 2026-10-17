@@ -109,6 +109,11 @@ mod tests {
         assert_eq!(outcome.code, 0, "{outcome:?}");
         let got = outcome.json();
         assert_eq!(got["as"], json!(["dev=prod"]));
-        assert_eq!(got["changes"][0]["path"], "fields.status.attrs.1", "{got}");
+        assert_eq!(
+            got["changes"][0],
+            json!({"path": "fields.status.attrs", "left": ["searchable"],
+                "right": ["searchable", "filterable"]}),
+            "{got}"
+        );
     }
 }

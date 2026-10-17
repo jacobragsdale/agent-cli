@@ -66,6 +66,66 @@ fn lists_match_by_their_key_and_noise_and_empties_do_not_count() {
 }
 
 #[test]
+fn a_list_of_plain_values_differs_as_one_list_with_the_names_lined_up() {
+    let left = json!({"tags": ["etl", "e2e"], "args": ["--host", "db.qa.contoso.example"],
+        "ports": [{"port": 80}, {"port": 443}]});
+    let right = json!({"tags": ["e2e"], "args": ["--host", "db.prod.contoso.example"],
+        "ports": [{"port": 80}, {"port": 8443}]});
+    let got = changes(
+        &Rules::PLAIN,
+        &args(),
+        Side::new("qa:api", left),
+        Side::new("prod:api", right),
+    );
+    assert_eq!(
+        got,
+        json!([
+            {"path": "tags", "left": ["etl", "e2e"], "right": ["e2e"], "same": null, "lines": []},
+            {"path": "ports.1.port", "left": 443, "right": 8443, "same": null, "lines": []},
+        ])
+    );
+}
+
+#[test]
+fn keys_that_name_the_environment_pair_up_and_a_nested_key_field_is_followed() {
+    let rules = Rules {
+        keys: &[("rules", "host"), ("claims", "metadata.name")],
+        ..Rules::PLAIN
+    };
+    let left = json!({"rules": [{"host": "api.staging.contoso.example", "path": "/"}],
+        "data": {"appsettings.staging.json": "{}"},
+        "claims": [{"metadata": {"name": "data"}, "size": "1Gi"}]});
+    let right = json!({"rules": [{"host": "api.prod.contoso.example", "path": "/api"}],
+        "data": {"appsettings.prod.json": "{}"},
+        "claims": [{"metadata": {"name": "data"}, "size": "2Gi"}]});
+    let got = changes(
+        &rules,
+        &args(),
+        Side::new("staging/web/api", left),
+        Side::new("prod/web/api", right),
+    );
+    assert_eq!(
+        got,
+        json!([
+            {"path": "rules.api.staging.contoso.example.path", "left": "/", "right": "/api",
+                "same": null, "lines": []},
+            {"path": "claims.data.size", "left": "1Gi", "right": "2Gi", "same": null, "lines": []},
+        ])
+    );
+    // A key on both sides pairs with itself before another lines up with it.
+    let got = changes(
+        &rules,
+        &args(),
+        Side::new("staging/web/api", json!({"x-staging": 1, "x-prod": 2})),
+        Side::new("prod/web/api", json!({"x-prod": 2})),
+    );
+    assert_eq!(
+        got,
+        json!([{"path": "x-staging", "left": 1, "right": null, "same": null, "lines": []}])
+    );
+}
+
+#[test]
 fn environment_names_come_from_the_ids_and_apply_only_where_they_stand_alone() {
     let rules = Rules::PLAIN;
     let none = args();
@@ -110,6 +170,18 @@ fn environment_names_come_from_the_ids_and_apply_only_where_they_stand_alone() {
         "db-prod.contoso.example/prod_x prod"
     );
     assert_eq!(swap("quality aqa qa1 qaqa", &pairs), "quality aqa qa1 qaqa");
+    // Oracle folds `shop_qa` to `SHOP_QA`: one name in either case.
+    assert_eq!(swap("SHOP_QA.ORDERS Qa", &pairs), "SHOP_PROD.ORDERS prod");
+    assert_eq!(
+        names(
+            &none,
+            &rules,
+            "ora-qa:SHOP_QA.ORDERS",
+            "ora-prod:SHOP_PROD.ORDERS"
+        )
+        .unwrap(),
+        [("qa".to_owned(), "prod".to_owned())]
+    );
     let got = changes(
         &rules,
         &none,

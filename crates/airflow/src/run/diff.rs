@@ -64,8 +64,11 @@ fn run_diff(ctx: &Ctx, args: RunDiffArgs) -> Result<Diff> {
         }
     };
     let (left, left_secrets) = row(left_client, &left_id, &left_run)?;
-    let (right, right_secrets) = row(&right_client, &right_id, &right_run)?;
+    let (mut right, right_secrets) = row(&right_client, &right_id, &right_run)?;
     ratios(ctx, &left, &right);
+    if !args.diff.all {
+        settle(&left, &mut right);
+    }
     // A task that failed on the right is the one to read next.
     let failed = right["tasks"]
         .as_array()
@@ -148,7 +151,7 @@ fn row(
         "task_instances",
         MOST,
     )?;
-    // VERIFY(work): `~` for every task, as dagRuns and taskInstances take it.
+    // `~` for every task, as dagRuns and taskInstances take it (2.9 and 3).
     let (xcoms, _) = client.list(
         &format!("{}/taskInstances/~/xcomEntries", id.run_path()),
         "",
@@ -204,18 +207,49 @@ fn ratios(ctx: &Ctx, left: &Value, right: &Value) {
             .find(|held| held["task_id"] == task["task_id"])
             .and_then(|held| held["duration"].as_i64());
         if let (Some(before), Some(after)) = (before.filter(|b| *b > 0), task["duration"].as_i64())
+            && !close(before, after)
         {
-            let ratio = after as f64 / before as f64;
-            if !(0.67..=1.5).contains(&ratio) {
-                said.push(format!(
-                    "{} {ratio:.1}x",
-                    task["task_id"].as_str().unwrap_or_default()
-                ));
-            }
+            said.push(format!(
+                "{} {:.1}x",
+                task["task_id"].as_str().unwrap_or_default(),
+                after as f64 / before as f64
+            ));
         }
     }
     if !said.is_empty() {
         ctx.note(format!("[duration right/left: {}]", said.join(", ")));
+    }
+}
+
+/// Two durations a run's jitter apart: within half again either way, or
+/// under ten seconds apart, since whole seconds make a short task's ratio
+/// wild (0s against 3s).
+fn close(before: i64, after: i64) -> bool {
+    (before - after).abs() < 10
+        || (before > 0 && (0.67..=1.5).contains(&(after as f64 / before as f64)))
+}
+
+/// The right run's durations that are `close` to the left's, made the
+/// left's: every two runs differ by seconds, which is no difference.
+fn settle(left: &Value, right: &mut Value) {
+    let near = |before: &Value, after: &Value| match (before.as_i64(), after.as_i64()) {
+        (Some(before), Some(after)) => close(before, after),
+        _ => false,
+    };
+    if near(&left["duration"], &right["duration"]) {
+        right["duration"] = left["duration"].clone();
+    }
+    for task in right["tasks"].as_array_mut().into_iter().flatten() {
+        let before = left["tasks"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|held| held["task_id"] == task["task_id"]);
+        if let Some(before) = before
+            && near(&before["duration"], &task["duration"])
+        {
+            task["duration"] = before["duration"].clone();
+        }
     }
 }
 
@@ -241,6 +275,20 @@ mod tests {
         held["start_date"] = json!("2026-09-28T00:00:05+00:00");
         held["end_date"] = json!("2026-09-28T00:20:05+00:00");
         held
+    }
+
+    #[test]
+    fn durations_seconds_apart_are_no_difference_but_twice_as_long_is() {
+        let left = json!({"duration": 300, "tasks": [
+            {"task_id": "extract", "duration": 3}, {"task_id": "load", "duration": 120}]});
+        let mut right = json!({"duration": 312, "tasks": [
+            {"task_id": "extract", "duration": 0}, {"task_id": "load", "duration": 260}]});
+        super::settle(&left, &mut right);
+        assert_eq!(
+            right,
+            json!({"duration": 300, "tasks": [
+                {"task_id": "extract", "duration": 3}, {"task_id": "load", "duration": 260}]})
+        );
     }
 
     #[test]

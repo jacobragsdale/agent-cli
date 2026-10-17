@@ -20,10 +20,21 @@ const KEYS: &[(&str, &str)] = &[
     ("containers.*.volumeMounts", "mountPath"),
     ("initContainers.*.volumeMounts", "mountPath"),
     ("volumes", "name"),
+    ("volumeClaimTemplates", "metadata.name"),
     ("imagePullSecrets", "name"),
     ("tolerations", "key"),
     ("spec.ports", "name"),
     ("spec.rules", "host"),
+    // `object diff` reads manifests whole: a pod's and a template's lists.
+    ("spec.containers", "name"),
+    ("spec.containers.*.env", "name"),
+    ("spec.containers.*.volumeMounts", "mountPath"),
+    ("spec.volumes", "name"),
+    ("spec.template.spec.containers", "name"),
+    ("spec.template.spec.containers.*.env", "name"),
+    ("spec.template.spec.containers.*.volumeMounts", "mountPath"),
+    ("spec.template.spec.volumes", "name"),
+    ("spec.volumeClaimTemplates", "metadata.name"),
 ];
 
 /// What every object carries that is bookkeeping, not configuration; a
@@ -78,7 +89,7 @@ pub struct Sides {
 impl Sides {
     /// Both objects of `kind` as kubectl answers them, with their targets.
     pub(crate) fn read(&self, ctx: &Ctx, kind: &str) -> Result<[(Target, Value); 2]> {
-        self.read_by(ctx, kind, |raw| self.at.named(ctx, raw))
+        self.read_by(ctx, kind, |raw| self.at.side(raw).named(ctx, raw))
     }
 
     /// As [`Sides::read`], each ref resolved by `named` (kube-system's
@@ -129,10 +140,37 @@ impl Sides {
     }
 }
 
-/// A manifest without stamped labels and annotations (unless `--all`).
+/// A manifest without stamped labels and annotations, nor the service
+/// account token volume the API server mounts into every pod under a name
+/// of its own making (unless `--all`).
 pub(crate) fn clean(mut item: Value, all: bool) -> Value {
-    if !all && let Some(metadata) = item.get_mut("metadata") {
-        unstamp(metadata);
+    if !all {
+        if let Some(metadata) = item.get_mut("metadata") {
+            unstamp(metadata);
+        }
+        let spec = &mut item["spec"];
+        let injected = |name: &Value| {
+            name.as_str()
+                .is_some_and(|name| name.starts_with("kube-api-access-"))
+        };
+        if let Some(volumes) = spec.get_mut("volumes").and_then(Value::as_array_mut) {
+            volumes.retain(|volume| !injected(&volume["name"]));
+        }
+        for list in ["containers", "initContainers"] {
+            for container in spec
+                .get_mut(list)
+                .and_then(Value::as_array_mut)
+                .into_iter()
+                .flatten()
+            {
+                if let Some(mounts) = container
+                    .get_mut("volumeMounts")
+                    .and_then(Value::as_array_mut)
+                {
+                    mounts.retain(|mount| !injected(&mount["name"]));
+                }
+            }
+        }
     }
     crate::shape::trim(item)
 }
@@ -251,4 +289,25 @@ pub(crate) fn next_secret(left: (&Target, &Value), right: (&Target, &Value)) -> 
         first(left)?,
         first(right)?
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::clean;
+
+    #[test]
+    fn a_pods_token_volume_named_by_the_api_server_is_no_difference() {
+        let pod = |suffix: &str| {
+            json!({"metadata": {"name": "cache-0"}, "spec": {
+            "volumes": [{"name": "data"}, {"name": format!("kube-api-access-{suffix}")}],
+            "containers": [{"name": "cache", "volumeMounts": [
+                {"name": "data", "mountPath": "/data"},
+                {"name": format!("kube-api-access-{suffix}"), "mountPath": "/var/run/secrets"},
+            ]}]}})
+        };
+        assert_eq!(clean(pod("phlq9"), false), clean(pod("hn84s"), false));
+        assert_ne!(clean(pod("phlq9"), true), clean(pod("hn84s"), true));
+    }
 }

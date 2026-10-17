@@ -55,7 +55,7 @@ fn deployment_diff(ctx: &Ctx, args: DeploymentDiffArgs) -> Result<Diff> {
 /// A deployment's row, each container with the digest its pods run, so a
 /// tag pushed again over a new image still differs.
 fn read(ctx: &Ctx, at: &At, raw: &str, all: bool) -> Result<(Target, String, Value)> {
-    let (target, name) = at.named(ctx, raw)?;
+    let (target, name) = at.side(raw).named(ctx, raw)?;
     let item = target.json(ctx, &["get", "deployment", &name, "-o", "json"])?;
     let listed = target.json(ctx, &["get", "pods", "-o", "json"])?;
     let pods: Vec<&Value> = items(&listed).collect();

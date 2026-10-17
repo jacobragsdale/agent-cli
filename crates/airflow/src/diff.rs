@@ -20,9 +20,10 @@ pub struct Instances {
     pub(crate) diff: DiffArgs,
 }
 
-/// One instance's side: its rows by name, and the values compared only
-/// for equality (`None` where Airflow masks them), by path.
-pub(crate) type Read = (BTreeMap<String, Value>, BTreeMap<String, Option<Secret>>);
+/// One instance's side: its rows by name, in the order printed, and the
+/// values compared only for equality (`None` where Airflow masks them), by
+/// path.
+pub(crate) type Read = (Map<String, Value>, BTreeMap<String, Option<Secret>>);
 
 impl Instances {
     /// Both instances read by `read`, compared under `rules`.
@@ -36,10 +37,7 @@ impl Instances {
         let side = |name: &str| -> Result<Side> {
             let client = airflow.open(ctx, Some(name))?;
             let (rows, secrets) = read(&client)?;
-            let mut side = Side::new(
-                client.instance.name.clone(),
-                Value::Object(rows.into_iter().collect::<Map<_, _>>()),
-            );
+            let mut side = Side::new(client.instance.name.clone(), Value::Object(rows));
             side.secrets = secrets;
             Ok(side)
         };

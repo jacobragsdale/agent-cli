@@ -149,6 +149,6 @@ fn todays_partition_has_yesterdays_schema_and_curated_has_its_own() {
     ]);
     assert_eq!(
         zones["changes"][5],
-        json!({"path": "columns.date", "right": {"name": "date", "type": "DATE"}})
+        json!({"path": "columns.date", "right": {"type": "DATE"}})
     );
 }

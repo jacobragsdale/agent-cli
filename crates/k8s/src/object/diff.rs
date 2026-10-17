@@ -25,12 +25,13 @@ pub struct ObjectDiffArgs {
 
 fn object_diff(ctx: &Ctx, args: ObjectDiffArgs) -> Result<Diff> {
     let one = |raw: &str| -> Result<Side> {
-        let probe = args.at.cluster_of(ctx, raw)?;
+        let at = args.at.side(raw);
+        let probe = at.cluster_of(ctx, raw)?;
         let kind = kind_named(ctx, &probe, &args.kind)?;
         let (target, name) = if kind.namespaced {
-            args.at.named(ctx, raw)?
+            at.named(ctx, raw)?
         } else {
-            args.at.named_cluster(ctx, raw)?
+            at.named_cluster(ctx, raw)?
         };
         let item = target.json(ctx, &["get", &kind.qualified(), &name, "-o", "json"])?;
         Ok(Side::new(target.id(&item), clean(item, args.diff.all)))

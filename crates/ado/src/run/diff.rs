@@ -31,8 +31,8 @@ const RULES: Rules = Rules {
     ..Rules::PLAIN
 };
 
-/// The changes between two builds, as the service pages them.
-// VERIFY(work): 7.1-preview.2 for build/changes and build/workitems.
+/// The changes between two builds, as the service pages them (checked on
+/// Azure DevOps Services).
 const BETWEEN_API: &str = "7.1-preview.2";
 const MOST: usize = 200;
 
@@ -55,24 +55,20 @@ fn run_diff(ctx: &Ctx, args: RunDiffArgs) -> Result<Diff> {
     }
     let (from, to) = (left.min(right), left.max(right));
     let between = format!("fromBuildId={from}&toBuildId={to}&$top={MOST}");
-    let changes = ado.get(
-        ctx,
-        &ado.api(
-            Some(&ado.code_project),
-            "build/changes",
-            &between,
-            BETWEEN_API,
-        ),
-    )?;
-    let linked = ado.get(
-        ctx,
-        &ado.api(
-            Some(&ado.code_project),
-            "build/workitems",
-            &between,
-            BETWEEN_API,
-        ),
-    )?;
+    // From a build to itself the service answers that build's own changes.
+    let read_between = |path: &str| -> Result<Value> {
+        if from == to {
+            return Ok(Value::Null);
+        }
+        ado.get(
+            ctx,
+            &ado.api(Some(&ado.code_project), path, &between, BETWEEN_API),
+        )
+    };
+    let (changes, linked) = (
+        read_between("build/changes")?,
+        read_between("build/workitems")?,
+    );
     let mut commits = BTreeMap::new();
     let mut prs = BTreeMap::new();
     for change in list(&changes["value"]) {
@@ -80,11 +76,7 @@ fn run_diff(ctx: &Ctx, args: RunDiffArgs) -> Result<Diff> {
             continue;
         };
         let first = message.lines().next().unwrap_or_default().to_owned();
-        // An Azure Repos merge says so: `Merged PR 431: Retry on 429`.
-        if let Some((number, title)) = first
-            .strip_prefix("Merged PR ")
-            .and_then(|rest| rest.split_once(": "))
-        {
+        if let Some((number, title)) = merged(&first) {
             prs.insert(number.to_owned(), json!(title));
         }
         let author = text(&change["author"]["displayName"]).unwrap_or_default();
@@ -150,6 +142,22 @@ fn run_diff(ctx: &Ctx, args: RunDiffArgs) -> Result<Diff> {
     )
 }
 
+/// The pull request an Azure Repos merge commit names, and its title or
+/// branches: the web's `Merged PR 431: Retry on 429`, or the API's and older
+/// servers' `Merge pull request 431 from feature/retry into main`.
+fn merged(first: &str) -> Option<(&str, &str)> {
+    if let Some(rest) = first.strip_prefix("Merged PR ") {
+        return rest.split_once(": ");
+    }
+    let (number, branches) = first
+        .strip_prefix("Merge pull request ")?
+        .split_once(" from ")?;
+    number
+        .chars()
+        .all(|c| c.is_ascii_digit())
+        .then_some((number, branches))
+}
+
 command! {
     pub RUN_DIFF = ["ado", "run", "diff"], Read,
     "Compare two runs of a pipeline: the commits, pull requests, work items it adds",
@@ -172,6 +180,33 @@ mod tests {
             "definition": {"id": 12, "name": "api-ci"}, "reason": "manual",
             "requestedFor": {"displayName": "Jane Doe"}}),
         )
+    }
+
+    #[test]
+    fn a_merge_commit_names_its_pull_request_in_either_wording() {
+        assert_eq!(
+            super::merged("Merged PR 431: Retry on 429"),
+            Some(("431", "Retry on 429"))
+        );
+        assert_eq!(
+            super::merged("Merge pull request 36 from feature/retry into main"),
+            Some(("36", "feature/retry into main"))
+        );
+        assert_eq!(super::merged("Merge branch 'main' into feature"), None);
+    }
+
+    #[test]
+    fn a_run_against_itself_is_the_same_and_reads_nothing_between() {
+        let (outcome, transport) = ado(
+            &["ado", "run", "diff", "8790", "8790"],
+            vec![
+                build(8790, "refs/tags/v1.4.1", "2d8b6f4a"),
+                build(8790, "refs/tags/v1.4.1", "2d8b6f4a"),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()["same"], true, "{outcome:?}");
+        assert_eq!(urls(&transport).len(), 2);
     }
 
     #[test]

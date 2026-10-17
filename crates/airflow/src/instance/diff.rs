@@ -23,10 +23,10 @@ fn instance_diff(ctx: &Ctx, args: Instances) -> Result<Diff> {
                 ))
             })
             .collect();
-        let rows = BTreeMap::from([
-            ("version".to_owned(), version),
-            ("providers".to_owned(), Value::Object(providers)),
-        ]);
+        // The version first: the note names the first differences.
+        let mut rows = Map::new();
+        rows.insert("version".to_owned(), version);
+        rows.insert("providers".to_owned(), Value::Object(providers));
         Ok((rows, BTreeMap::new()))
     })
 }
@@ -67,8 +67,8 @@ mod tests {
         assert_eq!(
             outcome.json()["changes"],
             json!([
-                {"path": "providers.apache-airflow-providers-microsoft-mssql", "left": "4.3.0", "right": "4.2.1"},
                 {"path": "version", "left": "3.3.1", "right": "3.3.2"},
+                {"path": "providers.apache-airflow-providers-microsoft-mssql", "left": "4.3.0", "right": "4.2.1"},
             ])
         );
         assert_eq!(paths(&transport)[2], "version");

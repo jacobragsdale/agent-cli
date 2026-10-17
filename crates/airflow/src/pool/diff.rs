@@ -23,7 +23,7 @@ fn pool_diff(ctx: &Ctx, args: Instances) -> Result<Diff> {
                 Some((name, row))
             })
             .collect();
-        Ok((rows, BTreeMap::new()))
+        Ok((rows.into_iter().collect(), BTreeMap::new()))
     })
 }
 

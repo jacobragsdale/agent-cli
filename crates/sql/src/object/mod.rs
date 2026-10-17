@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 use crate::catalog::{
     Filter, Name, ObjectKind, ObjectRow, TableRows, columns_sql, constraints_sql, extras_sql,
     grants_sql, indexes_sql, objects_sql, parse_columns, parse_objects, parse_source, rows,
-    rows_sql, sequence_ddl, sequence_sql, source_sql, table_row, triggers_sql,
+    rows_sql, sequence_row, sequence_sql, source_sql, table_row, triggers_sql,
 };
 use crate::db::Session;
 
@@ -42,7 +42,7 @@ fn find(
         .unwrap_or(0);
     if found.is_empty() {
         return Err(Failure::not_found(format!(
-            "no table, view, procedure, function, package or sequence {schema}.{name}"
+            "{conn} has no table, view, procedure, function, package or sequence {schema}.{name}"
         ))
         .hint(format!(
             "agent-cli sql object list --conn {conn} {name} --fields id,kind"
@@ -64,12 +64,13 @@ fn compared(session: &mut Session, found: &ObjectRow, ctx: &Ctx) -> Result<Value
                 backend,
                 &rows(session, &columns_sql(backend, schema, name), ctx)?,
             );
-            let extras = rows(session, &extras_sql(backend, schema, name), ctx)?;
-            let constraints = rows(session, &constraints_sql(backend, schema, name), ctx)?;
-            let indexes = rows(session, &indexes_sql(backend, schema, name), ctx)?;
-            let triggers = rows(session, &triggers_sql(backend, schema, name), ctx)?;
-            let grants = rows(session, &grants_sql(backend, schema, name), ctx)?;
-            let counted = rows(session, &rows_sql(backend, schema, name), ctx)?;
+            let one = Some(name);
+            let extras = rows(session, &extras_sql(backend, schema, one), ctx)?;
+            let constraints = rows(session, &constraints_sql(backend, schema, one), ctx)?;
+            let indexes = rows(session, &indexes_sql(backend, schema, one), ctx)?;
+            let triggers = rows(session, &triggers_sql(backend, schema, one), ctx)?;
+            let grants = rows(session, &grants_sql(backend, schema, one), ctx)?;
+            let counted = rows(session, &rows_sql(backend, schema, one), ctx)?;
             table_row(
                 backend,
                 &TableRows {
@@ -84,22 +85,11 @@ fn compared(session: &mut Session, found: &ObjectRow, ctx: &Ctx) -> Result<Value
             )
         }
         ObjectKind::Sequence => {
-            let row = rows(session, &sequence_sql(backend, schema, name), ctx)?;
-            let ddl = row
-                .first()
-                .map(|row| sequence_ddl(backend, schema, name, row));
-            // Where it stands now moves with every insert: no difference.
-            let ddl = ddl.map(|ddl| {
-                let first = ddl.lines().next().unwrap_or_default();
-                match first.split_once(" START WITH ") {
-                    Some((head, tail)) => {
-                        let rest = tail.split_once(' ').map_or("", |(_, rest)| rest);
-                        format!("{head} {rest}")
-                    }
-                    None => first.to_owned(),
-                }
-            });
-            json!({"kind": found.kind, "ddl": ddl})
+            let row = rows(session, &sequence_sql(backend, schema, Some(name)), ctx)?;
+            row.first().map_or_else(
+                || json!({"kind": found.kind}),
+                |row| sequence_row(backend, row),
+            )
         }
         kind => {
             let source = rows(session, &source_sql(backend, schema, name, kind), ctx)?;

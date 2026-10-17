@@ -1,6 +1,6 @@
 //! `sql object get`.
 
-use agent_cli_core::{Ctx, Failure, command};
+use agent_cli_core::{Ctx, Failure, command, scoped};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -18,7 +18,8 @@ pub struct ObjectGetArgs {
     /// Connection name from `sql connection list`; defaults to the only one
     #[arg(long)]
     conn: Option<String>,
-    /// schema.name; either part may be quoted as [x] or "x"
+    /// [CONN:]schema.name, as a diff prints its sides; either part may be
+    /// quoted as [x] or "x"
     object: String,
 }
 
@@ -37,7 +38,17 @@ pub struct Object {
 }
 
 fn object_get(ctx: &Ctx, args: ObjectGetArgs) -> Result<Object> {
-    let (schema, name) = object_name(&args.object).ok_or_else(|| {
+    let (scope, object) = scoped(&args.object);
+    if let (Some(scope), Some(conn)) = (scope, args.conn.as_deref())
+        && scope != conn
+    {
+        return Err(Failure::usage(format!(
+            "{} names connection {scope} but --conn is {conn}",
+            args.object
+        ))
+        .into());
+    }
+    let (schema, name) = object_name(object).ok_or_else(|| {
         let conn = args
             .conn
             .as_deref()
@@ -48,8 +59,8 @@ fn object_get(ctx: &Ctx, args: ObjectGetArgs) -> Result<Object> {
         ))
     })?;
     let sql = Sql::load(ctx.config())?;
-    let spec = sql.connection(args.conn.as_deref())?;
-    let plan = json!({"conn": spec.name, "read": "object", "object": args.object});
+    let spec = sql.connection(scope.or(args.conn.as_deref()))?;
+    let plan = json!({"conn": spec.name, "read": "object", "object": object});
     let op = OnConnection {
         spec,
         client_dir: sql.client_dir.as_deref(),
@@ -86,7 +97,7 @@ fn describe(session: &mut Session, found: &ObjectRow, ctx: &Ctx) -> Result<Objec
             object.columns = columns;
         }
         ObjectKind::Sequence => {
-            let row = rows(session, &sequence_sql(backend, schema, name), ctx)?;
+            let row = rows(session, &sequence_sql(backend, schema, Some(name)), ctx)?;
             object.ddl = row
                 .first()
                 .map(|row| sequence_ddl(backend, schema, name, row));
@@ -105,4 +116,32 @@ command! {
     keywords: ["definition", "ddl", "code", "describe", "body", "columns"],
     example: "sql object get --conn local-mssql bench.customers --fields kind,columns,ddl",
     run: object_get,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::testing::{setup, sql};
+
+    #[test]
+    fn a_diff_sides_connection_prefix_is_taken_and_one_that_disagrees_with_conn_is_refused() {
+        let outcome = sql(
+            &["sql", "object", "get", "ms:dbo.orders", "--conn", "ora"],
+            setup(),
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("names connection ms but --conn is ora"),
+            "{}",
+            outcome.stderr
+        );
+        let outcome = sql(&["sql", "object", "get", "nope:dbo.orders"], setup());
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("ms, ora, env"),
+            "{}",
+            outcome.stderr
+        );
+    }
 }

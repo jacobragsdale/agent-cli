@@ -112,6 +112,16 @@ impl At {
     /// as every row prints it), `namespace/name`, or a name, with `--cluster`
     /// and `--namespace` filling in what it leaves out. A ref and a flag that
     /// disagree is exit 2: the CLI never picks one.
+    /// The flags as a diff's side takes them: defaults for what its id leaves
+    /// out, so `--cluster staging` beside `prod/web/api` reads prod.
+    pub(crate) fn side(&self, raw: &str) -> Self {
+        let parts = raw.trim().split('/').count();
+        Self {
+            cluster: self.cluster.clone().filter(|_| parts < 3),
+            namespace: self.namespace.clone().filter(|_| parts < 2),
+        }
+    }
+
     pub(crate) fn named(&self, ctx: &Ctx, raw: &str) -> Result<(Target, String)> {
         let parts: Vec<&str> = raw.trim().split('/').collect();
         let (cluster, namespace, name) = match parts.as_slice() {

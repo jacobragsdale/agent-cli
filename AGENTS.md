@@ -98,8 +98,9 @@ They make one domain's output the next domain's input; (tested) marks what
   `value` like a success, then the error, with the failure's code.
 - **Diffs.** `<resource> diff` compares two of what its `get` reads through
   core's `diff`: one answer shape, exit 0 either way, sides as ids (or
-  `SCOPE:ID` where the scope is a flag), environment names inferred from the
-  two ids (`--as`), noise and keyed lists in its `Rules`.
+  `SCOPE:ID` where the scope is a flag, only a default there, and the `get`
+  takes the side as printed), environment names inferred from the two ids
+  (`--as`), noise and keyed lists in its `Rules`.
 - **Next steps.** A field is not a signpost; a note naming the command is.
   A one-object verb whose answer exits 0 but needs attention (a failed
   run, an alerting monitor, a restarted container) prints one

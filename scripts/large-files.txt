@@ -8,4 +8,3 @@ crates/airflow/src/client.rs 732  # the one door to Airflow, its config, and the
 crates/core/src/discover.rs 621  # every text an agent reads to find a command, kept together so they read alike
 crates/core/src/registry.rs 668  # the command type, command! and every invariant check_registry holds
 crates/dd/src/client.rs 754  # the one door to Datadog, its credentials, and the tag and window helpers
-crates/sql/src/catalog.rs 605  # the catalog SQL for both vendors that the object and schema commands share

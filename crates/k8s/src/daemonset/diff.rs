@@ -8,7 +8,7 @@ use crate::diff::Sides;
 use super::named;
 
 fn daemonset_diff(ctx: &Ctx, args: Sides) -> Result<Diff> {
-    let sides = args.read_by(ctx, "daemonset", |raw| named(ctx, &args.at, raw))?;
+    let sides = args.read_by(ctx, "daemonset", |raw| named(ctx, &args.at.side(raw), raw))?;
     args.workloads(ctx, sides)
 }
 

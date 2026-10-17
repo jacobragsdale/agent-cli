@@ -51,31 +51,48 @@ fn variable_group_diff(ctx: &Ctx, args: VariableGroupDiffArgs) -> Result<Diff> {
 /// The group a name or id names.
 fn group(ctx: &Ctx, ado: &Ado, raw: &str) -> Result<Value> {
     if raw.chars().all(|c| c.is_ascii_digit()) && !raw.is_empty() {
-        return ado.get(
+        let found = ado.get(
             ctx,
             &ado.code(&format!("distributedtask/variablegroups/{raw}"), ""),
-        );
-    }
-    let mut name = String::new();
-    percent_encode(raw, &mut name);
-    let found = ado.get(
-        ctx,
-        &ado.code(
-            "distributedtask/variablegroups",
-            &format!("groupName={name}"),
-        ),
-    )?;
-    list(&found["value"])
-        .iter()
-        .find(|group| {
+        )?;
+        // An id no group has answers 200 with nothing in it.
+        if found["name"].is_string() {
+            return Ok(found);
+        }
+    } else {
+        let mut name = String::new();
+        percent_encode(raw, &mut name);
+        let found = ado.get(
+            ctx,
+            &ado.code(
+                "distributedtask/variablegroups",
+                &format!("groupName={name}"),
+            ),
+        )?;
+        if let Some(group) = list(&found["value"]).iter().find(|group| {
             group["name"]
                 .as_str()
                 .is_some_and(|held| held.eq_ignore_ascii_case(raw))
-        })
-        .cloned()
-        .ok_or_else(|| {
-            Failure::not_found(format!("no variable group {raw} in {}", ado.code_project)).into()
-        })
+        }) {
+            return Ok(group.clone());
+        }
+    }
+    // No command lists groups, so the refusal names those there are.
+    let all = ado.get(ctx, &ado.code("distributedtask/variablegroups", "$top=30"))?;
+    let names: Vec<String> = list(&all["value"])
+        .iter()
+        .filter_map(|group| text(&group["name"]))
+        .collect();
+    let held = if names.is_empty() {
+        "it has none".to_owned()
+    } else {
+        format!("its groups: {}", names.join(", "))
+    };
+    Err(Failure::not_found(format!(
+        "no variable group {raw} in {}; {held}",
+        ado.code_project
+    ))
+    .into())
 }
 
 command! {
@@ -137,6 +154,26 @@ mod tests {
             format!(
                 "{CODE}/distributedtask/variablegroups?groupName=orders-staging&api-version=7.1"
             )
+        );
+    }
+
+    #[test]
+    fn a_group_not_found_by_name_or_id_names_the_groups_there_are() {
+        let (outcome, _) = ado(
+            &["ado", "variable-group", "diff", "999", "orders-prod"],
+            vec![
+                Answer::ok("null"),
+                Answer::json(&json!({"count": 2, "value": [
+                    {"id": 7, "name": "orders-staging"}, {"id": 8, "name": "orders-prod"}]})),
+            ],
+        );
+        assert_eq!(outcome.code, 4, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("its groups: orders-staging, orders-prod"),
+            "{}",
+            outcome.stderr
         );
     }
 }

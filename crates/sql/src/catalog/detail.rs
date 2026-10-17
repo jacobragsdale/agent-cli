@@ -1,33 +1,55 @@
 //! What `sql object diff` and `sql schema diff` compare beyond `object get`:
-//! a table's defaults, identity, keys, indexes, checks and triggers, and a
-//! whole schema's columns and sources in two queries; and a sequence's
-//! settings, which `object get` prints too. Each engine answers in
-//! the same row layout, so one parser reads both.
+//! a table's defaults, identity, keys, indexes, checks, triggers and grants,
+//! and a sequence's settings. Each query reads one table, or with no table
+//! every table of the schema, so a schema costs as many queries as a table;
+//! the table's name is each row's last cell. Each engine answers in the same
+//! row layout, so one parser reads both.
 //!
 //! Constraint names that the server made up (`PK__orders__3213E83F…`,
 //! `SYS_C0012345`) differ between two databases built from one script, so
-//! keys are compared by their columns and checks by their condition, never
-//! by name; indexes, which people name, by name.
+//! keys are compared by their columns and checks by the columns they test,
+//! never by name; indexes, which people name, by name.
 
 use std::collections::BTreeMap;
 
 use serde_json::{Map, Value, json};
 
-use super::{ColumnInfo, owner, qualified, quoted};
+use super::{ColumnInfo, owner, quoted};
 use crate::config::Kind;
 use crate::db::{maybe, text};
+
+/// ` and COLUMN = 'table'`, or nothing for every table in the schema.
+pub(super) fn of_table(column: &str, table: Option<&str>) -> String {
+    table.map_or_else(String::new, |table| {
+        format!(" and {column} = {}", quoted(table))
+    })
+}
+
+/// The rows of a schema-wide read by table, the table being each row's last
+/// cell.
+pub(crate) fn by_table(rows: Vec<Vec<Value>>) -> BTreeMap<String, Vec<Vec<Value>>> {
+    let mut tables: BTreeMap<String, Vec<Vec<Value>>> = BTreeMap::new();
+    for row in rows {
+        let table = row.last().map(|_| text(&row, row.len() - 1));
+        tables
+            .entry(table.unwrap_or_default())
+            .or_default()
+            .push(row);
+    }
+    tables
+}
 
 /// Each column's default, identity and computed expression:
 /// `name, default, identity, computed` on SQL Server; Oracle gives
 /// `name, data_default, identity_column, virtual_column`, its default
 /// doubling as a virtual column's expression.
-pub(crate) fn extras_sql(backend: Kind, schema: &str, table: &str) -> String {
+pub(crate) fn extras_sql(backend: Kind, schema: &str, table: Option<&str>) -> String {
     match backend {
         Kind::Mssql => format!(
             "select c.name, dc.definition, \
                     case when c.is_identity = 1 then concat('(', cast(ic.seed_value as varchar(40)), ',', \
                          cast(ic.increment_value as varchar(40)), ')') end, \
-                    cc.definition \
+                    cc.definition, o.name \
              from sys.columns c join sys.objects o on o.object_id = c.object_id \
              join sys.schemas s on s.schema_id = o.schema_id \
              left join sys.default_constraints dc \
@@ -36,40 +58,42 @@ pub(crate) fn extras_sql(backend: Kind, schema: &str, table: &str) -> String {
                     on ic.object_id = c.object_id and ic.column_id = c.column_id \
              left join sys.computed_columns cc \
                     on cc.object_id = c.object_id and cc.column_id = c.column_id \
-             where s.name = {} and o.name = {} order by c.column_id",
+             where s.name = {} and o.type = 'U'{} order by o.name, c.column_id",
             quoted(schema),
-            quoted(table),
+            of_table("o.name", table),
         ),
-        // VERIFY(work): data_default is a LONG, read as text by the driver.
+        // data_default is a LONG, which the driver reads as text.
         Kind::Oracle => format!(
-            "select column_name, data_default, identity_column, virtual_column \
-             from all_tab_cols where owner = {} and table_name = {} and hidden_column = 'NO' \
-             order by column_id",
+            "select column_name, data_default, identity_column, virtual_column, table_name \
+             from all_tab_cols where owner = {} and hidden_column = 'NO'{} \
+             order by table_name, column_id",
             owner(schema),
-            quoted(table),
+            of_table("table_name", table),
         ),
     }
 }
 
 /// Keys, foreign keys and checks as
 /// `name, type (P, U, R, C), column, referenced table, referenced column,
-/// delete rule, condition, position`.
-pub(crate) fn constraints_sql(backend: Kind, raw_schema: &str, table: &str) -> String {
-    let (schema, table) = (quoted(raw_schema), quoted(table));
+/// delete rule, condition, position, table`; a check's column is the one it
+/// was declared on, if any.
+pub(crate) fn constraints_sql(backend: Kind, raw_schema: &str, table: Option<&str>) -> String {
+    let (schema, on) = (quoted(raw_schema), of_table("o.name", table));
     match backend {
         Kind::Mssql => format!(
             "select kc.name, case kc.type when 'PK' then 'P' else 'U' end, col.name, \
-                    null, null, null, null, cast(ic.key_ordinal as int) \
+                    null, null, null, null, cast(ic.key_ordinal as int), o.name \
              from sys.key_constraints kc \
              join sys.index_columns ic \
                on ic.object_id = kc.parent_object_id and ic.index_id = kc.unique_index_id \
              join sys.columns col on col.object_id = ic.object_id and col.column_id = ic.column_id \
              join sys.objects o on o.object_id = kc.parent_object_id \
              join sys.schemas s on s.schema_id = o.schema_id \
-             where s.name = {schema} and o.name = {table} \
+             where s.name = {schema}{on} \
              union all \
              select fk.name, 'R', pc.name, rs.name + '.' + ro.name, rc.name, \
-                    fk.delete_referential_action_desc, null, fkc.constraint_column_id \
+                    replace(fk.delete_referential_action_desc, '_', ' '), null, \
+                    fkc.constraint_column_id, o.name \
              from sys.foreign_keys fk \
              join sys.foreign_key_columns fkc on fkc.constraint_object_id = fk.object_id \
              join sys.columns pc \
@@ -80,19 +104,21 @@ pub(crate) fn constraints_sql(backend: Kind, raw_schema: &str, table: &str) -> S
                on rc.object_id = fkc.referenced_object_id and rc.column_id = fkc.referenced_column_id \
              join sys.objects o on o.object_id = fk.parent_object_id \
              join sys.schemas s on s.schema_id = o.schema_id \
-             where s.name = {schema} and o.name = {table} \
+             where s.name = {schema}{on} \
              union all \
-             select k.name, 'C', null, null, null, null, k.definition, 0 \
+             select k.name, 'C', pc.name, null, null, null, k.definition, 0, o.name \
              from sys.check_constraints k join sys.objects o on o.object_id = k.parent_object_id \
              join sys.schemas s on s.schema_id = o.schema_id \
-             where s.name = {schema} and o.name = {table} \
-             order by 1, 8"
+             left join sys.columns pc \
+               on pc.object_id = k.parent_object_id and pc.column_id = k.parent_column_id \
+             where s.name = {schema}{on} \
+             order by 9, 1, 8"
         ),
         // A NOT NULL is a check Oracle names itself; nullability says it.
         Kind::Oracle => format!(
             "select c.constraint_name, c.constraint_type, cc.column_name, \
                     r.owner || '.' || r.table_name, rc.column_name, c.delete_rule, \
-                    c.search_condition_vc, cc.position \
+                    c.search_condition_vc, cc.position, c.table_name \
              from all_constraints c \
              left join all_cons_columns cc \
                on cc.owner = c.owner and cc.constraint_name = c.constraint_name \
@@ -100,66 +126,76 @@ pub(crate) fn constraints_sql(backend: Kind, raw_schema: &str, table: &str) -> S
                on r.owner = c.r_owner and r.constraint_name = c.r_constraint_name \
              left join all_cons_columns rc on rc.owner = r.owner \
               and rc.constraint_name = r.constraint_name and rc.position = cc.position \
-             where c.owner = {} and c.table_name = {table} \
+             where c.owner = {}{} \
                and c.constraint_type in ('P', 'U', 'R', 'C') \
                and not (c.constraint_type = 'C' and c.generated = 'GENERATED NAME' \
                         and c.search_condition_vc like '%IS NOT NULL') \
-             order by 1, 8",
+             order by 9, 1, 8",
             owner(raw_schema),
+            of_table("c.table_name", table),
         ),
     }
 }
 
-/// Indexes that back no key, as `name, unique, column, included`.
-pub(crate) fn indexes_sql(backend: Kind, schema: &str, table: &str) -> String {
+/// Indexes that back no key, as `name, unique, column, included,
+/// expression, table`. Oracle makes a hidden column (`SYS_NC00008$`, its
+/// number differing between databases) for each expression and descending
+/// key, so the expression stands in for it.
+pub(crate) fn indexes_sql(backend: Kind, schema: &str, table: Option<&str>) -> String {
     match backend {
         Kind::Mssql => format!(
             "select i.name, case when i.is_unique = 1 then 'unique' else 'index' end, \
                     col.name + case when ic.is_descending_key = 1 then ' desc' else '' end, \
-                    case when ic.is_included_column = 1 then 'Y' else 'N' end \
+                    case when ic.is_included_column = 1 then 'Y' else 'N' end, null, o.name \
              from sys.indexes i \
              join sys.index_columns ic on ic.object_id = i.object_id and ic.index_id = i.index_id \
              join sys.columns col on col.object_id = ic.object_id and col.column_id = ic.column_id \
              join sys.objects o on o.object_id = i.object_id \
              join sys.schemas s on s.schema_id = o.schema_id \
-             where s.name = {} and o.name = {} and i.type > 0 \
+             where s.name = {} and o.type = 'U'{} and i.type > 0 \
                and i.is_primary_key = 0 and i.is_unique_constraint = 0 \
-             order by i.name, ic.is_included_column, ic.key_ordinal, ic.index_column_id",
+             order by o.name, i.name, ic.is_included_column, ic.key_ordinal, ic.index_column_id",
             quoted(schema),
-            quoted(table),
+            of_table("o.name", table),
         ),
+        // column_expression is a LONG, which the driver reads as text.
         Kind::Oracle => format!(
             "select i.index_name, case i.uniqueness when 'UNIQUE' then 'unique' else 'index' end, \
-                    ic.column_name || case ic.descend when 'DESC' then ' desc' end, 'N' \
+                    ic.column_name || case ic.descend when 'DESC' then ' desc' end, 'N', \
+                    e.column_expression, i.table_name \
              from all_indexes i join all_ind_columns ic \
                on ic.index_owner = i.owner and ic.index_name = i.index_name \
-             where i.table_owner = {} and i.table_name = {} \
+             left join all_ind_expressions e on e.index_owner = ic.index_owner \
+              and e.index_name = ic.index_name and e.column_position = ic.column_position \
+             where i.table_owner = {}{} \
                and not exists (select 1 from all_constraints k \
                                where k.owner = i.table_owner and k.index_name = i.index_name) \
-             order by i.index_name, ic.column_position",
+             order by i.table_name, i.index_name, ic.column_position",
             owner(schema),
-            quoted(table),
+            of_table("i.table_name", table),
         ),
     }
 }
 
-/// A table's triggers as `name, source` (Oracle: `name, description, body`).
-pub(crate) fn triggers_sql(backend: Kind, schema: &str, table: &str) -> String {
+/// A table's triggers as `name, source, table` (Oracle: `name, description,
+/// body, table`).
+pub(crate) fn triggers_sql(backend: Kind, schema: &str, table: Option<&str>) -> String {
     match backend {
         Kind::Mssql => format!(
-            "select t.name, object_definition(t.object_id) from sys.triggers t \
+            "select t.name, object_definition(t.object_id), o.name from sys.triggers t \
              join sys.objects o on o.object_id = t.parent_id \
              join sys.schemas s on s.schema_id = o.schema_id \
-             where s.name = {} and o.name = {} order by t.name",
+             where s.name = {}{} order by o.name, t.name",
             quoted(schema),
-            quoted(table),
+            of_table("o.name", table),
         ),
-        // VERIFY(work): trigger_body is a LONG, read as text by the driver.
+        // trigger_body is a LONG, which the driver reads as text.
         Kind::Oracle => format!(
-            "select trigger_name, description, trigger_body from all_triggers \
-             where table_owner = {} and table_name = {} order by trigger_name",
+            "select trigger_name, description, trigger_body, table_name from all_triggers \
+             where table_owner = {} and base_object_type = 'TABLE'{} \
+             order by table_name, trigger_name",
             owner(schema),
-            quoted(table),
+            of_table("table_name", table),
         ),
     }
 }
@@ -175,104 +211,47 @@ pub(crate) struct TableRows<'a> {
     pub(crate) rows: &'a [Vec<Value>],
 }
 
-/// A sequence's settings as text, so the DDL needs no number rules.
-pub(crate) fn sequence_sql(backend: Kind, schema: &str, name: &str) -> String {
+/// Who may do what to a table, as `principal, permission, state, table`.
+pub(crate) fn grants_sql(backend: Kind, schema: &str, table: Option<&str>) -> String {
     match backend {
         Kind::Mssql => format!(
-            "select type_name(q.user_type_id), cast(q.start_value as varchar(40)), \
-                    cast(q.increment as varchar(40)), cast(q.minimum_value as varchar(40)), \
-                    cast(q.maximum_value as varchar(40)), q.is_cycling, \
-                    cast(q.current_value as varchar(40)) \
-             from sys.sequences q join sys.schemas s on s.schema_id = q.schema_id \
-             where s.name = {} and q.name = {}",
-            quoted(schema),
-            quoted(name),
-        ),
-        Kind::Oracle => format!(
-            "select to_char(min_value), to_char(max_value), to_char(increment_by), \
-                    cycle_flag, to_char(last_number) \
-             from all_sequences where sequence_owner = {} and sequence_name = {}",
-            quoted(schema),
-            quoted(name),
-        ),
-    }
-}
-
-/// `CREATE SEQUENCE` as it stands now: Oracle's `START WITH` is its
-/// `LAST_NUMBER`, the next value a new cache would begin at, the way
-/// `DBMS_METADATA` writes it; SQL Server's current value follows as a note.
-pub(crate) fn sequence_ddl(backend: Kind, schema: &str, name: &str, row: &[Value]) -> String {
-    let qualified = qualified(backend, schema, name);
-    match backend {
-        Kind::Mssql => format!(
-            "CREATE SEQUENCE {qualified} AS {} START WITH {} INCREMENT BY {} MINVALUE {} MAXVALUE {} {}\n-- current value {}",
-            text(row, 0),
-            text(row, 1),
-            text(row, 2),
-            text(row, 3),
-            text(row, 4),
-            if row.get(5) == Some(&Value::Bool(true)) {
-                "CYCLE"
-            } else {
-                "NO CYCLE"
-            },
-            text(row, 6),
-        ),
-        Kind::Oracle => format!(
-            "CREATE SEQUENCE {qualified} START WITH {} INCREMENT BY {} MINVALUE {} MAXVALUE {} {}",
-            text(row, 4),
-            text(row, 2),
-            text(row, 0),
-            text(row, 1),
-            if text(row, 3) == "Y" {
-                "CYCLE"
-            } else {
-                "NOCYCLE"
-            },
-        ),
-    }
-}
-
-/// Who may do what to a table, as `principal, permission, state`.
-pub(crate) fn grants_sql(backend: Kind, schema: &str, table: &str) -> String {
-    match backend {
-        Kind::Mssql => format!(
-            "select pr.name, p.permission_name, p.state_desc from sys.database_permissions p \
+            "select pr.name, p.permission_name, p.state_desc, o.name \
+             from sys.database_permissions p \
              join sys.database_principals pr on pr.principal_id = p.grantee_principal_id \
              join sys.objects o on o.object_id = p.major_id \
              join sys.schemas s on s.schema_id = o.schema_id \
-             where p.class = 1 and p.minor_id = 0 and s.name = {} and o.name = {} \
-             order by pr.name, p.permission_name",
+             where p.class = 1 and p.minor_id = 0 and o.type = 'U' and s.name = {}{} \
+             order by o.name, pr.name, p.permission_name",
             quoted(schema),
-            quoted(table),
+            of_table("o.name", table),
         ),
         Kind::Oracle => format!(
             "select grantee, privilege, case grantable when 'YES' then 'GRANT WITH GRANT OPTION' \
-                    else 'GRANT' end \
-             from all_tab_privs where table_schema = {} and table_name = {} \
-             order by grantee, privilege",
+                    else 'GRANT' end, table_name \
+             from all_tab_privs where table_schema = {}{} \
+             order by table_name, grantee, privilege",
             owner(schema),
-            quoted(table),
+            of_table("table_name", table),
         ),
     }
 }
 
 /// A table's rows as the catalog counts them (Oracle: as of its last
-/// statistics), never a scan.
-pub(crate) fn rows_sql(backend: Kind, schema: &str, table: &str) -> String {
+/// statistics), never a scan, as `rows, table`.
+pub(crate) fn rows_sql(backend: Kind, schema: &str, table: Option<&str>) -> String {
     match backend {
         Kind::Mssql => format!(
-            "select sum(p.rows) from sys.partitions p \
+            "select sum(p.rows), o.name from sys.partitions p \
              join sys.objects o on o.object_id = p.object_id \
              join sys.schemas s on s.schema_id = o.schema_id \
-             where p.index_id in (0, 1) and s.name = {} and o.name = {}",
+             where p.index_id in (0, 1) and o.type = 'U' and s.name = {}{} group by o.name",
             quoted(schema),
-            quoted(table),
+            of_table("o.name", table),
         ),
         Kind::Oracle => format!(
-            "select num_rows from all_tables where owner = {} and table_name = {}",
+            "select num_rows, table_name from all_tables where owner = {}{}",
             owner(schema),
-            quoted(table),
+            of_table("table_name", table),
         ),
     }
 }
@@ -348,7 +327,7 @@ pub(crate) fn table_row(backend: Kind, rows: &TableRows) -> Value {
     }
     let mut primary = None;
     let mut unique = Vec::new();
-    let mut checks = Vec::new();
+    let mut tests: BTreeMap<String, Vec<String>> = BTreeMap::new();
     let mut foreign = Map::new();
     for held in constraints.into_values() {
         let named = held.columns.join(", ");
@@ -364,11 +343,38 @@ pub(crate) fn table_row(backend: Kind, rows: &TableRows) -> Value {
                 );
                 foreign.insert(named, json!(target));
             }
-            _ => checks.push(held.said),
+            _ => {
+                // Keyed by what it tests, so a changed condition is one
+                // change: SQL Server names a table check's columns only in
+                // its condition, as `[qty]`.
+                let mut tested = held.columns.clone();
+                if tested.is_empty() {
+                    tested = bracketed(&held.said);
+                }
+                let key = if tested.is_empty() {
+                    "check".to_owned()
+                } else {
+                    tested.join(", ")
+                };
+                tests.entry(key).or_default().push(held.said);
+            }
         }
     }
     unique.sort();
-    checks.sort();
+    // Two checks on one column are told apart by their order, not by the
+    // names the server made up.
+    let mut checks = Map::new();
+    for (key, mut conditions) in tests {
+        conditions.sort();
+        for (at, condition) in conditions.into_iter().enumerate() {
+            let key = if at == 0 {
+                key.clone()
+            } else {
+                format!("{key} ({})", at + 1)
+            };
+            checks.insert(key, json!(condition));
+        }
+    }
     let mut indexes = Map::new();
     for index in rows.indexes {
         let entry = indexes.entry(text(index, 0)).or_insert_with(
@@ -379,8 +385,25 @@ pub(crate) fn table_row(backend: Kind, rows: &TableRows) -> Value {
         } else {
             "columns"
         };
+        let column = match maybe(index, 4) {
+            Some(expression) => {
+                let expression = expression.trim();
+                let plain = expression
+                    .strip_prefix('"')
+                    .and_then(|rest| rest.strip_suffix('"'))
+                    .filter(|name| !name.contains('"'))
+                    .unwrap_or(expression);
+                let order = if text(index, 2).ends_with(" desc") {
+                    " desc"
+                } else {
+                    ""
+                };
+                format!("{plain}{order}")
+            }
+            None => text(index, 2),
+        };
         if let Some(held) = entry[list].as_array_mut() {
-            held.push(json!(text(index, 2)));
+            held.push(json!(column));
         }
     }
     let triggers: Map<String, Value> = rows
@@ -429,6 +452,19 @@ pub(crate) fn table_row(backend: Kind, rows: &TableRows) -> Value {
         json!(counted.and_then(|n| n.parse::<i64>().ok())),
     );
     Value::Object(row)
+}
+
+/// The distinct `[name]`s in a SQL Server condition, in order.
+fn bracketed(condition: &str) -> Vec<String> {
+    let mut names: Vec<String> = Vec::new();
+    for piece in condition.split('[').skip(1) {
+        if let Some((name, _)) = piece.split_once(']')
+            && !names.iter().any(|held| held == name)
+        {
+            names.push(name.to_owned());
+        }
+    }
+    names
 }
 
 /// Every table's columns in a schema, as `table` then `columns_sql`'s.
@@ -526,17 +562,26 @@ mod tests {
                 null.clone(),
             ]),
         ];
-        let constraints = [
+        let check = |name: &str, column: Value, condition: &str| {
             row(&[
-                json!("CK__orders__qty__1A2B"),
+                json!(name),
                 json!("C"),
+                column,
                 null.clone(),
                 null.clone(),
                 null.clone(),
-                null.clone(),
-                json!("([qty]>(0))"),
+                json!(condition),
                 json!(0),
-            ]),
+            ])
+        };
+        let constraints = [
+            check("CK__orders__qty__1A2B", json!("qty"), "([qty]>(0))"),
+            check("CK__orders__qty__9F00", json!("qty"), "([qty]<(1000))"),
+            check(
+                "CK__orders__7C1D",
+                null.clone(),
+                "([shipped_at]>=[ordered_at])",
+            ),
             row(&[
                 json!("FK__orders__custo__3C4D"),
                 json!("R"),
@@ -624,7 +669,11 @@ mod tests {
                 ],
                 "unique": ["ref"],
                 "foreign_keys": {"customer_id": "dbo.customers (id), on delete NO_ACTION"},
-                "checks": ["([qty]>(0))"],
+                "checks": {
+                    "qty": "([qty]<(1000))",
+                    "qty (2)": "([qty]>(0))",
+                    "shipped_at, ordered_at": "([shipped_at]>=[ordered_at])",
+                },
                 "indexes": {"ix_orders_status": {"unique": false, "columns": ["status", "created desc"], "include": ["total"]}},
                 "triggers": {"tr_orders_audit": "CREATE TRIGGER dbo.tr_orders_audit ON dbo.orders AFTER UPDATE AS SELECT 1"},
                 "grants": {"app_reader": ["SELECT"], "app_writer": ["INSERT", "DELETE (deny)"]},
@@ -634,7 +683,7 @@ mod tests {
     }
 
     #[test]
-    fn oracles_identity_and_virtual_columns_are_not_defaults() {
+    fn oracles_identity_and_virtual_columns_are_not_defaults_nor_its_hidden_index_columns_names() {
         let extras = [
             row(&[
                 json!("ID"),
@@ -660,11 +709,23 @@ mod tests {
                 ],
                 extras: &extras,
                 constraints: &[],
-                indexes: &[],
+                indexes: &[row(&[
+                    json!("IX_ORDERS_AT"),
+                    json!("index"),
+                    json!("SYS_NC00008$ desc"),
+                    json!("N"),
+                    json!("\"ORDERED_AT\""),
+                ])],
                 triggers: &[],
                 grants: &[],
                 rows: &[],
             },
+        );
+        // The hidden column's number differs between databases; the
+        // expression does not.
+        assert_eq!(
+            got["indexes"]["IX_ORDERS_AT"]["columns"],
+            json!(["ORDERED_AT desc"])
         );
         assert_eq!(
             got["columns"],

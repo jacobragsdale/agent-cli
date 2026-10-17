@@ -10,7 +10,7 @@ use agent_cli_core::{Ctx, Diff, Rules, Secret, command};
 use anyhow::Result;
 use serde_json::{Value, json};
 
-use crate::client::Client;
+use crate::client::{Client, segment};
 use crate::diff::{Instances, Read, unmasked};
 
 /// The most Connections read from each instance.
@@ -32,8 +32,13 @@ fn connections(client: &Client) -> Result<Read> {
         if let Some(login) = item["login"].as_str() {
             values.insert(format!("{id}.login"), Some(Secret::new(login)));
         }
+        // 2.9's list leaves `extra` out; the connection's own GET has it.
+        let extra = match item.get("extra") {
+            Some(extra) => extra.clone(),
+            None => client.get(&format!("connections/{}", segment(&id)))?["extra"].clone(),
+        };
         // `extra` is a JSON object in a string; its values may be secrets.
-        let extra: Value = item["extra"]
+        let extra: Value = extra
             .as_str()
             .and_then(|extra| serde_json::from_str(extra).ok())
             .unwrap_or_default();
@@ -46,7 +51,7 @@ fn connections(client: &Client) -> Result<Read> {
                 "schema": item["schema"], "description": item["description"]}),
         );
     }
-    Ok((rows, values))
+    Ok((rows.into_iter().collect(), values))
 }
 
 command! {
@@ -62,7 +67,7 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{TWO, airflow_with};
+    use crate::testing::{TWO, airflow_with, paths};
 
     #[test]
     fn connections_differ_by_host_with_logins_and_extras_never_printed() {
@@ -91,5 +96,34 @@ mod tests {
             ])
         );
         assert!(!outcome.stdout.contains("etl_writer"), "{}", outcome.stdout);
+    }
+
+    #[test]
+    fn airflow_2_9_lists_no_extra_so_each_connections_own_get_gives_it() {
+        let mixed = TWO.replacen("api = \"v2\"", "api = \"v1\"", 1);
+        let (outcome, transport) = airflow_with(
+            &mixed,
+            &["airflow", "connection", "diff", "qa", "prod"],
+            vec![
+                Answer::json(&json!({"connections": [
+                    {"connection_id": "orders_db", "conn_type": "mssql", "host": "db", "port": 1433},
+                ], "total_entries": 1})),
+                Answer::json(&json!({"connection_id": "orders_db",
+                    "extra": "{\"encrypt\": \"yes\", \"trust_server_certificate\": \"yes\"}"})),
+                Answer::json(&json!({"connections": [
+                    {"connection_id": "orders_db", "conn_type": "mssql", "host": "db", "port": 1433,
+                        "extra": "{\"encrypt\": \"yes\"}"},
+                ], "total_entries": 1})),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json()["changes"],
+            json!([{"path": "orders_db.extra.trust_server_certificate", "left": "(set)", "redacted": true}])
+        );
+        assert_eq!(
+            paths(&transport)[1],
+            "https://airflow-qa.contoso.example/api/v1/connections/orders_db"
+        );
     }
 }

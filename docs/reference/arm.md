@@ -53,8 +53,8 @@ agent-cli arm resource diff — Compare two Azure resources of any type: NSG rul
  *<right> str     The other side, as left
   --type str      Their type, for names: Microsoft.Network/networkSecurityGroups
   --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]  Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}

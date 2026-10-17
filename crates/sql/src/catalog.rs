@@ -9,6 +9,8 @@
 //! ([`quoted`]), never as code.
 
 mod detail;
+mod reserved;
+mod sequence;
 
 use std::borrow::Cow;
 
@@ -22,9 +24,11 @@ use crate::config::{Kind, Sql};
 use crate::db::{Fetch, OnConnection, Session, maybe, text, whole};
 
 pub(crate) use detail::{
-    TableRows, constraints_sql, extras_sql, grants_sql, indexes_sql, rows_sql, schema_columns_sql,
-    schema_sources_sql, sequence_ddl, sequence_sql, table_row, triggers_sql,
+    TableRows, by_table, constraints_sql, extras_sql, grants_sql, indexes_sql, rows_sql,
+    schema_columns_sql, schema_sources_sql, table_row, triggers_sql,
 };
+use reserved::{MSSQL_RESERVED, ORACLE_RESERVED};
+pub(crate) use sequence::{sequence_ddl, sequence_row, sequence_sql};
 
 /// What kind of thing an object is. `package` is Oracle's alone.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum, Serialize, JsonSchema)]
@@ -193,7 +197,9 @@ pub(crate) fn objects_sql(backend: Kind, filter: &Filter) -> String {
         }
         Kind::Oracle => {
             let types: Vec<&str> = kinds.iter().map(|kind| kind.oracle_type()).collect();
+            // Identity columns' ISEQ$$ sequences are the server's, named by it.
             let mut clauses = vec![format!("o.object_type in ({})", list(&types))];
+            clauses.push("o.generated = 'N'".to_owned());
             clauses.push(filter.schema.map_or_else(
                 || format!("o.owner in (select username from all_users where {OWNERS})"),
                 |schema| format!("o.owner = {}", owner(schema)),
@@ -526,37 +532,6 @@ fn identifier(backend: Kind, name: &str) -> Cow<'_, str> {
     let escaped = name.replace(close, &format!("{close}{close}"));
     Cow::Owned(format!("{open}{escaped}{close}"))
 }
-
-/// `Reserved Keywords (Transact-SQL)`.
-const MSSQL_RESERVED: &str = "ADD ALL ALTER AND ANY AS ASC AUTHORIZATION BACKUP BEGIN \
-    BETWEEN BREAK BROWSE BULK BY CASCADE CASE CHECK CHECKPOINT CLOSE CLUSTERED COALESCE \
-    COLLATE COLUMN COMMIT COMPUTE CONSTRAINT CONTAINS CONTAINSTABLE CONTINUE CONVERT CREATE \
-    CROSS CURRENT CURRENT_DATE CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR DATABASE \
-    DBCC DEALLOCATE DECLARE DEFAULT DELETE DENY DESC DISK DISTINCT DISTRIBUTED DOUBLE DROP \
-    DUMP ELSE END ERRLVL ESCAPE EXCEPT EXEC EXECUTE EXISTS EXIT EXTERNAL FETCH FILE \
-    FILLFACTOR FOR FOREIGN FREETEXT FREETEXTTABLE FROM FULL FUNCTION GOTO GRANT GROUP HAVING \
-    HOLDLOCK IDENTITY IDENTITY_INSERT IDENTITYCOL IF IN INDEX INNER INSERT INTERSECT INTO IS \
-    JOIN KEY KILL LEFT LIKE LINENO LOAD MERGE NATIONAL NOCHECK NONCLUSTERED NOT NULL NULLIF \
-    OF OFF OFFSETS ON OPEN OPENDATASOURCE OPENQUERY OPENROWSET OPENXML OPTION OR ORDER OUTER \
-    OVER PERCENT PIVOT PLAN PRECISION PRIMARY PRINT PROC PROCEDURE PUBLIC RAISERROR READ \
-    READTEXT RECONFIGURE REFERENCES REPLICATION RESTORE RESTRICT RETURN REVERT REVOKE RIGHT \
-    ROLLBACK ROWCOUNT ROWGUIDCOL RULE SAVE SCHEMA SECURITYAUDIT SELECT \
-    SEMANTICKEYPHRASETABLE SEMANTICSIMILARITYDETAILSTABLE SEMANTICSIMILARITYTABLE \
-    SESSION_USER SET SETUSER SHUTDOWN SOME STATISTICS SYSTEM_USER TABLE TABLESAMPLE TEXTSIZE \
-    THEN TO TOP TRAN TRANSACTION TRIGGER TRUNCATE TRY_CONVERT TSEQUAL UNION UNIQUE UNPIVOT \
-    UPDATE UPDATETEXT USE USER VALUES VARYING VIEW WAITFOR WHEN WHERE WHILE WITH WITHIN \
-    WRITETEXT";
-
-/// `Oracle SQL Reserved Words`.
-const ORACLE_RESERVED: &str = "ACCESS ADD ALL ALTER AND ANY AS ASC AUDIT BETWEEN BY CHAR \
-    CHECK CLUSTER COLUMN COLUMN_VALUE COMMENT COMPRESS CONNECT CREATE CURRENT DATE DECIMAL \
-    DEFAULT DELETE DESC DISTINCT DROP ELSE EXCLUSIVE EXISTS FILE FLOAT FOR FROM GRANT GROUP \
-    HAVING IDENTIFIED IMMEDIATE IN INCREMENT INDEX INITIAL INSERT INTEGER INTERSECT INTO IS \
-    LEVEL LIKE LOCK LONG MAXEXTENTS MINUS MLSLABEL MODE MODIFY NESTED_TABLE_ID NOAUDIT \
-    NOCOMPRESS NOT NOWAIT NULL NUMBER OF OFFLINE ON ONLINE OPTION OR ORDER PCTFREE PRIOR \
-    PUBLIC RAW RENAME RESOURCE REVOKE ROW ROWID ROWNUM ROWS SELECT SESSION SET SHARE SIZE \
-    SMALLINT START SUCCESSFUL SYNONYM SYSDATE TABLE THEN TO TRIGGER UID UNION UNIQUE UPDATE \
-    USER VALIDATE VALUES VARCHAR VARCHAR2 VIEW WHENEVER WHERE WITH";
 
 /// A SQL string literal: the only way a quote gets into one is doubled.
 fn quoted(text: &str) -> String {

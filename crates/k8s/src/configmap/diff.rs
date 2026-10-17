@@ -58,5 +58,18 @@ mod tests {
             "{}",
             outcome.stderr
         );
+        // The flags are defaults for a side that leaves them out, not a
+        // contradiction of one that names its own cluster.
+        let outcome = k8s(&[
+            "k8s",
+            "configmap",
+            "diff",
+            "dev/orders-config",
+            "prod/prod/orders-config",
+            "--cluster",
+            "qa",
+        ]);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()["right"], "prod/prod/orders-config");
     }
 }

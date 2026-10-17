@@ -97,7 +97,7 @@ e.g. agent-cli controlm definition list --name 'load_*' --fields id,command,host
 
 ```text
 agent-cli controlm definition get — Show a Control-M job's definition: its command, schedule and conditions
- *<id> str        The definition: SERVER/FOLDER/JOB, as definition list and job list print it
+ *<id> str        The definition: SERVER/FOLDER/JOB, as definition list and job list print it, or INSTANCE:SERVER/FOLDER/JOB as definition diff does
   --instance str  The [[controlm.instance]] name; defaults to the only one
 Returns: {id,server,folder,name,type,description,host,run_as,application,sub_application,command,definition}
 Read. * required. Globals: --fields --raw --timeout --output
@@ -112,8 +112,8 @@ agent-cli controlm definition diff — Compare a Control-M job defined in two pl
  *<right> str     The other side, as left
   --instance str  The [[controlm.instance]] name; defaults to the only one
   --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]  Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}

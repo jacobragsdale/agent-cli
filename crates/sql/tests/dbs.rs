@@ -578,8 +578,15 @@ fn mssql_objects_schemas_and_sources() {
     ]);
     assert_eq!(missing.code, 4, "{missing:?}");
 
+    // The diff test adds bench_drift, whichever runs first.
     let schemas = sql(&["sql", "schema", "list", "--conn", "local-mssql"]).json();
-    assert_eq!(schemas, json!(["bench", "dbo"]));
+    let schemas: Vec<&Value> = schemas
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|schema| *schema != "bench_drift")
+        .collect();
+    assert_eq!(schemas, [&json!("bench"), &json!("dbo")]);
 }
 
 #[test]
@@ -980,19 +987,22 @@ fn oracle_bench_stops_at_the_deadline_and_says_how_far_it_got() {
 // ---------- diff ----------
 
 /// A second schema drifted from `bench`: `orders.status` wider with a
-/// default, a `retry_count` column the migration added, and the procedure
-/// reordered; a comment and keyword case that do not count.
+/// default, a `retry_count` column the migration added, a check on `total`
+/// and an index covering it, and the procedure reordered; a comment and
+/// keyword case that do not count.
 const DRIFT: &str = "IF SCHEMA_ID('bench_drift') IS NULL EXEC('CREATE SCHEMA bench_drift');
 GO
-IF OBJECT_ID('bench_drift.orders') IS NULL
+DROP TABLE IF EXISTS bench_drift.orders;
 CREATE TABLE bench_drift.orders (
     id          int           NOT NULL PRIMARY KEY,
     customer_id int           NOT NULL REFERENCES bench.customers(id),
     ordered_at  datetime2     NOT NULL,
     status      varchar(30)   NOT NULL DEFAULT 'NEW',
-    total       decimal(12,2) NOT NULL,
+    total       decimal(12,2) NOT NULL CHECK (total >= 0),
     retry_count int           NOT NULL DEFAULT 0
 );
+GO
+CREATE INDEX ix_drift_status ON bench_drift.orders (status DESC) INCLUDE (total);
 GO
 CREATE OR ALTER PROCEDURE bench_drift.sp_customer_orders @customer_id int AS
 BEGIN
@@ -1055,6 +1065,15 @@ fn mssql_a_drifted_schema_differs_by_columns_defaults_and_a_procedures_order() {
         1,
         "{changes}"
     );
+    // A check is keyed by its column, whatever name the server made up
+    // (bench.orders has none, so the whole map is the right side's).
+    assert!(
+        changes
+            .as_array()
+            .unwrap()
+            .contains(&json!({"path": "checks", "right": {"total": "([total]>=(0))"}})),
+        "{changes}"
+    );
     let procedure = sql(&[
         "sql",
         "object",
@@ -1069,6 +1088,10 @@ fn mssql_a_drifted_schema_differs_by_columns_defaults_and_a_procedures_order() {
         !lines.contains("-    SELECT id"),
         "case and comments count only with --exact: {lines}"
     );
+    // A side as the diff printed it is what object get takes.
+    let side = table.json()["right"].as_str().unwrap().to_owned();
+    let got = sql(&["sql", "object", "get", &side]);
+    assert_eq!(got.json()["schema"], "bench_drift", "{got:?}");
     let schemas = sql(&[
         "sql",
         "schema",
@@ -1089,7 +1112,79 @@ fn mssql_a_drifted_schema_differs_by_columns_defaults_and_a_procedures_order() {
         paths.contains(&"orders.columns.retry_count".to_owned()),
         "{paths:?}"
     );
+    // A schema compares each table as object diff does: indexes too.
+    assert!(paths.contains(&"orders.indexes".to_owned()), "{paths:?}");
     assert!(paths.contains(&"customers".to_owned()), "{paths:?}");
+    assert!(
+        !paths.iter().any(|path| path.ends_with(".rows")),
+        "row counts are noise: {paths:?}"
+    );
+}
+
+#[test]
+fn oracle_a_descending_index_reads_its_column_and_identity_sequences_are_not_objects() {
+    if !wanted() {
+        return;
+    }
+    let made = sql(&[
+        "sql",
+        "query",
+        "run",
+        "--conn",
+        "local-oracle",
+        "begin execute immediate 'drop table drift_at'; exception when others then null; end;
+/
+create table drift_at (id number generated always as identity primary key, at timestamp not null)
+/
+create index ix_drift_at on drift_at (at desc)
+/",
+        "--yes",
+    ]);
+    assert_eq!(made.code, 0, "{made:?}");
+    let same = sql(&[
+        "sql",
+        "object",
+        "diff",
+        "local-oracle:bench.drift_at",
+        "local-oracle:bench.drift_at",
+    ]);
+    assert_eq!(same.json()["same"], true, "{same:?}");
+    let got = sql(&[
+        "sql",
+        "schema",
+        "diff",
+        "local-oracle:bench",
+        "local-oracle:bench",
+    ]);
+    assert_eq!(got.json()["same"], true, "{got:?}");
+    let sequences = sql(&[
+        "sql",
+        "object",
+        "list",
+        "--conn",
+        "local-oracle",
+        "--kind",
+        "sequence",
+    ]);
+    assert!(!sequences.stdout.contains("ISEQ$$"), "{sequences:?}");
+    let table = sql(&[
+        "sql",
+        "object",
+        "diff",
+        "local-oracle:bench.orders",
+        "local-oracle:bench.drift_at",
+    ]);
+    let index = table.json()["changes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|change| change["path"] == "indexes")
+        .cloned();
+    assert_eq!(
+        index.map(|change| change["right"]["IX_DRIFT_AT"]["columns"].clone()),
+        Some(json!(["AT desc"])),
+        "{table:?}"
+    );
 }
 
 #[test]

@@ -2,7 +2,7 @@
 //! CronJob: pod template, image digests, node, start, duration and each
 //! container's exit code and reason, from the newest pod of each.
 
-use agent_cli_core::{Ctx, Diff, command, diff};
+use agent_cli_core::{Ctx, Diff, Rules, command, diff};
 use anyhow::Result;
 use serde_json::{Value, json};
 
@@ -10,6 +10,13 @@ use crate::diff::{RULES, Sides, side, workload};
 use crate::kubectl::{Target, digest, items, owned_by};
 
 use super::row;
+
+/// A Job's `status` (Complete, Failed) is the answer here, not the noise a
+/// manifest's is; when each started is not.
+const JOB_RULES: Rules = Rules {
+    noise: &["started"],
+    ..RULES
+};
 
 fn job_diff(ctx: &Ctx, args: Sides) -> Result<Diff> {
     let [left, right] = args.read(ctx, "job")?;
@@ -40,7 +47,7 @@ fn job_diff(ctx: &Ctx, args: Sides) -> Result<Diff> {
     diff(
         ctx,
         &args.diff,
-        &RULES,
+        &JOB_RULES,
         side(left.0.id(&left.1), left_row),
         side(right.0.id(&right.1), right_row),
     )
@@ -79,7 +86,7 @@ mod tests {
     use crate::testing::k8s;
 
     #[test]
-    fn two_runs_of_a_cronjob_differ_by_how_they_ran() {
+    fn two_runs_of_a_cronjob_differ_by_how_they_ended_not_when_they_started() {
         let outcome = k8s(&[
             "k8s",
             "job",
@@ -90,13 +97,14 @@ mod tests {
         assert_eq!(outcome.code, 0, "{outcome:?}");
         let got = outcome.json();
         assert_eq!(got["as"].as_array().map(Vec::len), None, "{got}");
-        assert!(
-            got["changes"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|change| change["path"] == "started"),
-            "{got}"
-        );
+        let paths: Vec<&str> = got["changes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|change| change["path"].as_str())
+            .collect();
+        // How each ended is the answer; that they started apart is not.
+        assert!(paths.contains(&"status"), "{got}");
+        assert!(!paths.contains(&"started"), "{got}");
     }
 }

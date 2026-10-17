@@ -51,7 +51,8 @@ read-only ACL user, prod with TLS and LFU; `scripts/seed/redis.py`) and
   keeps no creation time. `OBJECT IDLETIME` fails under an LFU policy, then
   `OBJECT FREQ` answers.
 - A pickle is named, never loaded; `--output FILE` saves a string whole,
-  decompressed.
+  decompressed. `key diff` compares a pickle or a string past 1 MB by
+  digest, a set by member, a stream without its ids.
 - `slowlog list` prints a key only for commands whose first argument is one
   (`KEY_FIRST`): any other argument can be a value.
 

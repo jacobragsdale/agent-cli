@@ -14,7 +14,7 @@ use std::cell::{OnceCell, RefCell};
 
 use agent_cli_core::{
     Config, Credential, Ctx, Effect, Exit, Failure, Method, Request, Response, Secret,
-    percent_encode, pick, same_origin, status_of, utc,
+    percent_encode, pick, same_origin, scoped, status_of, utc,
 };
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
@@ -219,7 +219,8 @@ impl Airflow {
     }
 
     /// The instance and the thing `raw` names: an id (`DAG`, `DAG/RUN`,
-    /// `DAG/RUN/TASK[:MAP][/TRY]`), its leading pieces given as `--dag` and
+    /// `DAG/RUN/TASK[:MAP][/TRY]`) with an `INSTANCE:` prefix if it has one,
+    /// as a diff prints its sides; its leading pieces given as `--dag` and
     /// `--run` instead, or an Airflow UI URL under a configured `base_url`
     /// (read, never fetched), which also picks the instance. A ref and a
     /// flag that disagree is exit 2.
@@ -231,7 +232,15 @@ impl Airflow {
         dag: Option<&str>,
         run: Option<&str>,
     ) -> Result<(&Instance, Ref)> {
-        let raw = raw.trim();
+        let mut raw = raw.trim();
+        let mut wanted = wanted;
+        // Only a configured name is a prefix: `dag:42` is a DAG file's line.
+        if let (Some(scope), rest) = scoped(raw)
+            && self.instances.iter().any(|instance| instance.name == scope)
+        {
+            disagree(raw, scope, wanted, "instance").map_err(Failure::usage)?;
+            (raw, wanted) = (rest, Some(scope));
+        }
         if !(raw.starts_with("https://") || raw.starts_with("http://")) {
             let id = Ref::parse(raw, want, dag, run).map_err(|why| {
                 Failure::usage(why).hint(format!("ids look like {}", want.shape()))
@@ -768,6 +777,40 @@ mod tests {
         ] {
             assert_eq!(like(pattern, text), want, "{pattern} {text}");
         }
+    }
+
+    #[test]
+    fn an_id_takes_the_instance_prefix_a_diff_prints_and_refuses_one_the_flag_contradicts() {
+        let (_, transport) = airflow_with(
+            crate::testing::TWO,
+            &["airflow", "dag", "get", "qa:etl_nightly"],
+            vec![],
+        );
+        let sent = crate::testing::paths(&transport);
+        assert!(
+            sent[0].starts_with("https://airflow-qa.contoso.example/api/v2/dags/etl_nightly"),
+            "{sent:?}"
+        );
+        let (outcome, _) = airflow_with(
+            crate::testing::TWO,
+            &[
+                "airflow",
+                "dag",
+                "get",
+                "qa:etl_nightly",
+                "--instance",
+                "prod",
+            ],
+            vec![],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("names instance qa, and --instance says prod"),
+            "{}",
+            outcome.stderr
+        );
     }
 
     #[test]

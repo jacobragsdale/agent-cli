@@ -33,6 +33,8 @@ const RULES: Rules = Rules {
         "last_parsed",
         "version",
         "recent_runs",
+        // The schedule in words: the schedule's difference again.
+        "schedule_text",
     ],
     comments: &["#"],
     ..Rules::PLAIN
@@ -78,15 +80,24 @@ fn tasks(client: &Client, id: &Ref) -> Result<Value> {
                 "operator": text(&task["operator_name"])
                     .or_else(|| text(&task["class_ref"]["class_name"])),
                 "pool": task["pool"],
-                "pool_slots": task["pool_slots"],
+                "pool_slots": whole(&task["pool_slots"]),
                 "queue": task["queue"],
-                "retries": task["retries"],
+                "retries": whole(&task["retries"]),
                 "trigger_rule": task["trigger_rule"],
                 "downstream": downstream,
             })
         })
         .collect();
     Ok(Value::Array(rows))
+}
+
+/// Airflow 2.9 sends counts as floats (`1.0`) and 3 as integers, so one
+/// DAG on each would differ in every task.
+fn whole(value: &Value) -> Value {
+    match value.as_f64() {
+        Some(number) if number.fract() == 0.0 && value.is_f64() => json!(number as i64),
+        _ => value.clone(),
+    }
 }
 
 command! {
@@ -104,10 +115,11 @@ mod tests {
 
     use crate::testing::{TWO, airflow_with, dag, paths};
 
-    fn tasks(retries: i64) -> Answer {
+    /// `slots` as each version sends it: 1 on 3, 1.0 on 2.9.
+    fn tasks(retries: i64, slots: Value) -> Answer {
         Answer::json(&json!({"tasks": [
             {"task_id": "extract", "operator_name": "PythonOperator", "pool": "default_pool",
-                "pool_slots": 1, "queue": "default", "retries": retries, "trigger_rule": "all_success",
+                "pool_slots": slots, "queue": "default", "retries": retries, "trigger_rule": "all_success",
                 "downstream_task_ids": ["load"]},
             {"task_id": "load", "operator_name": "PythonOperator", "pool": "default_pool",
                 "pool_slots": 1, "queue": "default", "retries": 1, "trigger_rule": "all_success",
@@ -122,7 +134,7 @@ mod tests {
     }
 
     #[test]
-    fn a_dag_on_two_instances_differs_by_schedule_source_lines_and_task_retries() {
+    fn a_dag_on_two_instances_differs_by_schedule_source_lines_and_task_retries_not_number_types() {
         let source = |line: &str| {
             Answer::json(
                 &json!({"content": format!("import x\n# a comment\n{line}\nrun()\n"),
@@ -141,10 +153,10 @@ mod tests {
             vec![
                 Answer::json(&details("0 1 * * *")),
                 source("batch = 500"),
-                tasks(0),
+                tasks(0, json!(1)),
                 Answer::json(&details("0 0 * * *")),
                 source("batch = 5000"),
-                tasks(2),
+                tasks(2, json!(1.0)),
             ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");

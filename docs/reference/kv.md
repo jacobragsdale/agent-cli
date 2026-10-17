@@ -54,8 +54,8 @@ agent-cli kv secret diff — Compare two Key Vault secrets: expiry, enabled, val
  *<left> str      One side: the secret's id (vault/name) or URI
  *<right> str     The other side, as left
   --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]  Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
@@ -171,8 +171,8 @@ agent-cli kv vault diff — Compare two key vaults: names on one side only, expi
  *<left> str      One vault, by name
  *<right> str     The other vault, by name
   --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
-  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
-  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --ignore str[]  Leave out a path as the changes print it, and all under it (repeatable; * is one segment)
+  --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
 Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}

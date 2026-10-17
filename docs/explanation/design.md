@@ -255,19 +255,31 @@ Two environments' objects differ in every value that names the environment,
 so a naive diff reports everything. The two ids usually already say what
 the difference is: tokens that differ in place (`staging/web/api` against
 `prod/web/api`) are treated as one wherever the word stands alone in a
-value, never inside a longer word, and a note says so; `--as A=B` replaces
-the guess, `--as none` drops it, and numbers never pair, so two runs' dates
-are not taken for environments. Values of different shapes (`db-qa` against
+value, in either case (Oracle's `SHOP_QA` is `qa`), never inside a longer
+word, and a note says so; `--as A=B` replaces the guess, `--as none` drops
+it, and numbers never pair, so two runs' dates are not taken for
+environments. The names line up in the keys of maps and keyed lists too,
+so the ingress rule for `api.staging.contoso.example` is the one for
+`api.prod.contoso.example`, but never inside a secret: `pw-staging` and
+`pw-prod` are two passwords. Values of different shapes (`db-qa` against
 `dbprod`) need `--as`. A string that holds JSON on both sides compares as
 JSON, so key order and whitespace never count; any other text compares by
 lines, with a Myers diff capped at 1,000 edits ("texts differ" past it,
 rather than spending the deadline) and comments, whitespace and SQL's
-keyword case left aside unless `--exact`.
+keyword case left aside unless `--exact`. A list of plain values (tags, a
+command's arguments, an index's columns) differs as one list, so one tag
+fewer is one change rather than every position after it; a list of objects
+matches by the key its resource names, or by position, and an item on one
+side only prints without that key, which its path already says.
 
 Where the scope is part of the id, a side is the id (`staging/web/api`,
 `kv-contoso-staging/db-password`); where it is a flag, a side takes a
 `SCOPE:` prefix (`qa:dbo.orders`, `qa:etl_nightly`) and a side without one
-takes the flag's default. One side alone compares a thing with its own past
+takes the flag's default. The flag is only ever a default there: a side
+that names its own scope reads that one. A side as a diff prints it is what
+the resource's `get` takes (`sql object get qa:dbo.orders`, `airflow dag
+get qa:etl_nightly`), except a Redis key's, whose own colons would make the
+prefix a guess. One side alone compares a thing with its own past
 where it has one: a deployment with its previous revision, an Airflow run
 with the last successful run before it, a page with its version before.
 A diff notes one next step only when it is obvious: two deployments that

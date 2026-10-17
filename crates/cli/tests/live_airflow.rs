@@ -295,6 +295,25 @@ impl Live {
 
     /// The seeded runs, one per state: run list and get, task list and get,
     /// logs and XComs, and run wait's three ends.
+    /// dev and prod are one server, so every diff reads both versions'
+    /// answers and finds nothing apart.
+    fn diffs(&self) {
+        for what in ["instance", "pool", "variable", "connection"] {
+            let ran = self.run_as(&self.password, &["airflow", what, "diff", "dev", "prod"]);
+            assert_eq!(ran.code, 0, "{what} diff: {}{}", ran.stdout, ran.stderr);
+            assert_eq!(ran.json()["same"], true, "{what} diff: {}", ran.stdout);
+        }
+        let dag = self.ok(&["airflow", "dag", "diff", "e2e_etl", "prod:e2e_etl"]);
+        assert_eq!(dag["same"], true, "{dag}");
+        let etl = self.latest("e2e_etl");
+        let run = self.ok(&["airflow", "run", "diff", &etl, &format!("prod:{etl}")]);
+        assert_eq!(run["same"], true, "{run}");
+        // e2e_failing never succeeds: no good run to compare it with.
+        let failing = self.latest("e2e_failing");
+        let (_, hint) = self.exits(4, &["airflow", "run", "diff", &failing]);
+        assert!(hint.contains("--state success"), "{hint}");
+    }
+
     fn every_state(&self) {
         let runs = self.ok(&["airflow", "run", "list", "--since", "30d", "--limit", "100"]);
         for run in runs.as_array().unwrap() {
@@ -587,6 +606,7 @@ fn every_airflow_command_holds_on_the_live_server() {
         return;
     }
     live.catalog();
+    live.diffs();
     live.every_state();
     live.writes();
 }

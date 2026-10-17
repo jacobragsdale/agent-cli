@@ -14,13 +14,17 @@ use anyhow::Result;
 
 use crate::client::{Client, Ref, stamp, text};
 
+/// Tags and owners, sorted: Airflow returns them in no fixed order, so two
+/// instances' differ by order alone.
 fn strings(value: &Value) -> Vec<String> {
-    value
+    let mut held: Vec<String> = value
         .as_array()
         .into_iter()
         .flatten()
         .filter_map(|item| text(item).or_else(|| text(&item["name"])))
-        .collect()
+        .collect();
+    held.sort();
+    held
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -159,10 +163,15 @@ fn dag_row(dag: &Value) -> DagRow {
 
 /// A DAG's details. Airflow 2 reads them from the parsed DAG, so a stale
 /// one (its file gone) is a 404 there: its own record says it is stale.
+/// 2.9's details also leave `owners` empty, which its record fills.
 fn details(client: &Client, id: &Ref) -> Result<Value> {
     match client.get(&format!("{}/details", id.dag_path())) {
         Err(error) if status_of(&error) == Some(404) && client.v1()? => {
             client.get(&id.dag_path()).map_err(|_| error)
+        }
+        Ok(mut dag) if dag["owners"].as_array().is_some_and(Vec::is_empty) && client.v1()? => {
+            dag["owners"] = client.get(&id.dag_path())?["owners"].take();
+            Ok(dag)
         }
         other => other,
     }

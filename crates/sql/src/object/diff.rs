@@ -27,10 +27,11 @@ pub struct ObjectDiffArgs {
 }
 
 /// SQL texts: comments and keyword case are no difference; a table's rows
-/// differ between any two databases, so they show only with `--all`.
+/// differ between any two databases, so they show only with `--all` (a
+/// schema's tables are one level down).
 pub(crate) const RULES: Rules = Rules {
     keys: &[("columns", "name"), ("*.columns", "name")],
-    noise: &["rows"],
+    noise: &["rows", "*.rows"],
     comments: &["--", "/*"],
     fold_case: true,
     ..Rules::PLAIN

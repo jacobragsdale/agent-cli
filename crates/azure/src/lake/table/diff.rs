@@ -111,7 +111,7 @@ mod tests {
         );
         assert_eq!(
             got["changes"][1],
-            json!({"path": "columns.order_id", "left": {"name": "order_id", "type": "INT64"}})
+            json!({"path": "columns.order_id", "left": {"type": "INT64"}})
         );
     }
 }
