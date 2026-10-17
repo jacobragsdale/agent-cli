@@ -271,6 +271,7 @@ pub const ENTRA: Domain = Domain {
     summary: "Microsoft Entra ID",
     commands: &[
         entra::principal::list::PRINCIPAL_LIST,
+        entra::principal::diff::PRINCIPAL_DIFF,
         entra::user::get::USER_GET,
         entra::group::list::GROUP_LIST,
         entra::group::get::GROUP_GET,

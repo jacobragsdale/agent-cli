@@ -1,4 +1,4 @@
-# ado — Azure DevOps (59 commands)
+# ado — Azure DevOps (61 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -61,6 +61,8 @@
 | [`ado approval list`](#ado-approval-list) | read | List pending pipeline approvals (deployment gates) |
 | [`ado approval approve`](#ado-approval-approve) | destructive | Approve a pending pipeline approval, letting the stage (a deploy) run |
 | [`ado approval reject`](#ado-approval-reject) | destructive | Reject a pending pipeline approval, stopping the stage |
+| [`ado serviceconnection list`](#ado-serviceconnection-list) | read | List service connections pipelines deploy with, each with its Entra app id |
+| [`ado serviceconnection get`](#ado-serviceconnection-get) | read | Show a service connection's app id, service principal and subscription |
 
 ### ado workitem list
 
@@ -850,4 +852,26 @@ agent-cli ado approval reject — Reject a pending pipeline approval, stopping t
 Returns: {id,status}
 Destructive: needs --yes; --dry-run shows the change without making it. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado approval reject 1f2e3d4c-0000-4000-8000-000000000001 --comment 'Not today' --yes
+```
+
+### ado serviceconnection list
+
+```text
+agent-cli ado serviceconnection list — List service connections pipelines deploy with, each with its Entra app id
+  <name> str   Only names containing this, in any case
+  --type str   Only connections of this type: azurerm, dockerregistry, github, generic …
+  --limit int  Most rows to return (default 50)
+Returns: [{id,name,type,scheme,app_id,tenant_id,subscription,ready,shared}]
+Read. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado serviceconnection list --type azurerm --fields id,name,scheme,app_id
+```
+
+### ado serviceconnection get
+
+```text
+agent-cli ado serviceconnection get — Show a service connection's app id, service principal and subscription
+ *<connection> str  The connection's id, name or web URL (…/_settings/adminservices?resourceId=ID)
+Returns: {id,name,type,scheme,app_id,tenant_id,subscription,subscription_name,ready,shared,service_principal,app_object,issuer,subject,creation_mode,description,created_by,url,projects[]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado serviceconnection get contoso-prod --fields app_id,service_principal,scheme
 ```

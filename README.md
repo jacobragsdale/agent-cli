@@ -100,7 +100,7 @@ role, a read-only database login, an Airflow Viewer.
 | arm | Any Azure resource: Resource Graph lists and queries, ARM reads by id, activity log, changes, role assignments, managed identities, policy, metrics | 12 |
 | net | Azure vnets, subnets and their free IPs, NSG rules, NICs' effective rules and routes, route tables | 7 |
 | lake | Data Lake Storage Gen2: containers, folders, Parquet tables and partitions from footers, why a path is refused; queries go to Synapse through `sql` | 8 |
-| entra | Microsoft Entra ID through Graph: who an object id is, users, groups and nested members, app registrations and their expiring credentials, service principals and managed identities with their grants, sign-in and audit logs, directory roles (read-only) | 11 |
+| entra | Microsoft Entra ID through Graph: who an object id is, users, groups and nested members, app registrations and their expiring credentials, service principals and managed identities with their grants, sign-in and audit logs, directory roles, two principals' access compared (read-only) | 12 |
 | k8s | Kubernetes pods, logs, events, deployments, config maps, secrets | 14 |
 | sql | SQL Server, Oracle and Synapse serverless queries and catalog | 6 |
 | airflow | Apache Airflow 2.9+ and 3 DAGs, runs, task instances, logs, import errors | 21 |

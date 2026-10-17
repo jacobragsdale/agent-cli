@@ -1022,3 +1022,11 @@ expect = "aisearch index diff"
 [[query]]
 text = "which fields differ between two ai search indexes"
 expect = "aisearch index diff"
+
+[[query]]
+text = "alice can read the vault but bob cannot, what is different about their access"
+expect = "entra principal diff"
+
+[[query]]
+text = "compare the groups and roles of two users in entra"
+expect = "entra principal diff"

@@ -1,8 +1,9 @@
-# entra — Microsoft Entra ID (11 commands)
+# entra — Microsoft Entra ID (12 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
 | [`entra principal list`](#entra-principal-list) | read | Name the users, groups, apps or identities behind GUIDs, in one call |
+| [`entra principal diff`](#entra-principal-diff) | read | Compare two users or identities: groups (nested too), directory and Azure roles |
 | [`entra user get`](#entra-user-get) | read | Show an Entra user: UPN, enabled, manager, groups (nested) and directory roles |
 | [`entra group list`](#entra-group-list) | read | List Entra groups by name, or the groups a user or service principal is in |
 | [`entra group get`](#entra-group-get) | read | Show an Entra group: kind, dynamic rule, owners, groups it is in, member counts |
@@ -23,6 +24,22 @@ agent-cli entra principal list — Name the users, groups, apps or identities be
 Returns: [{id,type,name,upn,app_id,sp_type,arm,enabled}]
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli entra principal list 00000000-0000-4000-8000-00000000a2f2 00000000-0000-4000-8000-00000000f001 --fields id,type,name
+```
+
+### entra principal diff
+
+```text
+agent-cli entra principal diff — Compare two users or identities: groups (nested too), directory and Azure roles
+ *<left> str      One user, group or service principal: an object id, app id, UPN, name or @me
+ *<right> str     The other, in the same forms
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli entra principal diff alice@contoso.example bob@contoso.example --fields same,changes
 ```
 
 ### entra user get
