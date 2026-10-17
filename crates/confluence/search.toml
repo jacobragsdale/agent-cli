@@ -161,3 +161,10 @@ expect = "confluence page comment"
 text = "page history versions"
 expect = "confluence version list"
 
+[[query]]
+text = "what changed on the wiki page since the previous version"
+expect = "confluence page diff"
+
+[[query]]
+text = "compare two versions of a confluence page"
+expect = "confluence page diff"

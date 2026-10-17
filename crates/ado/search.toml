@@ -768,3 +768,11 @@ expect = "ado serviceconnection get"
 [[query]]
 text = "service principal object id behind the deploy service connection"
 expect = "ado serviceconnection get"
+
+[[query]]
+text = "what is in this deploy, the commits and work items between the two pipeline runs"
+expect = "ado run diff"
+
+[[query]]
+text = "which pull requests and commits shipped between run 8790 and run 8812"
+expect = "ado run diff"

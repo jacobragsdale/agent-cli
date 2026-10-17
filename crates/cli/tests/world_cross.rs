@@ -1099,6 +1099,7 @@ fn a_service_connection_that_cannot_sign_in_presents_the_secret_that_expired() {
             .contains("00000000-0000-4000-8000-000000005d0b"),
         "{audit}"
     );
+}
 
 /// "It works in staging and fails in prod": the two `worker` deployments
 /// match, so the note names the Secret both read; its `password` differs,

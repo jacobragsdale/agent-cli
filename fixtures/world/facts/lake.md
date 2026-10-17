@@ -40,3 +40,4 @@ here.
   list` shows the Reader.
 - Every Parquet file was written by DuckDB 1.4.1, so `path get` and `table
   get` read their rows and schemas from footers alone.
+- `lake table diff` of `raw/sales/orders`'s 2026-09-28 and 2026-09-29 partitions finds one schema; raw orders against `curated/sales/orders_daily` share no column.

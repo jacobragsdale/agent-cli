@@ -1,4 +1,4 @@
-# lake — Data Lake Storage (8 commands)
+# lake — Data Lake Storage (9 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -8,6 +8,7 @@
 | [`lake path get`](#lake-path-get) | read | Show a Data Lake file's size, time, owner, ACL, and Parquet schema and rows |
 | [`lake table list`](#lake-table-list) | read | List the Parquet tables under a Data Lake folder or in every data domain |
 | [`lake table get`](#lake-table-get) | read | Show a Parquet table's schema, rows, size and last write, read from its footers |
+| [`lake table diff`](#lake-table-diff) | read | Compare two Parquet tables, partitions or files: their schema (drift) and types |
 | [`lake partition list`](#lake-partition-list) | read | List a Parquet table's partitions with files, rows and writes; note missing days |
 | [`lake access get`](#lake-access-get) | read | Say whether a principal can read or write a Data Lake path, and where it breaks |
 
@@ -77,6 +78,22 @@ agent-cli lake table get — Show a Parquet table's schema, rows, size and last 
 Returns: {id,partitioned_by[],schema[{name,type}],files,size,rows,modified,newest,bulk}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli lake table get contosolake/curated/finance/ledger --fields schema,rows,modified
+```
+
+### lake table diff
+
+```text
+agent-cli lake table diff — Compare two Parquet tables, partitions or files: their schema (drift) and types
+ *<left> str      One side: a table's or partition's folder, or a Parquet file (an id or its URL)
+ *<right> str     The other side, as left
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli lake table diff contosolake/raw/sales/orders/date=2026-09-28 contosolake/raw/sales/orders/date=2026-09-29
 ```
 
 ### lake partition list

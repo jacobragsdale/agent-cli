@@ -125,3 +125,30 @@ fn a_tables_bulk_path_is_what_synapse_reads_its_partitions_with() {
         "https://contosolake.dfs.core.windows.net/raw/sales/orders/date=2026-09-29/*.parquet"
     );
 }
+
+/// Today's partition has yesterday's columns; raw orders and the curated
+/// daily table share none.
+#[test]
+fn todays_partition_has_yesterdays_schema_and_curated_has_its_own() {
+    let days = ok(&[
+        "lake",
+        "table",
+        "diff",
+        &format!("{ORDERS}/date=2026-09-28"),
+        &format!("{ORDERS}/date=2026-09-29"),
+    ]);
+    assert_eq!(days["same"], true, "{days}");
+    let zones = ok(&[
+        "lake",
+        "table",
+        "diff",
+        ORDERS,
+        "contosolake/curated/sales/orders_daily",
+        "--fields",
+        "changes",
+    ]);
+    assert_eq!(
+        zones["changes"][5],
+        json!({"path": "columns.date", "right": {"name": "date", "type": "DATE"}})
+    );
+}

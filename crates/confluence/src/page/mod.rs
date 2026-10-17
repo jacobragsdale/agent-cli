@@ -4,6 +4,7 @@
 pub(crate) mod comment;
 pub(crate) mod create;
 pub(crate) mod delete;
+pub(crate) mod diff;
 pub(crate) mod get;
 pub(crate) mod list;
 pub(crate) mod update;

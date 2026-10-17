@@ -244,6 +244,7 @@ pub const LAKE: Domain = Domain {
         lake::path::get::PATH_GET,
         lake::table::list::TABLE_LIST,
         lake::table::get::TABLE_GET,
+        lake::table::diff::TABLE_DIFF,
         lake::partition::list::PARTITION_LIST,
         lake::access::get::ACCESS_GET,
     ],

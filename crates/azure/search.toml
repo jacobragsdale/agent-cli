@@ -998,3 +998,11 @@ expect = "kv vault diff"
 [[query]]
 text = "compare two key vaults' secrets"
 expect = "kv vault diff"
+
+[[query]]
+text = "today's parquet file drifted from yesterday's, compare the two partitions' schema"
+expect = "lake table diff"
+
+[[query]]
+text = "compare the columns of two parquet tables in the data lake"
+expect = "lake table diff"

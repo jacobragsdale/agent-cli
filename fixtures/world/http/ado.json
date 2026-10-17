@@ -303,6 +303,38 @@
        "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8801"
       }
      }
+    },
+    {
+     "id": 8790,
+     "buildNumber": "20260915.2",
+     "status": "completed",
+     "result": "succeeded",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/tags/v1.4.1",
+     "sourceVersion": "2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Priya Patel",
+      "uniqueName": "priya@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e3"
+     },
+     "reason": "individualCI",
+     "queueTime": "2026-09-15T15:58:41.1200000Z",
+     "startTime": "2026-09-15T15:58:47.5000000Z",
+     "finishTime": "2026-09-15T16:06:30.9000000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8790"
+      }
+     }
     }
    ]
   }
@@ -620,6 +652,87 @@
        "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8801"
       }
      }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/builds/8790?api-version=7.1",
+  "note": "api-ci built v1.4.1 on 2026-09-15: the image staging still runs",
+  "answer": {
+   "id": 8790,
+   "buildNumber": "20260915.2",
+   "status": "completed",
+   "result": "succeeded",
+   "definition": {
+    "id": 12,
+    "name": "api-ci"
+   },
+   "sourceBranch": "refs/tags/v1.4.1",
+   "sourceVersion": "2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b",
+   "repository": {
+    "id": "00000000-0000-4000-8000-0000000a0001",
+    "type": "TfsGit",
+    "name": "api"
+   },
+   "requestedFor": {
+    "displayName": "Priya Patel",
+    "uniqueName": "priya@contoso.com",
+    "id": "00000000-0000-4000-8000-0000000000e3"
+   },
+   "reason": "individualCI",
+   "queueTime": "2026-09-15T15:58:41.1200000Z",
+   "startTime": "2026-09-15T15:58:47.5000000Z",
+   "finishTime": "2026-09-15T16:06:30.9000000Z",
+   "triggerInfo": {},
+   "_links": {
+    "web": {
+     "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8790"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/changes?fromBuildId=8790&toBuildId=8812&$top=200&api-version=7.1-preview.2",
+  "note": "ado run diff 8790 8812: PR 431's merge and its head are what v1.4.2 adds",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "id": "4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+     "message": "Merged PR 431: Retry on 429 from the orders service\n\nRetries orders-service calls that answer 429, honouring Retry-After, up to 5 times.\n\nFixes AB#1207 and AB#1210.",
+     "type": "TfsGit",
+     "author": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com"
+     },
+     "timestamp": "2026-09-28T20:41:12Z"
+    },
+    {
+     "id": "9d31e0a7c2b4f6e8a0c2e4f6a8b0c2d4e6f8a0b2",
+     "message": "Retry on 429 from the orders service",
+     "type": "TfsGit",
+     "author": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com"
+     },
+     "timestamp": "2026-09-27T16:05:40Z"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/build/workitems?fromBuildId=8790&toBuildId=8812&$top=200&api-version=7.1-preview.2",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "id": "1207",
+     "url": "x"
+    },
+    {
+     "id": "1210",
+     "url": "x"
     }
    ]
   }
@@ -1450,6 +1563,38 @@
      "_links": {
       "web": {
        "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8801"
+      }
+     }
+    },
+    {
+     "id": 8790,
+     "buildNumber": "20260915.2",
+     "status": "completed",
+     "result": "succeeded",
+     "definition": {
+      "id": 12,
+      "name": "api-ci"
+     },
+     "sourceBranch": "refs/tags/v1.4.1",
+     "sourceVersion": "2d8b6f4a1c3e5a7b9d0f2e4c6a8b0d2f4e6a8c0b",
+     "repository": {
+      "id": "00000000-0000-4000-8000-0000000a0001",
+      "type": "TfsGit",
+      "name": "api"
+     },
+     "requestedFor": {
+      "displayName": "Priya Patel",
+      "uniqueName": "priya@contoso.com",
+      "id": "00000000-0000-4000-8000-0000000000e3"
+     },
+     "reason": "individualCI",
+     "queueTime": "2026-09-15T15:58:41.1200000Z",
+     "startTime": "2026-09-15T15:58:47.5000000Z",
+     "finishTime": "2026-09-15T16:06:30.9000000Z",
+     "triggerInfo": {},
+     "_links": {
+      "web": {
+       "href": "https://dev.azure.com/contoso/Fabrikam/_build/results?buildId=8790"
       }
      }
     }

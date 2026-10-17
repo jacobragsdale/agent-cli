@@ -13,3 +13,4 @@ line when you add a fact.
 - Searches recorded: "runbook etl_nightly" (1101, 1102), "orders search indexer" (1300, 1101), "release notes" (1201, 1200), "v1.4.2" (1201), `--title release` (1201, 1200), `--label runbook` (1101, 1102), `--since 7d` (1201, 1101), and no filter at all (every page, newest first). `KEY:Title` lookups answer for "Runbook: etl_nightly" and "Release notes v1.4.2"; any other title in ENG or OPS finds no page, as Cloud answers.
 - 1201's versions: 1 (Jane Doe, 2026-09-27 10:00, "Not released yet"), 2 (Sam Lee, 16:00 on 09-28, "rollout time": "Released to prod on 2026-09-28") and 3 (the current one).
 - Writes a trial may make answer and change nothing: a new page is 1401, an update of 1101 or 1102 is its next version, a footer comment is 5010, resolving 5002 answers resolved.
+- `confluence page diff 1201` compares version 2 with the current 3: the rollout section, with its changelog and image, is what 3 added.

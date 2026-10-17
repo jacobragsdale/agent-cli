@@ -1,10 +1,11 @@
-# confluence — Confluence Cloud (14 commands)
+# confluence — Confluence Cloud (15 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
 | [`confluence space list`](#confluence-space-list) | read | List Confluence spaces, or find one by key or name |
 | [`confluence page list`](#confluence-page-list) | read | Search Confluence pages (runbooks, designs) by words, space, label, title, date |
 | [`confluence page get`](#confluence-page-get) | read | Show a page as Markdown with its version, author, labels and outline |
+| [`confluence page diff`](#confluence-page-diff) | read | Compare a page with its text before an edit, or two pages, as Markdown by lines |
 | [`confluence page create`](#confluence-page-create) | write | Publish a new page from Markdown (or storage) in a space, under a parent |
 | [`confluence page update`](#confluence-page-update) | write | Edit a page: replace or append to its body or a section, retitle, move, relabel |
 | [`confluence page comment`](#confluence-page-comment) | write | Comment on a page: at its foot, inline on some text (--on), or as a reply |
@@ -64,6 +65,23 @@ agent-cli confluence page get — Show a page as Markdown with its version, auth
 Returns: {id,type,title,space,status,version,parent,author,created,updated,updated_by,labels[],url,lines,total,outline[{line,level,heading}],lossy[],body,saved}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli confluence page get 1101 --section 'An order without customer_id'
+```
+
+### confluence page diff
+
+```text
+agent-cli confluence page diff — Compare a page with its text before an edit, or two pages, as Markdown by lines
+ *<page> str      The page: its id, ID@VERSION, KEY:Title or its URL
+  <right> str     Another page or ID@VERSION; left out, PAGE's current text against --version
+  --version str   With one page, the earlier version (version list shows them); the one before when left out
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli confluence page diff 1101 --version 2
 ```
 
 ### confluence page create

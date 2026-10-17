@@ -775,3 +775,23 @@ fn the_crash_loop_bug_is_blocked_by_the_task_that_resets_the_password() {
     ]);
     assert_eq!(task, json!({"blocks": [1218], "assignee": "Priya Patel"}));
 }
+
+/// What is in the v1.4.2 deploy: from run 8790 (v1.4.1) to 8812, PR 431's
+/// two commits and its work items; the note names the code between them.
+#[test]
+fn f6_the_runs_of_two_releases_differ_by_pr_431_and_its_work_items() {
+    let ran = world::agent_cli(&["ado", "run", "diff", "8790", "8812"]);
+    assert_eq!(ran.code, 0, "{}", ran.stderr);
+    let got = ran.json();
+    assert_eq!(
+        got["changes"][5],
+        json!({"path": "pull_requests", "right": {"431": "Retry on 429 from the orders service"}})
+    );
+    assert_eq!(
+        got["changes"][6]["right"]["1210"]["title"],
+        "Log the retry count on each attempt"
+    );
+    let next = next_command(&ran.stderr).expect("a next note");
+    let files = ok(&next.iter().map(String::as_str).collect::<Vec<_>>());
+    assert_eq!(files[0]["path"], "src/Orders/OrderClient.cs");
+}

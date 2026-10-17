@@ -6,6 +6,7 @@
 
 pub(crate) mod cancel;
 pub(crate) mod create;
+pub(crate) mod diff;
 pub(crate) mod get;
 pub(crate) mod list;
 pub(crate) mod logs;

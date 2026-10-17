@@ -4,6 +4,7 @@
 //! (`_temporary`, `.spark-staging`) and the files in them are left out, as
 //! Spark and DuckDB leave them out.
 
+pub(crate) mod diff;
 pub(crate) mod get;
 pub(crate) mod list;
 

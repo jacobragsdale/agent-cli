@@ -93,6 +93,7 @@ pub const DOMAIN: Domain = Domain {
         pipeline::preview::PIPELINE_PREVIEW,
         run::list::RUN_LIST,
         run::get::RUN_GET,
+        run::diff::RUN_DIFF,
         run::logs::RUN_LOGS,
         run::create::RUN_CREATE,
         run::wait::RUN_WAIT,
@@ -163,6 +164,6 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 59);
+        assert_eq!(DOMAIN.commands.len(), 60);
     }
 }

@@ -33,6 +33,7 @@ pub const DOMAIN: Domain = Domain {
         space::list::SPACE_LIST,
         page::list::PAGE_LIST,
         page::get::PAGE_GET,
+        page::diff::PAGE_DIFF,
         page::create::PAGE_CREATE,
         page::update::PAGE_UPDATE,
         page::comment::PAGE_COMMENT,
@@ -74,6 +75,6 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 14);
+        assert_eq!(DOMAIN.commands.len(), 15);
     }
 }

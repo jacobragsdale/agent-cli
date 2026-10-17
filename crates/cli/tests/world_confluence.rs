@@ -108,3 +108,16 @@ fn a_rollback_section_appends_to_the_runbook_and_leaves_the_rest() {
     );
     assert!(sent.contains("<ac:inline-comment-marker ac:ref=\"5d3e2f1a-0000-4000-8000-000000005002\">retry the load</ac:inline-comment-marker>"));
 }
+
+/// The release notes' third version added the rollout section to the
+/// second's.
+#[test]
+fn the_release_notes_differ_from_their_last_version_by_the_rollout() {
+    let got = ok(&["confluence", "page", "diff", "1201"]);
+    assert_eq!(
+        (got["left"].clone(), got["right"].clone()),
+        (json!("1201@2"), json!("1201@3"))
+    );
+    let lines = got["changes"][0]["lines"].as_array().unwrap();
+    assert!(lines.contains(&json!("+## Rollout")), "{got}");
+}
