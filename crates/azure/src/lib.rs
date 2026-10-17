@@ -133,6 +133,7 @@ pub const AISEARCH: Domain = Domain {
         aisearch::service::get::SERVICE_GET,
         aisearch::index::list::INDEX_LIST,
         aisearch::index::get::INDEX_GET,
+        aisearch::index::diff::INDEX_DIFF,
         aisearch::index::create::INDEX_CREATE,
         aisearch::index::update::INDEX_UPDATE,
         aisearch::index::delete::INDEX_DELETE,
@@ -169,6 +170,7 @@ pub const ARM: Domain = Domain {
     commands: &[
         arm::resource::list::RESOURCE_LIST,
         arm::resource::get::RESOURCE_GET,
+        arm::resource::diff::RESOURCE_DIFF,
         arm::query::run::QUERY_RUN,
         arm::activity::list::ACTIVITY_LIST,
         arm::change::list::CHANGE_LIST,

@@ -52,7 +52,7 @@ fn connections(client: &Client) -> Result<Read> {
 command! {
     pub CONNECTION_DIFF = ["airflow", "connection", "diff"], Read,
     "Compare two instances' Connections: missing ones, host, port, login same or not",
-    keywords: ["staging", "environments", "missing", "same", "host", "extra"],
+    keywords: ["staging", "missing", "same", "host", "extra"],
     example: "airflow connection diff qa prod",
     run: connection_diff,
 }

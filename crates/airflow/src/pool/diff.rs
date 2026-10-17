@@ -30,7 +30,7 @@ fn pool_diff(ctx: &Ctx, args: Instances) -> Result<Diff> {
 command! {
     pub POOL_DIFF = ["airflow", "pool", "diff"], Read,
     "Compare two instances' pools: those missing on one side, slots, description",
-    keywords: ["staging", "environments", "missing", "slots", "concurrency"],
+    keywords: ["staging", "missing", "slots", "concurrency"],
     example: "airflow pool diff qa prod",
     run: pool_diff,
 }

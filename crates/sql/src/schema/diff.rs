@@ -133,7 +133,7 @@ fn assemble(
 command! {
     pub SCHEMA_DIFF = ["sql", "schema", "diff"], Read,
     "Compare two schemas: objects on one side only, table columns, procedure source",
-    keywords: ["migration", "ran", "everywhere", "staging", "environments", "drift", "tables", "procedures"],
+    keywords: ["migration", "ran", "everywhere", "staging", "drift", "tables", "procedures"],
     example: "sql schema diff qa:dbo prod:dbo",
     run: schema_diff,
 }

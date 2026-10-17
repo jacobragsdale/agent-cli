@@ -1,4 +1,4 @@
-# aisearch — Azure AI Search (16 commands)
+# aisearch — Azure AI Search (17 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -6,6 +6,7 @@
 | [`aisearch service get`](#aisearch-service-get) | read | Show an AI Search service's storage and object counts against its tier's quotas |
 | [`aisearch index list`](#aisearch-index-list) | read | List AI Search indexes with their document counts, storage and vector fields |
 | [`aisearch index get`](#aisearch-index-get) | read | Show an AI Search index's schema: filterable fields, vectors, semantic configs |
+| [`aisearch index diff`](#aisearch-index-diff) | read | Compare two AI Search indexes: fields, analyzers, semantic configs, vectors |
 | [`aisearch index create`](#aisearch-index-create) | write | Create an AI Search index from a JSON definition (never replaces one) |
 | [`aisearch index update`](#aisearch-index-update) | write | Change an AI Search index's definition (fields added, semantic, scoring, CORS) |
 | [`aisearch index delete`](#aisearch-index-delete) | destructive | Delete an AI Search index and every document in it |
@@ -61,6 +62,22 @@ agent-cli aisearch index get — Show an AI Search index's schema: filterable fi
 Returns: {id,service,name,documents,storage,vector_storage,key,fields[{name,type,attrs[],analyzer,dimensions,profile,fields[{name,type,attrs[],analyzer,dimensions,profile,fields[]}]}],semantic{default,configs[{name,title,content[],keywords[]}]},vector{profiles[{name,algorithm,vectorizer,compression}],vectorizers[{name,kind,model}]},scoring_profiles[],suggesters[{name,fields[]}],etag,definition}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli aisearch index get srch-contoso-prod/orders --fields key,fields,semantic
+```
+
+### aisearch index diff
+
+```text
+agent-cli aisearch index diff — Compare two AI Search indexes: fields, analyzers, semantic configs, vectors
+ *<left> str      One side: SERVICE/INDEX from index list, its URL or portal link
+ *<right> str     The other side, as left
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli aisearch index diff srch-contoso-dev/orders srch-contoso-prod/orders
 ```
 
 ### aisearch index create

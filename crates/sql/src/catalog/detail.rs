@@ -171,6 +171,8 @@ pub(crate) struct TableRows<'a> {
     pub(crate) constraints: &'a [Vec<Value>],
     pub(crate) indexes: &'a [Vec<Value>],
     pub(crate) triggers: &'a [Vec<Value>],
+    pub(crate) grants: &'a [Vec<Value>],
+    pub(crate) rows: &'a [Vec<Value>],
 }
 
 /// A sequence's settings as text, so the DDL needs no number rules.
@@ -227,6 +229,50 @@ pub(crate) fn sequence_ddl(backend: Kind, schema: &str, name: &str, row: &[Value
             } else {
                 "NOCYCLE"
             },
+        ),
+    }
+}
+
+/// Who may do what to a table, as `principal, permission, state`.
+pub(crate) fn grants_sql(backend: Kind, schema: &str, table: &str) -> String {
+    match backend {
+        Kind::Mssql => format!(
+            "select pr.name, p.permission_name, p.state_desc from sys.database_permissions p \
+             join sys.database_principals pr on pr.principal_id = p.grantee_principal_id \
+             join sys.objects o on o.object_id = p.major_id \
+             join sys.schemas s on s.schema_id = o.schema_id \
+             where p.class = 1 and p.minor_id = 0 and s.name = {} and o.name = {} \
+             order by pr.name, p.permission_name",
+            quoted(schema),
+            quoted(table),
+        ),
+        Kind::Oracle => format!(
+            "select grantee, privilege, case grantable when 'YES' then 'GRANT WITH GRANT OPTION' \
+                    else 'GRANT' end \
+             from all_tab_privs where table_schema = {} and table_name = {} \
+             order by grantee, privilege",
+            owner(schema),
+            quoted(table),
+        ),
+    }
+}
+
+/// A table's rows as the catalog counts them (Oracle: as of its last
+/// statistics), never a scan.
+pub(crate) fn rows_sql(backend: Kind, schema: &str, table: &str) -> String {
+    match backend {
+        Kind::Mssql => format!(
+            "select sum(p.rows) from sys.partitions p \
+             join sys.objects o on o.object_id = p.object_id \
+             join sys.schemas s on s.schema_id = o.schema_id \
+             where p.index_id in (0, 1) and s.name = {} and o.name = {}",
+            quoted(schema),
+            quoted(table),
+        ),
+        Kind::Oracle => format!(
+            "select num_rows from all_tables where owner = {} and table_name = {}",
+            owner(schema),
+            quoted(table),
         ),
     }
 }
@@ -361,6 +407,27 @@ pub(crate) fn table_row(backend: Kind, rows: &TableRows) -> Value {
     row.insert("checks".to_owned(), json!(checks));
     row.insert("indexes".to_owned(), Value::Object(indexes));
     row.insert("triggers".to_owned(), Value::Object(triggers));
+    let mut grants: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for grant in rows.grants {
+        let state = text(grant, 2);
+        // A plain grant is the permission; a deny or one with grant option says so.
+        let permission = if state == "GRANT" {
+            text(grant, 1)
+        } else {
+            format!(
+                "{} ({})",
+                text(grant, 1),
+                state.to_lowercase().replace('_', " ")
+            )
+        };
+        grants.entry(text(grant, 0)).or_default().push(permission);
+    }
+    row.insert("grants".to_owned(), json!(grants));
+    let counted = rows.rows.first().and_then(|row| maybe(row, 0));
+    row.insert(
+        "rows".to_owned(),
+        json!(counted.and_then(|n| n.parse::<i64>().ok())),
+    );
     Value::Object(row)
 }
 
@@ -538,6 +605,12 @@ mod tests {
                 constraints: &constraints,
                 indexes: &indexes,
                 triggers: &triggers,
+                grants: &[
+                    row(&[json!("app_reader"), json!("SELECT"), json!("GRANT")]),
+                    row(&[json!("app_writer"), json!("INSERT"), json!("GRANT")]),
+                    row(&[json!("app_writer"), json!("DELETE"), json!("DENY")]),
+                ],
+                rows: &[row(&[json!(1204)])],
             },
         );
         assert_eq!(
@@ -554,6 +627,8 @@ mod tests {
                 "checks": ["([qty]>(0))"],
                 "indexes": {"ix_orders_status": {"unique": false, "columns": ["status", "created desc"], "include": ["total"]}},
                 "triggers": {"tr_orders_audit": "CREATE TRIGGER dbo.tr_orders_audit ON dbo.orders AFTER UPDATE AS SELECT 1"},
+                "grants": {"app_reader": ["SELECT"], "app_writer": ["INSERT", "DELETE (deny)"]},
+                "rows": 1204,
             })
         );
     }
@@ -587,6 +662,8 @@ mod tests {
                 constraints: &[],
                 indexes: &[],
                 triggers: &[],
+                grants: &[],
+                rows: &[],
             },
         );
         assert_eq!(

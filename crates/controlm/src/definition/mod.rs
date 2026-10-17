@@ -2,6 +2,7 @@
 //! Planning shows), whether or not they run today, and the id
 //! `SERVER/FOLDER/JOB` that `job run` orders.
 
+pub(crate) mod diff;
 pub(crate) mod get;
 pub(crate) mod list;
 
@@ -11,7 +12,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-use crate::client::text;
+use crate::client::{Client, text, with_query};
 
 /// `SERVER/FOLDER/JOB`. A folder inside a folder keeps its `/`s: the first
 /// piece is the server and the last the job.
@@ -71,6 +72,31 @@ pub struct DefRow {
 pub(crate) struct Found {
     pub(crate) row: DefRow,
     pub(crate) definition: Value,
+}
+
+/// The one job `raw` (`SERVER/FOLDER/JOB`) names, as `definition get`
+/// prints it and `definition diff` compares it.
+pub(crate) fn one(client: &Client, raw: &str) -> Result<Found> {
+    let wanted = DefRef::parse(raw)?;
+    let query = [
+        ("format", "json".to_owned()),
+        ("ctm", wanted.server.clone()),
+        ("folder", wanted.folder.clone()),
+        ("job", wanted.job.clone()),
+    ];
+    let answer = client.get(&with_query("deploy/jobs", &query))?;
+    let id = format!("{}/{}/{}", wanted.server, wanted.folder, wanted.job);
+    found(&answer, &wanted.server)
+        .into_iter()
+        .find(|found| found.row.id == id)
+        .ok_or_else(|| {
+            Failure::not_found(format!("no job definition {id}"))
+                .hint(format!(
+                    "agent-cli controlm definition list --name {}",
+                    wanted.job
+                ))
+                .into()
+        })
 }
 
 /// Every job in a `deploy/jobs` answer: its top-level keys are folders, and

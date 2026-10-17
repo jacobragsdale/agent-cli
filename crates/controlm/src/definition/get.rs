@@ -1,12 +1,12 @@
-use agent_cli_core::{Ctx, Failure, command};
+use agent_cli_core::{Ctx, command};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::client::{At, ControlM, with_query};
+use crate::client::{At, ControlM};
 
-use super::{DefRef, DefRow, found};
+use super::DefRow;
 
 #[derive(clap::Args)]
 pub struct DefinitionGetArgs {
@@ -33,30 +33,11 @@ pub struct DefDetail {
 fn definition_get(ctx: &Ctx, args: DefinitionGetArgs) -> Result<DefDetail> {
     let controlm = ControlM::load(ctx.config())?;
     let client = controlm.open(ctx, &args.at)?;
-    let wanted = DefRef::parse(&args.id)?;
-    let query = [
-        ("format", "json".to_owned()),
-        ("ctm", wanted.server.clone()),
-        ("folder", wanted.folder.clone()),
-        ("job", wanted.job.clone()),
-    ];
-    let answer = client.get(&with_query("deploy/jobs", &query))?;
-    let id = format!("{}/{}/{}", wanted.server, wanted.folder, wanted.job);
-    found(&answer, &wanted.server)
-        .into_iter()
-        .find(|found| found.row.id == id)
-        .map(|found| DefDetail {
-            row: found.row,
-            definition: found.definition,
-        })
-        .ok_or_else(|| {
-            Failure::not_found(format!("no job definition {id}"))
-                .hint(format!(
-                    "agent-cli controlm definition list --name {}",
-                    wanted.job
-                ))
-                .into()
-        })
+    let found = super::one(&client, &args.id)?;
+    Ok(DefDetail {
+        row: found.row,
+        definition: found.definition,
+    })
 }
 
 command! {

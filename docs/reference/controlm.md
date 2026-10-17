@@ -1,4 +1,4 @@
-# controlm — BMC Control-M (7 commands)
+# controlm — BMC Control-M (8 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -9,6 +9,7 @@
 | [`controlm job run`](#controlm-job-run) | write | Run a Control-M job, or a whole folder, now and outside its schedule |
 | [`controlm definition list`](#controlm-definition-list) | read | Find which Control-M folder defines a job, and what it runs, where and as whom |
 | [`controlm definition get`](#controlm-definition-get) | read | Show a Control-M job's definition: its command, schedule and conditions |
+| [`controlm definition diff`](#controlm-definition-diff) | read | Compare a Control-M job defined in two places: command, host, schedule, waits |
 
 ### controlm job list
 
@@ -101,4 +102,21 @@ agent-cli controlm definition get — Show a Control-M job's definition: its com
 Returns: {id,server,folder,name,type,description,host,run_as,application,sub_application,command,definition}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli controlm definition get ctm-prod/NightlyLoads/load_orders
+```
+
+### controlm definition diff
+
+```text
+agent-cli controlm definition diff — Compare a Control-M job defined in two places: command, host, schedule, waits
+ *<left> str      One side: [INSTANCE:]SERVER/FOLDER/JOB (qa:ctm-qa/NightlyLoads/load_orders)
+ *<right> str     The other side, as left
+  --instance str  The [[controlm.instance]] name; defaults to the only one
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli controlm definition diff qa:ctm-qa/NightlyLoads/load_orders prod:ctm-prod/NightlyLoads/load_orders
 ```

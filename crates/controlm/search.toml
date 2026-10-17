@@ -64,3 +64,11 @@ expect = "controlm definition get"
 [[query]]
 text = "what conditions does the control-m job wait for in its definition"
 expect = "controlm definition get"
+
+[[query]]
+text = "does the control-m job definition differ between qa and prod"
+expect = "controlm definition diff"
+
+[[query]]
+text = "compare two control-m job definitions"
+expect = "controlm definition diff"

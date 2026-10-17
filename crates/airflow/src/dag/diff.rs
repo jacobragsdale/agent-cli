@@ -92,7 +92,7 @@ fn tasks(client: &Client, id: &Ref) -> Result<Value> {
 command! {
     pub DAG_DIFF = ["airflow", "dag", "diff"], Read,
     "Compare a DAG on two instances: its source by lines, schedule and tasks",
-    keywords: ["staging", "environments", "code", "between", "schedule"],
+    keywords: ["staging", "code", "schedule", "etl"],
     example: "airflow dag diff qa:etl_nightly prod:etl_nightly",
     run: dag_diff,
 }

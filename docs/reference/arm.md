@@ -1,9 +1,10 @@
-# arm — Azure Resource Manager (12 commands)
+# arm — Azure Resource Manager (13 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
 | [`arm resource list`](#arm-resource-list) | read | List Azure resources of any type by name, type, group, tag or region |
 | [`arm resource get`](#arm-resource-get) | read | Show any Azure resource as ARM returns it, by id, portal link or name |
+| [`arm resource diff`](#arm-resource-diff) | read | Compare two Azure resources of any type: NSG rules, network rules, node pools |
 | [`arm query run`](#arm-query-run) | read | Run a Resource Graph (KQL) query across the subscriptions in scope |
 | [`arm activity list`](#arm-activity-list) | read | List the Azure activity log: who changed or deleted what, and why it failed |
 | [`arm change list`](#arm-change-list) | read | List what changed on Azure resources: who, when, each property before and after |
@@ -42,6 +43,23 @@ agent-cli arm resource get — Show any Azure resource as ARM returns it, by id,
 Returns: any
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli arm resource get vnet-contoso-prod --type Microsoft.Network/virtualNetworks --fields properties.subnets
+```
+
+### arm resource diff
+
+```text
+agent-cli arm resource diff — Compare two Azure resources of any type: NSG rules, network rules, node pools
+ *<left> str      One side: an ARM id, its portal link, or its name
+ *<right> str     The other side, as left
+  --type str      Their type, for names: Microsoft.Network/networkSecurityGroups
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli arm resource diff nsg-contoso-staging nsg-contoso-prod --type Microsoft.Network/networkSecurityGroups
 ```
 
 ### arm query run

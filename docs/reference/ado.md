@@ -1,4 +1,4 @@
-# ado — Azure DevOps (58 commands)
+# ado — Azure DevOps (59 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -48,6 +48,7 @@
 | [`ado pipeline list`](#ado-pipeline-list) | read | List build pipelines, each with its last result |
 | [`ado pipeline get`](#ado-pipeline-get) | read | Show a pipeline's definition: the YAML file it runs and its default branch |
 | [`ado pipeline preview`](#ado-pipeline-preview) | read | Expand a pipeline's YAML, or an edit of it, without queuing anything |
+| [`ado variable-group diff`](#ado-variable-group-diff) | read | Compare two Azure Pipelines library groups: entries one lacks, and each value |
 | [`ado run list`](#ado-run-list) | read | List pipeline runs, newest first |
 | [`ado run get`](#ado-run-get) | read | Show a run (build): status, commit, what failed, its pull request and work items |
 | [`ado run diff`](#ado-run-diff) | read | Compare two runs of a pipeline: the commits, pull requests, work items it adds |
@@ -689,6 +690,22 @@ agent-cli ado pipeline preview — Expand a pipeline's YAML, or an edit of it, w
 Returns: {pipeline,branch,yaml}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado pipeline preview api-ci --yaml-file azure-pipelines.yml
+```
+
+### ado variable-group diff
+
+```text
+agent-cli ado variable-group diff — Compare two Azure Pipelines library groups: entries one lacks, and each value
+ *<left> str      One group: its name or id
+ *<right> str     The other group, as left
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli ado variable-group diff orders-staging orders-prod
 ```
 
 ### ado run list

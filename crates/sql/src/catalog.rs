@@ -22,8 +22,8 @@ use crate::config::{Kind, Sql};
 use crate::db::{Fetch, OnConnection, Session, maybe, text, whole};
 
 pub(crate) use detail::{
-    TableRows, constraints_sql, extras_sql, indexes_sql, schema_columns_sql, schema_sources_sql,
-    sequence_ddl, sequence_sql, table_row, triggers_sql,
+    TableRows, constraints_sql, extras_sql, grants_sql, indexes_sql, rows_sql, schema_columns_sql,
+    schema_sources_sql, sequence_ddl, sequence_sql, table_row, triggers_sql,
 };
 
 /// What kind of thing an object is. `package` is Oracle's alone.

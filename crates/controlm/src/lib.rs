@@ -27,6 +27,7 @@ pub const DOMAIN: Domain = Domain {
         job::run::JOB_RUN,
         definition::list::DEFINITION_LIST,
         definition::get::DEFINITION_GET,
+        definition::diff::DEFINITION_DIFF,
     ],
     synonyms: &[
         ("ctm", &["controlm"]),
@@ -54,6 +55,6 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 7);
+        assert_eq!(DOMAIN.commands.len(), 8);
     }
 }

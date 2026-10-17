@@ -26,9 +26,11 @@ pub struct ObjectDiffArgs {
     diff: DiffArgs,
 }
 
-/// SQL texts: comments and keyword case are no difference.
+/// SQL texts: comments and keyword case are no difference; a table's rows
+/// differ between any two databases, so they show only with `--all`.
 pub(crate) const RULES: Rules = Rules {
     keys: &[("columns", "name"), ("*.columns", "name")],
+    noise: &["rows"],
     comments: &["--", "/*"],
     fold_case: true,
     ..Rules::PLAIN
@@ -87,7 +89,7 @@ pub(crate) fn same_kind(left: &Connection, right: &Connection) -> Result<()> {
 command! {
     pub OBJECT_DIFF = ["sql", "object", "diff"], Read,
     "Compare a table or procedure in two databases: columns, keys, indexes, source",
-    keywords: ["migration", "staging", "environments", "columns", "definition", "ddl", "drift"],
+    keywords: ["migration", "staging", "columns", "definition", "ddl", "drift"],
     example: "sql object diff qa:dbo.orders prod:dbo.orders",
     run: object_diff,
 }

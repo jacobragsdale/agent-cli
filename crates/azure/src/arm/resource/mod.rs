@@ -2,14 +2,16 @@
 //! type, portal links, and a name found by Resource Graph, so `arm resource
 //! get` and every `net` get take the same refs.
 
+pub(crate) mod diff;
 pub(crate) mod get;
 pub(crate) mod list;
 
-use agent_cli_core::{Ctx, Failure};
-use anyhow::Result;
+use agent_cli_core::{Ctx, Failure, Request, host_under};
+use anyhow::{Result, bail};
+use serde_json::Value;
 
-use crate::arm::{of_type, quote, scope};
-use crate::client::{decode, text};
+use crate::arm::{SUBSCRIPTIONS_API, of_type, quote, scope, scrub};
+use crate::client::{ARM, bearer, decode, refused_with, text};
 use crate::config::Azure;
 use crate::graph::rows;
 
@@ -310,6 +312,125 @@ fn named(ctx: &Ctx, azure: &Azure, lookup: &Lookup, name: &str) -> Result<Target
         ))
         .into()),
     }
+}
+
+/// What ARM reads a resource group with (Resource Groups - Get).
+const GROUPS_API: &str = "2021-04-01";
+/// What ARM lists a provider's resource types and api-versions with.
+const PROVIDERS_API: &str = "2021-04-01";
+
+/// The newest api-version without a suffix that the provider lists for the
+/// type, cached for `[azure] refresh`, and whether only previews were there.
+fn api_version(ctx: &Ctx, azure: &Azure, target: &Target) -> Result<(String, bool)> {
+    let Some(namespace) = &target.namespace else {
+        let fixed = if target.group.is_some() {
+            GROUPS_API
+        } else {
+            SUBSCRIPTIONS_API
+        };
+        return Ok((fixed.to_owned(), false));
+    };
+    let key = format!("azure:api-version:{}", target.kind().to_ascii_lowercase());
+    if let Some(held) = ctx.cache().get::<(String, bool)>(&key) {
+        return Ok(held);
+    }
+    let scope = target
+        .subscription
+        .as_deref()
+        .map(|guid| format!("/subscriptions/{guid}"))
+        .unwrap_or_default();
+    let url = format!(
+        "https://management.azure.com{scope}/providers/{namespace}?api-version={PROVIDERS_API}"
+    );
+    if !host_under(&url, "management.azure.com") {
+        bail!("{url} is not ARM; the ARM token is not sent there");
+    }
+    let provider = ctx
+        .read(Request::get(&url).auth(&bearer(ctx, ARM)))?
+        .json()?;
+    // VERIFY(work): that a provider lists a type nested deeper than two
+    // (`servers/databases/backupShortTermRetentionPolicies`) by its full
+    // path; `az resource show` matches only the top parent and the leaf.
+    let versions: Vec<&str> = provider["resourceTypes"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|held| {
+            held["resourceType"]
+                .as_str()
+                .is_some_and(|kind| kind.eq_ignore_ascii_case(&target.path))
+        })
+        .and_then(|held| held["apiVersions"].as_array())
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
+    // A stable version is a bare date; anything after it (-preview, -beta)
+    // is not, and dates sort as text.
+    let stable = versions.iter().filter(|version| version.len() == 10).max();
+    let chosen = match stable {
+        Some(version) => (version.to_string(), false),
+        // VERIFY(work): which version to read a preview-only type with; the
+        // newest preview is a guess that a type's newest shape is its best.
+        None => match versions.iter().max() {
+            Some(version) => (version.to_string(), true),
+            None => {
+                return Err(Failure::not_found(format!(
+                    "{namespace} lists no resource type {}",
+                    target.path
+                ))
+                .hint(format!(
+                    "what exists: agent-cli arm resource list --type {}",
+                    target.kind()
+                ))
+                .into());
+            }
+        },
+    };
+    ctx.cache().put(&key, &chosen, azure.refresh());
+    Ok(chosen)
+}
+
+/// Any resource as ARM answers it, at the newest stable api-version its
+/// provider lists, scrubbed of secrets: what `resource get` prints and
+/// `resource diff` compares.
+pub(crate) fn fetch(
+    ctx: &Ctx,
+    azure: &Azure,
+    raw: &str,
+    lookup: &Lookup,
+) -> Result<(Target, Value)> {
+    let target = resolve(ctx, azure, raw, lookup)?;
+    let (version, preview) = api_version(ctx, azure, &target)?;
+    if preview {
+        ctx.note(format!(
+            "[{} has only preview api-versions; read with {version}]",
+            target.kind()
+        ));
+    }
+    let url = format!(
+        "https://management.azure.com{}?api-version={version}",
+        target.id
+    );
+    if !host_under(&url, "management.azure.com") {
+        bail!("{url} is not ARM; the ARM token is not sent there");
+    }
+    let answer = ctx
+        .read(Request::get(&url).auth(&bearer(ctx, ARM)))
+        .map_err(|error| {
+            if refused_with(&error) == Some(404) {
+                return Failure::not_found(format!("{error:#}"))
+                    .hint(format!(
+                        "what exists: agent-cli arm resource list --type {}",
+                        target.kind()
+                    ))
+                    .into();
+            }
+            error
+        })?;
+    // ponytail: a child collection is ARM's first page, its nextLink left
+    // in the answer; follow it when a collection outgrows a page.
+    Ok((target, scrub(answer.json()?)))
 }
 
 #[cfg(test)]

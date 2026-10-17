@@ -1006,3 +1006,19 @@ expect = "lake table diff"
 [[query]]
 text = "compare the columns of two parquet tables in the data lake"
 expect = "lake table diff"
+
+[[query]]
+text = "compare the network security group rules of staging and prod"
+expect = "arm resource diff"
+
+[[query]]
+text = "does the storage account firewall differ between two environments"
+expect = "arm resource diff"
+
+[[query]]
+text = "compare the orders search index on dev and prod"
+expect = "aisearch index diff"
+
+[[query]]
+text = "which fields differ between two ai search indexes"
+expect = "aisearch index diff"

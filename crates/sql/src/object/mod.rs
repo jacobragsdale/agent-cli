@@ -11,8 +11,8 @@ use serde_json::{Value, json};
 
 use crate::catalog::{
     Filter, Name, ObjectKind, ObjectRow, TableRows, columns_sql, constraints_sql, extras_sql,
-    indexes_sql, objects_sql, parse_columns, parse_objects, parse_source, rows, sequence_ddl,
-    sequence_sql, source_sql, table_row, triggers_sql,
+    grants_sql, indexes_sql, objects_sql, parse_columns, parse_objects, parse_source, rows,
+    rows_sql, sequence_ddl, sequence_sql, source_sql, table_row, triggers_sql,
 };
 use crate::db::Session;
 
@@ -68,6 +68,8 @@ fn compared(session: &mut Session, found: &ObjectRow, ctx: &Ctx) -> Result<Value
             let constraints = rows(session, &constraints_sql(backend, schema, name), ctx)?;
             let indexes = rows(session, &indexes_sql(backend, schema, name), ctx)?;
             let triggers = rows(session, &triggers_sql(backend, schema, name), ctx)?;
+            let grants = rows(session, &grants_sql(backend, schema, name), ctx)?;
+            let counted = rows(session, &rows_sql(backend, schema, name), ctx)?;
             table_row(
                 backend,
                 &TableRows {
@@ -76,6 +78,8 @@ fn compared(session: &mut Session, found: &ObjectRow, ctx: &Ctx) -> Result<Value
                     constraints: &constraints,
                     indexes: &indexes,
                     triggers: &triggers,
+                    grants: &grants,
+                    rows: &counted,
                 },
             )
         }

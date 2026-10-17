@@ -45,7 +45,7 @@ fn variables(client: &Client) -> Result<Read> {
 command! {
     pub VARIABLE_DIFF = ["airflow", "variable", "diff"], Read,
     "Compare two instances' Variables: keys missing on one side, values same or not",
-    keywords: ["staging", "environments", "missing", "same", "config", "settings"],
+    keywords: ["staging", "missing", "same", "config", "settings"],
     example: "airflow variable diff qa prod",
     run: variable_diff,
 }

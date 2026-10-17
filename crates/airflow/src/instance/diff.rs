@@ -34,7 +34,7 @@ fn instance_diff(ctx: &Ctx, args: Instances) -> Result<Diff> {
 command! {
     pub INSTANCE_DIFF = ["airflow", "instance", "diff"], Read,
     "Compare two instances' Airflow version and installed provider packages",
-    keywords: ["staging", "environments", "providers", "packages", "upgrade", "version"],
+    keywords: ["staging", "providers", "packages", "upgrade", "version"],
     example: "airflow instance diff qa prod",
     run: instance_diff,
 }

@@ -776,3 +776,11 @@ expect = "ado run diff"
 [[query]]
 text = "which pull requests and commits shipped between run 8790 and run 8812"
 expect = "ado run diff"
+
+[[query]]
+text = "compare the staging and prod pipeline variable groups"
+expect = "ado variable-group diff"
+
+[[query]]
+text = "which library variables are missing from the prod variable group"
+expect = "ado variable-group diff"
