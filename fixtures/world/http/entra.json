@@ -1,0 +1,1364 @@
+[
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/servicePrincipals?$filter=displayName%20eq%20%27contoso-ado-deploy%27&$select=id,appId,displayName,servicePrincipalType,accountEnabled,alternativeNames&$top=11",
+  "note": "entra signin list --principal contoso-ado-deploy: the name, a service principal",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#servicePrincipals",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.servicePrincipal",
+     "id": "00000000-0000-4000-8000-000000005d03",
+     "appId": "00000000-0000-4000-8000-000000005d01",
+     "displayName": "contoso-ado-deploy",
+     "servicePrincipalType": "Application",
+     "accountEnabled": true,
+     "alternativeNames": []
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/beta/auditLogs/signIns?$filter=createdDateTime%20ge%202026-09-28T12%3A00%3A00Z%20and%20createdDateTime%20le%202026-09-29T12%3A00%3A00Z%20and%20servicePrincipalId%20eq%20%2700000000-0000-4000-8000-000000005d03%27%20and%20signInEventTypes%2Fany%28t%3A%20t%20eq%20%27servicePrincipal%27%29&$top=1000",
+  "note": "entra signin list --principal contoso-ado-deploy --status failed --since 1d: every sign-in since 06:00 fails, presenting the expired secret",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/beta/$metadata#auditLogs/signIns",
+   "value": [
+    {
+     "id": "00000000-0000-4000-8000-000000000513",
+     "createdDateTime": "2026-09-29T09:30:07Z",
+     "appId": "00000000-0000-4000-8000-000000005d01",
+     "appDisplayName": "contoso-ado-deploy",
+     "ipAddress": "203.0.113.40",
+     "userPrincipalName": null,
+     "userId": null,
+     "servicePrincipalId": "00000000-0000-4000-8000-000000005d03",
+     "servicePrincipalName": "contoso-ado-deploy",
+     "servicePrincipalCredentialKeyId": "00000000-0000-4000-8000-000000005d0a",
+     "servicePrincipalCredentialThumbprint": "",
+     "resourceDisplayName": "Windows Azure Service Management API",
+     "resourceId": "797f4846-ba00-4fd7-ba43-dac1f8f63013",
+     "status": {
+      "errorCode": 7000222,
+      "failureReason": "The provided client secret keys for app '00000000-0000-4000-8000-000000005d01' are expired. Visit the Azure portal to create new keys for your app: https://aka.ms/NewClientSecret, or consider using certificate credentials for added security: https://aka.ms/certCreds.",
+      "additionalDetails": null
+     },
+     "conditionalAccessStatus": "notApplied",
+     "appliedConditionalAccessPolicies": [],
+     "correlationId": "00000000-0000-4000-8000-000000000c03",
+     "signInEventTypes": [
+      "servicePrincipal"
+     ],
+     "isInteractive": false,
+     "clientCredentialType": "clientSecret"
+    },
+    {
+     "id": "00000000-0000-4000-8000-000000000512",
+     "createdDateTime": "2026-09-29T06:00:41Z",
+     "appId": "00000000-0000-4000-8000-000000005d01",
+     "appDisplayName": "contoso-ado-deploy",
+     "ipAddress": "203.0.113.40",
+     "userPrincipalName": null,
+     "userId": null,
+     "servicePrincipalId": "00000000-0000-4000-8000-000000005d03",
+     "servicePrincipalName": "contoso-ado-deploy",
+     "servicePrincipalCredentialKeyId": "00000000-0000-4000-8000-000000005d0a",
+     "servicePrincipalCredentialThumbprint": "",
+     "resourceDisplayName": "Windows Azure Service Management API",
+     "resourceId": "797f4846-ba00-4fd7-ba43-dac1f8f63013",
+     "status": {
+      "errorCode": 7000222,
+      "failureReason": "The provided client secret keys for app '00000000-0000-4000-8000-000000005d01' are expired. Visit the Azure portal to create new keys for your app: https://aka.ms/NewClientSecret, or consider using certificate credentials for added security: https://aka.ms/certCreds.",
+      "additionalDetails": null
+     },
+     "conditionalAccessStatus": "notApplied",
+     "appliedConditionalAccessPolicies": [],
+     "correlationId": "00000000-0000-4000-8000-000000000c02",
+     "signInEventTypes": [
+      "servicePrincipal"
+     ],
+     "isInteractive": false,
+     "clientCredentialType": "clientSecret"
+    },
+    {
+     "id": "00000000-0000-4000-8000-000000000511",
+     "createdDateTime": "2026-09-29T06:00:14Z",
+     "appId": "00000000-0000-4000-8000-000000005d01",
+     "appDisplayName": "contoso-ado-deploy",
+     "ipAddress": "203.0.113.40",
+     "userPrincipalName": null,
+     "userId": null,
+     "servicePrincipalId": "00000000-0000-4000-8000-000000005d03",
+     "servicePrincipalName": "contoso-ado-deploy",
+     "servicePrincipalCredentialKeyId": "00000000-0000-4000-8000-000000005d0a",
+     "servicePrincipalCredentialThumbprint": "",
+     "resourceDisplayName": "Windows Azure Service Management API",
+     "resourceId": "797f4846-ba00-4fd7-ba43-dac1f8f63013",
+     "status": {
+      "errorCode": 7000222,
+      "failureReason": "The provided client secret keys for app '00000000-0000-4000-8000-000000005d01' are expired. Visit the Azure portal to create new keys for your app: https://aka.ms/NewClientSecret, or consider using certificate credentials for added security: https://aka.ms/certCreds.",
+      "additionalDetails": null
+     },
+     "conditionalAccessStatus": "notApplied",
+     "appliedConditionalAccessPolicies": [],
+     "correlationId": "00000000-0000-4000-8000-000000000c01",
+     "signInEventTypes": [
+      "servicePrincipal"
+     ],
+     "isInteractive": false,
+     "clientCredentialType": "clientSecret"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://graph.microsoft.com/v1.0/directoryObjects/getByIds",
+  "note": "entra signin list --principal …5d01 (ado serviceconnection get's app_id): no object has that id",
+  "body": {
+   "ids": [
+    "00000000-0000-4000-8000-000000005d01"
+   ],
+   "types": [
+    "servicePrincipal",
+    "user"
+   ]
+  },
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": []
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/servicePrincipals(appId='00000000-0000-4000-8000-000000005d01')?$select=id,appId,displayName,servicePrincipalType,accountEnabled,alternativeNames",
+  "note": "entra signin list --principal …5d01: the app id's service principal",
+  "answer": {
+   "@odata.type": "#microsoft.graph.servicePrincipal",
+   "id": "00000000-0000-4000-8000-000000005d03",
+   "appId": "00000000-0000-4000-8000-000000005d01",
+   "displayName": "contoso-ado-deploy",
+   "servicePrincipalType": "Application",
+   "accountEnabled": true,
+   "alternativeNames": []
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/applications/00000000-0000-4000-8000-000000005d01?$select=id,appId,displayName,signInAudience,createdDateTime,passwordCredentials,keyCredentials,requiredResourceAccess",
+  "note": "entra app get …5d01: an app id, not an object id",
+  "status": 404,
+  "answer": {
+   "error": {
+    "code": "Request_ResourceNotFound",
+    "message": "Resource does not exist or one of its queried reference-property objects are not present.",
+    "innerError": {
+     "date": "2026-09-29T12:00:00",
+     "request-id": "00000000-0000-4000-8000-000000007e01",
+     "client-request-id": "00000000-0000-4000-8000-000000007e01"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/applications(appId='00000000-0000-4000-8000-000000005d01')?$select=id,appId,displayName,signInAudience,createdDateTime,passwordCredentials,keyCredentials,requiredResourceAccess",
+  "note": "entra app get …5d01: the app by its client id",
+  "answer": {
+   "@odata.type": "#microsoft.graph.application",
+   "id": "00000000-0000-4000-8000-000000005d02",
+   "appId": "00000000-0000-4000-8000-000000005d01",
+   "displayName": "contoso-ado-deploy",
+   "signInAudience": "AzureADMyOrg",
+   "createdDateTime": "2025-03-17T10:00:00Z",
+   "passwordCredentials": [
+    {
+     "keyId": "00000000-0000-4000-8000-000000005d0a",
+     "displayName": "sc-contoso-prod",
+     "hint": null,
+     "secretText": null,
+     "customKeyIdentifier": null,
+     "startDateTime": "2025-09-20T00:00:00Z",
+     "endDateTime": "2026-09-20T00:00:00Z"
+    },
+    {
+     "keyId": "00000000-0000-4000-8000-000000005d0b",
+     "displayName": "sc-contoso-prod-2026",
+     "hint": null,
+     "secretText": null,
+     "customKeyIdentifier": null,
+     "startDateTime": "2026-09-18T15:20:41Z",
+     "endDateTime": "2027-03-17T15:20:41Z"
+    }
+   ],
+   "keyCredentials": [],
+   "requiredResourceAccess": [
+    {
+     "resourceAppId": "00000003-0000-0000-c000-000000000000",
+     "resourceAccess": [
+      {
+       "id": "e1fe6dd8-ba31-4d61-89e7-88639da4683d",
+       "type": "Scope"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/applications?$filter=displayName%20eq%20%27contoso-ado-deploy%27&$select=id,appId,displayName,signInAudience,createdDateTime,passwordCredentials,keyCredentials,requiredResourceAccess&$top=11",
+  "note": "entra app get contoso-ado-deploy",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#applications",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.application",
+     "id": "00000000-0000-4000-8000-000000005d02",
+     "appId": "00000000-0000-4000-8000-000000005d01",
+     "displayName": "contoso-ado-deploy",
+     "signInAudience": "AzureADMyOrg",
+     "createdDateTime": "2025-03-17T10:00:00Z",
+     "passwordCredentials": [
+      {
+       "keyId": "00000000-0000-4000-8000-000000005d0a",
+       "displayName": "sc-contoso-prod",
+       "hint": null,
+       "secretText": null,
+       "customKeyIdentifier": null,
+       "startDateTime": "2025-09-20T00:00:00Z",
+       "endDateTime": "2026-09-20T00:00:00Z"
+      },
+      {
+       "keyId": "00000000-0000-4000-8000-000000005d0b",
+       "displayName": "sc-contoso-prod-2026",
+       "hint": null,
+       "secretText": null,
+       "customKeyIdentifier": null,
+       "startDateTime": "2026-09-18T15:20:41Z",
+       "endDateTime": "2027-03-17T15:20:41Z"
+      }
+     ],
+     "keyCredentials": [],
+     "requiredResourceAccess": [
+      {
+       "resourceAppId": "00000003-0000-0000-c000-000000000000",
+       "resourceAccess": [
+        {
+         "id": "e1fe6dd8-ba31-4d61-89e7-88639da4683d",
+         "type": "Scope"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/applications/00000000-0000-4000-8000-000000005d02/owners?$select=id,displayName,userPrincipalName,accountEnabled",
+  "note": "entra app get contoso-ado-deploy: dana owns it",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.user",
+     "id": "00000000-0000-4000-8000-00000000e101",
+     "displayName": "Dana Reyes",
+     "userPrincipalName": "dana@contoso.example",
+     "accountEnabled": true
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/applications/00000000-0000-4000-8000-000000005d02/federatedIdentityCredentials?$select=name,issuer,subject",
+  "note": "entra app get contoso-ado-deploy: a secret, no federation",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": []
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/servicePrincipals(appId='00000000-0000-4000-8000-000000005d01')?$select=id",
+  "note": "entra app get contoso-ado-deploy: its service principal",
+  "answer": {
+   "id": "00000000-0000-4000-8000-000000005d03"
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/servicePrincipals(appId='00000003-0000-0000-c000-000000000000')?$select=id,appId,displayName,appRoles,oauth2PermissionScopes",
+  "note": "entra app get: Microsoft Graph's scopes, to name User.Read",
+  "answer": {
+   "@odata.type": "#microsoft.graph.servicePrincipal",
+   "id": "00000000-0000-4000-8000-000000009a01",
+   "appId": "00000003-0000-0000-c000-000000000000",
+   "displayName": "Microsoft Graph",
+   "appRoles": [],
+   "oauth2PermissionScopes": [
+    {
+     "id": "e1fe6dd8-ba31-4d61-89e7-88639da4683d",
+     "value": "User.Read",
+     "adminConsentDisplayName": "Sign in and read user profile",
+     "type": "User",
+     "isEnabled": true
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/users/00000000-0000-4000-8000-00000000e101?$select=id,displayName,userPrincipalName,mail,userType,accountEnabled,createdDateTime,onPremisesSyncEnabled,department,jobTitle",
+  "note": "entra user get dana (app get's next note)",
+  "answer": {
+   "@odata.type": "#microsoft.graph.user",
+   "id": "00000000-0000-4000-8000-00000000e101",
+   "displayName": "Dana Reyes",
+   "userPrincipalName": "dana@contoso.example",
+   "mail": "dana@contoso.example",
+   "userType": "Member",
+   "accountEnabled": true,
+   "createdDateTime": "2023-01-09T09:00:00Z",
+   "onPremisesSyncEnabled": null,
+   "department": "Platform",
+   "jobTitle": "Platform lead"
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/users/00000000-0000-4000-8000-00000000e101/manager?$select=id,displayName,userPrincipalName",
+  "note": "entra user get dana (app get's next note): no manager",
+  "status": 404,
+  "answer": {
+   "error": {
+    "code": "Request_ResourceNotFound",
+    "message": "Resource does not exist or one of its queried reference-property objects are not present.",
+    "innerError": {
+     "date": "2026-09-29T12:00:00",
+     "request-id": "00000000-0000-4000-8000-000000007e01",
+     "client-request-id": "00000000-0000-4000-8000-000000007e01"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/users/00000000-0000-4000-8000-00000000e101/transitiveMemberOf?$select=id,displayName",
+  "note": "entra user get dana (app get's next note): groups and roles",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.group",
+     "id": "00000000-0000-4000-8000-00000000f001",
+     "displayName": "sg-contoso-platform"
+    },
+    {
+     "@odata.type": "#microsoft.graph.directoryRole",
+     "id": "00000000-0000-4000-8000-00000000d001",
+     "displayName": "Global Administrator"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/users/00000000-0000-4000-8000-0000000000e1?$select=id,displayName,userPrincipalName,mail,userType,accountEnabled,createdDateTime,onPremisesSyncEnabled,department,jobTitle",
+  "note": "entra user get @me: the az login, Reports Reader",
+  "answer": {
+   "@odata.type": "#microsoft.graph.user",
+   "id": "00000000-0000-4000-8000-0000000000e1",
+   "displayName": "Contoso Ops",
+   "userPrincipalName": "ops@contoso.example",
+   "mail": "ops@contoso.example",
+   "userType": "Member",
+   "accountEnabled": true,
+   "createdDateTime": "2024-06-03T08:00:00Z",
+   "onPremisesSyncEnabled": null,
+   "department": "Platform",
+   "jobTitle": "Operations automation"
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/users/00000000-0000-4000-8000-0000000000e1/manager?$select=id,displayName,userPrincipalName",
+  "note": "entra user get @me: the az login, Reports Reader: no manager",
+  "status": 404,
+  "answer": {
+   "error": {
+    "code": "Request_ResourceNotFound",
+    "message": "Resource does not exist or one of its queried reference-property objects are not present.",
+    "innerError": {
+     "date": "2026-09-29T12:00:00",
+     "request-id": "00000000-0000-4000-8000-000000007e01",
+     "client-request-id": "00000000-0000-4000-8000-000000007e01"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/users/00000000-0000-4000-8000-0000000000e1/transitiveMemberOf?$select=id,displayName",
+  "note": "entra user get @me: the az login, Reports Reader: groups and roles",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.group",
+     "id": "00000000-0000-4000-8000-00000000f001",
+     "displayName": "sg-contoso-platform"
+    },
+    {
+     "@odata.type": "#microsoft.graph.directoryRole",
+     "id": "00000000-0000-4000-8000-00000000d002",
+     "displayName": "Reports Reader"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/auditLogs/directoryAudits?$filter=activityDateTime%20ge%202026-08-30T12%3A00%3A00Z%20and%20activityDateTime%20le%202026-09-29T12%3A00%3A00Z%20and%20targetResources%2Fany%28t%3A%20t%2Fid%20eq%20%2700000000-0000-4000-8000-000000005d02%27%29&$top=51",
+  "note": "entra audit list --target contoso-ado-deploy's object --since 30d: dana added the new secret on 09-18; nobody gave it to the connection",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#auditLogs/directoryAudits",
+   "value": [
+    {
+     "id": "Directory_00000000-0000-4000-8000-00000000ad01",
+     "category": "ApplicationManagement",
+     "correlationId": "00000000-0000-4000-8000-00000000ad11",
+     "result": "success",
+     "resultReason": "",
+     "activityDisplayName": "Update application – Certificates and secrets management",
+     "activityDateTime": "2026-09-18T15:20:41.4471893Z",
+     "loggedByService": "Core Directory",
+     "operationType": "Update",
+     "initiatedBy": {
+      "user": {
+       "id": "00000000-0000-4000-8000-00000000e101",
+       "displayName": null,
+       "userPrincipalName": "dana@contoso.example",
+       "ipAddress": "198.51.100.23"
+      },
+      "app": null
+     },
+     "targetResources": [
+      {
+       "id": "00000000-0000-4000-8000-000000005d02",
+       "displayName": "contoso-ado-deploy",
+       "type": "Application",
+       "userPrincipalName": null,
+       "modifiedProperties": [
+        {
+         "displayName": "KeyDescription",
+         "oldValue": "[\"[KeyIdentifier=00000000-0000-4000-8000-000000005d0a,KeyType=Password,KeyUsage=Verify,DisplayName=sc-contoso-prod]\"]",
+         "newValue": "[\"[KeyIdentifier=00000000-0000-4000-8000-000000005d0a,KeyType=Password,KeyUsage=Verify,DisplayName=sc-contoso-prod]\", \"[KeyIdentifier=00000000-0000-4000-8000-000000005d0b,KeyType=Password,KeyUsage=Verify,DisplayName=sc-contoso-prod-2026]\"]"
+        },
+        {
+         "displayName": "Included Updated Properties",
+         "oldValue": null,
+         "newValue": "\"KeyDescription\""
+        }
+       ]
+      }
+     ],
+     "additionalDetails": [
+      {
+       "key": "User-Agent",
+       "value": "Mozilla/5.0"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://graph.microsoft.com/v1.0/directoryObjects/getByIds",
+  "note": "arm role list: every principal's name",
+  "body": {
+   "ids": [
+    "00000000-0000-4000-8000-00000000f001",
+    "00000000-0000-4000-8000-00000000b0f2",
+    "00000000-0000-4000-8000-00000000c003",
+    "00000000-0000-4000-8000-00000000c005"
+   ],
+   "types": [
+    "user",
+    "group",
+    "servicePrincipal"
+   ]
+  },
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.group",
+     "id": "00000000-0000-4000-8000-00000000f001",
+     "displayName": "sg-contoso-platform",
+     "groupTypes": []
+    },
+    {
+     "@odata.type": "#microsoft.graph.servicePrincipal",
+     "id": "00000000-0000-4000-8000-00000000b0f2",
+     "appId": "00000000-0000-4000-8000-00000000b0f1",
+     "displayName": "id-contoso-notifier",
+     "servicePrincipalType": "ManagedIdentity"
+    },
+    {
+     "@odata.type": "#microsoft.graph.servicePrincipal",
+     "id": "00000000-0000-4000-8000-00000000c003",
+     "appId": "00000000-0000-4000-8000-00000000c002",
+     "displayName": "aks-contoso-prod-agentpool",
+     "servicePrincipalType": "ManagedIdentity"
+    },
+    {
+     "@odata.type": "#microsoft.graph.servicePrincipal",
+     "id": "00000000-0000-4000-8000-00000000c005",
+     "appId": "00000000-0000-4000-8000-00000000c004",
+     "displayName": "azurekeyvaultsecretsprovider-aks-contoso-prod",
+     "servicePrincipalType": "ManagedIdentity"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://graph.microsoft.com/v1.0/directoryObjects/getByIds",
+  "note": "arm role list --principal: the notifier's name",
+  "body": {
+   "ids": [
+    "00000000-0000-4000-8000-00000000b0f2"
+   ],
+   "types": [
+    "user",
+    "group",
+    "servicePrincipal"
+   ]
+  },
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.servicePrincipal",
+     "id": "00000000-0000-4000-8000-00000000b0f2",
+     "appId": "00000000-0000-4000-8000-00000000b0f1",
+     "displayName": "id-contoso-notifier",
+     "servicePrincipalType": "ManagedIdentity"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://graph.microsoft.com/v1.0/directoryObjects/getByIds",
+  "note": "arm role list --scope kv-contoso-prod: the names",
+  "body": {
+   "ids": [
+    "00000000-0000-4000-8000-00000000f001",
+    "00000000-0000-4000-8000-00000000b0f2",
+    "00000000-0000-4000-8000-00000000c005"
+   ],
+   "types": [
+    "user",
+    "group",
+    "servicePrincipal"
+   ]
+  },
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.group",
+     "id": "00000000-0000-4000-8000-00000000f001",
+     "displayName": "sg-contoso-platform",
+     "groupTypes": []
+    },
+    {
+     "@odata.type": "#microsoft.graph.servicePrincipal",
+     "id": "00000000-0000-4000-8000-00000000b0f2",
+     "appId": "00000000-0000-4000-8000-00000000b0f1",
+     "displayName": "id-contoso-notifier",
+     "servicePrincipalType": "ManagedIdentity"
+    },
+    {
+     "@odata.type": "#microsoft.graph.servicePrincipal",
+     "id": "00000000-0000-4000-8000-00000000c005",
+     "appId": "00000000-0000-4000-8000-00000000c004",
+     "displayName": "azurekeyvaultsecretsprovider-aks-contoso-prod",
+     "servicePrincipalType": "ManagedIdentity"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://graph.microsoft.com/v1.0/directoryObjects/getByIds",
+  "note": "arm role list --principal id-contoso-airflow --scope contosolake: its name",
+  "body": {
+   "ids": [
+    "00000000-0000-4000-8000-00000000a1f2"
+   ],
+   "types": [
+    "user",
+    "group",
+    "servicePrincipal"
+   ]
+  },
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.servicePrincipal",
+     "id": "00000000-0000-4000-8000-00000000a1f2",
+     "appId": "00000000-0000-4000-8000-00000000a1f1",
+     "displayName": "id-contoso-airflow",
+     "servicePrincipalType": "ManagedIdentity"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/groups/00000000-0000-4000-8000-00000000f001?$select=id,displayName,membershipRule,membershipRuleProcessingState",
+  "note": "entra member list sg-contoso-platform (by id)",
+  "answer": {
+   "@odata.type": "#microsoft.graph.group",
+   "id": "00000000-0000-4000-8000-00000000f001",
+   "displayName": "sg-contoso-platform",
+   "membershipRule": null,
+   "membershipRuleProcessingState": null
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/groups/00000000-0000-4000-8000-00000000f001/members?$select=id,displayName,userPrincipalName,appId,servicePrincipalType,accountEnabled&$top=999",
+  "note": "entra member list: platform's direct members",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.user",
+     "id": "00000000-0000-4000-8000-00000000e101",
+     "displayName": "Dana Reyes",
+     "userPrincipalName": "dana@contoso.example",
+     "accountEnabled": true
+    },
+    {
+     "@odata.type": "#microsoft.graph.user",
+     "id": "00000000-0000-4000-8000-0000000000e1",
+     "displayName": "Contoso Ops",
+     "userPrincipalName": "ops@contoso.example",
+     "accountEnabled": true
+    },
+    {
+     "@odata.type": "#microsoft.graph.group",
+     "id": "00000000-0000-4000-8000-00000000f003",
+     "displayName": "sg-contoso-oncall"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/groups/00000000-0000-4000-8000-00000000f003/members?$select=id,displayName,userPrincipalName,appId,servicePrincipalType,accountEnabled&$top=999",
+  "note": "entra member list: sam, through sg-contoso-oncall",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.user",
+     "id": "00000000-0000-4000-8000-00000000e102",
+     "displayName": "Sam Lee",
+     "userPrincipalName": "sam@contoso.example",
+     "accountEnabled": true
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/auditLogs/directoryAudits?$filter=activityDateTime%20ge%202026-09-22T12%3A00%3A00Z%20and%20activityDateTime%20le%202026-09-29T12%3A00%3A00Z%20and%20targetResources%2Fany%28t%3A%20t%2Fid%20eq%20%2700000000-0000-4000-8000-00000000f003%27%29&$top=51",
+  "note": "entra audit list --target sg-contoso-oncall (7 days): dana added sam on 09-25",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#auditLogs/directoryAudits",
+   "value": [
+    {
+     "id": "Directory_00000000-0000-4000-8000-00000000ad02",
+     "category": "GroupManagement",
+     "correlationId": "00000000-0000-4000-8000-00000000ad12",
+     "result": "success",
+     "resultReason": "",
+     "activityDisplayName": "Add member to group",
+     "activityDateTime": "2026-09-25T10:02:13.0920315Z",
+     "loggedByService": "Core Directory",
+     "operationType": "Assign",
+     "initiatedBy": {
+      "user": {
+       "id": "00000000-0000-4000-8000-00000000e101",
+       "displayName": null,
+       "userPrincipalName": "dana@contoso.example",
+       "ipAddress": "198.51.100.23"
+      },
+      "app": null
+     },
+     "targetResources": [
+      {
+       "id": "00000000-0000-4000-8000-00000000e102",
+       "displayName": null,
+       "type": "User",
+       "userPrincipalName": "sam@contoso.example",
+       "modifiedProperties": [
+        {
+         "displayName": "Group.ObjectID",
+         "oldValue": null,
+         "newValue": "\"00000000-0000-4000-8000-00000000f003\""
+        },
+        {
+         "displayName": "Group.DisplayName",
+         "oldValue": null,
+         "newValue": "\"sg-contoso-oncall\""
+        }
+       ]
+      },
+      {
+       "id": "00000000-0000-4000-8000-00000000f003",
+       "displayName": "sg-contoso-oncall",
+       "type": "Group",
+       "userPrincipalName": null,
+       "modifiedProperties": []
+      }
+     ],
+     "additionalDetails": []
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/groups?$filter=displayName%20eq%20%27sg-contoso-platform%27&$select=id,displayName,description,groupTypes,mail,mailEnabled,securityEnabled,membershipRule,membershipRuleProcessingState,isAssignableToRole,onPremisesSyncEnabled,createdDateTime&$top=11",
+  "note": "entra group get sg-contoso-platform",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#groups",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.group",
+     "id": "00000000-0000-4000-8000-00000000f001",
+     "displayName": "sg-contoso-platform",
+     "description": "Platform engineering: Contributor on the contoso-prod subscription",
+     "groupTypes": [],
+     "mail": null,
+     "mailEnabled": false,
+     "securityEnabled": true,
+     "membershipRule": null,
+     "membershipRuleProcessingState": null,
+     "isAssignableToRole": false,
+     "onPremisesSyncEnabled": null,
+     "createdDateTime": "2024-11-04T09:00:00Z"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/groups/00000000-0000-4000-8000-00000000f001/owners?$select=id,displayName,userPrincipalName,accountEnabled",
+  "note": "entra group get sg-contoso-platform: dana owns it",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.user",
+     "id": "00000000-0000-4000-8000-00000000e101",
+     "displayName": "Dana Reyes",
+     "userPrincipalName": "dana@contoso.example",
+     "accountEnabled": true
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/groups/00000000-0000-4000-8000-00000000f001/transitiveMemberOf?$select=id,displayName",
+  "note": "entra group get sg-contoso-platform: in no group",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": []
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/groups/00000000-0000-4000-8000-00000000f001/members/$count",
+  "note": "entra group get sg-contoso-platform: members",
+  "answer": 3
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/groups/00000000-0000-4000-8000-00000000f001/transitiveMembers/$count",
+  "note": "entra group get sg-contoso-platform: transitiveMembers",
+  "answer": 4
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/users/sam%40contoso.example?$select=id,displayName,userPrincipalName,mail,accountEnabled",
+  "note": "entra group list --member sam@contoso.example: the UPN",
+  "answer": {
+   "@odata.type": "#microsoft.graph.user",
+   "id": "00000000-0000-4000-8000-00000000e102",
+   "displayName": "Sam Lee",
+   "userPrincipalName": "sam@contoso.example",
+   "mail": "sam@contoso.com",
+   "accountEnabled": true
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/users/00000000-0000-4000-8000-00000000e102/memberOf?$select=id",
+  "note": "entra group list --member sam: added to oncall by hand, to sre by its rule",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.group",
+     "id": "00000000-0000-4000-8000-00000000f003"
+    },
+    {
+     "@odata.type": "#microsoft.graph.group",
+     "id": "00000000-0000-4000-8000-00000000f004"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/users/00000000-0000-4000-8000-00000000e102/transitiveMemberOf?$select=id,displayName,groupTypes,securityEnabled,mailEnabled",
+  "note": "entra group list --member sam: platform through oncall",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.group",
+     "id": "00000000-0000-4000-8000-00000000f003",
+     "displayName": "sg-contoso-oncall",
+     "groupTypes": [],
+     "mailEnabled": false,
+     "securityEnabled": true
+    },
+    {
+     "@odata.type": "#microsoft.graph.group",
+     "id": "00000000-0000-4000-8000-00000000f001",
+     "displayName": "sg-contoso-platform",
+     "groupTypes": [],
+     "mailEnabled": false,
+     "securityEnabled": true
+    },
+    {
+     "@odata.type": "#microsoft.graph.group",
+     "id": "00000000-0000-4000-8000-00000000f004",
+     "displayName": "sg-contoso-sre",
+     "groupTypes": [
+      "DynamicMembership"
+     ],
+     "mailEnabled": false,
+     "securityEnabled": true
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/users/sam%40contoso.com?$select=id,displayName,userPrincipalName,mail,userType,accountEnabled,createdDateTime,onPremisesSyncEnabled,department,jobTitle",
+  "note": "entra user get sam@contoso.com (ado person list's id): no UPN of that name",
+  "status": 404,
+  "answer": {
+   "error": {
+    "code": "Request_ResourceNotFound",
+    "message": "Resource does not exist or one of its queried reference-property objects are not present.",
+    "innerError": {
+     "date": "2026-09-29T12:00:00",
+     "request-id": "00000000-0000-4000-8000-000000007e01",
+     "client-request-id": "00000000-0000-4000-8000-000000007e01"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/users?$filter=mail%20eq%20%27sam%40contoso.com%27&$select=id,displayName,userPrincipalName,mail,userType,accountEnabled,createdDateTime,onPremisesSyncEnabled,department,jobTitle",
+  "note": "entra user get sam@contoso.com: found by mail",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.user",
+     "id": "00000000-0000-4000-8000-00000000e102",
+     "displayName": "Sam Lee",
+     "userPrincipalName": "sam@contoso.example",
+     "mail": "sam@contoso.com",
+     "userType": "Member",
+     "accountEnabled": true,
+     "createdDateTime": "2024-02-01T09:00:00Z",
+     "onPremisesSyncEnabled": null,
+     "department": "SRE",
+     "jobTitle": "Site reliability engineer"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/users/00000000-0000-4000-8000-00000000e102/manager?$select=id,displayName,userPrincipalName",
+  "note": "entra user get sam: dana manages sam",
+  "answer": {
+   "@odata.type": "#microsoft.graph.user",
+   "id": "00000000-0000-4000-8000-00000000e101",
+   "displayName": "Dana Reyes",
+   "userPrincipalName": "dana@contoso.example"
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/users/00000000-0000-4000-8000-00000000e102/transitiveMemberOf?$select=id,displayName",
+  "note": "entra user get sam: groups",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.group",
+     "id": "00000000-0000-4000-8000-00000000f003",
+     "displayName": "sg-contoso-oncall"
+    },
+    {
+     "@odata.type": "#microsoft.graph.group",
+     "id": "00000000-0000-4000-8000-00000000f001",
+     "displayName": "sg-contoso-platform"
+    },
+    {
+     "@odata.type": "#microsoft.graph.group",
+     "id": "00000000-0000-4000-8000-00000000f004",
+     "displayName": "sg-contoso-sre"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://graph.microsoft.com/v1.0/directoryObjects/getByIds",
+  "note": "entra principal list …a2f2 (the ledger's ACL): the finance close's service principal",
+  "body": {
+   "ids": [
+    "00000000-0000-4000-8000-00000000a2f2"
+   ],
+   "types": [
+    "user",
+    "group",
+    "servicePrincipal",
+    "application"
+   ]
+  },
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.servicePrincipal",
+     "id": "00000000-0000-4000-8000-00000000a2f2",
+     "appId": "00000000-0000-4000-8000-00000000a2f1",
+     "displayName": "contoso-finance-close",
+     "servicePrincipalType": "Application",
+     "accountEnabled": true,
+     "alternativeNames": [],
+     "appOwnerOrganizationId": "00000000-0000-4000-8000-00000000a001",
+     "appRoleAssignmentRequired": false,
+     "passwordCredentials": [],
+     "keyCredentials": []
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/applications?$select=id,appId,displayName,createdDateTime,passwordCredentials,keyCredentials&$top=999",
+  "note": "entra app list --expires-within 30d: every app registration, one page",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#applications",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.application",
+     "id": "00000000-0000-4000-8000-000000005d02",
+     "appId": "00000000-0000-4000-8000-000000005d01",
+     "displayName": "contoso-ado-deploy",
+     "createdDateTime": "2025-03-17T10:00:00Z",
+     "passwordCredentials": [
+      {
+       "keyId": "00000000-0000-4000-8000-000000005d0a",
+       "displayName": "sc-contoso-prod",
+       "hint": null,
+       "secretText": null,
+       "customKeyIdentifier": null,
+       "startDateTime": "2025-09-20T00:00:00Z",
+       "endDateTime": "2026-09-20T00:00:00Z"
+      },
+      {
+       "keyId": "00000000-0000-4000-8000-000000005d0b",
+       "displayName": "sc-contoso-prod-2026",
+       "hint": null,
+       "secretText": null,
+       "customKeyIdentifier": null,
+       "startDateTime": "2026-09-18T15:20:41Z",
+       "endDateTime": "2027-03-17T15:20:41Z"
+      }
+     ],
+     "keyCredentials": []
+    },
+    {
+     "@odata.type": "#microsoft.graph.application",
+     "id": "00000000-0000-4000-8000-000000005f02",
+     "appId": "00000000-0000-4000-8000-000000005f01",
+     "displayName": "contoso-ado-dev",
+     "createdDateTime": "2026-02-02T11:00:00Z",
+     "passwordCredentials": [],
+     "keyCredentials": []
+    },
+    {
+     "@odata.type": "#microsoft.graph.application",
+     "id": "00000000-0000-4000-8000-000000005e02",
+     "appId": "00000000-0000-4000-8000-000000005e01",
+     "displayName": "contoso-reports",
+     "createdDateTime": "2024-10-01T12:00:00Z",
+     "passwordCredentials": [],
+     "keyCredentials": [
+      {
+       "keyId": "00000000-0000-4000-8000-000000005e0c",
+       "displayName": "CN=contoso-reports",
+       "type": "AsymmetricX509Cert",
+       "usage": "Verify",
+       "key": null,
+       "customKeyIdentifier": "C0FFEE00C0FFEE00C0FFEE00C0FFEE00C0FFEE00",
+       "startDateTime": "2025-10-12T00:00:00Z",
+       "endDateTime": "2026-10-12T00:00:00Z"
+      }
+     ]
+    },
+    {
+     "@odata.type": "#microsoft.graph.application",
+     "id": "00000000-0000-4000-8000-00000000a2f3",
+     "appId": "00000000-0000-4000-8000-00000000a2f1",
+     "displayName": "contoso-finance-close",
+     "createdDateTime": "2025-06-30T08:00:00Z",
+     "passwordCredentials": [
+      {
+       "keyId": "00000000-0000-4000-8000-00000000a2fa",
+       "displayName": "ledger-writer",
+       "hint": null,
+       "secretText": null,
+       "customKeyIdentifier": null,
+       "startDateTime": "2026-06-30T00:00:00Z",
+       "endDateTime": "2027-06-30T00:00:00Z"
+      }
+     ],
+     "keyCredentials": []
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/applications?$filter=displayName%20eq%20%27contoso-reports%27&$select=id,appId,displayName,signInAudience,createdDateTime,passwordCredentials,keyCredentials,requiredResourceAccess&$top=11",
+  "note": "entra app get contoso-reports",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#applications",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.application",
+     "id": "00000000-0000-4000-8000-000000005e02",
+     "appId": "00000000-0000-4000-8000-000000005e01",
+     "displayName": "contoso-reports",
+     "signInAudience": "AzureADMyOrg",
+     "createdDateTime": "2024-10-01T12:00:00Z",
+     "passwordCredentials": [],
+     "keyCredentials": [
+      {
+       "keyId": "00000000-0000-4000-8000-000000005e0c",
+       "displayName": "CN=contoso-reports",
+       "type": "AsymmetricX509Cert",
+       "usage": "Verify",
+       "key": null,
+       "customKeyIdentifier": "C0FFEE00C0FFEE00C0FFEE00C0FFEE00C0FFEE00",
+       "startDateTime": "2025-10-12T00:00:00Z",
+       "endDateTime": "2026-10-12T00:00:00Z"
+      }
+     ],
+     "requiredResourceAccess": []
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/applications/00000000-0000-4000-8000-000000005e02/owners?$select=id,displayName,userPrincipalName,accountEnabled",
+  "note": "entra app get contoso-reports: alex, disabled, owns it alone",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.user",
+     "id": "00000000-0000-4000-8000-00000000e103",
+     "displayName": "Alex Kim",
+     "userPrincipalName": "alex@contoso.example",
+     "accountEnabled": false
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/applications/00000000-0000-4000-8000-000000005e02/federatedIdentityCredentials?$select=name,issuer,subject",
+  "note": "entra app get contoso-reports: no federation",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": []
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/servicePrincipals(appId='00000000-0000-4000-8000-000000005e01')?$select=id",
+  "note": "entra app get contoso-reports: its service principal",
+  "answer": {
+   "id": "00000000-0000-4000-8000-000000005e03"
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/auditLogs/directoryAudits?$filter=activityDateTime%20ge%202026-08-30T12%3A00%3A00Z%20and%20activityDateTime%20le%202026-09-29T12%3A00%3A00Z%20and%20targetResources%2Fany%28t%3A%20t%2Fid%20eq%20%2700000000-0000-4000-8000-000000005e02%27%29&$top=51",
+  "note": "entra audit list --target contoso-reports --since 30d: nobody touched it",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#auditLogs/directoryAudits",
+   "value": []
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/applications?$filter=displayName%20eq%20%27contoso-ado-dev%27&$select=id,appId,displayName,signInAudience,createdDateTime,passwordCredentials,keyCredentials,requiredResourceAccess&$top=11",
+  "note": "entra app get contoso-ado-dev",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#applications",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.application",
+     "id": "00000000-0000-4000-8000-000000005f02",
+     "appId": "00000000-0000-4000-8000-000000005f01",
+     "displayName": "contoso-ado-dev",
+     "signInAudience": "AzureADMyOrg",
+     "createdDateTime": "2026-02-02T11:00:00Z",
+     "passwordCredentials": [],
+     "keyCredentials": [],
+     "requiredResourceAccess": []
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/applications/00000000-0000-4000-8000-000000005f02/owners?$select=id,displayName,userPrincipalName,accountEnabled",
+  "note": "entra app get contoso-ado-dev: sam owns it",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.user",
+     "id": "00000000-0000-4000-8000-00000000e102",
+     "displayName": "Sam Lee",
+     "userPrincipalName": "sam@contoso.example",
+     "accountEnabled": true
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/applications/00000000-0000-4000-8000-000000005f02/federatedIdentityCredentials?$select=name,issuer,subject",
+  "note": "entra app get contoso-ado-dev: ADO's contoso-dev connection signs in by workload identity federation",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "id": "00000000-0000-4000-8000-000000005f0f",
+     "name": "sc-contoso-dev",
+     "issuer": "https://vstoken.dev.azure.com/00000000-0000-4000-8000-0000000ad001",
+     "subject": "sc://contoso/Fabrikam/contoso-dev",
+     "audiences": [
+      "api://AzureADTokenExchange"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/servicePrincipals(appId='00000000-0000-4000-8000-000000005f01')?$select=id",
+  "note": "entra app get contoso-ado-dev: its service principal",
+  "answer": {
+   "id": "00000000-0000-4000-8000-000000005f03"
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/servicePrincipals?$filter=displayName%20eq%20%27id-contoso-airflow%27&$select=id,appId,displayName,servicePrincipalType,accountEnabled,alternativeNames,appOwnerOrganizationId,appRoleAssignmentRequired,passwordCredentials,keyCredentials&$top=11",
+  "note": "entra serviceprincipal get id-contoso-airflow",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#servicePrincipals",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.servicePrincipal",
+     "id": "00000000-0000-4000-8000-00000000a1f2",
+     "appId": "00000000-0000-4000-8000-00000000a1f1",
+     "displayName": "id-contoso-airflow",
+     "servicePrincipalType": "ManagedIdentity",
+     "accountEnabled": true,
+     "alternativeNames": [
+      "isExplicit=True",
+      "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-airflow"
+     ],
+     "appOwnerOrganizationId": null,
+     "appRoleAssignmentRequired": false,
+     "passwordCredentials": [],
+     "keyCredentials": []
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/servicePrincipals?$filter=alternativeNames%2Fany%28x%3Ax%20eq%20%27%2Fsubscriptions%2F00000000-0000-4000-8000-000000005b01%2FresourceGroups%2Frg-contoso-prod%2Fproviders%2FMicrosoft.ManagedIdentity%2FuserAssignedIdentities%2Fid-contoso-airflow%27%29&$select=id,appId,displayName,servicePrincipalType,accountEnabled,alternativeNames,appOwnerOrganizationId,appRoleAssignmentRequired,passwordCredentials,keyCredentials",
+  "note": "entra serviceprincipal get by ARM id: the same identity",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.servicePrincipal",
+     "id": "00000000-0000-4000-8000-00000000a1f2",
+     "appId": "00000000-0000-4000-8000-00000000a1f1",
+     "displayName": "id-contoso-airflow",
+     "servicePrincipalType": "ManagedIdentity",
+     "accountEnabled": true,
+     "alternativeNames": [
+      "isExplicit=True",
+      "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-airflow"
+     ],
+     "appOwnerOrganizationId": null,
+     "appRoleAssignmentRequired": false,
+     "passwordCredentials": [],
+     "keyCredentials": []
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/servicePrincipals/00000000-0000-4000-8000-00000000a1f2/appRoleAssignments?$select=resourceId,resourceDisplayName,appRoleId",
+  "note": "entra serviceprincipal get id-contoso-airflow: no app roles",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": []
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/servicePrincipals/00000000-0000-4000-8000-00000000a1f2/oauth2PermissionGrants",
+  "note": "entra serviceprincipal get id-contoso-airflow: no delegated grants",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": []
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/servicePrincipals/00000000-0000-4000-8000-00000000a1f2/transitiveMemberOf?$select=id,displayName",
+  "note": "entra serviceprincipal get id-contoso-airflow: in no group (facts/lake.md)",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": []
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/servicePrincipals/00000000-0000-4000-8000-00000000a1f2/owners?$select=id,displayName,userPrincipalName,accountEnabled",
+  "note": "entra serviceprincipal get id-contoso-airflow: no owners",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": []
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/roleManagement/directory/roleDefinitions?$select=id,displayName",
+  "note": "entra role list: the role definitions, to name each role",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#roleManagement/directory/roleDefinitions",
+   "value": [
+    {
+     "id": "62e90394-69f5-4237-9190-012177145e10",
+     "displayName": "Global Administrator"
+    },
+    {
+     "id": "f2ef992c-3afb-46b9-b7cf-a126ee74c451",
+     "displayName": "Global Reader"
+    },
+    {
+     "id": "4a5d8f65-41da-4de4-8968-e035b65339cf",
+     "displayName": "Reports Reader"
+    },
+    {
+     "id": "5d6b6bb7-de71-4623-b4af-96380a352509",
+     "displayName": "Security Reader"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignments?$expand=principal&$filter=roleDefinitionId%20eq%20%2762e90394-69f5-4237-9190-012177145e10%27",
+  "note": "entra role list --role 'Global Administrator': dana alone",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#roleManagement/directory/roleAssignments",
+   "value": [
+    {
+     "id": "lAPpYvVpN0KRkAEhdxReEJvYJ2Q-a1",
+     "principalId": "00000000-0000-4000-8000-00000000e101",
+     "roleDefinitionId": "62e90394-69f5-4237-9190-012177145e10",
+     "directoryScopeId": "/",
+     "principal": {
+      "@odata.type": "#microsoft.graph.user",
+      "id": "00000000-0000-4000-8000-00000000e101",
+      "displayName": "Dana Reyes",
+      "userPrincipalName": "dana@contoso.example"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/me?$select=id,userPrincipalName,userType",
+  "note": "doctor entra: the az login, a member",
+  "answer": {
+   "@odata.type": "#microsoft.graph.user",
+   "id": "00000000-0000-4000-8000-0000000000e1",
+   "userPrincipalName": "ops@contoso.example",
+   "userType": "Member"
+  }
+ },
+ {
+  "request": "POST https://graph.microsoft.com/v1.0/directoryObjects/getByIds",
+  "note": "doctor entra: reads objects by id",
+  "body": {
+   "ids": [
+    "00000000-0000-4000-8000-0000000000e1"
+   ],
+   "types": [
+    "user",
+    "servicePrincipal"
+   ]
+  },
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#directoryObjects",
+   "value": [
+    {
+     "@odata.type": "#microsoft.graph.user",
+     "id": "00000000-0000-4000-8000-0000000000e1",
+     "displayName": "Contoso Ops",
+     "userPrincipalName": "ops@contoso.example"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/applications?$select=id&$top=1",
+  "note": "doctor entra: apps",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#applications",
+   "value": [
+    {
+     "id": "00000000-0000-4000-8000-000000005d02"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignments?$top=1",
+  "note": "doctor entra: directory roles",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#roleManagement/directory/roleAssignments",
+   "value": [
+    {
+     "id": "lAPpYvVpN0KRkAEhdxReEJvYJ2Q-a1",
+     "principalId": "00000000-0000-4000-8000-00000000e101",
+     "roleDefinitionId": "62e90394-69f5-4237-9190-012177145e10",
+     "directoryScopeId": "/"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/v1.0/auditLogs/directoryAudits?$top=1",
+  "note": "doctor entra: the audit log (ops is Reports Reader)",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#auditLogs/directoryAudits",
+   "value": []
+  }
+ },
+ {
+  "request": "GET https://graph.microsoft.com/beta/auditLogs/signIns?$filter=createdDateTime%20ge%202026-09-29T11:00:00Z&$top=1",
+  "note": "doctor entra: the sign-in log (P1)",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/beta/$metadata#auditLogs/signIns",
+   "value": []
+  }
+ }
+]

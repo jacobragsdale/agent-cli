@@ -41,7 +41,7 @@ hand it only to the people those credentials are for. Rebuild to change it.
 To build only some domains, name them: `--no-default-features --features
 sql,airflow,builtin-config` gives a binary with only `sql` and `airflow`.
 The features are the domain names (`ado`, `confluence`, `kv`, `acr`, `aks`,
-`aisearch`, `arm`, `net`, `lake`, `k8s`, `sql`, `airflow`, `controlm`, `dd`). The
+`aisearch`, `arm`, `net`, `lake`, `entra`, `k8s`, `sql`, `airflow`, `controlm`, `dd`). The
 config decides which databases, instances and environments the build
 reaches, so give each group its own file: one holding only the dev
 `[[airflow.instance]]` carries nothing for prod. Leave out the sections of
@@ -134,7 +134,7 @@ The credential row names where the token came from. A 401 means the token is
 wrong or expired; a project check that fails means a name under `project` is
 misspelled or belongs to another organization.
 
-## 4. Azure: Key Vault, Container Registry, AKS, AI Search and Data Lake (kv, acr, aks, aisearch, lake)
+## 4. Azure: Key Vault, Container Registry, AKS, AI Search, Data Lake and Entra ID (kv, acr, aks, aisearch, lake, entra)
 
 These sign in with the Azure CLI's login. Install `az`, then:
 
@@ -159,6 +159,7 @@ agent-cli doctor acr
 agent-cli doctor aks
 agent-cli doctor aisearch
 agent-cli doctor lake
+agent-cli doctor entra
 ```
 
 A failed `az login` check means the login expired: run `az login` again. A
@@ -191,6 +192,21 @@ account check that fails with a 403 names which is missing;
 `agent-cli lake access get PATH --principal @me` shows where an ACL stops
 you. An account reachable only through a private endpoint needs this
 machine to resolve its `privatelink` name (`agent-cli net endpoint list`).
+
+Entra ID reads the tenant your `az login` is in through Microsoft Graph,
+with the Azure CLI's own Graph token: nothing to configure, and nothing it
+sends writes. A member of the tenant can read users, groups, app
+registrations, service principals and directory roles by default; a guest
+cannot. The logs need more:
+
+| Commands | Needs |
+|---|---|
+| `entra audit list` | Reports Reader, Security Reader or Global Reader |
+| `entra signin list` | one of those roles (or Security Operator, Security Administrator), and Entra ID P1 or P2 on the tenant; Free keeps 7 days, P1 and P2 30 |
+
+`agent-cli doctor entra` tries one read of each kind and names what a
+refusal stops. Sign-ins of service principals and managed identities come
+from Graph's beta version, the only one that lists them.
 
 ## 5. Kubernetes (k8s), through AKS
 

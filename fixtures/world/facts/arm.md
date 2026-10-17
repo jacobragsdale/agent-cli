@@ -41,7 +41,8 @@ when you add a fact.
   client id) names it `aks-contoso-prod/web/notifier`; and
   `id-contoso-airflow` (client `…a1f1`, principal `…a1f2`), trusted for `system:serviceaccount:web:airflow-worker`, the
   Airflow task pods' identity (facts/lake.md).
-- Role assignments (`arm role list`): the group `…f001` is Contributor on
+- Role assignments (`arm role list`, each principal named by Graph as
+  facts/entra.md says): the group `…f001` (sg-contoso-platform) is Contributor on
   the subscription; the kubelet AcrPull on `contosoacr`; the CSI add-on Key
   Vault Secrets User on `kv-contoso-prod` (what the worker's secrets mount
   through); the notifier only Monitoring Metrics Publisher on

@@ -15,6 +15,7 @@ Every command also takes the globals `--fields a,b.c`, `--raw`, `--dry-run`, `--
 | [arm](arm.md) | Azure Resource Manager |
 | [net](net.md) | Azure networking |
 | [lake](lake.md) | Data Lake Storage |
+| [entra](entra.md) | Microsoft Entra ID |
 | [k8s](k8s.md) | Kubernetes |
 | [sql](sql.md) | SQL Server/Oracle |
 | [airflow](airflow.md) | Apache Airflow |

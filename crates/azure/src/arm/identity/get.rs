@@ -7,23 +7,15 @@ use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::arm::identity::IDENTITY;
+use crate::arm::identity::{Federated, IDENTITY, federated};
 use crate::arm::quote;
 use crate::arm::role::{Assignment, assignments};
-use crate::client::text;
+use crate::client::{guid, text};
 use crate::config::Azure;
-use crate::graph::rows;
 use crate::net::{Place, list, read};
 
 /// Microsoft.ManagedIdentity's stable api-version with federated credentials.
 const API: &str = "2023-01-31";
-
-/// Every AKS cluster's OIDC issuer, which a federated credential trusts.
-const ISSUERS: &str = "resources
-| where type =~ 'microsoft.containerservice/managedclusters'
-| project name, issuer = tostring(properties.oidcIssuerProfile.issuerURL)
-| where isnotempty(issuer)
-| order by name asc";
 
 #[derive(clap::Args)]
 pub struct IdentityGetArgs {
@@ -47,45 +39,6 @@ pub struct IdentityDetail {
     federated_credentials: Vec<Federated>,
     /// Its role assignments, each with the scope it is granted at.
     roles: Vec<Assignment>,
-}
-
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct Federated {
-    name: String,
-    issuer: Option<String>,
-    subject: Option<String>,
-    /// The k8s serviceaccount the subject is: `cluster/namespace/name` when the
-    /// issuer is an AKS cluster's in reach, else `namespace/name`.
-    serviceaccount: Option<String>,
-}
-
-/// A client id's shape: a GUID, which no identity name in the way of one is.
-fn guid(raw: &str) -> bool {
-    raw.len() == 36
-        && raw.char_indices().all(|(at, held)| match at {
-            8 | 13 | 18 | 23 => held == '-',
-            _ => held.is_ascii_hexdigit(),
-        })
-}
-
-/// The serviceaccount `subject` names, with the cluster whose issuer it is.
-fn serviceaccount(
-    issuer: Option<&str>,
-    subject: &str,
-    clusters: &[(String, String)],
-) -> Option<String> {
-    let rest = subject.strip_prefix("system:serviceaccount:")?;
-    let (namespace, name) = rest.split_once(':')?;
-    let same = |held: &str| {
-        issuer.is_some_and(|issuer| {
-            held.trim_end_matches('/')
-                .eq_ignore_ascii_case(issuer.trim_end_matches('/'))
-        })
-    };
-    Some(match clusters.iter().find(|(_, held)| same(held)) {
-        Some((cluster, _)) => format!("{cluster}/{namespace}/{name}"),
-        None => format!("{namespace}/{name}"),
-    })
 }
 
 fn identity_get(ctx: &Ctx, args: IdentityGetArgs) -> Result<IdentityDetail> {
@@ -123,17 +76,7 @@ fn identity_get(ctx: &Ctx, args: IdentityGetArgs) -> Result<IdentityDetail> {
         API,
         "arm identity list",
     )?;
-    let credentials = list(&credentials["value"]);
-    // ponytail: one Resource Graph query for every cluster's issuer; a
-    // cached map when identities are read in bulk.
-    let clusters: Vec<(String, String)> = if credentials.is_empty() {
-        Vec::new()
-    } else {
-        rows(ctx, &azure.subscriptions, ISSUERS, usize::MAX)?
-            .iter()
-            .filter_map(|row| Some((text(&row["name"])?, text(&row["issuer"])?)))
-            .collect()
-    };
+    let federated_credentials = federated(ctx, list(&credentials["value"]))?;
     let props = &identity["properties"];
     let principal_id = text(&props["principalId"]);
     let roles = match &principal_id {
@@ -147,21 +90,7 @@ fn identity_get(ctx: &Ctx, args: IdentityGetArgs) -> Result<IdentityDetail> {
         client_id: text(&props["clientId"]),
         principal_id,
         tenant_id: text(&props["tenantId"]),
-        federated_credentials: credentials
-            .iter()
-            .map(|held| {
-                let issuer = text(&held["properties"]["issuer"]);
-                let subject = text(&held["properties"]["subject"]);
-                Federated {
-                    name: text(&held["name"]).unwrap_or_default(),
-                    serviceaccount: subject
-                        .as_deref()
-                        .and_then(|subject| serviceaccount(issuer.as_deref(), subject, &clusters)),
-                    issuer,
-                    subject,
-                }
-            })
-            .collect(),
+        federated_credentials,
         roles,
     })
 }
@@ -179,40 +108,10 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use super::*;
     use crate::testing::{azure, inventory};
 
     const ID: &str = "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/rg-contoso/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso";
     const ISSUER: &str = "https://eastus.oic.prod-aks.azure.com/t/c/";
-
-    #[test]
-    fn a_subject_names_the_serviceaccount_with_its_cluster_when_the_issuer_is_one() {
-        let clusters = [("aks-contoso".to_owned(), ISSUER.to_owned())];
-        let subject = "system:serviceaccount:web:notifier";
-        assert_eq!(
-            serviceaccount(Some(ISSUER.trim_end_matches('/')), subject, &clusters).as_deref(),
-            Some("aks-contoso/web/notifier")
-        );
-        assert_eq!(
-            serviceaccount(
-                Some("https://token.actions.githubusercontent.com"),
-                subject,
-                &clusters
-            )
-            .as_deref(),
-            Some("web/notifier")
-        );
-        assert_eq!(
-            serviceaccount(
-                Some(ISSUER),
-                "repo:contoso/app:ref:refs/heads/main",
-                &clusters
-            ),
-            None
-        );
-        assert!(guid("00000000-0000-4000-8000-00000000b0f1"));
-        assert!(!guid("id-contoso"));
-    }
 
     #[test]
     fn a_client_id_finds_the_identity_and_its_credentials_and_roles_come_with_it() {

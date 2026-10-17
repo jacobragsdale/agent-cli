@@ -34,7 +34,7 @@ Each domain's facts are in `facts/`: [ado](facts/ado.md),
 [k8s](facts/k8s.md), [kv](facts/kv.md), [aks](facts/aks.md),
 [airflow](facts/airflow.md), [dd](facts/dd.md),
 [aisearch](facts/aisearch.md), [arm](facts/arm.md), [net](facts/net.md),
-[lake](facts/lake.md). They tie the domains together:
+[lake](facts/lake.md), [entra](facts/entra.md). They tie the domains together:
 the api image the cluster runs is the one the registry and the build hold, the
 worker crash-loops on the password Key Vault let expire, the nightly DAG's pod
 runs in the same namespace, Datadog alerted at the rollout, and the order the
@@ -94,6 +94,15 @@ agent-cli lake partition list contosolake/raw/sales/orders --fields id,rows,modi
 agent-cli lake table get contosolake/raw/sales/orders --fields schema,rows,bulk   # bulk: what Synapse's OPENROWSET reads
 ```
 
+The deploy connection that cannot sign in:
+
+```sh
+agent-cli ado serviceconnection get contoso-prod --fields app_id      # …5d01
+agent-cli entra signin list --principal 00000000-0000-4000-8000-000000005d01 --status failed --since 1d   # AADSTS7000222, key …5d0a
+agent-cli entra app get 00000000-0000-4000-8000-000000005d01          # …5d0a expired, …5d0b valid; next: its owner
+agent-cli entra audit list --target 00000000-0000-4000-8000-000000005d02 --since 30d   # dana added …5d0b on 09-18
+```
+
 ## Files
 
 ```
@@ -103,6 +112,7 @@ http/confluence.json Confluence Cloud answers (contoso.atlassian.net)
 http/azure.json   Resource Graph, Key Vault and ACR answers
 http/aisearch.json AI Search's data plane and its admin key (ARM)
 http/lake.json    Data Lake answers and Graph's groups, written with files/ by scripts/seed/lake.py
+http/entra.json   Microsoft Graph: users, groups, apps, service principals, logs, roles
 files/lake/       the Data Lake's Parquet files, which lake.json's body_file answers serve
 http/airflow.json Airflow's REST API (/api/v2 and /auth/token)
 http/dd.json      Datadog answers (api.datadoghq.eu)

@@ -28,7 +28,8 @@ here.
   2026-09-29 missing.
 - `curated/finance/ledger` (entry_id, account, amount DECIMAL(12,2),
   posted) has 120 rows in one file, written at 2026-09-29T02:15:03Z by the
-  finance close's identity `…a2f2`.
+  finance close's service principal `…a2f2` (contoso-finance-close in
+  facts/entra.md).
 - ACLs: each container root grants other `--x`; `/sales` and below grant
   Airflow's identity `id-contoso-airflow` (principal `…a1f2`, facts/arm.md)
   `rwx`; `/finance` grants it `r-x`, and `/finance/ledger` names only

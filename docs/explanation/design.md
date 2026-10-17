@@ -170,6 +170,18 @@ container or above grants and ACLs are never read; else each folder needs
 execute and the path read, for the principal, its groups (Graph) or other,
 under the mask.
 
+Entra is read through Microsoft Graph with the Azure CLI's Graph token,
+whose scopes (Directory.AccessAsUser.All, Group.ReadWrite.All …) would also
+write: only entra's door, which sends GETs and read-only POSTs, keeps it
+read-only. Every other domain prints object ids (`arm role list`'s
+principals, a lake ACL's entries, an identity's `client_id`), and entra
+takes each of them, an app's three GUIDs included (object id, app id, its
+service principal's id); `arm role list` names its principals from one
+`getByIds` a page, and a Graph refusal costs only the names. Graph cannot
+cast a collection without its lagging eventual index, so entra splits
+mixed collections by `@odata.type` itself, and a group's members are walked
+group by group, since `/transitiveMembers` cannot say through which group.
+
 Retention decides which way a question chains. Kubernetes keeps events for
 an hour, and a KubernetesExecutor task pod is deleted when it finishes, so
 "why did last night's run fail" goes from airflow to dd, whose logs last; the
@@ -198,6 +210,8 @@ Some words mean different things in different domains:
 | search | the built-in command search; Confluence's page search; an AI Search query | no domain takes the word: Confluence searches with `page list`, AI Search with `document list`, in the domain `aisearch` |
 | comment | a verb (`ado workitem comment`, `confluence page comment`); Confluence's resource (`comment list`) | the verb adds one, the resource reads them |
 | table | a SQL table or view (sql's `object`); a folder of Parquet files (lake's `table`) | `SHARED_WORDS`, with labeled queries for each reading |
+| group | an Azure resource group (arm's); an Entra group (entra's) | the domain word decides; arm keeps "resource group" and "rg", entra takes "security group", "ad group"; labeled queries for each reading |
+| role | an Azure RBAC role assignment (arm's); an Entra directory role (entra's) | the domain word decides; entra takes "global admin", "directory role"; labeled queries for each reading |
 
 A question that spans domains ("which build made prod's image") has no single
 right first command, so it belongs in a trial, not in `search.toml`.

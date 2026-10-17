@@ -79,7 +79,11 @@ fn the_notifier_identity_has_lost_its_key_vault_role_and_the_log_says_who() {
         "aks-contoso-prod/web/notifier"
     );
     let principal = identity["principal_id"].as_str().unwrap();
-    let roles = ok(&["arm", "role", "list", "--principal", principal]);
+    let mut roles = ok(&["arm", "role", "list", "--principal", principal]);
+    for role in roles.as_array_mut().unwrap() {
+        let name = role.as_object_mut().unwrap().remove("principal_name");
+        assert_eq!(name, Some("id-contoso-notifier".into()), "named from Graph");
+    }
     assert_eq!(roles, identity["roles"]);
     assert!(
         roles

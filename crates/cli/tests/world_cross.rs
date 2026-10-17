@@ -881,3 +881,72 @@ fn airflows_403_on_the_ledger_breaks_at_its_folder_and_no_data_role_saves_it() {
     assert_eq!(walked[1].code, 0, "{}", walked[1].stderr);
     assert_eq!(walked[1].json()[0]["role"], "Reader", "control plane only");
 }
+
+/// The sixth trace: the deploy service connection cannot sign in. ADO names
+/// the app it signs in as; its sign-ins fail with AADSTS7000222 presenting
+/// a secret that app get shows expired beside a newer one, whose owner its
+/// note names; the audit log says dana added that newer one, which never
+/// reached the connection.
+#[test]
+fn a_service_connection_that_cannot_sign_in_presents_the_secret_that_expired() {
+    let connection = ok(&[
+        "ado",
+        "serviceconnection",
+        "get",
+        "contoso-prod",
+        "--fields",
+        "app_id,scheme",
+    ]);
+    assert_eq!(connection["scheme"], "ServicePrincipal");
+    let app_id = connection["app_id"].as_str().unwrap();
+    let signins = ok(&[
+        "entra",
+        "signin",
+        "list",
+        "--principal",
+        app_id,
+        "--status",
+        "failed",
+        "--since",
+        "1d",
+        "--fields",
+        "when,error_code,key_id",
+    ]);
+    assert_eq!(
+        signins[2],
+        json!({"when": "2026-09-29T06:00:14Z", "error_code": 7000222,
+            "key_id": "00000000-0000-4000-8000-000000005d0a"})
+    );
+    let walked = follow(&["entra", "app", "get", app_id]);
+    assert_eq!(walked.len(), 2, "app get, then its owner");
+    let app = walked[0].json();
+    let presented = app["credentials"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|held| held["key_id"] == signins[0]["key_id"])
+        .unwrap();
+    assert_eq!(presented["expired"], true, "{app}");
+    assert_eq!(app["credentials"][1]["expired"], false, "{app}");
+    assert_eq!(walked[1].json()["upn"], "dana@contoso.example");
+    let audit = ok(&[
+        "entra",
+        "audit",
+        "list",
+        "--target",
+        app["id"].as_str().unwrap(),
+        "--since",
+        "30d",
+        "--fields",
+        "when,caller,changes",
+    ]);
+    assert_eq!(audit[0]["when"], "2026-09-18T15:20:41Z");
+    assert_eq!(audit[0]["caller"], "dana@contoso.example");
+    assert!(
+        audit[0]["changes"][0]["new"]
+            .as_str()
+            .unwrap()
+            .contains("00000000-0000-4000-8000-000000005d0b"),
+        "{audit}"
+    );
+}

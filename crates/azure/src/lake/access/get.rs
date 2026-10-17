@@ -6,15 +6,16 @@
 //! its groups (from Microsoft Graph), or other, under the mask; the owner
 //! gets the owning user's bits.
 
-use agent_cli_core::{Ctx, Failure, Request, command, host_under};
-use anyhow::{Context, Result, bail};
+use agent_cli_core::{Ctx, Failure, command};
+use anyhow::{Context, Result};
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::json;
 
 use crate::arm::resource::target;
 use crate::arm::role::assignments;
-use crate::client::{GRAPH, STORAGE, az_token, bearer, parallel, text};
+use crate::client::{STORAGE, claims, guid, parallel, text};
+use crate::entra::{Graph, V1};
 use crate::lake::{Lake, Ref, encoded};
 
 /// The built-in data roles by definition id, and whether each writes.
@@ -150,44 +151,13 @@ fn evaluate(
 
 /// The object id in the az login's token.
 fn me(ctx: &Ctx) -> Result<String> {
-    let token = az_token(ctx, STORAGE, false)?;
-    let payload = token
-        .expose()
-        .split('.')
-        .nth(1)
-        .and_then(base64url)
-        .and_then(|raw| serde_json::from_slice::<serde_json::Value>(&raw).ok());
-    payload
+    claims(ctx, STORAGE)?
         .and_then(|claims| text(&claims["oid"]))
         .ok_or_else(|| {
             Failure::setup("the az login's token names no object id")
                 .hint("pass --principal OBJECT_ID")
                 .into()
         })
-}
-
-fn base64url(raw: &str) -> Option<Vec<u8>> {
-    let mut out = Vec::new();
-    let (mut held, mut count) = (0_u32, 0);
-    for byte in raw.bytes() {
-        let value = match byte {
-            b'A'..=b'Z' => byte - b'A',
-            b'a'..=b'z' => byte - b'a' + 26,
-            b'0'..=b'9' => byte - b'0' + 52,
-            b'-' | b'+' => 62,
-            b'_' | b'/' => 63,
-            b'=' => break,
-            _ => return None,
-        };
-        held = held << 6 | u32::from(value);
-        count += 6;
-        if count >= 8 {
-            count -= 8;
-            out.push((held >> count) as u8);
-            held &= (1 << count) - 1;
-        }
-    }
-    Some(out)
 }
 
 /// Every group `principal` is in, transitively, from Microsoft Graph. For
@@ -197,37 +167,20 @@ fn base64url(raw: &str) -> Option<Vec<u8>> {
 // (a user's az token usually carries Directory.AccessAsUser.All).
 fn groups(ctx: &Ctx, principal: &str, me: bool) -> Result<Vec<String>> {
     let url = if me {
-        "https://graph.microsoft.com/v1.0/me/getMemberObjects".to_owned()
+        format!("{V1}/me/getMemberObjects")
     } else {
         format!(
-            "https://graph.microsoft.com/v1.0/directoryObjects/{}/getMemberObjects",
+            "{V1}/directoryObjects/{}/getMemberObjects",
             encoded(principal, false)
         )
     };
-    if !host_under(&url, "graph.microsoft.com") {
-        bail!("{url} is not Microsoft Graph; the Graph token is not sent there");
-    }
-    let mint = bearer(ctx, GRAPH);
-    let answer = ctx
-        .read(Request::query(&url, json!({"securityEnabledOnly": false})).auth(&mint))?
-        .json()?;
+    let answer = Graph::new(ctx).query(&url, json!({"securityEnabledOnly": false}))?;
     Ok(answer["value"]
         .as_array()
         .into_iter()
         .flatten()
         .filter_map(text)
         .collect())
-}
-
-fn guid(raw: &str) -> bool {
-    raw.len() == 36
-        && raw.char_indices().all(|(at, held)| {
-            if [8, 13, 18, 23].contains(&at) {
-                held == '-'
-            } else {
-                held.is_ascii_hexdigit()
-            }
-        })
 }
 
 fn access_get(ctx: &Ctx, args: AccessGetArgs) -> Result<AccessDetail> {
@@ -416,19 +369,6 @@ mod tests {
                 "r-x"
             ),
             ("r-x".into(), true)
-        );
-    }
-
-    #[test]
-    fn a_token_names_its_object_id() {
-        let claims = agent_cli_core::base64(format!(r#"{{"oid":"{ME}"}}"#).as_bytes());
-        let claims = claims
-            .trim_end_matches('=')
-            .replace('+', "-")
-            .replace('/', "_");
-        assert_eq!(
-            base64url(&claims).unwrap(),
-            format!(r#"{{"oid":"{ME}"}}"#).into_bytes()
         );
     }
 

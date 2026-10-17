@@ -37,7 +37,7 @@ any key, for example `AGENT_CLI_ADO_PROJECT=web`.
 |---|---|---|
 | ado | `[ado]` org, project, team | `pat`, else `AZURE_DEVOPS_EXT_PAT`, else your `az login` |
 | confluence | `[confluence]` url, email | an API token: `token` |
-| kv, acr, aks, aisearch, arm, net, lake | `[azure]` (optional allowlists) | your `az login` (aisearch: a token, or an admin key it fetches, per service; lake: a data role or ACLs) |
+| kv, acr, aks, aisearch, arm, net, lake, entra | `[azure]` (optional allowlists) | your `az login` (aisearch: a token, or an admin key it fetches, per service; lake: a data role or ACLs; entra: a member of the tenant, the logs a reader role) |
 | k8s | `[[k8s.scope]]` per cluster | your kubeconfig; `agent-cli aks cluster connect NAME` fetches it for AKS |
 | sql | `[[sql.connection]]` per database | `user` and `password` |
 | airflow | `[[airflow.instance]]` per server | `username` and `password`, or `token` |
@@ -90,7 +90,7 @@ role, a read-only database login, an Airflow Viewer.
 
 | Domain | Service | Commands |
 |---|---|---|
-| ado | Azure DevOps: work items, pull requests, pipelines, runs, approvals | 57 |
+| ado | Azure DevOps: work items, pull requests, pipelines, runs, approvals, service connections | 59 |
 | confluence | Confluence Cloud pages as Markdown, page trees, comments, attachments, versions | 14 |
 | kv | Key Vault secrets and versions (metadata; values only with `--reveal`) | 4 |
 | acr | Container Registry repositories, tags, manifests | 4 |
@@ -99,6 +99,7 @@ role, a read-only database login, an Airflow Viewer.
 | arm | Any Azure resource: Resource Graph lists and queries, ARM reads by id, activity log, changes, role assignments, managed identities, policy, metrics | 12 |
 | net | Azure vnets, subnets and their free IPs, NSG rules, NICs' effective rules and routes, route tables | 7 |
 | lake | Data Lake Storage Gen2: containers, folders, Parquet tables and partitions from footers, why a path is refused; queries go to Synapse through `sql` | 8 |
+| entra | Microsoft Entra ID through Graph: who an object id is, users, groups and nested members, app registrations and their expiring credentials, service principals and managed identities with their grants, sign-in and audit logs, directory roles (read-only) | 11 |
 | k8s | Kubernetes pods, logs, events, deployments, config maps, secrets | 14 |
 | sql | SQL Server, Oracle and Synapse serverless queries and catalog | 6 |
 | airflow | Apache Airflow 2.9+ and 3 DAGs, runs, task instances, logs, import errors | 21 |

@@ -868,3 +868,119 @@ expect = "lake access get"
 [[query]]
 text = "can this managed identity read the data lake folder"
 expect = "lake access get"
+
+
+# entra: Microsoft Entra ID. group and role are also arm's (resource groups,
+# RBAC); each reading has its queries.
+
+[[query]]
+text = "who is object id 00000000-0000-4000-8000-00000000a2f2"
+expect = "entra principal list"
+
+[[query]]
+text = "resolve these principal ids to names"
+expect = "entra principal list"
+
+[[query]]
+text = "whose object ids are these from the acl"
+expect = "entra principal list"
+
+[[query]]
+text = "show the entra user sam@contoso.example"
+expect = "entra user get"
+
+[[query]]
+text = "is this aad user account disabled and who is their manager"
+expect = "entra user get"
+
+[[query]]
+text = "which groups does sam belong to"
+expect = "entra group list"
+
+[[query]]
+text = "list aad groups starting with sg-contoso"
+expect = "entra group list"
+
+[[query]]
+text = "show the security group sg-contoso-platform and its owners"
+expect = "entra group get"
+
+[[query]]
+text = "what is the dynamic membership rule of the sre group"
+expect = "entra group get"
+
+[[query]]
+text = "who is in the platform group"
+expect = "entra member list"
+
+[[query]]
+text = "list members of the ad group including nested groups"
+expect = "entra member list"
+
+[[query]]
+text = "list resource groups"
+expect = "arm group list"
+
+[[query]]
+text = "which app registration secrets expire this month"
+expect = "entra app list"
+
+[[query]]
+text = "app registrations with expired client secrets"
+expect = "entra app list"
+
+[[query]]
+text = "show the app registration with its certificates and secrets"
+expect = "entra app get"
+
+[[query]]
+text = "show the app registration contoso-reports with its owners"
+expect = "entra app get"
+
+[[query]]
+text = "what app roles and api permissions was the managed identity granted"
+expect = "entra serviceprincipal get"
+
+[[query]]
+text = "show the enterprise app service principal and its api permissions"
+expect = "entra serviceprincipal get"
+
+[[query]]
+text = "show the managed identity id-contoso-airflow and its client id"
+expect = "arm identity get"
+
+[[query]]
+text = "why does the pipeline service principal fail to sign in"
+expect = "entra signin list"
+
+[[query]]
+text = "failed logins with AADSTS7000222"
+expect = "entra signin list"
+
+[[query]]
+text = "who added a credential to the app registration"
+expect = "entra audit list"
+
+[[query]]
+text = "who removed someone from the oncall group"
+expect = "entra audit list"
+
+[[query]]
+text = "who is global admin"
+expect = "entra role list"
+
+[[query]]
+text = "which directory roles does dana hold"
+expect = "entra role list"
+
+[[query]]
+text = "which principals have contributor on the subscription"
+expect = "arm role list"
+
+[[query]]
+text = "what was the service principal granted"
+expect = "entra serviceprincipal get"
+
+[[query]]
+text = "which principals are these guids"
+expect = "entra principal list"

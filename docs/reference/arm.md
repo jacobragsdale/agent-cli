@@ -113,7 +113,7 @@ agent-cli arm role list — List Azure role assignments (RBAC) for a principal o
   --principal str  Only this principal's: a user, group, service principal or managed identity's object id (arm identity get prints it as principal_id)
   --scope str      Only those that apply here, inherited from its group and subscription too: an ARM id, portal link or resource name
   --limit int      (default 50)
-Returns: [{id,principal_id,principal_type,role,scope,inherited}]
+Returns: [{id,principal_id,principal_name,principal_type,role,scope,inherited}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli arm role list --scope kv-contoso-prod --fields principal_id,role,inherited
 ```

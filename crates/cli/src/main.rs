@@ -27,6 +27,8 @@ const DOMAINS: &[Domain] = &[
     agent_cli_azure::NET,
     #[cfg(feature = "lake")]
     agent_cli_azure::LAKE,
+    #[cfg(feature = "entra")]
+    agent_cli_azure::ENTRA,
     #[cfg(feature = "k8s")]
     agent_cli_k8s::K8S,
     #[cfg(feature = "sql")]

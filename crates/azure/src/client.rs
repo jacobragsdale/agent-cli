@@ -23,7 +23,7 @@ pub(crate) const REGISTRY: &str = "https://containerregistry.azure.net";
 pub(crate) const SEARCH: &str = "https://search.azure.com";
 /// Storage's data plane (Data Lake, Blob), as `az storage --auth-mode login` asks.
 pub(crate) const STORAGE: &str = "https://storage.azure.com/";
-/// Microsoft Graph, for a principal's groups.
+/// Microsoft Graph: entra, and a principal's groups and names elsewhere.
 pub(crate) const GRAPH: &str = "https://graph.microsoft.com/";
 
 /// `az`'s token for `resource` (`Setup::with_token` stands in for it in tests).
@@ -259,6 +259,53 @@ pub(crate) fn decode(raw: &str) -> String {
         }
     }
     String::from_utf8_lossy(&out).into_owned()
+}
+
+/// A GUID's shape: an object id, an app (client) id or a tenant, which no
+/// name in the way of one is.
+pub(crate) fn guid(raw: &str) -> bool {
+    raw.len() == 36
+        && raw.char_indices().all(|(at, held)| match at {
+            8 | 13 | 18 | 23 => held == '-',
+            _ => held.is_ascii_hexdigit(),
+        })
+}
+
+/// The claims of the az login's token for `resource`, decoded here and
+/// never verified: who `@me` is (`oid`, `upn`) and what it may do (`scp`,
+/// `roles`). `None` when the token is no JWT.
+pub(crate) fn claims(ctx: &Ctx, resource: &str) -> Result<Option<Value>> {
+    let token = az_token(ctx, resource, false)?;
+    Ok(token
+        .expose()
+        .split('.')
+        .nth(1)
+        .and_then(base64url)
+        .and_then(|raw| serde_json::from_slice::<Value>(&raw).ok()))
+}
+
+fn base64url(raw: &str) -> Option<Vec<u8>> {
+    let mut out = Vec::new();
+    let (mut held, mut count) = (0_u32, 0);
+    for byte in raw.bytes() {
+        let value = match byte {
+            b'A'..=b'Z' => byte - b'A',
+            b'a'..=b'z' => byte - b'a' + 26,
+            b'0'..=b'9' => byte - b'0' + 52,
+            b'-' | b'+' => 62,
+            b'_' | b'/' => 63,
+            b'=' => break,
+            _ => return None,
+        };
+        held = held << 6 | u32::from(value);
+        count += 6;
+        if count >= 8 {
+            count -= 8;
+            out.push((held >> count) as u8);
+            held &= (1 << count) - 1;
+        }
+    }
+    Some(out)
 }
 
 /// A URL ARM handed back (a `Location` to poll), refused unless it is

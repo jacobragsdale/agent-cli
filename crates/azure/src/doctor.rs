@@ -1,4 +1,4 @@
-//! The overview's lines for kv, acr, aks, aisearch, arm, net and lake, and
+//! The overview's lines for kv, acr, aks, aisearch, arm, net, lake and entra, and
 //! `agent-cli doctor` for each.
 
 use agent_cli_core::{Check, Config, Ctx};
@@ -430,6 +430,117 @@ pub(crate) fn lake_doctor(ctx: &Ctx) -> Vec<Check> {
     checks
 }
 
+// ---------- entra ----------
+
+/// As arm's: the tenant is the login's, and nothing is configured.
+pub(crate) fn entra_status(config: &Config) -> String {
+    match config.section::<Azure>("azure") {
+        Ok(_) => String::new(),
+        Err(_) => "entra config broken".to_owned(),
+    }
+}
+
+/// The Graph token and what it says, then one cheap read for each kind of
+/// command, a refusal naming what the login lacks and the commands it stops.
+pub(crate) fn entra_doctor(ctx: &Ctx) -> Vec<Check> {
+    use crate::client::{GRAPH, claims, text};
+    use crate::entra::{BETA, Graph, V1};
+
+    if !ctx.config().has_section("azure") {
+        return Vec::new();
+    }
+    let mut checks = Vec::new();
+    if doctor_login(ctx, &mut checks, &[("graph token", GRAPH)]).is_none() {
+        return checks;
+    }
+    let claims = claims(ctx, GRAPH).ok().flatten().unwrap_or_default();
+    let who = text(&claims["upn"]).or_else(|| text(&claims["oid"]));
+    // An app-only login (a service principal's, a managed identity's) has
+    // roles and no scopes, and no /me.
+    let app_only = claims["scp"].is_null() && !claims["roles"].is_null();
+    checks.push(Check::ok(
+        "claims",
+        format!(
+            "tenant {}, signed in as {}, {}",
+            text(&claims["tid"]).unwrap_or_else(|| "unknown".to_owned()),
+            who.as_deref().unwrap_or("unknown"),
+            text(&claims["scp"])
+                .map(|scopes| format!("scopes {scopes}"))
+                .or_else(|| claims["roles"]
+                    .as_array()
+                    .map(|roles| format!("app roles {roles:?}")))
+                .unwrap_or_else(|| "no scopes named".to_owned()),
+        ),
+    ));
+    let graph = Graph::new(ctx);
+    let mut probe =
+        |check: &str, read: &dyn Fn() -> anyhow::Result<serde_json::Value>, hint: &str| {
+            let started = std::time::Instant::now();
+            checks.push(match read() {
+                Ok(_) => Check::ok(
+                    check,
+                    format!("answered in {} ms", started.elapsed().as_millis()),
+                ),
+                Err(error) => Check::failed(check, format!("{error:#}"), hint),
+            });
+        };
+    if !app_only {
+        probe(
+            "member",
+            &|| {
+                let me = graph.get(&format!("{V1}/me?$select=id,userPrincipalName,userType"))?;
+                if me["userType"] == "Guest" {
+                    anyhow::bail!("the login is a guest, who cannot read the directory");
+                }
+                Ok(me)
+            },
+            "sign in as a member of the tenant: az login --tenant TENANT",
+        );
+    }
+    if let Some(oid) = text(&claims["oid"]) {
+        probe(
+            "objects by id",
+            &|| {
+                Ok(serde_json::Value::Array(graph.by_ids(
+                    std::slice::from_ref(&oid),
+                    &["user", "servicePrincipal"],
+                )?))
+            },
+            "`agent-cli entra principal list` and the names in `agent-cli arm role list` need Directory.Read.All or a member's rights",
+        );
+    }
+    probe(
+        "applications",
+        &|| graph.get(&format!("{V1}/applications?$top=1&$select=id")),
+        "`agent-cli entra app list` and `agent-cli entra app get` need Application.Read.All or a member's rights",
+    );
+    probe(
+        "directory roles",
+        &|| {
+            graph.get(&format!(
+                "{V1}/roleManagement/directory/roleAssignments?$top=1"
+            ))
+        },
+        "`agent-cli entra role list` needs RoleManagement.Read.Directory or a member's rights",
+    );
+    probe(
+        "audit log",
+        &|| graph.get(&format!("{V1}/auditLogs/directoryAudits?$top=1")),
+        "`agent-cli entra audit list` needs Reports Reader, Security Reader or Global Reader",
+    );
+    let hour = agent_cli_core::utc_time(agent_cli_core::now() - time::Duration::hours(1));
+    probe(
+        "sign-in log",
+        &|| {
+            graph.get(&format!(
+                "{BETA}/auditLogs/signIns?$filter=createdDateTime%20ge%20{hour}&$top=1"
+            ))
+        },
+        "`agent-cli entra signin list` needs Entra ID P1 or P2 and Reports Reader, Security Reader or Global Reader",
+    );
+    checks
+}
+
 #[cfg(test)]
 mod tests {
     use agent_cli_core::testing::Answer;
@@ -675,5 +786,64 @@ mod tests {
             "aisearch 2 services"
         );
         assert_eq!(aisearch_status(&config("")), "aisearch all services");
+    }
+
+    #[test]
+    fn doctor_entra_names_the_commands_a_missing_role_or_licence_stops() {
+        let refused = |message: &str| {
+            Answer::status(
+                403,
+                format!(
+                    r#"{{"error":{{"code":"Authorization_RequestDenied","message":"{message}"}}}}"#
+                ),
+            )
+        };
+        let (ctx, transport) = testing::doctor_ctx(
+            vec![
+                Answer::json(
+                    &json!({"id": "u", "userPrincipalName": "ops@contoso.example", "userType": "Member"}),
+                ),
+                Answer::json(&json!({"value": []})),
+                Answer::json(&json!({"value": []})),
+                refused("User isn't in the allowed roles."),
+                refused("Neither tenant is B2C or tenant doesn't have premium license"),
+            ],
+            "[azure]\n",
+        );
+        let checks = entra_doctor(&ctx);
+        assert_eq!(
+            testing::rows(&checks),
+            [
+                ("az login".to_owned(), true),
+                ("graph token".to_owned(), true),
+                ("claims".to_owned(), true),
+                ("member".to_owned(), true),
+                ("applications".to_owned(), true),
+                ("directory roles".to_owned(), true),
+                ("audit log".to_owned(), false),
+                ("sign-in log".to_owned(), false),
+            ]
+        );
+        assert!(
+            checks[6]
+                .hint
+                .as_deref()
+                .unwrap()
+                .contains("`agent-cli entra audit list`")
+        );
+        assert!(checks[7].hint.as_deref().unwrap().contains("P1 or P2"));
+        assert!(
+            transport.sent()[4].url.starts_with(
+                "https://graph.microsoft.com/beta/auditLogs/signIns?$filter=createdDateTime%20ge%20"
+            ),
+            "{}",
+            transport.sent()[4].url
+        );
+        let config = |toml: &str| Config::parse("c.toml", Some(toml), Vec::new());
+        assert_eq!(entra_status(&config("[azure]\n")), "");
+        assert_eq!(
+            entra_status(&config("[azure]\nvault = 1\n")),
+            "entra config broken"
+        );
     }
 }

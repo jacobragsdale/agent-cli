@@ -1,8 +1,8 @@
 //! The Azure domains of agent-cli: Key Vault secrets, keys and
 //! certificates (`kv`), container registry images and builds (`acr`) and
 //! AKS clusters (`aks`), ported from az-tui, Azure AI Search (`aisearch`),
-//! any ARM resource (`arm`), virtual networks (`net`), and Data Lake
-//! Storage Gen2 (`lake`).
+//! any ARM resource (`arm`), virtual networks (`net`), Data Lake
+//! Storage Gen2 (`lake`), and Microsoft Entra ID through Graph (`entra`).
 //!
 //! There is no Azure SDK and no credential of our own. Each plane gets an
 //! `az` token for its own audience (or, for an AI Search service that takes
@@ -26,6 +26,7 @@ mod arm;
 mod client;
 mod config;
 mod doctor;
+mod entra;
 mod graph;
 mod kv;
 mod lake;
@@ -260,6 +261,56 @@ pub const LAKE: Domain = Domain {
     doctor: doctor::lake_doctor,
 };
 
+pub const ENTRA: Domain = Domain {
+    name: "entra",
+    summary: "Microsoft Entra ID",
+    commands: &[
+        entra::principal::list::PRINCIPAL_LIST,
+        entra::user::get::USER_GET,
+        entra::group::list::GROUP_LIST,
+        entra::group::get::GROUP_GET,
+        entra::member::list::MEMBER_LIST,
+        entra::app::list::APP_LIST,
+        entra::app::get::APP_GET,
+        entra::serviceprincipal::get::SERVICEPRINCIPAL_GET,
+        entra::signin::list::SIGNIN_LIST,
+        entra::audit::list::AUDIT_LIST,
+        entra::role::list::ROLE_LIST,
+    ],
+    synonyms: &[
+        ("aad", &["entra"]),
+        ("azure ad", &["entra"]),
+        ("active directory", &["entra"]),
+        ("entra id", &["entra"]),
+        ("microsoft graph", &["entra"]),
+        ("service principal", &["serviceprincipal"]),
+        ("spn", &["serviceprincipal"]),
+        ("enterprise app", &["serviceprincipal"]),
+        ("app registration", &["app"]),
+        ("app registrations", &["app"]),
+        ("client secret", &["app", "credentials"]),
+        ("sign", &["signin"]),
+        ("signins", &["signin"]),
+        ("login", &["signin"]),
+        ("logins", &["signin"]),
+        ("aadsts", &["signin", "error_code"]),
+        ("audit log", &["audit"]),
+        ("who added", &["audit"]),
+        ("who removed", &["audit"]),
+        ("security group", &["group"]),
+        ("ad group", &["group"]),
+        ("aad group", &["group"]),
+        ("m365 group", &["group"]),
+        ("members", &["member"]),
+        ("global admin", &["role"]),
+        ("global administrator", &["role"]),
+        ("directory role", &["role"]),
+        ("admin role", &["role"]),
+    ],
+    status: doctor::entra_status,
+    doctor: doctor::entra_doctor,
+};
+
 #[cfg(test)]
 mod tests {
     use agent_cli_core::{check_layout, check_registry};
@@ -268,7 +319,7 @@ mod tests {
 
     #[test]
     fn the_registry_keeps_every_rule() {
-        let domains = [KV, ACR, AKS, AISEARCH, ARM, NET, LAKE];
+        let domains = [KV, ACR, AKS, AISEARCH, ARM, NET, LAKE, ENTRA];
         assert_eq!(check_registry(&domains), Vec::<String>::new());
         assert_eq!(check_layout(&domains), Vec::<String>::new());
     }

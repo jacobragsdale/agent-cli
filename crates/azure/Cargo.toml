@@ -1,6 +1,6 @@
 [package]
 name = "agent-cli-azure"
-description = "The Azure domains of agent-cli: kv, acr, aks, aisearch, arm, net and lake"
+description = "The Azure domains of agent-cli: kv, acr, aks, aisearch, arm, net, lake and entra"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
