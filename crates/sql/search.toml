@@ -111,3 +111,18 @@ expect = "sql query run"
 text = "select from adls parquet files with openrowset in synapse"
 expect = "sql query run"
 
+[[query]]
+text = "compare the orders table in qa and prod databases"
+expect = "sql object diff"
+
+[[query]]
+text = "does the stored procedure differ between the two databases"
+expect = "sql object diff"
+
+[[query]]
+text = "did the migration run everywhere, compare the dbo schema in qa and prod"
+expect = "sql schema diff"
+
+[[query]]
+text = "compare two database schemas"
+expect = "sql schema diff"

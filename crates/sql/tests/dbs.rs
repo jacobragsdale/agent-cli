@@ -976,3 +976,150 @@ fn oracle_bench_stops_at_the_deadline_and_says_how_far_it_got() {
             .contains("of 100 runs at the --timeout deadline")
     );
 }
+
+// ---------- diff ----------
+
+/// A second schema drifted from `bench`: `orders.status` wider with a
+/// default, a `retry_count` column the migration added, and the procedure
+/// reordered; a comment and keyword case that do not count.
+const DRIFT: &str = "IF SCHEMA_ID('bench_drift') IS NULL EXEC('CREATE SCHEMA bench_drift');
+GO
+IF OBJECT_ID('bench_drift.orders') IS NULL
+CREATE TABLE bench_drift.orders (
+    id          int           NOT NULL PRIMARY KEY,
+    customer_id int           NOT NULL REFERENCES bench.customers(id),
+    ordered_at  datetime2     NOT NULL,
+    status      varchar(30)   NOT NULL DEFAULT 'NEW',
+    total       decimal(12,2) NOT NULL,
+    retry_count int           NOT NULL DEFAULT 0
+);
+GO
+CREATE OR ALTER PROCEDURE bench_drift.sp_customer_orders @customer_id int AS
+BEGIN
+    SET NOCOUNT ON;
+    -- the newest first
+    select id, ordered_at, status, total
+    FROM bench.orders
+    WHERE customer_id = @customer_id
+    ORDER BY ordered_at DESC;
+END;
+GO";
+
+#[test]
+fn mssql_a_drifted_schema_differs_by_columns_defaults_and_a_procedures_order() {
+    if !wanted() {
+        return;
+    }
+    let made = sql(&[
+        "sql",
+        "query",
+        "run",
+        "--conn",
+        "local-mssql",
+        DRIFT,
+        "--yes",
+    ]);
+    assert_eq!(made.code, 0, "{made:?}");
+    let table = sql(&[
+        "sql",
+        "object",
+        "diff",
+        "local-mssql:bench.orders",
+        "local-mssql:bench_drift.orders",
+    ]);
+    assert_eq!(table.code, 0, "{table:?}");
+    let changes = table.json()["changes"].clone();
+    assert!(
+        changes
+            .as_array()
+            .unwrap()
+            .contains(&json!({"path": "columns.status.type",
+            "left": "varchar(20)", "right": "varchar(30)"})),
+        "{changes}"
+    );
+    assert!(
+        changes
+            .as_array()
+            .unwrap()
+            .contains(&json!({"path": "columns.status.default",
+            "right": "('NEW')"})),
+        "{changes}"
+    );
+    assert_eq!(
+        changes
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|change| change["path"] == "columns.retry_count")
+            .count(),
+        1,
+        "{changes}"
+    );
+    let procedure = sql(&[
+        "sql",
+        "object",
+        "diff",
+        "local-mssql:bench.sp_customer_orders",
+        "local-mssql:bench_drift.sp_customer_orders",
+    ]);
+    assert_eq!(procedure.code, 0, "{procedure:?}");
+    let lines = procedure.json()["changes"][0]["lines"].to_string();
+    assert!(lines.contains("+    ORDER BY ordered_at DESC;"), "{lines}");
+    assert!(
+        !lines.contains("-    SELECT id"),
+        "case and comments count only with --exact: {lines}"
+    );
+    let schemas = sql(&[
+        "sql",
+        "schema",
+        "diff",
+        "local-mssql:bench",
+        "local-mssql:bench_drift",
+        "--limit",
+        "200",
+    ]);
+    assert_eq!(schemas.code, 0, "{schemas:?}");
+    let paths: Vec<String> = schemas.json()["changes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|change| change["path"].as_str().unwrap().to_owned())
+        .collect();
+    assert!(
+        paths.contains(&"orders.columns.retry_count".to_owned()),
+        "{paths:?}"
+    );
+    assert!(paths.contains(&"customers".to_owned()), "{paths:?}");
+}
+
+#[test]
+fn oracle_a_table_against_itself_is_the_same_and_sql_server_is_refused() {
+    if !wanted() {
+        return;
+    }
+    let same = sql(&[
+        "sql",
+        "object",
+        "diff",
+        "local-oracle:bench.orders",
+        "local-oracle:bench.orders",
+    ]);
+    assert_eq!(same.code, 0, "{same:?}");
+    assert_eq!(same.json()["same"], true);
+    let package = sql(&[
+        "sql",
+        "object",
+        "diff",
+        "local-oracle:bench.order_pkg",
+        "local-oracle:bench.order_pkg",
+    ]);
+    assert_eq!(package.json()["same"], true, "{package:?}");
+    let refused = sql(&[
+        "sql",
+        "object",
+        "diff",
+        "local-oracle:bench.orders",
+        "local-mssql:bench.orders",
+    ]);
+    assert_eq!(refused.code, 2, "{refused:?}");
+}

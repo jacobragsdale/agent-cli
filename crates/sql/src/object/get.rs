@@ -7,9 +7,8 @@ use serde::Serialize;
 use serde_json::json;
 
 use crate::catalog::{
-    ColumnInfo, Filter, Name, ObjectKind, ObjectRow, columns_sql, object_name, objects_sql,
-    parse_columns, parse_objects, parse_source, rows, sequence_ddl, sequence_sql, source_sql,
-    table_ddl,
+    ColumnInfo, ObjectKind, ObjectRow, columns_sql, object_name, parse_columns, parse_source, rows,
+    sequence_ddl, sequence_sql, source_sql, table_ddl,
 };
 use crate::config::Sql;
 use crate::db::{OnConnection, Session};
@@ -50,16 +49,6 @@ fn object_get(ctx: &Ctx, args: ObjectGetArgs) -> Result<Object> {
     })?;
     let sql = Sql::load(ctx.config())?;
     let spec = sql.connection(args.conn.as_deref())?;
-    let backend = spec.kind;
-    let lookup = objects_sql(
-        backend,
-        &Filter {
-            schema: Some(&schema),
-            kind: None,
-            name: Some(Name::Exact(&name)),
-            limit: None,
-        },
-    );
     let plan = json!({"conn": spec.name, "read": "object", "object": args.object});
     let op = OnConnection {
         spec,
@@ -68,24 +57,8 @@ fn object_get(ctx: &Ctx, args: ObjectGetArgs) -> Result<Object> {
         plan,
         writes: false,
         work: |session: &mut Session| {
-            let found = parse_objects(backend, &rows(session, &lookup, ctx)?);
-            // Exact first: on a case-sensitive collation two objects can
-            // differ by nothing else.
-            let found = found
-                .iter()
-                .find(|object| object.name == name)
-                .or_else(|| found.first());
-            let Some(found) = found else {
-                return Err(Failure::not_found(format!(
-                    "no table, view, procedure, function, package or sequence {schema}.{name}"
-                ))
-                .hint(format!(
-                    "agent-cli sql object list --conn {} {name} --fields id,kind",
-                    spec.name
-                ))
-                .into());
-            };
-            describe(session, found, ctx)
+            let found = super::find(session, &spec.name, &schema, &name, ctx)?;
+            describe(session, &found, ctx)
         },
     };
     ctx.read(op)

@@ -28,7 +28,9 @@ pub const DOMAIN: Domain = Domain {
         query::bench::QUERY_BENCH,
         object::list::OBJECT_LIST,
         object::get::OBJECT_GET,
+        object::diff::OBJECT_DIFF,
         schema::list::SCHEMA_LIST,
+        schema::diff::SCHEMA_DIFF,
         connection::list::CONNECTION_LIST,
     ],
     synonyms: &[

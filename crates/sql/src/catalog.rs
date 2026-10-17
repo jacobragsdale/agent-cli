@@ -8,6 +8,8 @@
 //! and an exact match wins. Names reach the SQL as quoted literals
 //! ([`quoted`]), never as code.
 
+mod detail;
+
 use std::borrow::Cow;
 
 use agent_cli_core::Ctx;
@@ -18,6 +20,11 @@ use serde_json::{Value, json};
 
 use crate::config::{Kind, Sql};
 use crate::db::{Fetch, OnConnection, Session, maybe, text, whole};
+
+pub(crate) use detail::{
+    TableRows, constraints_sql, extras_sql, indexes_sql, schema_columns_sql, schema_sources_sql,
+    sequence_ddl, sequence_sql, table_row, triggers_sql,
+};
 
 /// What kind of thing an object is. `package` is Oracle's alone.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum, Serialize, JsonSchema)]
@@ -408,64 +415,6 @@ pub(crate) fn table_ddl(backend: Kind, schema: &str, name: &str, columns: &[Colu
         qualified(backend, schema, name),
         lines.join(",\n")
     )
-}
-
-/// A sequence's settings as text, so the DDL needs no number rules.
-pub(crate) fn sequence_sql(backend: Kind, schema: &str, name: &str) -> String {
-    match backend {
-        Kind::Mssql => format!(
-            "select type_name(q.user_type_id), cast(q.start_value as varchar(40)), \
-                    cast(q.increment as varchar(40)), cast(q.minimum_value as varchar(40)), \
-                    cast(q.maximum_value as varchar(40)), q.is_cycling, \
-                    cast(q.current_value as varchar(40)) \
-             from sys.sequences q join sys.schemas s on s.schema_id = q.schema_id \
-             where s.name = {} and q.name = {}",
-            quoted(schema),
-            quoted(name),
-        ),
-        Kind::Oracle => format!(
-            "select to_char(min_value), to_char(max_value), to_char(increment_by), \
-                    cycle_flag, to_char(last_number) \
-             from all_sequences where sequence_owner = {} and sequence_name = {}",
-            quoted(schema),
-            quoted(name),
-        ),
-    }
-}
-
-/// `CREATE SEQUENCE` as it stands now: Oracle's `START WITH` is its
-/// `LAST_NUMBER`, the next value a new cache would begin at, the way
-/// `DBMS_METADATA` writes it; SQL Server's current value follows as a note.
-pub(crate) fn sequence_ddl(backend: Kind, schema: &str, name: &str, row: &[Value]) -> String {
-    let qualified = qualified(backend, schema, name);
-    match backend {
-        Kind::Mssql => format!(
-            "CREATE SEQUENCE {qualified} AS {} START WITH {} INCREMENT BY {} MINVALUE {} MAXVALUE {} {}\n-- current value {}",
-            text(row, 0),
-            text(row, 1),
-            text(row, 2),
-            text(row, 3),
-            text(row, 4),
-            if row.get(5) == Some(&Value::Bool(true)) {
-                "CYCLE"
-            } else {
-                "NO CYCLE"
-            },
-            text(row, 6),
-        ),
-        Kind::Oracle => format!(
-            "CREATE SEQUENCE {qualified} START WITH {} INCREMENT BY {} MINVALUE {} MAXVALUE {} {}",
-            text(row, 4),
-            text(row, 2),
-            text(row, 0),
-            text(row, 1),
-            if text(row, 3) == "Y" {
-                "CYCLE"
-            } else {
-                "NOCYCLE"
-            },
-        ),
-    }
 }
 
 /// The `ALL_USERS` predicate for "a schema somebody here made": Oracle

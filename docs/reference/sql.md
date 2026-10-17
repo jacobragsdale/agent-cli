@@ -1,4 +1,4 @@
-# sql — SQL Server/Oracle (6 commands)
+# sql — SQL Server/Oracle (8 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -6,7 +6,9 @@
 | [`sql query bench`](#sql-query-bench) | read or write | Time a query over several runs: connect, first row and total latency |
 | [`sql object list`](#sql-object-list) | read | List tables and views, procedures, functions, packages and sequences |
 | [`sql object get`](#sql-object-get) | read | Show a view, procedure, function or package's source, or a table's columns |
+| [`sql object diff`](#sql-object-diff) | read | Compare a table or procedure in two databases: columns, keys, indexes, source |
 | [`sql schema list`](#sql-schema-list) | read | List the schemas (owners) of a database |
+| [`sql schema diff`](#sql-schema-diff) | read | Compare two schemas: objects on one side only, table columns, procedure source |
 | [`sql connection list`](#sql-connection-list) | read | List the configured database connections (never their passwords) |
 
 ### sql query run
@@ -61,6 +63,23 @@ Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli sql object get --conn local-mssql bench.customers --fields kind,columns,ddl
 ```
 
+### sql object diff
+
+```text
+agent-cli sql object diff — Compare a table or procedure in two databases: columns, keys, indexes, source
+ *<left> str      One side: [CONN:]schema.name (qa:dbo.orders); no prefix is --conn's
+ *<right> str     The other side, as left
+  --conn str      Connection name from `sql connection list`; defaults to the only one
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli sql object diff qa:dbo.orders prod:dbo.orders
+```
+
 ### sql schema list
 
 ```text
@@ -70,6 +89,23 @@ agent-cli sql schema list — List the schemas (owners) of a database
 Returns: [str]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli sql schema list --conn local-mssql
+```
+
+### sql schema diff
+
+```text
+agent-cli sql schema diff — Compare two schemas: objects on one side only, table columns, procedure source
+ *<left> str      One side: [CONN:]SCHEMA (qa:dbo); no prefix is --conn's
+ *<right> str     The other side, as left
+  --conn str      Connection name from `sql connection list`; defaults to the only one
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli sql schema diff qa:dbo prod:dbo
 ```
 
 ### sql connection list
