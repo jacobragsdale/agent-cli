@@ -1,4 +1,4 @@
-# k8s — Kubernetes (55 commands)
+# k8s — Kubernetes (66 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -10,10 +10,13 @@
 | [`k8s event list`](#k8s-event-list) | read | List Kubernetes events, newest first: warnings, back-offs, failed pulls |
 | [`k8s service list`](#k8s-service-list) | read | List Kubernetes services: type, cluster IP, external IP, ports, ready endpoints |
 | [`k8s service get`](#k8s-service-get) | read | Show a Kubernetes service: ports, endpoint pods and IPs, or what leaves it empty |
+| [`k8s service diff`](#k8s-service-diff) | read | Compare two services across environments: type, ports, selector |
 | [`k8s ingress list`](#k8s-ingress-list) | read | List ingresses: the hosts each serves, class, TLS secrets, address |
 | [`k8s ingress get`](#k8s-ingress-get) | read | Show an ingress: each host and path's service and ready endpoints, TLS secrets |
+| [`k8s ingress diff`](#k8s-ingress-diff) | read | Compare two ingresses across environments: class, hosts, paths, TLS |
 | [`k8s networkpolicy list`](#k8s-networkpolicy-list) | read | List network policies, or those that apply to one pod: selector, default deny |
 | [`k8s networkpolicy get`](#k8s-networkpolicy-get) | read | Show a network policy's rules in words: peers, ports, and the pods it selects |
+| [`k8s networkpolicy diff`](#k8s-networkpolicy-diff) | read | Compare two network policies across environments: selectors and rules |
 | [`k8s pvc list`](#k8s-pvc-list) | read | List persistent volume claims: status, size, storage class, pods mounting each |
 | [`k8s pvc get`](#k8s-pvc-get) | read | Show a volume claim: Azure disk or share, class, attachment, mounts, events |
 | [`k8s pv list`](#k8s-pv-list) | read | List persistent volumes: claim, capacity, reclaim policy, Azure disk or share |
@@ -21,22 +24,27 @@
 | [`k8s storageclass list`](#k8s-storageclass-list) | read | List storage classes: default, provisioner, SKU, binding mode, volume expansion |
 | [`k8s deployment list`](#k8s-deployment-list) | read | List deployments: ready pods, images with tag and digest, when they rolled out |
 | [`k8s deployment get`](#k8s-deployment-get) | read | Describe a deployment: revision history, strategy, conditions, env, probes |
+| [`k8s deployment diff`](#k8s-deployment-diff) | read | Compare two deployments across environments, or one with its previous revision |
 | [`k8s deployment restart`](#k8s-deployment-restart) | destructive | Restart a deployment, replacing its pods one at a time |
 | [`k8s deployment scale`](#k8s-deployment-scale) | destructive | Scale a deployment to a number of replicas |
 | [`k8s deployment update`](#k8s-deployment-update) | destructive | Roll a deployment back to an earlier version of its pod template |
 | [`k8s deployment wait`](#k8s-deployment-wait) | read | Wait for a rollout: exit 0 once rolled out, 1 if it failed, 124 if still going |
 | [`k8s statefulset list`](#k8s-statefulset-list) | read | List statefulsets: ready pods, images, volume claim templates |
 | [`k8s statefulset get`](#k8s-statefulset-get) | read | Describe a statefulset: revisions, partition, each pod's volume claim, events |
+| [`k8s statefulset diff`](#k8s-statefulset-diff) | read | Compare two statefulsets across environments: pod template, replicas, claims |
 | [`k8s statefulset restart`](#k8s-statefulset-restart) | destructive | Restart a statefulset, replacing its pods one at a time from the highest |
 | [`k8s statefulset scale`](#k8s-statefulset-scale) | destructive | Scale a statefulset to a number of replicas |
 | [`k8s daemonset list`](#k8s-daemonset-list) | read | List daemonsets, kube-system's too: desired, ready, unavailable per node |
 | [`k8s daemonset get`](#k8s-daemonset-get) | read | Describe a daemonset, kube-system's too: unready pods, update strategy, events |
+| [`k8s daemonset diff`](#k8s-daemonset-diff) | read | Compare two daemonsets across environments (CNI, agents): pod template, strategy |
 | [`k8s daemonset restart`](#k8s-daemonset-restart) | destructive | Restart a daemonset, replacing its pod on each node in turn |
 | [`k8s job list`](#k8s-job-list) | read | List jobs: status, completions, failures, duration, the cronjob that made each |
 | [`k8s job get`](#k8s-job-get) | read | Show why a job failed: its tries, conditions, the cronjob behind it, events |
+| [`k8s job diff`](#k8s-job-diff) | read | Compare two jobs (a failed run and a good one): image, node, duration, exit code |
 | [`k8s job delete`](#k8s-job-delete) | destructive | Delete a job and its pods, stopping it if it still runs |
 | [`k8s cronjob list`](#k8s-cronjob-list) | read | List cronjobs: schedule, time zone, suspended, last run and last success |
 | [`k8s cronjob get`](#k8s-cronjob-get) | read | Describe a cronjob: recent runs with status, why one did not run |
+| [`k8s cronjob diff`](#k8s-cronjob-diff) | read | Compare two cronjobs across environments: schedule, suspend, limits, template |
 | [`k8s cronjob run`](#k8s-cronjob-run) | write | Run a cronjob now, as a job made from its template, off its schedule |
 | [`k8s hpa list`](#k8s-hpa-list) | read | List autoscalers: min, max, current and desired replicas, metrics vs target |
 | [`k8s pdb list`](#k8s-pdb-list) | read | List disruption budgets (PDBs): allowed disruptions; 0 blocks drains, upgrades |
@@ -50,13 +58,16 @@
 | [`k8s access list`](#k8s-access-list) | read | List what RBAC allows you or a service account to do in a namespace (auth can-i) |
 | [`k8s configmap list`](#k8s-configmap-list) | read | List configmaps and their keys |
 | [`k8s configmap get`](#k8s-configmap-get) | read | Show a configmap's keys and values (binary keys show their size only) |
+| [`k8s configmap diff`](#k8s-configmap-diff) | read | Compare two configmaps across environments: keys, values, files by lines |
 | [`k8s secret list`](#k8s-secret-list) | read | List Kubernetes secrets: type, key names and sizes (never values) |
 | [`k8s secret get`](#k8s-secret-get) | reveal | Decode one key of a Kubernetes secret (needs --reveal, or --output FILE) |
+| [`k8s secret diff`](#k8s-secret-diff) | read | Compare two Kubernetes secrets: keys, type, each value same or not (never shown) |
 | [`k8s context list`](#k8s-context-list) | read | List the configured cluster scopes and whether kubectl knows each context |
 | [`k8s context get`](#k8s-context-get) | read | Check a cluster: server version, failing readiness checks, DNS address, CNI |
 | [`k8s kind list`](#k8s-kind-list) | read | List every kind a cluster has, CRDs included: names, short names, API group |
 | [`k8s object list`](#k8s-object-list) | read | List objects of any kind, custom resources (CRDs) too: id, age, ready, status |
 | [`k8s object get`](#k8s-object-get) | read | Show one object of any kind, a custom resource (CRD) too: manifest and status |
+| [`k8s object diff`](#k8s-object-diff) | read | Compare two objects of any kind, custom resources (CRDs) too, across clusters |
 
 ### k8s pod list
 
@@ -173,6 +184,24 @@ Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s service get qa/dev/orders-api --fields ports,ready,endpoints,why_none
 ```
 
+### k8s service diff
+
+```text
+agent-cli k8s service diff — Compare two services across environments: type, ports, selector
+ *<left> str       One side: its id (cluster/namespace/name), namespace/name, or name
+ *<right> str      The other side, as left
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --limit int      Most differences to print (default 50)
+  --exact          Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s service diff staging/web/api prod/web/api
+```
+
 ### k8s ingress list
 
 ```text
@@ -195,6 +224,24 @@ agent-cli k8s ingress get — Show an ingress: each host and path's service and 
 Returns: {id,name,namespace,class,controller,address[],rules[{host,path,service,port,ready}],default_backend{host,path,service,port,ready},tls[{hosts[],secret,exists}],events[{type,reason,object,message,count,last_seen,namespace}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s ingress get qa/dev/orders --fields rules,tls
+```
+
+### k8s ingress diff
+
+```text
+agent-cli k8s ingress diff — Compare two ingresses across environments: class, hosts, paths, TLS
+ *<left> str       One side: its id (cluster/namespace/name), namespace/name, or name
+ *<right> str      The other side, as left
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --limit int      Most differences to print (default 50)
+  --exact          Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s ingress diff staging/web/api prod/web/api
 ```
 
 ### k8s networkpolicy list
@@ -220,6 +267,24 @@ agent-cli k8s networkpolicy get — Show a network policy's rules in words: peer
 Returns: {id,name,namespace,pod_selector,pods[],types[],default_deny,rules[{direction,peers[],ports[]}],events[{type,reason,object,message,count,last_seen,namespace}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s networkpolicy get qa/dev/allow-orders-api --fields pods,rules
+```
+
+### k8s networkpolicy diff
+
+```text
+agent-cli k8s networkpolicy diff — Compare two network policies across environments: selectors and rules
+ *<left> str       One side: its id (cluster/namespace/name), namespace/name, or name
+ *<right> str      The other side, as left
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --limit int      Most differences to print (default 50)
+  --exact          Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s networkpolicy diff staging/web/allow-egress prod/web/allow-egress
 ```
 
 ### k8s pvc list
@@ -311,6 +376,25 @@ Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s deployment get prod/web/api --fields revisions,conditions,containers
 ```
 
+### k8s deployment diff
+
+```text
+agent-cli k8s deployment diff — Compare two deployments across environments, or one with its previous revision
+ *<left> str       One side: its id (cluster/namespace/name), namespace/name, or name
+  <right> str      The other side; left out, the deployment against its previous revision
+  --revision int   With one side, the revision to compare against (deployment get lists them)
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --limit int      Most differences to print (default 50)
+  --exact          Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s deployment diff staging/web/api prod/web/api
+```
+
 ### k8s deployment restart
 
 ```text
@@ -386,6 +470,24 @@ Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s statefulset get prod/web/orders-db --fields ready,claims,events
 ```
 
+### k8s statefulset diff
+
+```text
+agent-cli k8s statefulset diff — Compare two statefulsets across environments: pod template, replicas, claims
+ *<left> str       One side: its id (cluster/namespace/name), namespace/name, or name
+ *<right> str      The other side, as left
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --limit int      Most differences to print (default 50)
+  --exact          Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s statefulset diff staging/web/orders-db prod/web/orders-db
+```
+
 ### k8s statefulset restart
 
 ```text
@@ -436,6 +538,24 @@ Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s daemonset get prod/kube-system/azure-cns
 ```
 
+### k8s daemonset diff
+
+```text
+agent-cli k8s daemonset diff — Compare two daemonsets across environments (CNI, agents): pod template, strategy
+ *<left> str       One side: its id (cluster/namespace/name), namespace/name, or name
+ *<right> str      The other side, as left
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --limit int      Most differences to print (default 50)
+  --exact          Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s daemonset diff staging/kube-system/azure-cns prod/kube-system/azure-cns
+```
+
 ### k8s daemonset restart
 
 ```text
@@ -473,6 +593,24 @@ Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s job get prod/web/orders-export-29844060 --fields status,conditions,pods
 ```
 
+### k8s job diff
+
+```text
+agent-cli k8s job diff — Compare two jobs (a failed run and a good one): image, node, duration, exit code
+ *<left> str       One side: its id (cluster/namespace/name), namespace/name, or name
+ *<right> str      The other side, as left
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --limit int      Most differences to print (default 50)
+  --exact          Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s job diff prod/web/orders-export-29842620 prod/web/orders-export-29844060
+```
+
 ### k8s job delete
 
 ```text
@@ -508,6 +646,24 @@ agent-cli k8s cronjob get — Describe a cronjob: recent runs with status, why o
 Returns: {id,name,namespace,schedule,time_zone,suspended,last_schedule,last_success,active[],concurrency_policy,starting_deadline,jobs[{id,name,namespace,status,completions,failed,started,duration,cronjob}],events[{type,reason,object,message,count,last_seen,namespace}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s cronjob get prod/web/orders-export --fields schedule,last_success,jobs
+```
+
+### k8s cronjob diff
+
+```text
+agent-cli k8s cronjob diff — Compare two cronjobs across environments: schedule, suspend, limits, template
+ *<left> str       One side: its id (cluster/namespace/name), namespace/name, or name
+ *<right> str      The other side, as left
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --limit int      Most differences to print (default 50)
+  --exact          Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s cronjob diff staging/web/orders-export prod/web/orders-export
 ```
 
 ### k8s cronjob run
@@ -673,6 +829,24 @@ Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s configmap get qa/dev/orders-config
 ```
 
+### k8s configmap diff
+
+```text
+agent-cli k8s configmap diff — Compare two configmaps across environments: keys, values, files by lines
+ *<left> str       One side: its id (cluster/namespace/name), namespace/name, or name
+ *<right> str      The other side, as left
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --limit int      Most differences to print (default 50)
+  --exact          Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s configmap diff staging/web/api-config prod/web/api-config
+```
+
 ### k8s secret list
 
 ```text
@@ -696,6 +870,24 @@ agent-cli k8s secret get — Decode one key of a Kubernetes secret (needs --reve
 Returns: {secret,key,namespace,value,encoding}
 Reveals a secret: --reveal prints it; --output FILE saves it (0600) and prints only the path. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s secret get orders-db password --cluster qa --namespace dev --fields value --output orders-db.txt
+```
+
+### k8s secret diff
+
+```text
+agent-cli k8s secret diff — Compare two Kubernetes secrets: keys, type, each value same or not (never shown)
+ *<left> str       One side: its id (cluster/namespace/name), namespace/name, or name
+ *<right> str      The other side, as left
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --limit int      Most differences to print (default 50)
+  --exact          Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s secret diff staging/web/worker-db prod/web/worker-db
 ```
 
 ### k8s context list
@@ -758,4 +950,23 @@ agent-cli k8s object get — Show one object of any kind, a custom resource (CRD
 Returns: {id,manifest,text}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s object get certificate qa/dev/orders-tls --fields manifest
+```
+
+### k8s object diff
+
+```text
+agent-cli k8s object diff — Compare two objects of any kind, custom resources (CRDs) too, across clusters
+ *<kind> str       The kind, as `k8s kind list` names it: secretproviderclass, certificate
+ *<left> str       One side: its id from object list, namespace/name, or name
+ *<right> str      The other side, as left
+  --cluster str    The [[k8s.scope]] name (or its kube context); defaults to the only one
+  --namespace str  Defaults to the scope's only namespace
+  --as str[]       Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]   Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all            Keep what is noise for this resource (uids, timestamps, status)
+  --limit int      Most differences to print (default 50)
+  --exact          Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli k8s object diff secretproviderclass staging/web/worker-kv prod/web/worker-kv
 ```

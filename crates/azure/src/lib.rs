@@ -42,6 +42,7 @@ pub const KV: Domain = Domain {
     commands: &[
         kv::secret::list::SECRET_LIST,
         kv::secret::get::SECRET_GET,
+        kv::secret::diff::SECRET_DIFF,
         kv::secret::update::SECRET_UPDATE,
         kv::version::list::VERSION_LIST,
         kv::certificate::list::CERTIFICATE_LIST,
@@ -50,6 +51,7 @@ pub const KV: Domain = Domain {
         kv::key::get::KEY_GET,
         kv::vault::list::VAULT_LIST,
         kv::vault::get::VAULT_GET,
+        kv::vault::diff::VAULT_DIFF,
     ],
     synonyms: &[
         ("password", &["secret"]),

@@ -236,3 +236,51 @@ expect = "airflow connection list"
 [[query]]
 text = "why did the etl_nightly DAG fail last night"
 expect = "airflow run list"
+
+[[query]]
+text = "compare the etl_nightly dag between qa and prod airflow"
+expect = "airflow dag diff"
+
+[[query]]
+text = "does the dag code differ between the two airflow instances"
+expect = "airflow dag diff"
+
+[[query]]
+text = "a variable is missing in prod airflow, compare the variables of qa and prod"
+expect = "airflow variable diff"
+
+[[query]]
+text = "compare airflow variables between two instances"
+expect = "airflow variable diff"
+
+[[query]]
+text = "compare airflow connections between qa and prod"
+expect = "airflow connection diff"
+
+[[query]]
+text = "does the reporting_dw connection host differ between airflow instances"
+expect = "airflow connection diff"
+
+[[query]]
+text = "what changed between the good etl_nightly run and the failed one"
+expect = "airflow run diff"
+
+[[query]]
+text = "compare the failed dag run with the last successful run"
+expect = "airflow run diff"
+
+[[query]]
+text = "compare airflow pools between qa and prod"
+expect = "airflow pool diff"
+
+[[query]]
+text = "do the pool slots differ between the two airflow instances"
+expect = "airflow pool diff"
+
+[[query]]
+text = "which provider versions differ between qa and prod airflow"
+expect = "airflow instance diff"
+
+[[query]]
+text = "compare the airflow version and installed providers of two instances"
+expect = "airflow instance diff"

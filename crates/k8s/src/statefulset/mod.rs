@@ -1,6 +1,7 @@
 //! `k8s statefulset …`: ordered pods with a claim each, read from kubectl's
 //! JSON.
 
+pub(crate) mod diff;
 pub(crate) mod get;
 pub(crate) mod list;
 pub(crate) mod restart;

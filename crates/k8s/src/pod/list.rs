@@ -164,7 +164,7 @@ fn mounts(pod: &Value, classes: &[&Value], wanted: &str) -> bool {
 command! {
     pub POD_LIST = ["k8s", "pod", "list"], Read,
     "List pods: status, ready, restarts, owner; or those mounting a Key Vault secret",
-    keywords: ["containers", "restarting", "crashloop", "crash loop", "crashing", "running", "pending", "unhealthy", "deployments", "scheduled"],
+    keywords: ["secret", "restarting", "crashloop", "crash loop", "crashing", "running", "pending", "unhealthy", "deployments", "scheduled"],
     example: "k8s pod list --cluster qa --namespace dev --fields id,status,restarts,owner",
     run: pod_list,
 }

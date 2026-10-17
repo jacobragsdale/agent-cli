@@ -100,9 +100,22 @@ pub(crate) struct Instance {
     pub(crate) k8s_namespace: String,
     /// `REPO[:FOLDER]` in Azure DevOps that its DAG files deploy from.
     pub(crate) dags_repo: Option<String>,
+    /// More than one instance is configured, so a printed command names
+    /// this one.
+    pub(crate) several: bool,
 }
 
 impl Instance {
+    /// ` --instance NAME` for a printed command when several instances are
+    /// configured (without it, the command would stop to ask which).
+    pub(crate) fn flag(&self) -> String {
+        if self.several {
+            format!(" --instance {}", self.name)
+        } else {
+            String::new()
+        }
+    }
+
     /// `auth` for `instance list` and doctor: the kind and where it comes
     /// from, never the value.
     pub(crate) fn auth_source(&self) -> String {
@@ -158,6 +171,10 @@ impl Airflow {
                     .hint("fix it; `agent-cli config example airflow` shows every key")
             })?;
             instances.push(instance);
+        }
+        let several = instances.len() > 1;
+        for instance in &mut instances {
+            instance.several = several;
         }
         Ok(Self { instances })
     }
@@ -348,6 +365,7 @@ impl Raw {
                 .filter(|namespace| !namespace.is_empty())
                 .unwrap_or_else(|| CHART_NAMESPACE.to_owned()),
             dags_repo: self.dags_repo.filter(|repo| !repo.trim().is_empty()),
+            several: false,
         })
     }
 }

@@ -17,6 +17,11 @@ pub(crate) const CONFIG: &str = "[[airflow.instance]]\nname = \"prod\"\n\
 pub(crate) const CONFIG_V1: &str = "[[airflow.instance]]\nname = \"prod\"\n\
     base_url = \"https://airflow.contoso.example\"\ntoken_env = \"AIRFLOW_TOKEN\"\n\
     k8s_scope = \"prod\"\nk8s_namespace = \"web\"\napi = \"v1\"\n";
+/// Two Airflow 3 instances, qa's and prod's, for the diffs.
+pub(crate) const TWO: &str = "[[airflow.instance]]\nname = \"qa\"\n\
+    base_url = \"https://airflow-qa.contoso.example\"\ntoken_env = \"AIRFLOW_TOKEN\"\napi = \"v2\"\n\
+    [[airflow.instance]]\nname = \"prod\"\n\
+    base_url = \"https://airflow.contoso.example\"\ntoken_env = \"AIRFLOW_TOKEN\"\napi = \"v2\"\n";
 pub(crate) const TOKEN: &str = "fixture-token-1";
 
 pub(crate) fn airflow(argv: &[&str], answers: Vec<Answer>) -> (Outcome, FakeTransport) {

@@ -204,6 +204,50 @@ fn secrets(ctx: &Ctx, vault: &Vault, deleted: bool) -> Result<Vec<SecretRow>> {
     Ok(rows)
 }
 
+/// What a diff compares of a secret, from a listing's entry or a GET:
+/// its attributes and tags, not its own dates or version.
+fn compared(entry: &Value) -> Value {
+    let attributes = &entry["attributes"];
+    serde_json::json!({
+        "enabled": enabled(attributes),
+        "content_type": text(&entry["contentType"]),
+        "expires": from_unix(&attributes["exp"]),
+        "not_before": from_unix(&attributes["nbf"]),
+        "managed": entry["managed"].as_bool().unwrap_or(false),
+        "tags": tags(entry),
+    })
+}
+
+/// A secret's GET for a diff: its compared attributes and its value, kept
+/// in a `Secret` (compared, never printed); `None` where the vault will
+/// not hand it over (a disabled secret).
+fn secret_for_diff(
+    ctx: &Ctx,
+    vault: &Vault,
+    name: &str,
+) -> Result<(Value, Option<agent_cli_core::Secret>)> {
+    let url = format!(
+        "{}secrets/{}?api-version={API_VERSION}",
+        base(vault),
+        segment(name)
+    );
+    match get(ctx, vault, &url) {
+        Ok(answer) => Ok((
+            compared(&answer),
+            answer["value"].as_str().map(agent_cli_core::Secret::new),
+        )),
+        Err(error) if crate::client::refused_with(&error) == Some(403) => {
+            let said = format!("{error:#}");
+            if said.contains("disabled") || said.contains("Disabled") {
+                Ok((serde_json::json!({"enabled": false}), None))
+            } else {
+                Err(error)
+            }
+        }
+        Err(error) => Err(error),
+    }
+}
+
 /// A vault says so only when an item is disabled.
 fn enabled(attributes: &Value) -> bool {
     attributes["enabled"].as_bool().unwrap_or(true)

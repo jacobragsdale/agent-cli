@@ -128,7 +128,8 @@ fn task_retry(ctx: &Ctx, args: TaskRetryArgs) -> Result<TasksRetried> {
         ctx.note(format!("[would clear: {}]", cleared.join(", ")));
     }
     client.change(Effect::Destructive, Method::Post, &path, body(false))?;
-    ctx.note(format!("[next: agent-cli airflow run wait {run_id}]"));
+    let on = client.instance.flag();
+    ctx.note(format!("[next: agent-cli airflow run wait {run_id}{on}]"));
     Ok(TasksRetried {
         run: run_id,
         cleared,

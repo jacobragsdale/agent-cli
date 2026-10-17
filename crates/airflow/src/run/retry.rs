@@ -56,8 +56,9 @@ fn run_retry(ctx: &Ctx, args: RunIdArgs) -> Result<Retried> {
     }
     client.change(Effect::Write, Method::Post, &path, with(false))?;
     ctx.note(format!(
-        "[next: agent-cli airflow run wait {}]",
-        id.run_id()
+        "[next: agent-cli airflow run wait {}{}]",
+        id.run_id(),
+        client.instance.flag()
     ));
     Ok(Retried {
         id: id.run_id(),

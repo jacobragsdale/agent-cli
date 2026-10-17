@@ -1,5 +1,6 @@
 //! `airflow dag`: DAGs (their status, schedule and params, pausing).
 
+pub(crate) mod diff;
 pub(crate) mod get;
 pub(crate) mod list;
 pub(crate) mod update;
@@ -40,6 +41,99 @@ pub struct DagRow {
     /// True when the DAG's file is gone from its bundle: Airflow keeps the
     /// DAG and its runs, and starts none.
     stale: Option<bool>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct DagDetail {
+    id: String,
+    paused: bool,
+    schedule: Option<String>,
+    /// The schedule in words.
+    schedule_text: Option<String>,
+    next_run: Option<String>,
+    next_logical_date: Option<String>,
+    /// Unpausing runs every missed interval.
+    catchup: bool,
+    max_active_runs: Option<i64>,
+    owners: Vec<String>,
+    tags: Vec<String>,
+    file: Option<String>,
+    bundle: Option<String>,
+    /// The DAG version number.
+    version: Option<i64>,
+    last_parsed: Option<String>,
+    import_errors: bool,
+    /// True when the DAG's file is gone: Airflow starts no runs of it.
+    stale: Option<bool>,
+    description: Option<String>,
+    /// What run create --conf may set.
+    params: Vec<Param>,
+    /// The last five runs, newest first.
+    recent_runs: Vec<RecentRun>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct Param {
+    name: String,
+    default: Value,
+    description: Option<String>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct RecentRun {
+    /// DAG/RUN: what run get takes.
+    id: String,
+    state: Option<String>,
+    #[serde(rename = "type")]
+    kind: Option<String>,
+    run_after: Option<String>,
+    /// Seconds.
+    duration: Option<i64>,
+}
+
+/// A DAG's details as `dag get` prints them (and `dag diff` compares),
+/// with the runs it was given.
+fn detail(dag: &Value, recent_runs: Vec<RecentRun>) -> DagDetail {
+    let params = dag["params"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .map(|(name, param)| {
+            let described = param.is_object() && param.get("value").is_some();
+            Param {
+                name: name.clone(),
+                default: if described {
+                    param["value"].clone()
+                } else {
+                    param.clone()
+                },
+                description: text(&param["description"]),
+            }
+        })
+        .collect();
+    let row = dag_row(dag);
+    DagDetail {
+        id: row.id,
+        paused: row.paused,
+        schedule: row.schedule,
+        schedule_text: text(&dag["timetable_description"]),
+        next_run: row.next_run,
+        next_logical_date: stamp(&dag["next_dagrun_logical_date"])
+            .or_else(|| stamp(&dag["next_dagrun"])),
+        catchup: dag["catchup"].as_bool().unwrap_or_default(),
+        max_active_runs: dag["max_active_runs"].as_i64(),
+        owners: row.owners,
+        tags: row.tags,
+        file: row.file,
+        bundle: text(&dag["bundle_name"]),
+        version: dag["latest_dag_version"]["version_number"].as_i64(),
+        last_parsed: stamp(&dag["last_parsed_time"]),
+        import_errors: row.import_errors,
+        stale: row.stale,
+        description: text(&dag["description"]),
+        params,
+        recent_runs,
+    }
 }
 
 fn dag_row(dag: &Value) -> DagRow {

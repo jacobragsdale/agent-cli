@@ -1,6 +1,7 @@
 //! `k8s cronjob …`: scheduled jobs, read from kubectl's JSON, with the runs
 //! each made.
 
+pub(crate) mod diff;
 pub(crate) mod get;
 pub(crate) mod list;
 pub(crate) mod run;

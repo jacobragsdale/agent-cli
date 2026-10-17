@@ -283,7 +283,6 @@ expect = "aisearch document list"
 text = "index capacity of the dev search service"
 expect = "aisearch service get"
 
-
 # ---------- arm ----------
 
 [[query]]
@@ -485,7 +484,6 @@ expect = "net route list"
 [[query]]
 text = "which next hop does the subnet's route table send traffic to"
 expect = "net route list"
-
 
 [[query]]
 text = "list private endpoints"
@@ -984,3 +982,19 @@ expect = "entra serviceprincipal get"
 [[query]]
 text = "which principals are these guids"
 expect = "entra principal list"
+
+[[query]]
+text = "is prod still on the old password, compare the key vault secret in staging and prod"
+expect = "kv secret diff"
+
+[[query]]
+text = "compare a secret between two key vaults without revealing it"
+expect = "kv secret diff"
+
+[[query]]
+text = "which secrets are missing from the staging key vault compared with prod"
+expect = "kv vault diff"
+
+[[query]]
+text = "compare two key vaults' secrets"
+expect = "kv vault diff"

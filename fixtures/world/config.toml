@@ -14,13 +14,18 @@ token_cmd = "echo stand-in"
 
 [azure]
 subscriptions = ["00000000-0000-4000-8000-000000005b01"]
-vaults = ["kv-contoso-prod"]
+vaults = ["kv-contoso-prod", "kv-contoso-staging"]
 registries = ["contosoacr"]
 search_services = ["srch-contoso-prod", "srch-contoso-dev"]
 
 [[k8s.scope]]
 name = "prod"
 context = "aks-contoso-prod"
+namespaces = ["web"]
+
+[[k8s.scope]]
+name = "staging"
+context = "aks-contoso-staging"
 namespaces = ["web"]
 
 [[airflow.instance]]
@@ -31,6 +36,14 @@ password_cmd = "echo stand-in"
 k8s_scope = "prod"
 k8s_namespace = "web"
 dags_repo = "airflow-dags:dags"
+
+[[airflow.instance]]
+name = "qa"
+base_url = "https://airflow-qa.contoso.example"
+username = "agent"
+password_cmd = "echo stand-in"
+k8s_scope = "staging"
+k8s_namespace = "web"
 
 # No sql recordings: the connection is here so airflow connection list can
 # name it as sql_conn.

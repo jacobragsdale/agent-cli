@@ -3,8 +3,8 @@
   "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
   "note": "the Resource Graph inventory every kv, acr, aks, aisearch and lake command starts from; any body",
   "answer": {
-   "totalRecords": 8,
-   "count": 8,
+   "totalRecords": 9,
+   "count": 9,
    "data": [
     {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod",
@@ -100,6 +100,19 @@
      "location": "westeurope",
      "loginServer": "",
      "vaultUri": "https://kv-contoso-prod.vault.azure.net/",
+     "kubernetesVersion": "",
+     "currentKubernetesVersion": "",
+     "powerState": ""
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-staging/providers/Microsoft.KeyVault/vaults/kv-contoso-staging",
+     "name": "kv-contoso-staging",
+     "type": "microsoft.keyvault/vaults",
+     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+     "resourceGroup": "rg-contoso-staging",
+     "location": "westeurope",
+     "loginServer": "",
+     "vaultUri": "https://kv-contoso-staging.vault.azure.net/",
      "kubernetesVersion": "",
      "currentKubernetesVersion": "",
      "powerState": ""
@@ -681,6 +694,189 @@
     }
    ],
    "nextLink": null
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-staging.vault.azure.net/secrets?api-version=7.4&maxresults=25",
+  "note": "staging holds no orders-db-conn and no certificates; its worker-db-password was rotated 2026-09-25",
+  "answer": {
+   "value": [
+    {
+     "id": "https://kv-contoso-staging.vault.azure.net/secrets/db-password",
+     "contentType": "text/plain",
+     "tags": {
+      "owner": "platform",
+      "rotates": "180d"
+     },
+     "attributes": {
+      "enabled": true,
+      "created": 1773478800,
+      "updated": 1773478800,
+      "exp": 1798761600
+     }
+    },
+    {
+     "id": "https://kv-contoso-staging.vault.azure.net/secrets/api-key",
+     "contentType": "text/plain",
+     "tags": {
+      "owner": "api"
+     },
+     "attributes": {
+      "enabled": true,
+      "created": 1772359200,
+      "updated": 1772359200,
+      "exp": 1803895200
+     }
+    },
+    {
+     "id": "https://kv-contoso-staging.vault.azure.net/secrets/worker-db-password",
+     "contentType": "text/plain",
+     "tags": {
+      "owner": "platform",
+      "rotates": "180d"
+     },
+     "attributes": {
+      "enabled": true,
+      "created": 1790326800,
+      "updated": 1790326800,
+      "exp": 1805878800
+     }
+    }
+   ],
+   "nextLink": null
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-staging.vault.azure.net/deletedsecrets?api-version=7.4&maxresults=25",
+  "answer": {
+   "value": [],
+   "nextLink": null
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-staging.vault.azure.net/keys?api-version=7.4&maxresults=25",
+  "answer": {
+   "value": [],
+   "nextLink": null
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-staging.vault.azure.net/certificates?api-version=7.4&maxresults=25",
+  "answer": {
+   "value": [],
+   "nextLink": null
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-staging.vault.azure.net/secrets/db-password?api-version=7.4",
+  "note": "a value only kv secret get reveals; kv secret and vault diff compare it",
+  "answer": {
+   "id": "https://kv-contoso-staging.vault.azure.net/secrets/db-password/5d2a0b3c4e6f4a1b9c8d7e6f5a4b3c2d",
+   "contentType": "text/plain",
+   "tags": {
+    "owner": "platform",
+    "rotates": "180d"
+   },
+   "attributes": {
+    "enabled": true,
+    "created": 1773478800,
+    "updated": 1773478800,
+    "exp": 1798761600
+   },
+   "value": "stand-in-db-password-1"
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-prod.vault.azure.net/secrets/db-password?api-version=7.4",
+  "note": "a value only kv secret get reveals; kv secret and vault diff compare it",
+  "answer": {
+   "id": "https://kv-contoso-prod.vault.azure.net/secrets/db-password/4c1f9e2a7b3d4e5f8a9b0c1d2e3f4a5b",
+   "contentType": "text/plain",
+   "tags": {
+    "owner": "platform",
+    "rotates": "180d"
+   },
+   "attributes": {
+    "enabled": true,
+    "created": 1773478800,
+    "updated": 1773478800,
+    "exp": 1791968400
+   },
+   "value": "stand-in-db-password-1"
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-staging.vault.azure.net/secrets/api-key?api-version=7.4",
+  "note": "a value only kv secret get reveals; kv secret and vault diff compare it",
+  "answer": {
+   "id": "https://kv-contoso-staging.vault.azure.net/secrets/api-key/6e3b1c4d5f7a4b2c8d9e0f1a2b3c4d5e",
+   "contentType": "text/plain",
+   "tags": {
+    "owner": "api"
+   },
+   "attributes": {
+    "enabled": true,
+    "created": 1772359200,
+    "updated": 1772359200,
+    "exp": 1803895200
+   },
+   "value": "stand-in-api-key-staging"
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-prod.vault.azure.net/secrets/api-key?api-version=7.4",
+  "note": "a value only kv secret get reveals; kv secret and vault diff compare it",
+  "answer": {
+   "id": "https://kv-contoso-prod.vault.azure.net/secrets/api-key/7f4c2d5e6a8b4c3d9e0f1a2b3c4d5e6f",
+   "contentType": "text/plain",
+   "tags": {
+    "owner": "api"
+   },
+   "attributes": {
+    "enabled": true,
+    "created": 1772359200,
+    "updated": 1772359200,
+    "exp": 1803895200
+   },
+   "value": "stand-in-api-key-prod"
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-staging.vault.azure.net/secrets/worker-db-password?api-version=7.4",
+  "note": "a value only kv secret get reveals; kv secret and vault diff compare it",
+  "answer": {
+   "id": "https://kv-contoso-staging.vault.azure.net/secrets/worker-db-password/8a5d3e6f7b9c4d4e0f1a2b3c4d5e6f7a",
+   "contentType": "text/plain",
+   "tags": {
+    "owner": "platform",
+    "rotates": "180d"
+   },
+   "attributes": {
+    "enabled": true,
+    "created": 1790326800,
+    "updated": 1790326800,
+    "exp": 1805878800
+   },
+   "value": "w0rker-2026-09-25"
+  }
+ },
+ {
+  "request": "GET https://kv-contoso-prod.vault.azure.net/secrets/worker-db-password?api-version=7.4",
+  "note": "a value only kv secret get reveals; kv secret and vault diff compare it",
+  "answer": {
+   "id": "https://kv-contoso-prod.vault.azure.net/secrets/worker-db-password/9b6e4f7a8c0d4e5f1a2b3c4d5e6f7a8b",
+   "contentType": "text/plain",
+   "tags": {
+    "owner": "platform",
+    "rotates": "180d"
+   },
+   "attributes": {
+    "enabled": true,
+    "created": 1773997200,
+    "updated": 1773997200,
+    "exp": 1789894800
+   },
+   "value": "w0rker-2026-03-22"
   }
  },
  {

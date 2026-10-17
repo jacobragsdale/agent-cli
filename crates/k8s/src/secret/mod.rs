@@ -2,5 +2,6 @@
 //! kubectl cannot leave the data out, so it is dropped here, before anything
 //! is returned, and only `k8s secret get` decodes one key.
 
+pub(crate) mod diff;
 pub(crate) mod get;
 pub(crate) mod list;

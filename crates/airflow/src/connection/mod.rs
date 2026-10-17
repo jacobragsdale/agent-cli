@@ -2,4 +2,5 @@
 //! and goes. Never a password, login or `extra`: no row type has a field
 //! one could go in.
 
+pub(crate) mod diff;
 pub(crate) mod list;

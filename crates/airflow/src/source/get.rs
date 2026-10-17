@@ -6,7 +6,7 @@ use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::client::{Airflow, At, Want, segment, text};
+use crate::client::{Airflow, At, Want};
 
 /// Lines shown either side of a `:LINE`.
 const AROUND: usize = 20;
@@ -99,12 +99,7 @@ fn source_get(ctx: &Ctx, args: SourceGetArgs) -> Result<Source> {
     let (client, id) =
         airflow.locate(ctx, args.at.instance.as_deref(), dag, Want::Dag, None, None)?;
     let meta = client.get(&id.dag_path())?;
-    // Airflow 2 serves a DAG's source by its file_token, 3 by its id.
-    let key = match text(&meta["file_token"]) {
-        Some(token) if client.v1()? => token,
-        _ => id.dag.clone(),
-    };
-    let source = client.get(&format!("dagSources/{}", segment(&key)))?;
+    let source = super::dag_source(&client, &meta, &id.dag)?;
     let file = super::dag_file(&meta);
     let all: Vec<&str> = source["content"]
         .as_str()
@@ -131,10 +126,11 @@ fn source_get(ctx: &Ctx, args: SourceGetArgs) -> Result<Source> {
     let asked_last = asked.map_or(total, |(_, last)| last.min(total));
     if last < asked_last {
         ctx.note(format!(
-            "[lines {first}-{last} of {total}; the next: agent-cli airflow source get {}:{}-{}]",
+            "[lines {first}-{last} of {total}; the next: agent-cli airflow source get {}:{}-{}{}]",
             id.dag,
             last + 1,
-            (last + MOST).min(asked_last)
+            (last + MOST).min(asked_last),
+            client.instance.flag()
         ));
     }
     let range = asked.map(suffix).unwrap_or_default();

@@ -57,6 +57,11 @@ const SYNONYMS: &[(&str, &[&str])] = &[
     ("close", &["update", "edit", "state"]),
     ("reopen", &["update", "edit", "state"]),
     ("rename", &["update", "edit"]),
+    ("compare", &["diff"]),
+    ("difference", &["diff"]),
+    ("differences", &["diff"]),
+    ("differ", &["diff"]),
+    ("drift", &["diff"]),
     ("all", &["list"]),
     // "How many" is counted off a list.
     ("many", &["list"]),

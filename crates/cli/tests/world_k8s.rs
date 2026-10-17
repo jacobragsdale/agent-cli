@@ -11,7 +11,7 @@ use world::{agent_cli, follow, ok};
 #[test]
 fn the_world_answers_what_a_trial_asks_of_k8s() {
     for args in [
-        &["k8s", "pod", "list"][..],
+        &["k8s", "pod", "list", "--cluster", "prod"][..],
         &["k8s", "pod", "get", "prod/web/worker-5c4d3e9f1-q8zt1"],
         &[
             "k8s",
@@ -20,35 +20,43 @@ fn the_world_answers_what_a_trial_asks_of_k8s() {
             "prod/web/worker-5c4d3e9f1-q8zt1",
             "--previous",
         ],
-        &["k8s", "event", "list"],
+        &["k8s", "event", "list", "--cluster", "prod"],
         &["k8s", "configmap", "get", "prod/web/api-config"],
-        &["k8s", "secret", "list"],
-        &["k8s", "kind", "list"],
-        &["k8s", "service", "list"],
+        &["k8s", "secret", "list", "--cluster", "prod"],
+        &["k8s", "kind", "list", "--cluster", "prod"],
+        &["k8s", "service", "list", "--cluster", "prod"],
         &["k8s", "service", "get", "prod/web/api"],
-        &["k8s", "ingress", "list"],
-        &["k8s", "networkpolicy", "list"],
+        &["k8s", "ingress", "list", "--cluster", "prod"],
+        &["k8s", "networkpolicy", "list", "--cluster", "prod"],
         &["k8s", "networkpolicy", "get", "prod/web/allow-egress"],
-        &["k8s", "pvc", "list"],
-        &["k8s", "pv", "list"],
+        &["k8s", "pvc", "list", "--cluster", "prod"],
+        &["k8s", "pv", "list", "--cluster", "prod"],
         &[
             "k8s",
             "pv",
             "get",
             "prod/pvc-7c3e9a1b-4d2f-4e8a-9b6c-1f0e2d3c4b5a",
         ],
-        &["k8s", "storageclass", "list"],
-        &["k8s", "event", "list", "--object", "pvc/data-orders-db-0"],
-        &["k8s", "statefulset", "list"],
-        &["k8s", "job", "list"],
-        &["k8s", "cronjob", "list"],
+        &["k8s", "storageclass", "list", "--cluster", "prod"],
+        &[
+            "k8s",
+            "event",
+            "list",
+            "--object",
+            "pvc/data-orders-db-0",
+            "--cluster",
+            "prod",
+        ],
+        &["k8s", "statefulset", "list", "--cluster", "prod"],
+        &["k8s", "job", "list", "--cluster", "prod"],
+        &["k8s", "cronjob", "list", "--cluster", "prod"],
         &["k8s", "daemonset", "get", "prod/kube-system/kube-proxy"],
-        &["k8s", "node", "list"],
+        &["k8s", "node", "list", "--cluster", "prod"],
         &["k8s", "node", "get", "prod/aks-system-31415926-vmss000001"],
-        &["k8s", "namespace", "list"],
-        &["k8s", "quota", "list"],
-        &["k8s", "serviceaccount", "list"],
-        &["k8s", "access", "list"],
+        &["k8s", "namespace", "list", "--cluster", "prod"],
+        &["k8s", "quota", "list", "--cluster", "prod"],
+        &["k8s", "serviceaccount", "list", "--cluster", "prod"],
+        &["k8s", "access", "list", "--cluster", "prod"],
     ] {
         ok(args);
     }
@@ -97,6 +105,8 @@ fn the_expired_key_vault_secret_finds_the_worker_pod_that_mounts_it() {
         "kv-contoso-prod/worker-db-password",
         "--fields",
         "id,owner",
+        "--cluster",
+        "prod",
     ]);
     assert_eq!(
         pods,
@@ -114,6 +124,8 @@ fn the_deployments_running_an_image_are_found_by_repo_and_tag() {
         "api:v1.4.2",
         "--fields",
         "id",
+        "--cluster",
+        "prod",
     ]);
     assert_eq!(
         running,
@@ -155,6 +167,8 @@ fn a_custom_resource_and_a_node_read_through_the_generic_floor_by_the_ids_it_lis
         "cert",
         "--fields",
         "name,api_version,namespaced",
+        "--cluster",
+        "prod",
     ]);
     assert_eq!(
         kinds,
@@ -167,6 +181,8 @@ fn a_custom_resource_and_a_node_read_through_the_generic_floor_by_the_ids_it_lis
         "certificates",
         "--fields",
         "id,age,ready,status",
+        "--cluster",
+        "prod",
     ]);
     assert_eq!(
         listed,
@@ -181,7 +197,16 @@ fn a_custom_resource_and_a_node_read_through_the_generic_floor_by_the_ids_it_lis
         "{manifest}"
     );
 
-    let nodes = ok(&["k8s", "object", "list", "nodes", "--fields", "id,ready"]);
+    let nodes = ok(&[
+        "k8s",
+        "object",
+        "list",
+        "nodes",
+        "--fields",
+        "id,ready",
+        "--cluster",
+        "prod",
+    ]);
     assert_eq!(nodes.as_array().unwrap().len(), 6, "{nodes}");
     assert_eq!(
         nodes[4],
@@ -266,7 +291,7 @@ fn the_web_pods_egress_is_denied_but_for_dns_the_namespace_and_private_addresses
         json!({"direction": "egress", "peers": ["cidr 10.0.0.0/8"], "ports": ["5432/TCP", "443/TCP"]})
     );
 
-    let cluster = ok(&["k8s", "context", "get"]);
+    let cluster = ok(&["k8s", "context", "get", "--cluster", "prod"]);
     assert_eq!(
         cluster,
         json!({"name": "prod", "context": "aks-contoso-prod", "version": "v1.30.4",
@@ -336,6 +361,8 @@ fn the_database_pod_stuck_creating_has_its_disk_still_on_the_old_node_which_is_n
         "node/prod/aks-user-27182818-vmss000001",
         "--fields",
         "reason",
+        "--cluster",
+        "prod",
     ]);
     assert_eq!(
         events,
@@ -399,6 +426,8 @@ fn the_database_statefulset_is_unready_and_its_budget_allows_no_eviction() {
         "list",
         "--fields",
         "id,selector,allowed_disruptions",
+        "--cluster",
+        "prod",
     ]);
     assert_eq!(
         budgets,
@@ -442,7 +471,15 @@ fn reports_api_has_pending_pods_no_node_fits_and_its_autoscaler_is_at_its_maximu
         ),
         "{pod}"
     );
-    let autoscalers = ok(&["k8s", "hpa", "list", "--fields", "id,max,current,metrics"]);
+    let autoscalers = ok(&[
+        "k8s",
+        "hpa",
+        "list",
+        "--fields",
+        "id,max,current,metrics",
+        "--cluster",
+        "prod",
+    ]);
     assert_eq!(
         autoscalers,
         json!([{"id": "prod/web/reports-api", "max": 5, "current": 5,
@@ -456,6 +493,8 @@ fn reports_api_has_pending_pods_no_node_fits_and_its_autoscaler_is_at_its_maximu
         "kube-system",
         "--fields",
         "id,unavailable",
+        "--cluster",
+        "prod",
     ]);
     assert_eq!(
         daemonsets[0],
@@ -469,6 +508,8 @@ fn reports_api_has_pending_pods_no_node_fits_and_its_autoscaler_is_at_its_maximu
         "list",
         "--fields",
         "name,ready,schedulable,taints,cpu",
+        "--cluster",
+        "prod",
     ]);
     let user: Vec<_> = nodes.as_array().unwrap()[3..].to_vec();
     assert_eq!(
@@ -490,6 +531,8 @@ fn reports_api_has_pending_pods_no_node_fits_and_its_autoscaler_is_at_its_maximu
         "reports-api",
         "--fields",
         "name,cpu_usage",
+        "--cluster",
+        "prod",
     ]);
     assert_eq!(
         pods[0],
@@ -505,6 +548,8 @@ fn the_web_namespace_has_a_quota_and_its_service_accounts_say_what_they_may_do()
         "list",
         "--fields",
         "name,quota,in_scope",
+        "--cluster",
+        "prod",
     ]);
     assert_eq!(
         namespaces[4],
@@ -518,6 +563,8 @@ fn the_web_namespace_has_a_quota_and_its_service_accounts_say_what_they_may_do()
         "list",
         "--fields",
         "from,resource,default_request",
+        "--cluster",
+        "prod",
     ]);
     assert_eq!(
         limits[3],
@@ -536,6 +583,8 @@ fn the_web_namespace_has_a_quota_and_its_service_accounts_say_what_they_may_do()
         "serviceaccount",
         "get",
         pod["service_account"].as_str().unwrap(),
+        "--cluster",
+        "prod",
     ]);
     assert!(account.get("client_id").is_none(), "{account}");
     assert_eq!(account["pods"], json!(["prod/web/worker-5c4d3e9f1-q8zt1"]));
@@ -544,7 +593,15 @@ fn the_web_namespace_has_a_quota_and_its_service_accounts_say_what_they_may_do()
         json!([{"resource": "configmaps", "names": ["api-config"], "verbs": ["get"]},
             {"resource": "secrets", "names": ["worker-db"], "verbs": ["get"]}])
     );
-    let accounts = ok(&["k8s", "serviceaccount", "list", "--fields", "id,client_id"]);
+    let accounts = ok(&[
+        "k8s",
+        "serviceaccount",
+        "list",
+        "--fields",
+        "id,client_id",
+        "--cluster",
+        "prod",
+    ]);
     assert_eq!(
         accounts[2],
         json!({"id": "prod/web/notifier", "client_id": "00000000-0000-4000-8000-00000000b0f1"})
@@ -563,7 +620,15 @@ fn the_web_namespace_has_a_quota_and_its_service_accounts_say_what_they_may_do()
     let back = ok(&["k8s", "serviceaccount", "get", subject, "--fields", "id"]);
     assert_eq!(back, json!({"id": "prod/web/notifier"}));
     let mine = ok(&[
-        "k8s", "access", "list", "--as", "@me", "--fields", "resource",
+        "k8s",
+        "access",
+        "list",
+        "--as",
+        "@me",
+        "--fields",
+        "resource",
+        "--cluster",
+        "prod",
     ]);
     assert_eq!(mine[0], json!({"resource": "*.*"}));
 }
@@ -577,6 +642,8 @@ fn a_web_pod_answers_env_and_resolv_conf_and_every_write_answers_as_kubectl_woul
         "run",
         pod,
         "--yes",
+        "--cluster",
+        "prod",
         "--",
         "cat",
         "/etc/resolv.conf",
@@ -589,7 +656,17 @@ fn a_web_pod_answers_env_and_resolv_conf_and_every_write_answers_as_kubectl_woul
             .contains("nameserver 10.0.0.10"),
         "kube-dns, as context get has it: {resolv}"
     );
-    let env = ok(&["k8s", "pod", "run", pod, "--yes", "--", "env"]);
+    let env = ok(&[
+        "k8s",
+        "pod",
+        "run",
+        pod,
+        "--yes",
+        "--cluster",
+        "prod",
+        "--",
+        "env",
+    ]);
     assert!(
         env["stdout"].as_str().unwrap().contains("DB_USER=api"),
         "{env}"
@@ -679,4 +756,76 @@ fn a_web_pod_answers_env_and_resolv_conf_and_every_write_answers_as_kubectl_woul
     ] {
         ok(args);
     }
+}
+
+/// Staging runs `api` one release behind prod, with a `DB_HOST` that differs
+/// beyond the environment's name and an `appsettings.json` one key apart.
+#[test]
+fn staging_and_prod_differ_by_what_each_diff_names() {
+    let api = ok(&[
+        "k8s",
+        "deployment",
+        "diff",
+        "staging/web/api",
+        "prod/web/api",
+    ]);
+    assert_eq!(api["as"], json!(["staging=prod"]));
+    assert_eq!(
+        api["changes"],
+        json!([
+            {"path": "replicas", "left": 2, "right": 3},
+            {"path": "containers.api.image", "left": "contosoacr.azurecr.io/api:v1.4.1",
+                "right": "contosoacr.azurecr.io/api:v1.4.2"},
+            {"path": "containers.api.digest",
+                "left": "sha256:1cece757efdc67b82dee1d04bc2ae9cf4d261bcf64843eb33fb6e09f877c8bda",
+                "right": "sha256:7a72fa7948c3b5e299c40bdb1ebeb125e313c32d4262e130a8206115054663d3"},
+        ])
+    );
+    let config = ok(&[
+        "k8s",
+        "configmap",
+        "diff",
+        "staging/web/api-config",
+        "prod/web/api-config",
+    ]);
+    assert_eq!(
+        config["changes"],
+        json!([
+            {"path": "data.DB_HOST", "left": "orders-db-staging.contoso.example",
+                "right": "orders-db.contoso.example"},
+            {"path": "data.appsettings.json.Orders.TimeoutSeconds", "left": 120, "right": 30},
+        ])
+    );
+    let rollout = ok(&["k8s", "deployment", "diff", "prod/web/api"]);
+    assert_eq!(
+        rollout,
+        json!({"left": "prod/web/api@6", "right": "prod/web/api@7", "same": false,
+            "changes": [{"path": "containers.api.image", "left": "contosoacr.azurecr.io/api:v1.4.1",
+                "right": "contosoacr.azurecr.io/api:v1.4.2"}]})
+    );
+    let classes = ok(&[
+        "k8s",
+        "object",
+        "diff",
+        "secretproviderclass",
+        "staging/web/worker-kv",
+        "prod/web/worker-kv",
+    ]);
+    assert_eq!(
+        classes["same"], true,
+        "the vault's name is the environment's"
+    );
+    let runs = ok(&[
+        "k8s",
+        "job",
+        "diff",
+        "prod/web/orders-export-29842620",
+        "prod/web/orders-export-29844060",
+        "--fields",
+        "changes",
+    ]);
+    assert_eq!(
+        runs["changes"][2],
+        json!({"path": "containers.export.exit_code", "right": 134})
+    );
 }

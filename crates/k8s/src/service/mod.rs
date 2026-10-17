@@ -1,6 +1,7 @@
 //! `k8s service …`: a service joined to the EndpointSlices that say which
 //! pods answer for it. `ingress get` counts its backends' endpoints here too.
 
+pub(crate) mod diff;
 pub(crate) mod get;
 pub(crate) mod list;
 

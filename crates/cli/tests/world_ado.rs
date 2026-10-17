@@ -261,7 +261,15 @@ fn f3_code_search_finds_the_callers_and_their_neighbours() {
 
 #[test]
 fn f4_the_running_release_is_compared_with_the_one_before() {
-    let deployments = ok(&["k8s", "deployment", "list", "--fields", "id,images"]);
+    let deployments = ok(&[
+        "k8s",
+        "deployment",
+        "list",
+        "--fields",
+        "id,images",
+        "--cluster",
+        "prod",
+    ]);
     let image = string(&deployments[0]["images"][0], "image");
     assert!(image.ends_with("/api:v1.4.2"), "{image}");
     let range = "api@v1.4.1..v1.4.2";

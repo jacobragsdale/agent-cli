@@ -247,7 +247,7 @@ fn commits(
 command! {
     pub DIFF_GET = ["ado", "diff", "get"], Read,
     "Show what changed in a pull request or between two refs, as hunks per file",
-    keywords: ["changes", "patch", "hunks", "files", "modified", "touched", "release", "between", "pr"],
+    keywords: ["changes", "patch", "hunks", "files", "modified", "touched", "release", "between", "pr", "branches", "tags"],
     example: "ado diff get 436 --file '*.cs' --fields at,path,hunks",
     run: diff_get,
 }

@@ -2,6 +2,7 @@
 //! cluster's own (its CNI, CSI drivers, kube-proxy) run in kube-system, which
 //! is read whatever namespaces the scope names, as `context get` reads it.
 
+pub(crate) mod diff;
 pub(crate) mod get;
 pub(crate) mod list;
 pub(crate) mod restart;

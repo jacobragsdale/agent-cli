@@ -63,15 +63,18 @@ fn run_get(ctx: &Ctx, args: RunIdArgs) -> Result<RunDetail> {
     let failed = failed_ids(&tasks);
     // A failed run's next question is why: the first root cause's log.
     if let (Some("failed"), Some(first)) = (row.state.as_deref(), failed.first()) {
-        ctx.note(format!("[next: agent-cli airflow task logs {first}]"));
+        let on = client.instance.flag();
+        ctx.note(format!("[next: agent-cli airflow task logs {first}{on}]"));
     }
     // A queued run of a paused DAG waits until someone unpauses it.
     if row.state.as_deref() == Some("queued")
         && client.get(&id.dag_path())?["is_paused"].as_bool() == Some(true)
     {
         ctx.note(format!(
-            "[next: agent-cli airflow dag update {} --paused false  ({} is paused, so its queued runs wait)]",
-            id.dag, id.dag
+            "[next: agent-cli airflow dag update {} --paused false{}  ({} is paused, so its queued runs wait)]",
+            id.dag,
+            client.instance.flag(),
+            id.dag
         ));
     }
     Ok(RunDetail {

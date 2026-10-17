@@ -1,6 +1,7 @@
 //! `k8s networkpolicy …`: what a policy selects and allows, in words, with
 //! the default deny a policy makes by naming a direction it allows nothing in.
 
+pub(crate) mod diff;
 pub(crate) mod get;
 pub(crate) mod list;
 

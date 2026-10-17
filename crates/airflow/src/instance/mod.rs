@@ -1,6 +1,7 @@
 //! `airflow instance`: the configured Airflow servers, and what a
 //! `base_url` must look like.
 
+pub(crate) mod diff;
 pub(crate) mod list;
 
 /// Core's `check_base_url`, refusing the `/api/v1` or `/api/v2` agents paste

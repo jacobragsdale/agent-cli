@@ -1,5 +1,6 @@
 //! `k8s configmap`: keys, and their values.
 
+pub(crate) mod diff;
 pub(crate) mod get;
 pub(crate) mod list;
 

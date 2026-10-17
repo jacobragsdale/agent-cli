@@ -1,17 +1,23 @@
-# airflow — Apache Airflow (21 commands)
+# airflow — Apache Airflow (27 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
 | [`airflow instance list`](#airflow-instance-list) | read | List the configured Airflow instances (from config, no network) |
+| [`airflow instance diff`](#airflow-instance-diff) | read | Compare two instances' Airflow version and installed provider packages |
 | [`airflow pool list`](#airflow-pool-list) | read | List pools with their slots: open, queued, scheduled and deferred |
+| [`airflow pool diff`](#airflow-pool-diff) | read | Compare two instances' pools: those missing on one side, slots, description |
 | [`airflow variable list`](#airflow-variable-list) | read | List Airflow Variables by key and description, never their values |
+| [`airflow variable diff`](#airflow-variable-diff) | read | Compare two instances' Variables: keys missing on one side, values same or not |
 | [`airflow connection list`](#airflow-connection-list) | read | List Airflow Connections: type, host and database, never passwords |
+| [`airflow connection diff`](#airflow-connection-diff) | read | Compare two instances' Connections: missing ones, host, port, login same or not |
 | [`airflow dag list`](#airflow-dag-list) | read | List DAGs with their schedule, next run and whether they are paused |
 | [`airflow dag get`](#airflow-dag-get) | read | Show a DAG's status: paused, next run, params, schedule and its last five runs |
+| [`airflow dag diff`](#airflow-dag-diff) | read | Compare a DAG on two instances: its source by lines, schedule and tasks |
 | [`airflow dag update`](#airflow-dag-update) | write | Pause or unpause a DAG |
 | [`airflow source get`](#airflow-source-get) | read | Show a DAG's Python file around a line, as Airflow parsed it |
 | [`airflow run list`](#airflow-run-list) | read | List DAG runs, newest first, across DAGs or for one |
 | [`airflow run get`](#airflow-run-get) | read | Show a DAG run's state, task counts by state, and the tasks that failed |
+| [`airflow run diff`](#airflow-run-diff) | read | Compare two DAG runs (a good one, a failed one): conf, states, tries, durations |
 | [`airflow run create`](#airflow-run-create) | write | Trigger a DAG run, with a conf and optionally a logical date |
 | [`airflow run wait`](#airflow-run-wait) | read | Wait for a DAG run: exit 0 if it succeeded, 1 if it failed, 124 if still going |
 | [`airflow run retry`](#airflow-run-retry) | write | Retry the failed and upstream_failed tasks of a DAG run |
@@ -33,6 +39,22 @@ Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow instance list --fields name,base_url,auth
 ```
 
+### airflow instance diff
+
+```text
+agent-cli airflow instance diff — Compare two instances' Airflow version and installed provider packages
+ *<left> str      One [[airflow.instance]] by name (qa)
+ *<right> str     The other, by name (prod)
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow instance diff qa prod
+```
+
 ### airflow pool list
 
 ```text
@@ -42,6 +64,22 @@ agent-cli airflow pool list — List pools with their slots: open, queued, sched
 Returns: [{id,slots,open,running,queued,scheduled,deferred,description}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow pool list --fields id,slots,open,queued
+```
+
+### airflow pool diff
+
+```text
+agent-cli airflow pool diff — Compare two instances' pools: those missing on one side, slots, description
+ *<left> str      One [[airflow.instance]] by name (qa)
+ *<right> str     The other, by name (prod)
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow pool diff qa prod
 ```
 
 ### airflow variable list
@@ -56,6 +94,22 @@ Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow variable list orders --fields id,description
 ```
 
+### airflow variable diff
+
+```text
+agent-cli airflow variable diff — Compare two instances' Variables: keys missing on one side, values same or not
+ *<left> str      One [[airflow.instance]] by name (qa)
+ *<right> str     The other, by name (prod)
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow variable diff qa prod
+```
+
 ### airflow connection list
 
 ```text
@@ -66,6 +120,22 @@ agent-cli airflow connection list — List Airflow Connections: type, host and d
 Returns: [{id,type,host,port,schema,description,sql_conn}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow connection list --fields id,type,host,sql_conn
+```
+
+### airflow connection diff
+
+```text
+agent-cli airflow connection diff — Compare two instances' Connections: missing ones, host, port, login same or not
+ *<left> str      One [[airflow.instance]] by name (qa)
+ *<right> str     The other, by name (prod)
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow connection diff qa prod
 ```
 
 ### airflow dag list
@@ -92,6 +162,23 @@ agent-cli airflow dag get — Show a DAG's status: paused, next run, params, sch
 Returns: {id,paused,schedule,schedule_text,next_run,next_logical_date,catchup,max_active_runs,owners[],tags[],file,bundle,version,last_parsed,import_errors,stale,description,params[{name,default,description}],recent_runs[{id,state,type,run_after,duration}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow dag get etl_nightly --fields paused,next_run,recent_runs
+```
+
+### airflow dag diff
+
+```text
+agent-cli airflow dag diff — Compare a DAG on two instances: its source by lines, schedule and tasks
+ *<left> str      One side: [INSTANCE:]DAG (qa:etl_nightly); no prefix is --instance's
+ *<right> str     The other side, as left
+  --instance str  The [[airflow.instance]] name; defaults to the only one
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow dag diff qa:etl_nightly prod:etl_nightly
 ```
 
 ### airflow dag update
@@ -145,6 +232,23 @@ agent-cli airflow run get — Show a DAG run's state, task counts by state, and 
 Returns: {id,state,type,run_after,logical_date,start,end,duration,triggered_by,user,conf,note,dag_version,tasks,failed[]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow run get etl_nightly/latest --fields id,state,tasks,failed
+```
+
+### airflow run diff
+
+```text
+agent-cli airflow run diff — Compare two DAG runs (a good one, a failed one): conf, states, tries, durations
+ *<left> str      One side: [INSTANCE:]DAG/RUN (DAG/latest for the newest)
+  <right> str     The other side, as left; left out, LEFT against the last successful run before it
+  --instance str  The [[airflow.instance]] name; defaults to the only one
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli airflow run diff etl_nightly/latest
 ```
 
 ### airflow run create

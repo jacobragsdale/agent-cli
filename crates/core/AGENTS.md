@@ -1,6 +1,7 @@
 # agent-cli-core: the API a domain uses
 
-`src/lib.rs` re-exports each name below. Jump to definitions.
+`src/lib.rs` re-exports each name below, and `anyhow`, `clap`, `schemars`,
+`serde_json` at core's versions. Jump to definitions.
 
 ## Registry
 - `command!` makes a `Command` from `fn(&Ctx, Args) -> Result<Row>` (Args:
@@ -15,13 +16,12 @@
   one command's `--help`. `Quality`, `quality`: search over labeled queries.
 
 ## Ctx: every effect goes through it
-- `Ctx`: `read(op)`, `write(effect, op)` (where --dry-run and --yes are
-  enforced), `note`, `env`, `section`, `config`, `cache`,
-  `deadline`, `remaining`, `long_text` (a `LongText`), `save` (bytes
-  to `--output`; the row then prints). `Op`: what read and write perform.
+- `Ctx`: `read(op)`, `write(effect, op)` (--dry-run and --yes enforced),
+  `note`, `env`, `section`, `config`, `cache`, `deadline`, `remaining`,
+  `long_text` (a `LongText`), `save` (bytes to `--output`). `Op`: what read and write perform.
 - `Globals`, `Setup`, `DEFAULT_TIMEOUT`: the run's surroundings.
-- `Config`; `pick`: the one rule for scope flags; `Cache`: keyed, with a TTL.
-  A doctor with no checks reads as not set up (`agent-cli config`).
+- `Config`; `pick`: the rule for scope flags; `Cache`: keyed, with a TTL.
+  A doctor with no checks reads as not set up.
 
 ## HTTP and processes
 - `Request` (`get`, `query` = a POST that only reads, `.json`, `.form`,
@@ -35,24 +35,24 @@
 - `run_until`, `Output`: a child process under the deadline.
 - `on_stop`, `OnStop`: what a signal must stop (a DB call) until dropped.
 
+## Diff
+`diff(ctx, &DiffArgs, &Rules, left, right)`: two `Side`s (id, `get`'s row,
+`secrets` by path) to a `Diff` of `Change`s; `Rules::PLAIN`; `scoped`.
+
 ## Errors and secrets
 - `Failure`: `usage` 2, `setup` 3, `not_found` 4, `conflict` 5, `timed_out`
   124; `.hint(cmd)`, `.with_data(v)`. `Exit`; `status_of`: a refusal's HTTP
   status.
-- `Secret` (no Serialize; `expose`), `redact`, `redact_value`.
+- `Secret` (no Serialize; `expose`), `redact`, `redact_value`, `sensitive_key`.
 - `Credential::from_keys(key, value, env, cmd)`, `.resolve(ctx)`, `.source()`.
 
 ## Time
-- `When` (`--since`, `--until`; `.utc()`, `.unix()`), `Span` (a length),
-  `now` (fixtures freeze it), `utc` (a service's stamp), `utc_time`.
-
-## Re-exported crates
-`anyhow`, `clap`, `schemars`, `serde_json`, at core's versions.
+`When` (`--since`, `--until`; `.utc()`, `.unix()`), `Span` (a length),
+`now` (fixtures freeze it), `utc` (a service's stamp), `utc_time`.
 
 ## Testing (`agent_cli_core::testing`)
 - `run(DOMAINS, argv, Setup::fake(FakeTransport::answering([Answer::json(&v)])))`
   gives an `Outcome` (`code`, `.json()`); `transport.sent()` is what went out.
-- `Setup::with_env`, `with_stdin`, `with_config`.
-- `assert_dry_run`, `assert_search_quality`,
-  `printed_command_problems`, `non_utc_times`, `next_command` (the argv a
-  `[next: agent-cli …]` note names; world tests' `follow` walks them).
+- `Setup::with_env`, `with_stdin`, `with_config`; `assert_dry_run`,
+  `assert_search_quality`, `printed_command_problems`, `non_utc_times`,
+  `next_command` (a `[next: …]` note's argv).

@@ -1,5 +1,6 @@
 //! `k8s ingress …`: ingresses, and in `get` the services behind each rule.
 
+pub(crate) mod diff;
 pub(crate) mod get;
 pub(crate) mod list;
 

@@ -126,7 +126,11 @@ fn run_create(ctx: &Ctx, args: RunCreateArgs) -> Result<RunCreated> {
             _ => error,
         })?;
     let row = run_row(&run);
-    ctx.note(format!("[next: agent-cli airflow run wait {}]", row.id));
+    ctx.note(format!(
+        "[next: agent-cli airflow run wait {}{}]",
+        row.id,
+        client.instance.flag()
+    ));
     Ok(RunCreated {
         id: row.id,
         state: row.state,

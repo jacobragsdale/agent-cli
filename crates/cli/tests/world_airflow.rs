@@ -8,7 +8,7 @@
 mod world;
 
 use serde_json::json;
-use world::ok;
+use world::{follow, ok};
 
 const RUN: &str = "etl_nightly/scheduled__2026-09-29T00:00:00+00:00";
 
@@ -21,6 +21,8 @@ fn a_failed_task_leads_to_its_line_in_the_dag_and_the_input_it_failed_on() {
         "etl_nightly/latest/load_orders/2",
         "--fields",
         "error,at",
+        "--instance",
+        "prod",
     ]);
     assert_eq!(log["at"], "etl_nightly:42");
 
@@ -31,6 +33,8 @@ fn a_failed_task_leads_to_its_line_in_the_dag_and_the_input_it_failed_on() {
         log["at"].as_str().unwrap(),
         "--fields",
         "id,lines,text,repo_file",
+        "--instance",
+        "prod",
     ]);
     assert_eq!(source["id"], "etl_nightly:42");
     assert_eq!(
@@ -51,10 +55,21 @@ fn a_failed_task_leads_to_its_line_in_the_dag_and_the_input_it_failed_on() {
         "etl_nightly/latest/extract_orders",
         "--fields",
         "id",
+        "--instance",
+        "prod",
     ]);
     let id = format!("{RUN}/extract_orders@return_value");
     assert_eq!(keys[1], json!({"id": id}));
-    let input = ok(&["airflow", "xcom", "get", &id, "--fields", "value"]);
+    let input = ok(&[
+        "airflow",
+        "xcom",
+        "get",
+        &id,
+        "--fields",
+        "value",
+        "--instance",
+        "prod",
+    ]);
     let missing: Vec<&serde_json::Value> = input["value"]
         .as_array()
         .unwrap()
@@ -66,24 +81,49 @@ fn a_failed_task_leads_to_its_line_in_the_dag_and_the_input_it_failed_on() {
 
 #[test]
 fn a_failed_run_names_its_failed_tasks_log_as_the_next_step() {
-    let run = world::agent_cli(&["airflow", "run", "get", "etl_nightly/latest"]);
+    let run = world::agent_cli(&[
+        "airflow",
+        "run",
+        "get",
+        "etl_nightly/latest",
+        "--instance",
+        "prod",
+    ]);
     assert_eq!(run.code, 0, "{}", run.stderr);
     let failed = format!("{RUN}/load_orders/2");
     assert!(
-        run.stderr
-            .contains(&format!("[next: agent-cli airflow task logs {failed}]")),
+        run.stderr.contains(&format!(
+            "[next: agent-cli airflow task logs {failed} --instance prod]"
+        )),
         "{}",
         run.stderr
     );
-    let log = ok(&["airflow", "task", "logs", &failed, "--fields", "at"]);
+    let log = ok(&[
+        "airflow",
+        "task",
+        "logs",
+        &failed,
+        "--fields",
+        "at",
+        "--instance",
+        "prod",
+    ]);
     assert_eq!(log["at"], "etl_nightly:42");
 }
 
 #[test]
 fn an_import_error_names_its_line_in_the_dags_repo() {
-    let listed = ok(&["airflow", "import-error", "list", "--fields", "id,file"]);
+    let listed = ok(&[
+        "airflow",
+        "import-error",
+        "list",
+        "--fields",
+        "id,file",
+        "--instance",
+        "prod",
+    ]);
     assert_eq!(listed[0], json!({"id": 12, "file": "customer_sync.py"}));
-    let got = world::agent_cli(&["airflow", "import-error", "get", "12"]);
+    let got = world::agent_cli(&["airflow", "import-error", "get", "12", "--instance", "prod"]);
     assert_eq!(got.code, 0, "{}", got.stderr);
     assert_eq!(got.json()["line"], 5);
     assert_eq!(
@@ -107,9 +147,19 @@ fn a_tasks_pool_and_a_dags_connections_lead_to_the_sql_connection() {
         "etl_nightly/latest/load_orders",
         "--fields",
         "pool,blocked_by",
+        "--instance",
+        "prod",
     ]);
     assert_eq!(task, json!({"pool": "default_pool"}));
-    let pools = ok(&["airflow", "pool", "list", "--fields", "id,open,queued"]);
+    let pools = ok(&[
+        "airflow",
+        "pool",
+        "list",
+        "--fields",
+        "id,open,queued",
+        "--instance",
+        "prod",
+    ]);
     assert_eq!(
         pools[0],
         json!({"id": "default_pool", "open": 128, "queued": 0})
@@ -120,13 +170,15 @@ fn a_tasks_pool_and_a_dags_connections_lead_to_the_sql_connection() {
         "list",
         "--fields",
         "id,type,host,sql_conn",
+        "--instance",
+        "prod",
     ]);
     assert_eq!(
         connections[2],
         json!({"id": "reporting_dw", "type": "mssql", "host": "sql.contoso.example",
             "sql_conn": "reporting"})
     );
-    let variables = world::agent_cli(&["airflow", "variable", "list"]);
+    let variables = world::agent_cli(&["airflow", "variable", "list", "--instance", "prod"]);
     assert_eq!(variables.code, 0, "{}", variables.stderr);
     assert!(
         variables.stdout.contains("orders_api_token") && !variables.stdout.contains("5000"),
@@ -144,7 +196,55 @@ fn an_import_error_is_found_by_its_dag_file() {
         "customer_sync.py",
         "--fields",
         "id,line",
+        "--instance",
+        "prod",
     ]);
     assert_eq!(error["id"], 12);
     assert_eq!(error["line"], 5);
+}
+
+/// qa's `etl_nightly.py` logs and skips an order without a customer at line
+/// 42 where prod's raises, qa has no `orders_batch_size`, and the failed run
+/// compared with the good one before it leads to its failed task's log.
+#[test]
+fn qa_and_prod_differ_at_line_42_and_the_failed_run_differs_from_the_good_one() {
+    let dag = ok(&[
+        "airflow",
+        "dag",
+        "diff",
+        "qa:etl_nightly",
+        "prod:etl_nightly",
+    ]);
+    let lines = dag["changes"][0]["lines"].as_array().unwrap();
+    assert_eq!(dag["changes"][0]["path"], "source");
+    assert_eq!(lines[0], "@@ -39,7 +39,7 @@");
+    assert!(
+        lines.contains(&json!(
+            "+            raise ValueError(f\"order {order_id} has no customer_id\")"
+        )),
+        "{dag}"
+    );
+    let variables = ok(&["airflow", "variable", "diff", "qa", "prod"]);
+    assert_eq!(
+        variables["changes"][0]["path"], "orders_batch_size",
+        "{variables}"
+    );
+    let walked = follow(&["airflow", "run", "diff", "prod:etl_nightly/latest"]);
+    let runs = walked[0].json();
+    assert_eq!(
+        runs["left"],
+        "prod:etl_nightly/scheduled__2026-09-28T00:00:00+00:00"
+    );
+    assert!(
+        runs["changes"].as_array().unwrap().contains(
+            &json!({"path": "tasks.load_orders.state", "left": "success", "right": "failed"})
+        ),
+        "{runs}"
+    );
+    assert_eq!(walked.len(), 2, "the failed task's log is the next step");
+    assert!(
+        walked[1].stdout.contains("order 88123 has no customer_id"),
+        "{}",
+        walked[1].stdout
+    );
 }

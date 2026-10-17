@@ -2083,5 +2083,1031 @@
    ],
    "total_entries": 3
   }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/tasks",
+  "note": "etl_nightly's four tasks, a chain",
+  "answer": {
+   "tasks": [
+    {
+     "task_id": "extract_orders",
+     "task_display_name": "extract_orders",
+     "owner": "data-eng",
+     "start_date": "2026-01-01T00:00:00+00:00",
+     "end_date": null,
+     "trigger_rule": "all_success",
+     "depends_on_past": false,
+     "wait_for_downstream": false,
+     "retries": 1,
+     "queue": "default",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "execution_timeout": null,
+     "retry_delay": {
+      "__type": "TimeDelta",
+      "days": 0,
+      "seconds": 300,
+      "microseconds": 0
+     },
+     "retry_exponential_backoff": false,
+     "priority_weight": 1,
+     "weight_rule": "downstream",
+     "ui_color": "#ffefeb",
+     "ui_fgcolor": "#000",
+     "template_fields": [
+      "templates_dict",
+      "op_args",
+      "op_kwargs"
+     ],
+     "downstream_task_ids": [
+      "transform_orders"
+     ],
+     "doc_md": null,
+     "operator_name": "PythonOperator",
+     "params": {},
+     "class_ref": {
+      "module_path": "airflow.providers.standard.operators.python",
+      "class_name": "PythonOperator"
+     },
+     "is_mapped": false,
+     "extra_links": []
+    },
+    {
+     "task_id": "transform_orders",
+     "task_display_name": "transform_orders",
+     "owner": "data-eng",
+     "start_date": "2026-01-01T00:00:00+00:00",
+     "end_date": null,
+     "trigger_rule": "all_success",
+     "depends_on_past": false,
+     "wait_for_downstream": false,
+     "retries": 1,
+     "queue": "default",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "execution_timeout": null,
+     "retry_delay": {
+      "__type": "TimeDelta",
+      "days": 0,
+      "seconds": 300,
+      "microseconds": 0
+     },
+     "retry_exponential_backoff": false,
+     "priority_weight": 1,
+     "weight_rule": "downstream",
+     "ui_color": "#ffefeb",
+     "ui_fgcolor": "#000",
+     "template_fields": [
+      "templates_dict",
+      "op_args",
+      "op_kwargs"
+     ],
+     "downstream_task_ids": [
+      "load_orders"
+     ],
+     "doc_md": null,
+     "operator_name": "PythonOperator",
+     "params": {},
+     "class_ref": {
+      "module_path": "airflow.providers.standard.operators.python",
+      "class_name": "PythonOperator"
+     },
+     "is_mapped": false,
+     "extra_links": []
+    },
+    {
+     "task_id": "load_orders",
+     "task_display_name": "load_orders",
+     "owner": "data-eng",
+     "start_date": "2026-01-01T00:00:00+00:00",
+     "end_date": null,
+     "trigger_rule": "all_success",
+     "depends_on_past": false,
+     "wait_for_downstream": false,
+     "retries": 1,
+     "queue": "default",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "execution_timeout": null,
+     "retry_delay": {
+      "__type": "TimeDelta",
+      "days": 0,
+      "seconds": 300,
+      "microseconds": 0
+     },
+     "retry_exponential_backoff": false,
+     "priority_weight": 1,
+     "weight_rule": "downstream",
+     "ui_color": "#ffefeb",
+     "ui_fgcolor": "#000",
+     "template_fields": [
+      "templates_dict",
+      "op_args",
+      "op_kwargs"
+     ],
+     "downstream_task_ids": [
+      "publish_report"
+     ],
+     "doc_md": null,
+     "operator_name": "PythonOperator",
+     "params": {},
+     "class_ref": {
+      "module_path": "airflow.providers.standard.operators.python",
+      "class_name": "PythonOperator"
+     },
+     "is_mapped": false,
+     "extra_links": []
+    },
+    {
+     "task_id": "publish_report",
+     "task_display_name": "publish_report",
+     "owner": "data-eng",
+     "start_date": "2026-01-01T00:00:00+00:00",
+     "end_date": null,
+     "trigger_rule": "all_success",
+     "depends_on_past": false,
+     "wait_for_downstream": false,
+     "retries": 1,
+     "queue": "default",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "execution_timeout": null,
+     "retry_delay": {
+      "__type": "TimeDelta",
+      "days": 0,
+      "seconds": 300,
+      "microseconds": 0
+     },
+     "retry_exponential_backoff": false,
+     "priority_weight": 1,
+     "weight_rule": "downstream",
+     "ui_color": "#ffefeb",
+     "ui_fgcolor": "#000",
+     "template_fields": [
+      "templates_dict",
+      "op_args",
+      "op_kwargs"
+     ],
+     "downstream_task_ids": [],
+     "doc_md": null,
+     "operator_name": "PythonOperator",
+     "params": {},
+     "class_ref": {
+      "module_path": "airflow.providers.standard.operators.python",
+      "class_name": "PythonOperator"
+     },
+     "is_mapped": false,
+     "extra_links": []
+    }
+   ],
+   "total_entries": 4
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns?order_by=-run_after&state=success&limit=25",
+  "note": "airflow run diff: the last good run before the failed one",
+  "answer": {
+   "dag_runs": [
+    {
+     "dag_run_id": "scheduled__2026-09-28T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-28T00:00:00+00:00",
+     "queued_at": "2026-09-28T00:00:00+00:00",
+     "start_date": "2026-09-28T00:00:03.912+00:00",
+     "end_date": "2026-09-28T00:39:41.105+00:00",
+     "data_interval_start": "2026-09-28T00:00:00+00:00",
+     "data_interval_end": "2026-09-28T00:00:00+00:00",
+     "run_after": "2026-09-28T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-28T00:39:41.105+00:00",
+     "run_type": "scheduled",
+     "state": "success",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    },
+    {
+     "dag_run_id": "scheduled__2026-09-27T00:00:00+00:00",
+     "dag_id": "etl_nightly",
+     "logical_date": "2026-09-27T00:00:00+00:00",
+     "queued_at": "2026-09-27T00:00:00+00:00",
+     "start_date": "2026-09-27T00:00:04.018+00:00",
+     "end_date": "2026-09-27T00:38:12.660+00:00",
+     "data_interval_start": "2026-09-27T00:00:00+00:00",
+     "data_interval_end": "2026-09-27T00:00:00+00:00",
+     "run_after": "2026-09-27T00:00:00+00:00",
+     "last_scheduling_decision": "2026-09-27T00:38:12.660+00:00",
+     "run_type": "scheduled",
+     "state": "success",
+     "triggered_by": "timetable",
+     "conf": {},
+     "note": null,
+     "dag_versions": [
+      {
+       "id": "0199e5a4-0000-7000-8000-000000000007",
+       "version_number": 7,
+       "dag_id": "etl_nightly",
+       "bundle_name": "dags-folder",
+       "bundle_version": null,
+       "created_at": "2026-09-24T09:12:00+00:00",
+       "bundle_url": null
+      }
+     ]
+    }
+   ],
+   "total_entries": 2
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-28T00%3A00%3A00%2B00%3A00/taskInstances?limit=100&offset=0",
+  "note": "the 2026-09-28 run: every task succeeded on its first try",
+  "answer": {
+   "task_instances": [
+    {
+     "id": "0199e5b1-0000-7000-8000-000000010928",
+     "task_id": "extract_orders",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-28T00:00:00+00:00",
+     "map_index": -1,
+     "logical_date": "2026-09-28T00:00:00+00:00",
+     "run_after": "2026-09-28T00:00:00+00:00",
+     "start_date": "2026-09-28T00:00:05.8+00:00",
+     "end_date": "2026-09-28T00:11:47.0+00:00",
+     "duration": 701.2,
+     "state": "success",
+     "try_number": 1,
+     "max_tries": 1,
+     "task_display_name": "extract_orders",
+     "hostname": "etl-nightly-extract-orders-a9b8c7d6",
+     "unixname": "airflow",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": "2026-09-28T00:00:05.8+00:00",
+     "scheduled_when": "2026-09-28T00:00:05.8+00:00",
+     "pid": 7,
+     "executor": null,
+     "executor_config": "{}",
+     "note": null,
+     "rendered_map_index": null,
+     "rendered_fields": {
+      "op_kwargs": {
+       "day": "2026-09-27"
+      }
+     },
+     "trigger": null,
+     "triggerer_job": null,
+     "dag_version": null
+    },
+    {
+     "id": "0199e5b1-0000-7000-8000-000000010928",
+     "task_id": "transform_orders",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-28T00:00:00+00:00",
+     "map_index": -1,
+     "logical_date": "2026-09-28T00:00:00+00:00",
+     "run_after": "2026-09-28T00:00:00+00:00",
+     "start_date": "2026-09-28T00:11:50.2+00:00",
+     "end_date": "2026-09-28T00:38:20.6+00:00",
+     "duration": 1590.4,
+     "state": "success",
+     "try_number": 1,
+     "max_tries": 1,
+     "task_display_name": "transform_orders",
+     "hostname": "etl-nightly-transform-orders-f1e2d3c4",
+     "unixname": "airflow",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": "2026-09-28T00:11:50.2+00:00",
+     "scheduled_when": "2026-09-28T00:11:50.2+00:00",
+     "pid": 7,
+     "executor": null,
+     "executor_config": "{}",
+     "note": null,
+     "rendered_map_index": null,
+     "rendered_fields": {},
+     "trigger": null,
+     "triggerer_job": null,
+     "dag_version": null
+    },
+    {
+     "id": "0199e5b1-0000-7000-8000-000000010928",
+     "task_id": "load_orders",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-28T00:00:00+00:00",
+     "map_index": -1,
+     "logical_date": "2026-09-28T00:00:00+00:00",
+     "run_after": "2026-09-28T00:00:00+00:00",
+     "start_date": "2026-09-28T00:38:23.9+00:00",
+     "end_date": "2026-09-28T00:39:36.0+00:00",
+     "duration": 72.1,
+     "state": "success",
+     "try_number": 1,
+     "max_tries": 1,
+     "task_display_name": "load_orders",
+     "hostname": "etl-nightly-load-orders-m3n4p5q6",
+     "unixname": "airflow",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": "2026-09-28T00:38:23.9+00:00",
+     "scheduled_when": "2026-09-28T00:38:23.9+00:00",
+     "pid": 7,
+     "executor": null,
+     "executor_config": "{}",
+     "note": null,
+     "rendered_map_index": null,
+     "rendered_fields": {
+      "op_kwargs": {
+       "day": "2026-09-27"
+      }
+     },
+     "trigger": null,
+     "triggerer_job": null,
+     "dag_version": null
+    },
+    {
+     "id": "0199e5b1-0000-7000-8000-000000010928",
+     "task_id": "publish_report",
+     "dag_id": "etl_nightly",
+     "dag_run_id": "scheduled__2026-09-28T00:00:00+00:00",
+     "map_index": -1,
+     "logical_date": "2026-09-28T00:00:00+00:00",
+     "run_after": "2026-09-28T00:00:00+00:00",
+     "start_date": "2026-09-28T00:39:38.4+00:00",
+     "end_date": "2026-09-28T00:39:40.9+00:00",
+     "duration": 2.5,
+     "state": "success",
+     "try_number": 1,
+     "max_tries": 1,
+     "task_display_name": "publish_report",
+     "hostname": "etl-nightly-publish-report-r7s8t9u0",
+     "unixname": null,
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "queue": "default",
+     "priority_weight": 1,
+     "operator": "PythonOperator",
+     "queued_when": "2026-09-28T00:39:38.4+00:00",
+     "scheduled_when": "2026-09-28T00:39:38.4+00:00",
+     "pid": null,
+     "executor": null,
+     "executor_config": "{}",
+     "note": null,
+     "rendered_map_index": null,
+     "rendered_fields": {},
+     "trigger": null,
+     "triggerer_job": null,
+     "dag_version": null
+    }
+   ],
+   "total_entries": 4
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-28T00%3A00%3A00%2B00%3A00/taskInstances/~/xcomEntries?limit=100&offset=0",
+  "answer": {
+   "xcom_entries": [
+    {
+     "key": "extract_window",
+     "timestamp": "2026-09-28T00:00:07.311+00:00",
+     "logical_date": "2026-09-28T00:00:00+00:00",
+     "map_index": -1,
+     "task_id": "extract_orders",
+     "dag_id": "etl_nightly",
+     "run_id": "scheduled__2026-09-28T00:00:00+00:00",
+     "dag_display_name": "etl_nightly"
+    },
+    {
+     "key": "return_value",
+     "timestamp": "2026-09-28T00:00:07.311+00:00",
+     "logical_date": "2026-09-28T00:00:00+00:00",
+     "map_index": -1,
+     "task_id": "extract_orders",
+     "dag_id": "etl_nightly",
+     "run_id": "scheduled__2026-09-28T00:00:00+00:00",
+     "dag_display_name": "etl_nightly"
+    },
+    {
+     "key": "return_value",
+     "timestamp": "2026-09-28T00:00:07.311+00:00",
+     "logical_date": "2026-09-28T00:00:00+00:00",
+     "map_index": -1,
+     "task_id": "transform_orders",
+     "dag_id": "etl_nightly",
+     "run_id": "scheduled__2026-09-28T00:00:00+00:00",
+     "dag_display_name": "etl_nightly"
+    }
+   ],
+   "total_entries": 3
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/dags/etl_nightly/dagRuns/scheduled__2026-09-29T00%3A00%3A00%2B00%3A00/taskInstances/~/xcomEntries?limit=100&offset=0",
+  "answer": {
+   "xcom_entries": [
+    {
+     "key": "extract_window",
+     "timestamp": "2026-09-29T00:00:07.311+00:00",
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "task_id": "extract_orders",
+     "dag_id": "etl_nightly",
+     "run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "dag_display_name": "etl_nightly"
+    },
+    {
+     "key": "return_value",
+     "timestamp": "2026-09-29T00:00:07.311+00:00",
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "task_id": "extract_orders",
+     "dag_id": "etl_nightly",
+     "run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "dag_display_name": "etl_nightly"
+    },
+    {
+     "key": "return_value",
+     "timestamp": "2026-09-29T00:00:07.311+00:00",
+     "logical_date": "2026-09-29T00:00:00+00:00",
+     "map_index": -1,
+     "task_id": "transform_orders",
+     "dag_id": "etl_nightly",
+     "run_id": "scheduled__2026-09-29T00:00:00+00:00",
+     "dag_display_name": "etl_nightly"
+    }
+   ],
+   "total_entries": 3
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/variables?limit=100&offset=0",
+  "answer": {
+   "variables": [
+    {
+     "key": "orders_batch_size",
+     "value": "5000",
+     "description": "Orders per page from the orders API",
+     "is_encrypted": false
+    },
+    {
+     "key": "orders_api_token",
+     "value": "***",
+     "description": "Bearer token for orders_api",
+     "is_encrypted": true
+    },
+    {
+     "key": "report_recipients",
+     "value": "[\"data-eng@contoso.example\"]",
+     "description": null,
+     "is_encrypted": false
+    }
+   ],
+   "total_entries": 3
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/connections?limit=100&offset=0",
+  "answer": {
+   "connections": [
+    {
+     "connection_id": "airflow_logs",
+     "conn_type": "wasb",
+     "description": "Remote task logs",
+     "host": "contosoairflowlogs.blob.core.windows.net",
+     "login": "contosoairflowlogs",
+     "schema": null,
+     "port": null,
+     "password": "***",
+     "extra": "{\"container\": \"airflow-logs\"}"
+    },
+    {
+     "connection_id": "orders_api",
+     "conn_type": "http",
+     "description": "The orders API extract_orders reads",
+     "host": "orders.contoso.example",
+     "login": null,
+     "schema": "https",
+     "port": 443,
+     "password": "***",
+     "extra": null
+    },
+    {
+     "connection_id": "reporting_dw",
+     "conn_type": "mssql",
+     "description": "The reporting warehouse load_orders writes to",
+     "host": "sql.contoso.example",
+     "login": "etl_writer",
+     "schema": "reporting",
+     "port": 1433,
+     "password": "***",
+     "extra": null
+    }
+   ],
+   "total_entries": 3
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/pools?limit=100&offset=0",
+  "answer": {
+   "pools": [
+    {
+     "name": "default_pool",
+     "slots": 128,
+     "description": "Default pool",
+     "include_deferred": false,
+     "occupied_slots": 0,
+     "running_slots": 0,
+     "queued_slots": 0,
+     "scheduled_slots": 0,
+     "open_slots": 128,
+     "deferred_slots": 0
+    },
+    {
+     "name": "warehouse_writes",
+     "slots": 2,
+     "description": "Writes to the reporting warehouse",
+     "include_deferred": false,
+     "occupied_slots": 0,
+     "running_slots": 0,
+     "queued_slots": 0,
+     "scheduled_slots": 0,
+     "open_slots": 2,
+     "deferred_slots": 0
+    }
+   ],
+   "total_entries": 2
+  }
+ },
+ {
+  "request": "GET https://airflow.contoso.example/api/v2/providers?limit=100&offset=0",
+  "answer": {
+   "providers": [
+    {
+     "package_name": "apache-airflow-providers-cncf-kubernetes",
+     "version": "10.6.0",
+     "description": "Kubernetes"
+    },
+    {
+     "package_name": "apache-airflow-providers-microsoft-azure",
+     "version": "12.4.0",
+     "description": "Microsoft Azure"
+    },
+    {
+     "package_name": "apache-airflow-providers-microsoft-mssql",
+     "version": "4.2.1",
+     "description": "Microsoft SQL Server (MSSQL)"
+    },
+    {
+     "package_name": "apache-airflow-providers-standard",
+     "version": "1.3.0",
+     "description": "Standard"
+    }
+   ],
+   "total_entries": 4
+  }
+ },
+ {
+  "request": "POST https://airflow-qa.contoso.example/auth/token",
+  "note": "qa signs in as prod does",
+  "status": 201,
+  "answer": {
+   "access_token": "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.Y29udG9zby1xYQ.c3RhbmQtaW4"
+  }
+ },
+ {
+  "request": "GET https://airflow-qa.contoso.example/api/v2/version",
+  "answer": {
+   "version": "3.3.2",
+   "git_version": null
+  }
+ },
+ {
+  "request": "GET https://airflow-qa.contoso.example/api/v2/monitor/health",
+  "answer": {
+   "metadatabase": {
+    "status": "healthy"
+   },
+   "scheduler": {
+    "status": "healthy",
+    "latest_scheduler_heartbeat": "2026-09-29T11:59:58.101+00:00"
+   },
+   "triggerer": {
+    "status": "healthy",
+    "latest_triggerer_heartbeat": "2026-09-29T11:59:57.020+00:00"
+   },
+   "dag_processor": {
+    "status": "healthy",
+    "latest_dag_processor_heartbeat": "2026-09-29T11:59:59.330+00:00"
+   }
+  }
+ },
+ {
+  "request": "GET https://airflow-qa.contoso.example/api/v2/dags/etl_nightly/details",
+  "answer": {
+   "dag_id": "etl_nightly",
+   "dag_display_name": "etl_nightly",
+   "is_paused": false,
+   "is_stale": false,
+   "last_parsed_time": "2026-09-29T11:57:40.118204+00:00",
+   "last_expired": null,
+   "bundle_name": "dags-folder",
+   "bundle_version": null,
+   "relative_fileloc": "etl_nightly.py",
+   "fileloc": "/opt/airflow/dags/etl_nightly.py",
+   "description": "Loads yesterday's orders into the warehouse",
+   "timetable_summary": "0 0 * * *",
+   "timetable_description": "At 00:00",
+   "tags": [
+    {
+     "name": "etl",
+     "dag_id": "etl_nightly"
+    },
+    {
+     "name": "orders",
+     "dag_id": "etl_nightly"
+    }
+   ],
+   "max_active_tasks": 16,
+   "max_active_runs": 1,
+   "max_consecutive_failed_dag_runs": 0,
+   "has_task_concurrency_limits": false,
+   "has_import_errors": false,
+   "next_dagrun_logical_date": "2026-09-30T00:00:00+00:00",
+   "next_dagrun_data_interval_start": "2026-09-30T00:00:00+00:00",
+   "next_dagrun_data_interval_end": "2026-09-30T00:00:00+00:00",
+   "next_dagrun_run_after": "2026-09-30T00:00:00+00:00",
+   "owners": [
+    "data-eng"
+   ],
+   "file_token": "Ii9vcHQvYWlyZmxvdy9kYWdzIg.contoso-qa",
+   "catchup": false,
+   "dag_run_timeout": null,
+   "asset_expression": null,
+   "doc_md": null,
+   "start_date": "2025-06-01T00:00:00+00:00",
+   "end_date": null,
+   "is_paused_upon_creation": null,
+   "params": {
+    "day": {
+     "__class": "airflow.sdk.definitions.param.Param",
+     "value": null,
+     "description": "The day to load (default: the logical date's)",
+     "schema": {
+      "type": [
+       "null",
+       "string"
+      ],
+      "format": "date"
+     },
+     "source": null
+    },
+    "full_reload": {
+     "__class": "airflow.sdk.definitions.param.Param",
+     "value": false,
+     "description": "Reload every order, not just the day's",
+     "schema": {
+      "type": "boolean"
+     },
+     "source": null
+    }
+   },
+   "render_template_as_native_obj": false,
+   "template_search_path": null,
+   "timezone": "UTC",
+   "last_parsed": "2026-09-29T11:58:02.412345+00:00",
+   "concurrency": 16,
+   "latest_dag_version": {
+    "id": "0199e5a4-0000-7000-8000-0000000000a9",
+    "version_number": 9,
+    "dag_id": "etl_nightly",
+    "bundle_name": "dags-folder",
+    "bundle_version": null,
+    "created_at": "2026-09-24T09:12:00+00:00",
+    "bundle_url": null
+   }
+  }
+ },
+ {
+  "request": "GET https://airflow-qa.contoso.example/api/v2/dagSources/etl_nightly",
+  "note": "version 9 of dags/etl_nightly.py: line 42 logs and skips an order with no customer_id, where prod raises",
+  "answer": {
+   "content": "\"\"\"Loads yesterday's orders into the warehouse.\"\"\"\n\nfrom __future__ import annotations\n\nimport logging\n\nimport pendulum\nfrom airflow.providers.standard.operators.python import PythonOperator\nfrom airflow.sdk import DAG, BaseHook, Variable\n\nlog = logging.getLogger(\"task\")\n\n\ndef extract_orders(day: str) -> list[dict]:\n    \"\"\"The day's orders from the orders API.\"\"\"\n    from contoso_orders import OrdersClient\n\n    api = BaseHook.get_connection(\"orders_api\")\n    batch = int(Variable.get(\"orders_batch_size\", default=\"5000\"))\n    return OrdersClient(api.host).orders(day=day, batch=batch)\n\n\ndef transform_orders(ti) -> list[dict]:\n    orders = ti.xcom_pull(task_ids=\"extract_orders\")\n    return [{**order, \"total\": round(order[\"total\"], 2)} for order in orders]\n\n\ndef check(order: dict) -> dict:\n    \"\"\"A row the warehouse takes: every order needs its customer.\"\"\"\n    if order.get(\"customer_id\") is None:\n        log.warning(\"Order without a customer\", extra={\"order_id\": order[\"order_id\"]})\n    return order\n\n\ndef load_orders(day: str, ti) -> None:\n    orders = ti.xcom_pull(task_ids=\"extract_orders\")\n    log.info(\"Loading orders for %s\", day, extra={\"rows\": len(orders)})\n    hook = BaseHook.get_connection(\"reporting_dw\").get_hook()\n    rows = [check(order) for order in orders]\n    for order_id, customer_id in [(row[\"order_id\"], row.get(\"customer_id\")) for row in rows]:\n        if customer_id is None:\n            log.warning(\"Skipping order %s: no customer_id\", order_id)\n    hook.insert_rows(\"dbo.orders\", [tuple(row.values()) for row in rows])\n\n\nwith DAG(\n    dag_id=\"etl_nightly\",\n    description=\"Loads yesterday's orders into the warehouse\",\n    schedule=\"0 0 * * *\",\n    start_date=pendulum.datetime(2026, 1, 1, tz=\"UTC\"),\n    catchup=False,\n    max_active_runs=1,\n    tags=[\"etl\", \"orders\"],\n    default_args={\"owner\": \"data-eng\", \"retries\": 1},\n) as dag:\n    day = \"{{ ds }}\"\n    extract = PythonOperator(task_id=\"extract_orders\", python_callable=extract_orders, op_kwargs={\"day\": day})\n    transform = PythonOperator(task_id=\"transform_orders\", python_callable=transform_orders)\n    load = PythonOperator(task_id=\"load_orders\", python_callable=load_orders, op_kwargs={\"day\": day})\n    report = PythonOperator(task_id=\"publish_report\", python_callable=lambda: None)\n    extract >> transform >> load >> report\n",
+   "dag_id": "etl_nightly",
+   "version_number": 9,
+   "dag_display_name": "etl_nightly"
+  }
+ },
+ {
+  "request": "GET https://airflow-qa.contoso.example/api/v2/dags/etl_nightly/tasks",
+  "answer": {
+   "tasks": [
+    {
+     "task_id": "extract_orders",
+     "task_display_name": "extract_orders",
+     "owner": "data-eng",
+     "start_date": "2026-01-01T00:00:00+00:00",
+     "end_date": null,
+     "trigger_rule": "all_success",
+     "depends_on_past": false,
+     "wait_for_downstream": false,
+     "retries": 1,
+     "queue": "default",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "execution_timeout": null,
+     "retry_delay": {
+      "__type": "TimeDelta",
+      "days": 0,
+      "seconds": 300,
+      "microseconds": 0
+     },
+     "retry_exponential_backoff": false,
+     "priority_weight": 1,
+     "weight_rule": "downstream",
+     "ui_color": "#ffefeb",
+     "ui_fgcolor": "#000",
+     "template_fields": [
+      "templates_dict",
+      "op_args",
+      "op_kwargs"
+     ],
+     "downstream_task_ids": [
+      "transform_orders"
+     ],
+     "doc_md": null,
+     "operator_name": "PythonOperator",
+     "params": {},
+     "class_ref": {
+      "module_path": "airflow.providers.standard.operators.python",
+      "class_name": "PythonOperator"
+     },
+     "is_mapped": false,
+     "extra_links": []
+    },
+    {
+     "task_id": "transform_orders",
+     "task_display_name": "transform_orders",
+     "owner": "data-eng",
+     "start_date": "2026-01-01T00:00:00+00:00",
+     "end_date": null,
+     "trigger_rule": "all_success",
+     "depends_on_past": false,
+     "wait_for_downstream": false,
+     "retries": 1,
+     "queue": "default",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "execution_timeout": null,
+     "retry_delay": {
+      "__type": "TimeDelta",
+      "days": 0,
+      "seconds": 300,
+      "microseconds": 0
+     },
+     "retry_exponential_backoff": false,
+     "priority_weight": 1,
+     "weight_rule": "downstream",
+     "ui_color": "#ffefeb",
+     "ui_fgcolor": "#000",
+     "template_fields": [
+      "templates_dict",
+      "op_args",
+      "op_kwargs"
+     ],
+     "downstream_task_ids": [
+      "load_orders"
+     ],
+     "doc_md": null,
+     "operator_name": "PythonOperator",
+     "params": {},
+     "class_ref": {
+      "module_path": "airflow.providers.standard.operators.python",
+      "class_name": "PythonOperator"
+     },
+     "is_mapped": false,
+     "extra_links": []
+    },
+    {
+     "task_id": "load_orders",
+     "task_display_name": "load_orders",
+     "owner": "data-eng",
+     "start_date": "2026-01-01T00:00:00+00:00",
+     "end_date": null,
+     "trigger_rule": "all_success",
+     "depends_on_past": false,
+     "wait_for_downstream": false,
+     "retries": 1,
+     "queue": "default",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "execution_timeout": null,
+     "retry_delay": {
+      "__type": "TimeDelta",
+      "days": 0,
+      "seconds": 300,
+      "microseconds": 0
+     },
+     "retry_exponential_backoff": false,
+     "priority_weight": 1,
+     "weight_rule": "downstream",
+     "ui_color": "#ffefeb",
+     "ui_fgcolor": "#000",
+     "template_fields": [
+      "templates_dict",
+      "op_args",
+      "op_kwargs"
+     ],
+     "downstream_task_ids": [
+      "publish_report"
+     ],
+     "doc_md": null,
+     "operator_name": "PythonOperator",
+     "params": {},
+     "class_ref": {
+      "module_path": "airflow.providers.standard.operators.python",
+      "class_name": "PythonOperator"
+     },
+     "is_mapped": false,
+     "extra_links": []
+    },
+    {
+     "task_id": "publish_report",
+     "task_display_name": "publish_report",
+     "owner": "data-eng",
+     "start_date": "2026-01-01T00:00:00+00:00",
+     "end_date": null,
+     "trigger_rule": "all_success",
+     "depends_on_past": false,
+     "wait_for_downstream": false,
+     "retries": 1,
+     "queue": "default",
+     "pool": "default_pool",
+     "pool_slots": 1,
+     "execution_timeout": null,
+     "retry_delay": {
+      "__type": "TimeDelta",
+      "days": 0,
+      "seconds": 300,
+      "microseconds": 0
+     },
+     "retry_exponential_backoff": false,
+     "priority_weight": 1,
+     "weight_rule": "downstream",
+     "ui_color": "#ffefeb",
+     "ui_fgcolor": "#000",
+     "template_fields": [
+      "templates_dict",
+      "op_args",
+      "op_kwargs"
+     ],
+     "downstream_task_ids": [],
+     "doc_md": null,
+     "operator_name": "PythonOperator",
+     "params": {},
+     "class_ref": {
+      "module_path": "airflow.providers.standard.operators.python",
+      "class_name": "PythonOperator"
+     },
+     "is_mapped": false,
+     "extra_links": []
+    }
+   ],
+   "total_entries": 4
+  }
+ },
+ {
+  "request": "GET https://airflow-qa.contoso.example/api/v2/variables?limit=100&offset=0",
+  "note": "qa has no orders_batch_size",
+  "answer": {
+   "variables": [
+    {
+     "key": "orders_api_token",
+     "value": "***",
+     "description": "Bearer token for orders_api",
+     "is_encrypted": true
+    },
+    {
+     "key": "report_recipients",
+     "value": "[\"qa-team@contoso.example\"]",
+     "description": null,
+     "is_encrypted": false
+    }
+   ],
+   "total_entries": 2
+  }
+ },
+ {
+  "request": "GET https://airflow-qa.contoso.example/api/v2/connections?limit=100&offset=0",
+  "answer": {
+   "connections": [
+    {
+     "connection_id": "airflow_logs",
+     "conn_type": "wasb",
+     "description": "Remote task logs",
+     "host": "contosoairflowlogsqa.blob.core.windows.net",
+     "login": "contosoairflowlogsqa",
+     "schema": null,
+     "port": null,
+     "password": "***",
+     "extra": "{\"container\": \"airflow-logs-qa\"}"
+    },
+    {
+     "connection_id": "orders_api",
+     "conn_type": "http",
+     "description": "The orders API extract_orders reads",
+     "host": "orders-qa.contoso.example",
+     "login": null,
+     "schema": "https",
+     "port": 443,
+     "password": "***",
+     "extra": null
+    },
+    {
+     "connection_id": "reporting_dw",
+     "conn_type": "mssql",
+     "description": "The reporting warehouse load_orders writes to",
+     "host": "sql-qa.contoso.example",
+     "login": "etl_writer",
+     "schema": "reporting",
+     "port": 1433,
+     "password": "***",
+     "extra": null
+    }
+   ],
+   "total_entries": 3
+  }
+ },
+ {
+  "request": "GET https://airflow-qa.contoso.example/api/v2/pools?limit=100&offset=0",
+  "answer": {
+   "pools": [
+    {
+     "name": "default_pool",
+     "slots": 32,
+     "description": "Default pool",
+     "include_deferred": false,
+     "occupied_slots": 0,
+     "running_slots": 0,
+     "queued_slots": 0,
+     "scheduled_slots": 0,
+     "open_slots": 32,
+     "deferred_slots": 0
+    }
+   ],
+   "total_entries": 1
+  }
+ },
+ {
+  "request": "GET https://airflow-qa.contoso.example/api/v2/providers?limit=100&offset=0",
+  "answer": {
+   "providers": [
+    {
+     "package_name": "apache-airflow-providers-cncf-kubernetes",
+     "version": "10.6.0",
+     "description": "Kubernetes"
+    },
+    {
+     "package_name": "apache-airflow-providers-microsoft-azure",
+     "version": "12.4.0",
+     "description": "Microsoft Azure"
+    },
+    {
+     "package_name": "apache-airflow-providers-microsoft-mssql",
+     "version": "4.3.0",
+     "description": "Microsoft SQL Server (MSSQL)"
+    },
+    {
+     "package_name": "apache-airflow-providers-standard",
+     "version": "1.3.0",
+     "description": "Standard"
+    }
+   ],
+   "total_entries": 4
+  }
+ },
+ {
+  "request": "GET https://airflow-qa.contoso.example/api/v2/importErrors?limit=1",
+  "answer": {
+   "import_errors": [],
+   "total_entries": 0
+  }
  }
 ]

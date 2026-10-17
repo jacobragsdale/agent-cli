@@ -328,7 +328,6 @@ expect = "k8s pod list"
 text = "pod readiness probe and resource limits"
 expect = "k8s pod get"
 
-
 [[query]]
 text = "list the persistent volume claims in the namespace"
 expect = "k8s pvc list"
@@ -486,7 +485,6 @@ expect = "k8s pdb list"
 [[query]]
 text = "node pool upgrade stuck evicting pods, which pdb allows 0 disruptions"
 expect = "k8s pdb list"
-
 
 [[query]]
 text = "which nodes are NotReady"
@@ -651,3 +649,95 @@ expect = "k8s pod run"
 [[query]]
 text = "cat /etc/resolv.conf in the api pod"
 expect = "k8s pod run"
+
+[[query]]
+text = "it works in staging but not in prod, compare the two deployments"
+expect = "k8s deployment diff"
+
+[[query]]
+text = "what changed in the last rollout of the api deployment"
+expect = "k8s deployment diff"
+
+[[query]]
+text = "diff the deployment between two clusters"
+expect = "k8s deployment diff"
+
+[[query]]
+text = "compare the orders-db statefulset in staging and prod"
+expect = "k8s statefulset diff"
+
+[[query]]
+text = "does the postgres statefulset differ between clusters"
+expect = "k8s statefulset diff"
+
+[[query]]
+text = "compare the azure-cns daemonset across two clusters"
+expect = "k8s daemonset diff"
+
+[[query]]
+text = "is the node agent daemonset the same in staging and prod"
+expect = "k8s daemonset diff"
+
+[[query]]
+text = "compare the orders-export cronjob schedule between staging and prod"
+expect = "k8s cronjob diff"
+
+[[query]]
+text = "does the scheduled cronjob differ between clusters"
+expect = "k8s cronjob diff"
+
+[[query]]
+text = "the config is different somewhere, compare the configmap in staging and prod"
+expect = "k8s configmap diff"
+
+[[query]]
+text = "diff appsettings.json between two configmaps"
+expect = "k8s configmap diff"
+
+[[query]]
+text = "is the kubernetes secret the same in staging and prod"
+expect = "k8s secret diff"
+
+[[query]]
+text = "compare two k8s secrets without printing the values"
+expect = "k8s secret diff"
+
+[[query]]
+text = "what changed between the good job run and the failed one"
+expect = "k8s job diff"
+
+[[query]]
+text = "compare a failed kubernetes job with the previous successful job"
+expect = "k8s job diff"
+
+[[query]]
+text = "compare the api service ports in staging and prod"
+expect = "k8s service diff"
+
+[[query]]
+text = "does the kubernetes service selector differ between clusters"
+expect = "k8s service diff"
+
+[[query]]
+text = "compare the ingress hosts and tls in staging and prod"
+expect = "k8s ingress diff"
+
+[[query]]
+text = "diff two ingresses routes across clusters"
+expect = "k8s ingress diff"
+
+[[query]]
+text = "compare network policies between staging and prod"
+expect = "k8s networkpolicy diff"
+
+[[query]]
+text = "does the egress networkpolicy differ between clusters"
+expect = "k8s networkpolicy diff"
+
+[[query]]
+text = "compare the secretproviderclass in staging and prod"
+expect = "k8s object diff"
+
+[[query]]
+text = "diff a custom resource between two clusters"
+expect = "k8s object diff"

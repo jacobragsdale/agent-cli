@@ -16,6 +16,8 @@ fn the_world_answers_what_a_trial_asks_of_kv() {
         "list",
         "--tag",
         "owner=platform",
+        "--vault",
+        "kv-contoso-prod",
         "--fields",
         "name",
     ]);
@@ -114,4 +116,41 @@ fn a_key_shows_its_rotation_and_a_certificate_expiring_soon_names_its_versions()
         Some(1),
         "no renewal yet"
     );
+}
+
+/// Staging's vault lacks prod's connection string and certificates; its
+/// `db-password` holds prod's value, its `api-key` does not, and no value
+/// is printed.
+#[test]
+fn the_staging_vault_differs_from_prods_by_names_and_values_never_shown() {
+    let vaults = ok(&[
+        "kv",
+        "vault",
+        "diff",
+        "kv-contoso-staging",
+        "kv-contoso-prod",
+    ]);
+    let paths: Vec<&str> = vaults["changes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|change| change["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        paths,
+        [
+            "db-password.expires",
+            "worker-db-password.expires",
+            "internal-contoso-example",
+            "orders-db-conn",
+            "www-contoso-example",
+            "api-key.value",
+            "worker-db-password.value",
+        ]
+    );
+    assert_eq!(
+        vaults["changes"][5],
+        json!({"path": "api-key.value", "redacted": true, "same": false})
+    );
+    assert!(!vaults.to_string().contains("stand-in"), "{vaults}");
 }

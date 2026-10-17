@@ -3,9 +3,21 @@
 
 pub(crate) mod get;
 
+use anyhow::Result;
 use serde_json::Value;
 
-use crate::client::{Instance, text};
+use crate::client::{Client, Instance, segment, text};
+
+/// A DAG's file as Airflow parsed it (`content`, `version_number`), `meta`
+/// being its `dags/DAG` record: Airflow 2 serves it by its file_token, 3 by
+/// the DAG's id.
+pub(crate) fn dag_source(client: &Client, meta: &Value, dag: &str) -> Result<Value> {
+    let key = match text(&meta["file_token"]) {
+        Some(token) if client.v1()? => token,
+        _ => dag.to_owned(),
+    };
+    client.get(&format!("dagSources/{}", segment(&key)))
+}
 
 /// A DAG's file in its folder: Airflow 3's `relative_fileloc`, else Airflow
 /// 2's absolute `fileloc` through [`in_folder`].

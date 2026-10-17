@@ -1,9 +1,10 @@
-# kv — Key Vault (10 commands)
+# kv — Key Vault (12 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
 | [`kv secret list`](#kv-secret-list) | read | List Key Vault secrets with expiry and tags (names and metadata, never values) |
 | [`kv secret get`](#kv-secret-get) | reveal | Get a Key Vault secret's value (needs --reveal, or --output FILE) |
+| [`kv secret diff`](#kv-secret-diff) | read | Compare two Key Vault secrets: expiry, enabled, value same or not (never shown) |
 | [`kv secret update`](#kv-secret-update) | write | Set a Key Vault secret's new value (a new version) from stdin or a file |
 | [`kv version list`](#kv-version-list) | read | List a secret's versions, newest first (when it was rotated; never values) |
 | [`kv certificate list`](#kv-certificate-list) | read | List Key Vault certificates and when they expire, or those due in the next days |
@@ -12,6 +13,7 @@
 | [`kv key get`](#kv-key-get) | read | Show a Key Vault key's type, size, operations, expiry and rotation policy |
 | [`kv vault list`](#kv-vault-list) | read | List the vaults the az login reaches (within [azure] vaults) |
 | [`kv vault get`](#kv-vault-get) | read | Show a key vault's access model, network rules, endpoints and soft delete |
+| [`kv vault diff`](#kv-vault-diff) | read | Compare two key vaults: names on one side only, expiry, each value same or not |
 
 ### kv secret list
 
@@ -43,6 +45,22 @@ agent-cli kv secret get — Get a Key Vault secret's value (needs --reveal, or -
 Returns: {vault,name,version,content_type,value}
 Reveals a secret: --reveal prints it; --output FILE saves it (0600) and prints only the path. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli kv secret get kv-contoso-dev/db-password --fields value --output db-password.txt
+```
+
+### kv secret diff
+
+```text
+agent-cli kv secret diff — Compare two Key Vault secrets: expiry, enabled, value same or not (never shown)
+ *<left> str      One side: the secret's id (vault/name) or URI
+ *<right> str     The other side, as left
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli kv secret diff kv-contoso-staging/worker-db-password kv-contoso-prod/worker-db-password
 ```
 
 ### kv secret update
@@ -144,4 +162,20 @@ agent-cli kv vault get — Show a key vault's access model, network rules, endpo
 Returns: {id,arm_id,uri,location,sku,authorization,access_policies[{object_id,secrets[],keys[],certificates[]}],soft_delete,soft_delete_days,purge_protection,public_network_access,network{default_action,bypass,allowed_ranges[],vnet_rules[]},endpoints[{id,status}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli kv vault get kv-contoso-prod --fields authorization,network,endpoints
+```
+
+### kv vault diff
+
+```text
+agent-cli kv vault diff — Compare two key vaults: names on one side only, expiry, each value same or not
+ *<left> str      One vault, by name
+ *<right> str     The other vault, by name
+  --as str[]      Treat a word on the left as one on the right, A=B (repeatable); none turns off the names inferred from the two ids
+  --ignore str[]  Leave out a path, such as containers.*.resources (repeatable; * is one segment)
+  --all           Keep what is noise for this resource (uids, timestamps, status)
+  --limit int     Most differences to print (default 50)
+  --exact         Texts compare as they are: whitespace, case and comments count
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Read. * required. Globals: --fields --raw --timeout --output
+e.g. agent-cli kv vault diff kv-contoso-staging kv-contoso-prod
 ```

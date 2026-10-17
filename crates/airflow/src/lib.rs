@@ -13,6 +13,7 @@ mod client;
 mod connection;
 mod dag;
 mod dag_run;
+mod diff;
 mod doctor;
 mod import_error;
 mod instance;
@@ -33,15 +34,21 @@ pub const DOMAIN: Domain = Domain {
     summary: "Apache Airflow",
     commands: &[
         instance::list::INSTANCE_LIST,
+        instance::diff::INSTANCE_DIFF,
         pool::list::POOL_LIST,
+        pool::diff::POOL_DIFF,
         variable::list::VARIABLE_LIST,
+        variable::diff::VARIABLE_DIFF,
         connection::list::CONNECTION_LIST,
+        connection::diff::CONNECTION_DIFF,
         dag::list::DAG_LIST,
         dag::get::DAG_GET,
+        dag::diff::DAG_DIFF,
         dag::update::DAG_UPDATE,
         source::get::SOURCE_GET,
         run::list::RUN_LIST,
         run::get::RUN_GET,
+        run::diff::RUN_DIFF,
         run::create::RUN_CREATE,
         run::wait::RUN_WAIT,
         run::retry::RUN_RETRY,
@@ -84,6 +91,6 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 21);
+        assert_eq!(DOMAIN.commands.len(), 27);
     }
 }

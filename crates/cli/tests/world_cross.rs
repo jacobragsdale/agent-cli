@@ -11,7 +11,15 @@ use world::{agent_cli, follow, ok};
 
 #[test]
 fn the_deploy_trace_runs_from_the_cluster_to_the_work_items() {
-    let deployments = ok(&["k8s", "deployment", "list", "--fields", "id,images"]);
+    let deployments = ok(&[
+        "k8s",
+        "deployment",
+        "list",
+        "--fields",
+        "id,images",
+        "--cluster",
+        "prod",
+    ]);
     let api = &deployments[0];
     assert_eq!(api["id"], "prod/web/api");
     assert_eq!(
@@ -95,7 +103,15 @@ fn the_deploy_trace_runs_from_the_cluster_to_the_work_items() {
 
 #[test]
 fn last_nights_failed_dag_run_leads_to_its_exception_and_its_pod() {
-    let dags = ok(&["airflow", "dag", "list", "--fields", "id,paused"]);
+    let dags = ok(&[
+        "airflow",
+        "dag",
+        "list",
+        "--fields",
+        "id,paused",
+        "--instance",
+        "prod",
+    ]);
     assert_eq!(
         dags,
         json!([{"id": "etl_nightly", "paused": false}, {"id": "orders_export", "paused": false},
@@ -113,10 +129,21 @@ fn last_nights_failed_dag_run_leads_to_its_exception_and_its_pod() {
         "1d",
         "--fields",
         "id",
+        "--instance",
+        "prod",
     ]);
     let run = runs[0]["id"].as_str().unwrap().to_owned();
     assert_eq!(run, "etl_nightly/scheduled__2026-09-29T00:00:00+00:00");
-    let failed = ok(&["airflow", "run", "get", &run, "--fields", "failed"]);
+    let failed = ok(&[
+        "airflow",
+        "run",
+        "get",
+        &run,
+        "--fields",
+        "failed",
+        "--instance",
+        "prod",
+    ]);
     let task = failed["failed"][0].as_str().unwrap().to_owned();
     assert_eq!(task, format!("{run}/load_orders/2"));
 
@@ -129,6 +156,8 @@ fn last_nights_failed_dag_run_leads_to_its_exception_and_its_pod() {
         "20",
         "--fields",
         "error,text",
+        "--instance",
+        "prod",
     ]);
     assert_eq!(
         log["error"],
@@ -142,11 +171,29 @@ fn last_nights_failed_dag_run_leads_to_its_exception_and_its_pod() {
         "{log}"
     );
 
-    let pod = ok(&["airflow", "task", "get", &task, "--fields", "pod"]);
+    let pod = ok(&[
+        "airflow",
+        "task",
+        "get",
+        &task,
+        "--fields",
+        "pod",
+        "--instance",
+        "prod",
+    ]);
     let pod = pod["pod"].as_str().unwrap();
     assert_eq!(pod, "prod/web/etl-nightly-load-orders-q8x1k2vz");
     let pod_log = ok(&[
-        "k8s", "pod", "logs", pod, "--tail", "20", "--fields", "pod,text",
+        "k8s",
+        "pod",
+        "logs",
+        pod,
+        "--tail",
+        "20",
+        "--fields",
+        "pod,text",
+        "--cluster",
+        "prod",
     ]);
     assert_eq!(pod_log["pod"], pod, "the printed ref is the id k8s takes");
     assert!(
@@ -156,18 +203,41 @@ fn last_nights_failed_dag_run_leads_to_its_exception_and_its_pod() {
             .contains("ValueError: order 88123 has no customer_id")
     );
     for args in [
-        &["k8s", "event", "list", "--pod", pod][..],
-        &["airflow", "dag", "get", "etl_nightly"],
-        &["airflow", "task", "list", "etl_nightly/latest"],
+        &["k8s", "event", "list", "--pod", pod, "--cluster", "prod"][..],
+        &["airflow", "dag", "get", "etl_nightly", "--instance", "prod"],
         &[
-            "airflow", "run", "list", "--state", "failed", "--since", "1d",
+            "airflow",
+            "task",
+            "list",
+            "etl_nightly/latest",
+            "--instance",
+            "prod",
         ],
-        &["airflow", "import-error", "get", "12"],
+        &[
+            "airflow",
+            "run",
+            "list",
+            "--state",
+            "failed",
+            "--since",
+            "1d",
+            "--instance",
+            "prod",
+        ],
+        &["airflow", "import-error", "get", "12", "--instance", "prod"],
         &["doctor", "airflow"],
     ] {
         ok(args);
     }
-    let broken = ok(&["airflow", "import-error", "list", "--fields", "file,error"]);
+    let broken = ok(&[
+        "airflow",
+        "import-error",
+        "list",
+        "--fields",
+        "file,error",
+        "--instance",
+        "prod",
+    ]);
     assert_eq!(
         broken,
         json!([{"file": "customer_sync.py", "error": "ModuleNotFoundError: No module named 'contoso_crm'"}])
@@ -176,8 +246,16 @@ fn last_nights_failed_dag_run_leads_to_its_exception_and_its_pod() {
 
 #[test]
 fn datadog_shows_the_alert_at_the_deploy_the_errors_and_the_pod_to_hop_to() {
-    let rolled_out =
-        ok(&["k8s", "deployment", "list", "--fields", "id,updated"])[0]["updated"].clone();
+    let rolled_out = ok(&[
+        "k8s",
+        "deployment",
+        "list",
+        "--fields",
+        "id,updated",
+        "--cluster",
+        "prod",
+    ])[0]["updated"]
+        .clone();
     assert_eq!(rolled_out, "2026-09-28T21:34:40Z");
     let monitor = ok(&[
         "dd",
@@ -250,7 +328,16 @@ fn datadog_shows_the_alert_at_the_deploy_the_errors_and_the_pod_to_hop_to() {
     );
 
     let pod = first_crash["pod"].as_str().unwrap();
-    let hop = ok(&["k8s", "pod", "get", pod, "--fields", "id,status,restarts"]);
+    let hop = ok(&[
+        "k8s",
+        "pod",
+        "get",
+        pod,
+        "--fields",
+        "id,status,restarts",
+        "--cluster",
+        "prod",
+    ]);
     assert_eq!(hop["id"], pod, "a dd row's pod is the k8s pod id");
     assert_eq!(hop["restarts"], 23);
 }
@@ -277,6 +364,8 @@ fn a_failed_task_leads_to_its_line_in_the_dag_and_the_same_line_in_the_repo() {
         "etl_nightly/latest/load_orders/2",
         "--fields",
         "at",
+        "--instance",
+        "prod",
     ]);
     let at = log["at"].as_str().unwrap().to_owned();
     assert_eq!(at, "etl_nightly:42");
@@ -287,6 +376,8 @@ fn a_failed_task_leads_to_its_line_in_the_dag_and_the_same_line_in_the_repo() {
         &at,
         "--fields",
         "repo_file,text",
+        "--instance",
+        "prod",
     ]);
     let repo_file = source["repo_file"].as_str().unwrap().to_owned();
     assert_eq!(repo_file, "airflow-dags:dags/etl_nightly.py:42");
@@ -399,6 +490,8 @@ fn an_expired_secret_leads_from_the_alert_to_the_deployment_that_reads_it() {
         "kv-contoso-prod/worker-db-password",
         "--fields",
         "id,owner",
+        "--cluster",
+        "prod",
     ]);
     assert_eq!(
         pods,
@@ -426,7 +519,7 @@ fn an_expired_secret_leads_from_the_alert_to_the_deployment_that_reads_it() {
 /// repository that breaks it.
 #[test]
 fn an_import_error_leads_by_notes_alone_to_its_line_in_the_repository() {
-    let walked = follow(&["airflow", "import-error", "get", "12"]);
+    let walked = follow(&["airflow", "import-error", "get", "12", "--instance", "prod"]);
     assert_eq!(walked.len(), 2, "import-error get, then ado file get");
     let file = walked[1].json();
     assert_eq!(file["id"], "airflow-dags:dags/customer_sync.py");
@@ -538,6 +631,8 @@ fn an_order_missing_from_search_leads_to_the_indexer_the_runbook_and_last_nights
         "20",
         "--fields",
         "error,text",
+        "--instance",
+        "prod",
     ]);
     assert!(
         log["error"]
@@ -570,10 +665,28 @@ fn id_where(listed: &Value, field: &str, suffix: &str) -> String {
 /// group, though the zone is linked to the AKS vnet.
 #[test]
 fn a_vault_name_that_does_not_resolve_from_a_pod_leads_to_its_endpoint_without_a_zone_group() {
-    let pods = ok(&["k8s", "pod", "list", "billing-sync", "--fields", "id"]);
+    let pods = ok(&[
+        "k8s",
+        "pod",
+        "list",
+        "billing-sync",
+        "--fields",
+        "id",
+        "--cluster",
+        "prod",
+    ]);
     let pod = pods[0]["id"].as_str().unwrap();
     let log = ok(&[
-        "k8s", "pod", "logs", pod, "--tail", "20", "--fields", "text",
+        "k8s",
+        "pod",
+        "logs",
+        pod,
+        "--tail",
+        "20",
+        "--fields",
+        "text",
+        "--cluster",
+        "prod",
     ]);
     assert!(
         log["text"]
@@ -589,6 +702,8 @@ fn a_vault_name_that_does_not_resolve_from_a_pod_leads_to_its_endpoint_without_a
         "run",
         pod,
         "--yes",
+        "--cluster",
+        "prod",
         "--",
         "nslookup",
         "kv-contoso-billing.vault.azure.net",
@@ -606,6 +721,8 @@ fn a_vault_name_that_does_not_resolve_from_a_pod_leads_to_its_endpoint_without_a
         "run",
         pod,
         "--yes",
+        "--cluster",
+        "prod",
         "--",
         "nslookup",
         "kv-contoso-prod.vault.azure.net",
@@ -674,7 +791,7 @@ fn a_pod_stuck_creating_leads_to_its_disk_on_a_not_ready_node_and_that_nodes_poo
     );
     let claim = pod["volumes"][0]["source"].as_str().unwrap();
 
-    let walked = follow(&["k8s", "pvc", "get", claim]);
+    let walked = follow(&["k8s", "pvc", "get", claim, "--cluster", "prod"]);
     assert_eq!(
         walked.len(),
         4,
@@ -728,6 +845,8 @@ fn pending_pods_lead_to_full_nodes_a_pool_at_its_maximum_and_an_hpa_at_its_own()
         "aks-user",
         "--fields",
         "id,schedulable,nodepool,cpu",
+        "--cluster",
+        "prod",
     ]);
     let full: Vec<&Value> = nodes
         .as_array()
@@ -763,6 +882,8 @@ fn pending_pods_lead_to_full_nodes_a_pool_at_its_maximum_and_an_hpa_at_its_own()
         "list",
         "--fields",
         "id,max,current,conditions",
+        "--cluster",
+        "prod",
     ]);
     let hpa = &autoscalers[0];
     assert_eq!(hpa["id"], "prod/web/reports-api");
@@ -781,15 +902,42 @@ fn pending_pods_lead_to_full_nodes_a_pool_at_its_maximum_and_an_hpa_at_its_own()
 /// trusted for, which holds no Key Vault role since dana deleted it.
 #[test]
 fn a_key_vault_403_leads_from_the_pod_to_its_identity_and_who_deleted_its_role() {
-    let pods = ok(&["k8s", "pod", "list", "notifier", "--fields", "id"]);
+    let pods = ok(&[
+        "k8s",
+        "pod",
+        "list",
+        "notifier",
+        "--fields",
+        "id",
+        "--cluster",
+        "prod",
+    ]);
     let pod = pods[0]["id"].as_str().unwrap();
     let log = ok(&[
-        "k8s", "pod", "logs", pod, "--tail", "30", "--fields", "text",
+        "k8s",
+        "pod",
+        "logs",
+        pod,
+        "--tail",
+        "30",
+        "--fields",
+        "text",
+        "--cluster",
+        "prod",
     ]);
     let text = log["text"].as_str().unwrap().to_owned();
     assert!(text.contains("ForbiddenByRbac"), "{text}");
 
-    let account = ok(&["k8s", "pod", "get", pod, "--fields", "service_account"]);
+    let account = ok(&[
+        "k8s",
+        "pod",
+        "get",
+        pod,
+        "--fields",
+        "service_account",
+        "--cluster",
+        "prod",
+    ]);
     let account = account["service_account"].as_str().unwrap();
     let client = ok(&[
         "k8s",
@@ -798,6 +946,8 @@ fn a_key_vault_403_leads_from_the_pod_to_its_identity_and_who_deleted_its_role()
         account,
         "--fields",
         "client_id",
+        "--cluster",
+        "prod",
     ]);
     let identity = ok(&[
         "arm",
@@ -949,4 +1099,39 @@ fn a_service_connection_that_cannot_sign_in_presents_the_secret_that_expired() {
             .contains("00000000-0000-4000-8000-000000005d0b"),
         "{audit}"
     );
+
+/// "It works in staging and fails in prod": the two `worker` deployments
+/// match, so the note names the Secret both read; its `password` differs,
+/// and the Secrets Store CSI driver syncs it from Key Vault, so the next
+/// note names the vault secret in each vault, where prod's expired on
+/// 2026-09-20 (facts/kv.md) and staging's was rotated. No value is printed.
+#[test]
+fn works_in_staging_fails_in_prod_leads_from_the_deployments_to_the_expired_vault_secret() {
+    let walked = follow(&[
+        "k8s",
+        "deployment",
+        "diff",
+        "staging/web/worker",
+        "prod/web/worker",
+    ]);
+    assert_eq!(walked.len(), 3, "deployment, secret and vault diffs");
+    assert_eq!(walked[0].json()["same"], true);
+    let secret = walked[1].json();
+    assert_eq!(secret["left"], "staging/web/worker-db");
+    assert_eq!(
+        secret["changes"],
+        json!([{"path": "data.password", "redacted": true, "same": false}])
+    );
+    let vault = walked[2].json();
+    assert_eq!(vault["right"], "kv-contoso-prod/worker-db-password");
+    assert_eq!(
+        vault["changes"],
+        json!([
+            {"path": "expires", "left": "2027-03-24T09:00:00Z", "right": "2026-09-20T09:00:00Z"},
+            {"path": "value", "redacted": true, "same": false},
+        ])
+    );
+    for ran in &walked {
+        assert!(!ran.stdout.contains("w0rker"), "{}", ran.stdout);
+    }
 }

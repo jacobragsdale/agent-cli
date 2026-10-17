@@ -2,6 +2,7 @@
 //! a bounded wait, and re-running what failed.
 
 pub(crate) mod create;
+pub(crate) mod diff;
 pub(crate) mod get;
 pub(crate) mod list;
 pub(crate) mod retry;

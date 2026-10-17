@@ -46,7 +46,7 @@ agent-cli search "which deployments are waiting for approval"
 
 Take the verb from `VERBS` in `crates/core/src/registry.rs`: `list get create
 update delete run wait cancel retry logs vote complete abandon link comment
-approve reject connect restart scale bench`. Add a verb there only when none
+approve reject connect restart scale bench preview diff`. Add a verb there only when none
 fits; it is a deliberate one-line edit.
 
 Pick the effect from what the command can do, not from what it usually does:

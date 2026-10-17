@@ -207,7 +207,7 @@ fn next(ctx: &Ctx, detail: &ClusterDetail) {
 command! {
     pub CLUSTER_GET = ["aks", "cluster", "get"], Read,
     "Show an AKS cluster: network, private API server, identity, addons, auto-upgrade",
-    keywords: ["cni", "oidc", "issuer", "workload", "kubelet", "maintenance", "window", "outbound", "fqdn", "plugin"],
+    keywords: ["cni", "oidc", "issuer", "workload", "kubelet", "maintenance", "window", "outbound", "fqdn", "plugin", "dns"],
     example: "aks cluster get aks-contoso-prod --fields network,api_server,identity",
     run: cluster_get,
 }
