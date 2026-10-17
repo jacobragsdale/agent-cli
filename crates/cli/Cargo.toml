@@ -17,6 +17,8 @@ path = "src/main.rs"
 # instead of the network (see fixtures/world/README.md). Off by default and
 # never in a release install.
 fixtures = ["agent-cli-core/fixtures"]
+# The config at AGENT_CLI_BUILTIN_CONFIG, built in (crates/core's config.rs).
+builtin-config = ["agent-cli-core/builtin-config"]
 
 [dependencies]
 agent-cli-ado.workspace = true

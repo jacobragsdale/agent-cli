@@ -27,6 +27,9 @@ signal-hook.workspace = true
 # Recorded HTTP for agent trials (AGENT_CLI_FIXTURES) and a frozen clock
 # (AGENT_CLI_NOW). Never in a release install.
 fixtures = []
+# A config.toml compiled in, for a team's own build (AGENT_CLI_BUILTIN_CONFIG
+# names it). Never in a public release: the binary holds its credentials.
+builtin-config = []
 
 [lints]
 workspace = true

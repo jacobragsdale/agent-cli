@@ -22,6 +22,22 @@ cargo install --git https://github.com/jacobragsdale/agent-cli agent-cli
 
 Running the same `cargo install` again upgrades it.
 
+### One build for a team
+
+To give a team a binary that needs no setup, build your finished config into
+it. Keep the file outside the checkout:
+
+```sh
+AGENT_CLI_BUILTIN_CONFIG=$HOME/team/config.toml cargo build --release -p agent-cli --features builtin-config
+```
+
+`target/release/agent-cli` then reads that config whenever there is no file
+on disk; `agent-cli config` names it `the built-in config`. Anyone's own
+file replaces it whole, and `AGENT_CLI_<SECTION>_<KEY>` still overrides one
+key, such as `AGENT_CLI_ADO_PAT` for each person's own token. The binary holds
+every literal credential in the file in plain text (`strings` finds them), so
+hand it only to the people those credentials are for. Rebuild to change it.
+
 ## 2. See where the config goes
 
 ```sh

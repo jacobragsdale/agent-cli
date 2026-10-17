@@ -21,6 +21,17 @@ use crate::secret::{redact, sensitive_key};
 /// point at, so `agent-cli config example` prints it.
 const EXAMPLE: &str = include_str!("../../../config.example.toml");
 
+/// A team's config, compiled into a binary built for people without a file:
+/// `AGENT_CLI_BUILTIN_CONFIG=/abs/config.toml cargo build --release --features
+/// agent-cli/builtin-config`. A file on disk still wins, whole.
+#[cfg(feature = "builtin-config")]
+const BUILTIN: Option<&str> = Some(include_str!(env!(
+    "AGENT_CLI_BUILTIN_CONFIG",
+    "set AGENT_CLI_BUILTIN_CONFIG to the absolute path of the config.toml to build in"
+)));
+#[cfg(not(feature = "builtin-config"))]
+const BUILTIN: Option<&str> = None;
+
 /// Domains whose keys live in another domain's section of the example.
 const EXAMPLE_ALIASES: &[(&str, &str)] = &[
     ("kv", "azure"),
@@ -44,8 +55,8 @@ pub struct Config {
 
 impl Config {
     /// `$AGENT_CLI_CONFIG`, else `$XDG_CONFIG_HOME/agent-cli/config.toml`, else
-    /// `~/.config/agent-cli/config.toml` (on macOS too). A missing file is an
-    /// empty config.
+    /// `~/.config/agent-cli/config.toml` (on macOS too). A missing file is the
+    /// built-in config, if there is one, else an empty config.
     #[must_use]
     pub fn load() -> Self {
         let path = default_path();
@@ -64,6 +75,9 @@ impl Config {
         let env = std::env::vars()
             .filter(|(name, _)| name.starts_with("AGENT_CLI_"))
             .collect();
+        if let (Ok(None), Some(builtin)) = (&text, BUILTIN) {
+            return Self::parse("the built-in config", Some(builtin), env);
+        }
         match text {
             Ok(text) => Self::parse(path, text.as_deref(), env),
             Err(error) => Self {
@@ -232,7 +246,7 @@ impl Config {
             .collect();
         json!({
             "path": self.path.display().to_string(),
-            "exists": self.path.is_file(),
+            "exists": self.found,
             "problem": self.problem(),
             "sections": sections,
             "variables": variables,
