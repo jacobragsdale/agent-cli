@@ -13,6 +13,22 @@ name = "agent-cli"
 path = "src/main.rs"
 
 [features]
+# One feature per domain, all on by default. A team build picks its own:
+# --no-default-features --features sql,airflow.
+default = ["ado", "confluence", "kv", "acr", "aks", "aisearch", "arm", "net", "k8s", "sql", "airflow", "controlm", "dd"]
+ado = ["dep:agent-cli-ado"]
+confluence = ["dep:agent-cli-confluence"]
+kv = ["dep:agent-cli-azure"]
+acr = ["dep:agent-cli-azure"]
+aks = ["dep:agent-cli-azure"]
+aisearch = ["dep:agent-cli-azure"]
+arm = ["dep:agent-cli-azure"]
+net = ["dep:agent-cli-azure"]
+k8s = ["dep:agent-cli-k8s"]
+sql = ["dep:agent-cli-sql"]
+airflow = ["dep:agent-cli-airflow"]
+controlm = ["dep:agent-cli-controlm"]
+dd = ["dep:agent-cli-dd"]
 # Trials on recorded worlds: AGENT_CLI_FIXTURES=<dir> replays <dir>/http/*.json
 # instead of the network (see fixtures/world/README.md). Off by default and
 # never in a release install.
@@ -21,15 +37,15 @@ fixtures = ["agent-cli-core/fixtures"]
 builtin-config = ["agent-cli-core/builtin-config"]
 
 [dependencies]
-agent-cli-ado.workspace = true
-agent-cli-confluence.workspace = true
+agent-cli-ado = { workspace = true, optional = true }
+agent-cli-confluence = { workspace = true, optional = true }
 agent-cli-core.workspace = true
-agent-cli-sql.workspace = true
-agent-cli-azure.workspace = true
-agent-cli-k8s.workspace = true
-agent-cli-airflow.workspace = true
-agent-cli-controlm.workspace = true
-agent-cli-dd.workspace = true
+agent-cli-sql = { workspace = true, optional = true }
+agent-cli-azure = { workspace = true, optional = true }
+agent-cli-k8s = { workspace = true, optional = true }
+agent-cli-airflow = { workspace = true, optional = true }
+agent-cli-controlm = { workspace = true, optional = true }
+agent-cli-dd = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_json.workspace = true

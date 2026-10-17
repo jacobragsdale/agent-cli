@@ -6,20 +6,34 @@ use std::process::ExitCode;
 
 use agent_cli_core::Domain;
 
-/// Every domain, in overview order. Each later phase adds its crate's `DOMAIN`.
+/// Every domain, in overview order, each behind the feature of its name so a
+/// team build can leave some out.
 const DOMAINS: &[Domain] = &[
+    #[cfg(feature = "ado")]
     agent_cli_ado::DOMAIN,
+    #[cfg(feature = "confluence")]
     agent_cli_confluence::DOMAIN,
+    #[cfg(feature = "kv")]
     agent_cli_azure::KV,
+    #[cfg(feature = "acr")]
     agent_cli_azure::ACR,
+    #[cfg(feature = "aks")]
     agent_cli_azure::AKS,
+    #[cfg(feature = "aisearch")]
     agent_cli_azure::AISEARCH,
+    #[cfg(feature = "arm")]
     agent_cli_azure::ARM,
+    #[cfg(feature = "net")]
     agent_cli_azure::NET,
+    #[cfg(feature = "k8s")]
     agent_cli_k8s::K8S,
+    #[cfg(feature = "sql")]
     agent_cli_sql::DOMAIN,
+    #[cfg(feature = "airflow")]
     agent_cli_airflow::DOMAIN,
+    #[cfg(feature = "controlm")]
     agent_cli_controlm::DOMAIN,
+    #[cfg(feature = "dd")]
     agent_cli_dd::DOMAIN,
 ];
 

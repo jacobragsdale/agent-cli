@@ -38,6 +38,18 @@ key, such as `AGENT_CLI_ADO_PAT` for each person's own token. The binary holds
 every literal credential in the file in plain text (`strings` finds them), so
 hand it only to the people those credentials are for. Rebuild to change it.
 
+To build only some domains, name them: `--no-default-features --features
+sql,airflow,builtin-config` gives a binary with only `sql` and `airflow`.
+The features are the domain names (`ado`, `confluence`, `kv`, `acr`, `aks`,
+`aisearch`, `arm`, `net`, `k8s`, `sql`, `airflow`, `controlm`, `dd`). The
+config decides which databases, instances and environments the build
+reaches, so give each group its own file: one holding only the dev
+`[[airflow.instance]]` carries nothing for prod. Leave out the sections of
+domains you leave out, or their credentials still sit in the binary.
+Leaving a domain out removes its commands, not anyone's access: Azure and
+Kubernetes run as the person's own `az login` and kubeconfig, which
+`az` and `kubectl` reach without agent-cli.
+
 ## 2. See where the config goes
 
 ```sh

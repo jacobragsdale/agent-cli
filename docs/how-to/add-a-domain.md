@@ -66,9 +66,11 @@ places:
 
 - the root `Cargo.toml` `[workspace.dependencies]`, as
   `agent-cli-<name> = { path = "crates/<name>" }`;
-- `crates/cli/Cargo.toml` `[dependencies]`;
-- `DOMAINS` in `crates/cli/src/main.rs` (its position is the overview's
-  order), and the copy of that list in `crates/cli/tests/common/world.rs`.
+- `crates/cli/Cargo.toml`: `[dependencies]` as optional, and a feature named
+  after the domain enabling it, added to `default`;
+- `DOMAINS` in `crates/cli/src/main.rs` behind `#[cfg(feature = "<name>")]`
+  (its position is the overview's order), and the copy of that list in
+  `crates/cli/tests/common/world.rs`.
 
 Take dependencies from the workspace list. A new third-party dependency needs
 a one-line reason in the commit message.
