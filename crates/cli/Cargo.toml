@@ -15,7 +15,7 @@ path = "src/main.rs"
 [features]
 # One feature per domain, all on by default. A team build picks its own:
 # --no-default-features --features sql,airflow.
-default = ["ado", "confluence", "kv", "acr", "aks", "aisearch", "arm", "net", "lake", "entra", "k8s", "sql", "airflow", "controlm", "dd"]
+default = ["ado", "confluence", "kv", "acr", "aks", "aisearch", "arm", "net", "lake", "entra", "k8s", "sql", "redis", "airflow", "controlm", "dd"]
 ado = ["dep:agent-cli-ado"]
 confluence = ["dep:agent-cli-confluence"]
 kv = ["dep:agent-cli-azure"]
@@ -28,6 +28,7 @@ lake = ["dep:agent-cli-azure"]
 entra = ["dep:agent-cli-azure"]
 k8s = ["dep:agent-cli-k8s"]
 sql = ["dep:agent-cli-sql"]
+redis = ["dep:agent-cli-redis"]
 airflow = ["dep:agent-cli-airflow"]
 controlm = ["dep:agent-cli-controlm"]
 dd = ["dep:agent-cli-dd"]
@@ -43,6 +44,7 @@ agent-cli-ado = { workspace = true, optional = true }
 agent-cli-confluence = { workspace = true, optional = true }
 agent-cli-core.workspace = true
 agent-cli-sql = { workspace = true, optional = true }
+agent-cli-redis = { workspace = true, optional = true }
 agent-cli-azure = { workspace = true, optional = true }
 agent-cli-k8s = { workspace = true, optional = true }
 agent-cli-airflow = { workspace = true, optional = true }

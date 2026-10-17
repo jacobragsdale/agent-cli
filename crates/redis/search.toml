@@ -1,0 +1,108 @@
+# Labeled search queries for redis, written as tasks an agent would type.
+# The search gate in crates/cli reads every crates/*/search.toml.
+
+# ---------- redis ----------
+
+[[query]]
+text = "find redis keys that start with session:"
+expect = "redis key list"
+
+[[query]]
+text = "list the cache keys matching orders:*"
+expect = "redis key list"
+
+[[query]]
+text = "which keys use the most memory in the redis cache"
+expect = "redis key list"
+
+[[query]]
+text = "biggest keys in redis"
+expect = "redis key list"
+
+[[query]]
+text = "which cache keys expire soonest"
+expect = "redis key list"
+
+[[query]]
+text = "scan redis for hash keys"
+expect = "redis key list"
+
+[[query]]
+text = "what is the value of a key in redis"
+expect = "redis key get"
+
+[[query]]
+text = "when does this cached session expire"
+expect = "redis key get"
+
+[[query]]
+text = "show the ttl of a redis key"
+expect = "redis key get"
+
+[[query]]
+text = "read the cached json for order 4417"
+expect = "redis key get"
+
+[[query]]
+text = "when was this cache entry last accessed"
+expect = "redis key get"
+
+[[query]]
+text = "compare a redis key between qa and prod"
+expect = "redis key diff"
+
+[[query]]
+text = "does the cached feature flags value differ between environments"
+expect = "redis key diff"
+
+[[query]]
+text = "is the redis cache healthy"
+expect = "redis instance get"
+
+[[query]]
+text = "how much free memory does the redis instance have"
+expect = "redis instance get"
+
+[[query]]
+text = "is redis evicting keys"
+expect = "redis instance get"
+
+[[query]]
+text = "redis cache hit ratio"
+expect = "redis instance get"
+
+[[query]]
+text = "list my redis instances"
+expect = "redis instance list"
+
+[[query]]
+text = "which redis caches are configured and are they up"
+expect = "redis instance list"
+
+[[query]]
+text = "slow commands on redis in the last hour"
+expect = "redis slowlog list"
+
+[[query]]
+text = "what is making redis slow"
+expect = "redis slowlog list"
+
+[[query]]
+text = "who is connected to redis"
+expect = "redis client list"
+
+[[query]]
+text = "which app holds the most redis connections"
+expect = "redis client list"
+
+[[query]]
+text = "list keys in a key vault"
+expect = "kv key list"
+
+[[query]]
+text = "show a key vault key"
+expect = "kv key get"
+
+[[query]]
+text = "which redis commands took the longest"
+expect = "redis slowlog list"

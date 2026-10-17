@@ -113,6 +113,46 @@
 #
 # Where an agent must not write, give it a login that can only read.
 
+# [[redis.instance]]
+# One per Redis an agent reads, usually one per project and environment:
+# Azure Cache for Redis, Azure Managed Redis or self-hosted (Valkey too).
+# Read only: agent-cli sends Redis nothing but reads. --instance takes the
+# name (or the instance's host, URL or connection string); the only one is
+# the default. Clusters are not supported.
+# name = "orders-qa"                     # no colon: a diff side is INSTANCE:KEY
+# host = "contoso-orders-qa.redis.cache.windows.net"
+# auth = "az"                            # your az login's Entra ID token, sent only
+#                                        # to *.redis.cache.windows.net and
+#                                        # *.redis.azure.net; your account needs a
+#                                        # data access policy that allows INFO,
+#                                        # SLOWLOG and CLIENT LIST for the health
+#                                        # commands
+# user = "00000000-0000-4000-8000-000000000001"  # az only, optional: the Entra
+#                                        # object id to sign in as; the token's own
+#                                        # when left out
+#
+# [[redis.instance]]
+# name = "orders-prod"                   # Azure Cache with an access key
+# host = "contoso-orders.redis.cache.windows.net"
+# port = 6380                            # default 6380 here, 10000 for
+#                                        # *.redis.azure.net, else 6379
+# tls = true                             # default true for Azure's hosts, else false
+# password_cmd = "az redis list-keys -g rg-contoso -n contoso-orders --query primaryKey -o tsv"
+#
+# [[redis.instance]]
+# name = "sessions-qa"                   # self-hosted
+# host = "redis-qa.contoso.internal"
+# user = "agent"                         # an ACL user; left out: default
+# password_env = "REDIS_QA_PASSWORD"     # or password, password_cmd; none for an
+#                                        # open dev server
+# tls = true
+# trust_cert = true                      # accept a self-signed certificate
+# db = 0                                 # default 0
+#
+# Give it a user that holds only the reads agent-cli sends: the ACL
+# "+@read -@dangerous +info +slowlog|get +client|list +client|id
+# +client|setname +ping +select", or an Azure access policy like it.
+
 # [[airflow.instance]]
 # One per Apache Airflow server, 2.9+ or 3: which API it speaks (/api/v1 or
 # /api/v2) is asked of the server. --instance takes the name; the only one is

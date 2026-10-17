@@ -18,6 +18,7 @@ Every command also takes the globals `--fields a,b.c`, `--raw`, `--dry-run`, `--
 | [entra](entra.md) | Microsoft Entra ID |
 | [k8s](k8s.md) | Kubernetes |
 | [sql](sql.md) | SQL Server/Oracle |
+| [redis](redis.md) | Redis caches |
 | [airflow](airflow.md) | Apache Airflow |
 | [controlm](controlm.md) | BMC Control-M |
 | [dd](dd.md) | Datadog |

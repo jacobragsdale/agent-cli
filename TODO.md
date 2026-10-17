@@ -52,6 +52,13 @@ Each `VERIFY(work)` in `crates/k8s` and `crates/azure` is a line below; settle i
 - [ ] With two clusters (and two Airflow instances) configured, a list that names none asks for `--cluster`; if trials show agents tripping on it, a list could read every scope
 - [ ] Later forms: three environments at once (which one is the odd one out); checksums per SQL table; a DAG task's pod override image in `airflow dag diff` (the tasks endpoint has no executor config; `run diff` compares it); digests for statefulsets and daemonsets as deployments have them; a vault's own settings in `kv vault diff` (what `kv vault get` reads)
 
+## redis (built 2026-10-17; tested against local Redis 7.4, no Azure cache yet)
+
+- [ ] Step 0's trial, not run: agents with `redis-cli` against agent-cli on `scripts/redis-up.sh`'s instances: when a session expires and was last read, which keys hold an order, whether prod is full and what fills it, whether the feature flags differ between qa and prod, the slow commands of the last hour, which client holds the most connections. Count `KEYS`, answers over 30 KB, calls and wrong answers
+- [ ] `VERIFY(work)`: which commands Azure's access policies allow (the built-in Data Reader may refuse `INFO`, `SLOWLOG` and `CLIENT LIST`; `instance/mod.rs`, `slowlog/list.rs`, `client/list.rs`); that Entra sign-in takes the token's `oid` as the user on Azure Cache and on Azure Managed Redis (`config.rs`); which `INFO` fields Azure Managed Redis leaves out (all are optional)
+- [ ] When a real value shows one: zstd and lz4 decoders (ruzstd, lz4_flex, pure Rust); a pickle reader that never runs code (builtins as JSON, a class as its name and arguments) if pickled Django or Flask-Caching entries turn out common
+- [ ] Clusters (Azure Premium clustering, Managed Redis' OSS cluster policy) fail on `MOVED`; scanning each shard when one is needed
+
 ## Phase 5: consolidate
 
 - [ ] After the live runs, the TUIs depend on agent-cli's domain crates and delete their copies and their CLIs; each TUI's tests pass on the shared crates

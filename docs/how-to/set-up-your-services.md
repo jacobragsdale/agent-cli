@@ -41,7 +41,7 @@ hand it only to the people those credentials are for. Rebuild to change it.
 To build only some domains, name them: `--no-default-features --features
 sql,airflow,builtin-config` gives a binary with only `sql` and `airflow`.
 The features are the domain names (`ado`, `confluence`, `kv`, `acr`, `aks`,
-`aisearch`, `arm`, `net`, `lake`, `entra`, `k8s`, `sql`, `airflow`, `controlm`, `dd`). The
+`aisearch`, `arm`, `net`, `lake`, `entra`, `k8s`, `sql`, `redis`, `airflow`, `controlm`, `dd`). The
 config decides which databases, instances and environments the build
 reaches, so give each group its own file: one holding only the dev
 `[[airflow.instance]]` carries nothing for prod. Leave out the sections of
@@ -435,6 +435,51 @@ The credential row names the Control-M/Servers the credential sees. A
 certificate this machine does not trust exits 3: agent-cli uses the
 system's trust store, so install the CA that signed the Enterprise Manager's
 certificate there (on WSL, as [below](#wsl)), not anywhere in agent-cli.
+
+## 11. Redis (redis)
+
+Azure Cache for Redis, Azure Managed Redis or a self-hosted Redis (Valkey
+too), one `[[redis.instance]]` each, usually one per project and
+environment. agent-cli only reads: it sends Redis nothing but read commands.
+
+```sh
+agent-cli config example redis
+```
+
+```toml
+[[redis.instance]]
+name = "orders-qa"
+host = "contoso-orders-qa.redis.cache.windows.net"
+auth = "az"
+
+[[redis.instance]]
+name = "orders-prod"
+host = "contoso-orders.redis.cache.windows.net"
+password_cmd = "az redis list-keys -g rg-contoso -n contoso-orders --query primaryKey -o tsv"
+
+[[redis.instance]]
+name = "sessions-qa"
+host = "redis-qa.contoso.internal"
+user = "agent"
+password_env = "REDIS_QA_PASSWORD"
+```
+
+Azure's hosts default to TLS on their own ports (6380 for Azure Cache,
+10000 for Azure Managed Redis); anything else is plain 6379 unless `tls`
+and `port` say otherwise. `auth = "az"` signs in with your `az login`'s
+Entra ID token, as its object id; your account needs a data access policy
+on the cache. An access key works as the password instead. A self-hosted
+server with a self-signed certificate needs `trust_cert = true`.
+
+```sh
+agent-cli doctor redis
+```
+
+Each instance answers `PING` or says why not. `redis instance get` reads
+`INFO`, and `redis client list` and `redis slowlog list` their own admin
+reads, so give the user exactly those: the ACL `+@read -@dangerous +info
++slowlog|get +client|list +client|id +client|setname +ping +select`, or an
+Azure access policy like it. A user without them exits 3 naming the ACL.
 
 ## WSL
 

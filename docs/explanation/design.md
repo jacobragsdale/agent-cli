@@ -189,6 +189,18 @@ cast a collection without its lagging eventual index, so entra splits
 mixed collections by `@odata.type` itself, and a group's members are walked
 group by group, since `/transitiveMembers` cannot say through which group.
 
+Redis is read over its own protocol, RESP2 on a socket the redis crate
+opens, not through `redis-cli`: the door sends only the read commands it
+lists (a database test asks the server's `COMMAND INFO` that none
+writes), so no credential's rights decide what an agent can do. `KEYS`,
+which stops a server while it walks every key, is not among them: a key
+list scans and says how far it got. Redis keeps no creation time, so a
+key's lifespan is its TTL from now and its last access. Values decode by
+what their bytes are, never by configuration, because one cache holds what
+Python and .NET wrote: a .NET `IDistributedCache` hash, gzip, zlib, JSON,
+text, and a pickle, which is named and never loaded, since loading one
+runs the classes it names.
+
 Retention decides which way a question chains. Kubernetes keeps events for
 an hour, and a KubernetesExecutor task pod is deleted when it finishes, so
 "why did last night's run fail" goes from airflow to dd, whose logs last; the

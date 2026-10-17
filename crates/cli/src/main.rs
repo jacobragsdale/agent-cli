@@ -33,6 +33,8 @@ const DOMAINS: &[Domain] = &[
     agent_cli_k8s::K8S,
     #[cfg(feature = "sql")]
     agent_cli_sql::DOMAIN,
+    #[cfg(feature = "redis")]
+    agent_cli_redis::DOMAIN,
     #[cfg(feature = "airflow")]
     agent_cli_airflow::DOMAIN,
     #[cfg(feature = "controlm")]
@@ -547,6 +549,16 @@ service = "LEDGER"
 user = "reader"
 password_cmd = "pass show contoso/ledger"
 
+[[redis.instance]]
+name = "orders-prod"
+host = "contoso-orders-prod.redis.cache.windows.net"
+auth = "az"
+
+[[redis.instance]]
+name = "sessions-qa"
+host = "redis-sessions-qa.contoso.example"
+password_env = "REDIS_SESSIONS_QA_PASSWORD"
+
 [[airflow.instance]]
 name = "dev"
 base_url = "https://airflow-dev.contoso.example"
@@ -589,6 +601,16 @@ token_cmd = "pup auth token"
             .lines()
             .find(|line| line.starts_with("Config:"))
             .unwrap();
+        // The Config line stops at its cap; each status says itself anyway.
+        let parsed = agent_cli_core::Config::parse("c.toml", Some(config), Vec::new());
+        let statuses: Vec<String> = DOMAINS
+            .iter()
+            .map(|domain| (domain.status)(&parsed))
+            .collect();
+        assert!(
+            config_line.contains("redis 2 instances") && config_line.contains("\u{b7} \u{2026}"),
+            "{config_line}"
+        );
         for status in [
             "ado contoso-engineeri\u{2026}",
             "confluence contoso-en\u{2026}",
@@ -597,11 +619,17 @@ token_cmd = "pup auth token"
             "aisearch 2 services",
             "k8s 2 scopes",
             "sql 2 connections",
+            "redis 2 instances",
             "airflow 2 instances",
             "controlm 2 instances",
             "dd eu",
         ] {
-            assert!(config_line.contains(status), "{status}: {config_line}");
+            assert!(
+                statuses
+                    .iter()
+                    .any(|said| said.starts_with(status.trim_end_matches('\u{2026}'))),
+                "{status}: {statuses:?}"
+            );
         }
     }
 }

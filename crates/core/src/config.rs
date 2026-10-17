@@ -585,10 +585,9 @@ mod tests {
         let unknown = example(Some("jira")).unwrap_err();
         assert_eq!(unknown.exit, Exit::Usage);
         assert!(
-            unknown
-                .hint
-                .unwrap()
-                .contains("ado, confluence, azure, k8s, sql, airflow, controlm, datadog, kv"),
+            unknown.hint.unwrap().contains(
+                "ado, confluence, azure, k8s, sql, redis, airflow, controlm, datadog, kv"
+            ),
             "every section and alias is named"
         );
     }
