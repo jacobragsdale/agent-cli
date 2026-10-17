@@ -868,11 +868,3 @@ expect = "lake access get"
 [[query]]
 text = "can this managed identity read the data lake folder"
 expect = "lake access get"
-
-[[query]]
-text = "count rows with null customer_id in the parquet files"
-expect = "lake query run"
-
-[[query]]
-text = "run sql over data lake parquet with duckdb"
-expect = "lake query run"

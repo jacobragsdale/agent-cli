@@ -9,7 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::client::{limited, parallel};
-use crate::lake::table::{files, hidden, is_table, newest, partitioned_by};
+use crate::lake::table::{bulk, files, hidden, is_table, newest, partitioned_by};
 use crate::lake::{Lake, Ref};
 
 #[derive(clap::Args)]
@@ -33,6 +33,8 @@ pub struct TableRow {
     files: usize,
     /// When the newest of them was written.
     modified: Option<String>,
+    /// What Synapse's `OPENROWSET(BULK …)` takes for its files (`sql query run`).
+    bulk: String,
 }
 
 /// The top-level folders of every container in `accounts`.
@@ -141,9 +143,11 @@ fn table_list(ctx: &Ctx, args: TableListArgs) -> Result<Vec<TableRow>> {
     let mut rows = Vec::new();
     for (table, found) in tables.iter().zip(read) {
         let found = found?;
+        let partitioned_by = partitioned_by(table, &found);
         rows.push(TableRow {
             id: table.id(),
-            partitioned_by: partitioned_by(table, &found),
+            bulk: bulk(table, &partitioned_by),
+            partitioned_by,
             files: found.len(),
             modified: newest(&found),
         });
@@ -203,8 +207,10 @@ mod tests {
         assert_eq!(
             outcome.json(),
             json!([
-                {"id": "contosolake/raw/sales/orders", "partitioned_by": ["date"], "files": 2, "modified": "2026-09-29T06:02:11Z"},
-                {"id": "contosolake/raw/sales/returns/2026", "files": 1, "modified": "2026-09-29T06:02:11Z"},
+                {"id": "contosolake/raw/sales/orders", "partitioned_by": ["date"], "files": 2, "modified": "2026-09-29T06:02:11Z",
+                 "bulk": "https://contosolake.dfs.core.windows.net/raw/sales/orders/date=*/*.parquet"},
+                {"id": "contosolake/raw/sales/returns/2026", "files": 1, "modified": "2026-09-29T06:02:11Z",
+                 "bulk": "https://contosolake.dfs.core.windows.net/raw/sales/returns/2026/*.parquet"},
             ])
         );
         assert!(

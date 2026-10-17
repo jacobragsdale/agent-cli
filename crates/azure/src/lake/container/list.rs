@@ -159,7 +159,7 @@ mod tests {
         assert!(
             sent[1]
                 .headers
-                .contains(&("x-ms-version".into(), "2023-11-03".into()))
+                .contains(&("x-ms-version".into(), "2025-01-05".into()))
         );
         assert_eq!(
             sent[2].url,

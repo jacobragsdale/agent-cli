@@ -1,5 +1,6 @@
-//! What the contoso world answers of lake: step 0's five trial tasks, each
-//! in the calls agent-cli takes. Compiled only with the `fixtures` feature.
+//! What the contoso world answers of lake: step 0's trial tasks that read
+//! the storage itself (queries over the files go to Synapse, through
+//! `sql`). Compiled only with the `fixtures` feature.
 #![cfg(feature = "fixtures")]
 
 #[path = "common/world.rs"]
@@ -74,7 +75,7 @@ fn todays_partition_landed_at_six_and_one_day_is_missing() {
     assert_eq!(file["rows"], 7);
     assert_eq!(
         file["schema"][1],
-        json!({"name": "customer_id", "type": "BIGINT"})
+        json!({"name": "customer_id", "type": "INT64"})
     );
 }
 
@@ -96,29 +97,31 @@ fn the_ledgers_schema_and_rows_come_from_its_footer() {
 }
 
 #[test]
-fn todays_orders_without_a_customer_and_the_days_curated_never_got() {
-    let nulls = ok(&[
+fn a_tables_bulk_path_is_what_synapse_reads_its_partitions_with() {
+    let table = ok(&[
         "lake",
-        "query",
-        "run",
-        "select count(*) filter (where customer_id is null) as no_customer from o",
-        "--table",
-        &format!("o={ORDERS}/date=2026-09-29"),
-    ]);
-    assert_eq!(nulls["results"][0]["rows"], json!([[2]]));
-    let gap = ok(&[
-        "lake",
-        "query",
-        "run",
-        "select date from (select distinct date from raw) anti join daily using (date) order by date",
-        "--table",
-        &format!("raw={ORDERS}/date=2026-09-2*"),
-        "--table",
-        "daily=contosolake/curated/sales/orders_daily",
+        "table",
+        "get",
+        ORDERS,
+        "--fields",
+        "partitioned_by,bulk",
     ]);
     assert_eq!(
-        gap["results"][0]["rows"],
-        json!([["2026-09-28"], ["2026-09-29"]])
+        table["bulk"],
+        "https://contosolake.dfs.core.windows.net/raw/sales/orders/date=*/*.parquet"
     );
-    assert_eq!(gap["read"]["files"], 7);
+    let partitions = ok(&[
+        "lake",
+        "partition",
+        "list",
+        ORDERS,
+        "--limit",
+        "1",
+        "--fields",
+        "bulk",
+    ]);
+    assert_eq!(
+        partitions[0]["bulk"],
+        "https://contosolake.dfs.core.windows.net/raw/sales/orders/date=2026-09-29/*.parquet"
+    );
 }

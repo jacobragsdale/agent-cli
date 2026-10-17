@@ -93,6 +93,28 @@ pub(crate) fn partitioned_by(root: &Ref, files: &[Entry]) -> Vec<String> {
     })
 }
 
+/// What Synapse's `OPENROWSET(BULK …)` takes for the files of `folder`:
+/// each partition folder below it a `*`, so `filepath(1)` is the first
+/// partition column's value. Written as the path is, not percent-encoded.
+pub(crate) fn bulk(folder: &Ref, partitioned_by: &[String]) -> String {
+    let mut url = format!(
+        "https://{}.dfs.core.windows.net/{}",
+        folder.account, folder.container
+    );
+    for part in folder
+        .path
+        .split('/')
+        .filter(|part| !part.is_empty())
+        .map(str::to_owned)
+        .chain(partitioned_by.iter().map(|key| format!("{key}=*")))
+    {
+        url.push('/');
+        url.push_str(&part);
+    }
+    url.push_str("/*.parquet");
+    url
+}
+
 /// The newest change among `files`, as printed.
 pub(crate) fn newest(files: &[Entry]) -> Option<String> {
     files
@@ -117,7 +139,7 @@ pub(crate) fn read_footers<'f>(
         .collect();
     let mut found = Vec::new();
     let mut failed = Vec::new();
-    for (file, footer) in read.into_iter().zip(footers(lake, &wanted)?) {
+    for (file, footer) in read.into_iter().zip(footers(lake, &wanted)) {
         match footer {
             Ok(footer) => found.push((file, footer)),
             Err(error) => failed.push(format!("{error:#}")),
@@ -175,5 +197,9 @@ mod tests {
             [("date", "2026-09-29"), ("hour", "06")]
         );
         assert_eq!(partitioned_by(&root, &[file]), ["date", "hour"]);
+        assert_eq!(
+            bulk(&root, &["date".to_owned(), "hour".to_owned()]),
+            "https://contosolake.dfs.core.windows.net/raw/sales/orders/date=*/hour=*/*.parquet"
+        );
     }
 }

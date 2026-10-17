@@ -19,7 +19,10 @@ pub struct ConnectionRow {
     database: Option<String>,
     /// Oracle's service name.
     service: Option<String>,
+    /// Empty when it signs in as the az login.
     user: String,
+    /// `az` when it signs in with the az login's Entra ID token.
+    auth: Option<&'static str>,
 }
 
 fn connection_list(ctx: &Ctx, _: NoArgs) -> Result<Vec<ConnectionRow>> {
@@ -34,6 +37,7 @@ fn connection_list(ctx: &Ctx, _: NoArgs) -> Result<Vec<ConnectionRow>> {
             database: spec.database,
             service: spec.service,
             user: spec.user,
+            auth: spec.az.then_some("az"),
         })
         .collect())
 }

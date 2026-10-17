@@ -96,6 +96,14 @@
 # encrypt = true                         # mssql only
 #
 # [[sql.connection]]
+# name = "synapse"                       # Synapse serverless or Azure SQL
+# kind = "mssql"
+# host = "contoso-ws-ondemand.sql.azuresynapse.net"
+# database = "master"
+# auth = "az"                            # mssql only: your az login's Entra
+#                                        # ID token, no user or password
+#
+# [[sql.connection]]
 # name = "ledger"
 # kind = "oracle"
 # host = "ora.contoso.example"

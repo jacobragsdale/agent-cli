@@ -9,9 +9,10 @@ Instant Client (https://docs.rs/oracle).
 overrides it). `[[sql.connection]]`: `name` (what `--conn` takes; defaults
 to the only one through `pick`), `kind` (`mssql` or `oracle`), `host`,
 `port`, `database` (mssql), `service` (oracle), `user`, `trust_cert`,
-`encrypt`. Credential: `password`, `password_env` or
-`password_cmd`, resolved only when a connection opens. No HTTP, so no host
-rule: the password goes only to the connection's own server.
+`encrypt`, `auth` (`az`: an az token for `AZURE_SQL`: Synapse, Azure
+SQL). Credential: `password`, `password_env` or
+`password_cmd`, resolved only when a connection opens; the password or
+token goes only to the connection's own server.
 
 ## Ids
 An object is `schema.name`, folded the way each server folds names (Oracle

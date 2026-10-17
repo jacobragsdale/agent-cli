@@ -23,7 +23,6 @@ pub(crate) mod container;
 pub(crate) mod parquet;
 pub(crate) mod partition;
 pub(crate) mod path;
-pub(crate) mod query;
 pub(crate) mod table;
 #[cfg(test)]
 pub(crate) mod testing;
@@ -40,10 +39,12 @@ use crate::client::{Kind, STORAGE, bearer, decode, narrow, text};
 use crate::config::Azure;
 use crate::graph::{StorageAccount, inventory};
 
-/// The newest version every Data Lake answers.
-// VERIFY(work): the newest the accounts accept; Path List's JSON and the
-// HEADs' headers read here have not changed since 2019-12-12.
-const VERSION: &str = "2023-11-03";
+/// A version the Data Lake spec (azure-rest-api-specs, stable 2026-06-06)
+/// lists; Path List's JSON and the HEADs' headers read here are the same in
+/// every version since 2019-12-12.
+// VERIFY(work): that the accounts take it (every public-cloud account takes
+// every globally enabled version).
+const VERSION: &str = "2025-01-05";
 /// The most entries one Path List page holds.
 const PAGE: usize = 5000;
 /// What a paged listing leaves of the deadline for the command's own work.
@@ -143,15 +144,6 @@ impl Ref {
         }
     }
 
-    /// The path's last segment; the container's name at its root.
-    pub fn name(&self) -> &str {
-        self.path
-            .rsplit('/')
-            .next()
-            .filter(|name| !name.is_empty())
-            .unwrap_or(&self.container)
-    }
-
     /// The folder holding it; `None` at the container's root.
     pub fn parent(&self) -> Option<Self> {
         if self.path.is_empty() {
@@ -241,7 +233,6 @@ pub(crate) struct Entry {
     pub directory: bool,
     pub size: u64,
     pub modified: Option<OffsetDateTime>,
-    pub etag: Option<String>,
     pub owner: Option<String>,
 }
 
@@ -258,7 +249,6 @@ impl Entry {
             directory: held["isDirectory"] == "true" || held["isDirectory"] == true,
             size: number(&held["contentLength"]).unwrap_or(0),
             modified: held["lastModified"].as_str().and_then(http_time),
-            etag: text(&held["etag"]),
             owner: text(&held["owner"]),
         })
     }
@@ -363,7 +353,7 @@ impl<'c> Lake<'c> {
             .header("x-ms-version", VERSION)
             .auth(&mint);
         if let Some((start, end)) = range {
-            request = request.header("x-ms-range", format!("bytes={start}-{end}"));
+            request = request.header("Range", format!("bytes={start}-{end}"));
         }
         self.ctx.read(request).map_err(|error| explain(url, error))
     }
@@ -530,7 +520,6 @@ mod tests {
             found.url(),
             "https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-29/part%201.parquet"
         );
-        assert_eq!(found.name(), "part 1.parquet");
         assert_eq!(
             found.parent().unwrap().id(),
             "contosolake/raw/sales/orders/date=2026-09-29"

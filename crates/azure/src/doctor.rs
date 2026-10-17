@@ -356,7 +356,6 @@ pub(crate) fn aisearch_doctor(ctx: &Ctx) -> Vec<Check> {
 // ---------- lake ----------
 
 /// As arm's: the overview's config line has no room for one more allowlist.
-#[cfg(feature = "lake")]
 pub(crate) fn lake_status(config: &Config) -> String {
     match config.section::<Azure>("azure") {
         Ok(_) => String::new(),
@@ -367,7 +366,6 @@ pub(crate) fn lake_status(config: &Config) -> String {
 /// The login and its storage token, the accounts in reach, and one call to
 /// each account's Data Lake: listing one container proves the data plane
 /// answers this address and the login holds a data role, or says which not.
-#[cfg(feature = "lake")]
 pub(crate) fn lake_doctor(ctx: &Ctx) -> Vec<Check> {
     if !ctx.config().has_section("azure") {
         return Vec::new();
@@ -570,7 +568,6 @@ mod tests {
         assert_eq!(checks[1].detail, "1 subscriptions in reach");
     }
 
-    #[cfg(feature = "lake")]
     #[test]
     fn doctor_lists_one_container_per_account_and_names_the_data_role_when_refused() {
         let (ctx, transport) = testing::doctor_ctx(

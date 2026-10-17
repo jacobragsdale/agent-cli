@@ -407,15 +407,18 @@ pub fn writes(sql: &str, kind: Kind) -> bool {
         Some("select" | "with") => {}
         _ => return true,
     }
-    let mut previous = String::new();
-    for word in words {
+    let words: Vec<String> = words.collect();
+    words.iter().enumerate().any(|(at, word)| {
+        let previous = if at > 0 { words[at - 1].as_str() } else { "" };
+        let next = words.get(at + 1).map_or("", String::as_str);
+        // `OPENROWSET(BULK 'file', …)` reads a file (Synapse reads the lake
+        // so); OPENROWSET with a provider can run a query elsewhere.
+        let reads_a_file = (word == "openrowset" && next == "bulk")
+            || (word == "bulk" && previous == "openrowset");
         // SQL Server's `next value for seq` moves the sequence.
-        if WRITE_WORDS.contains(&word.as_str()) || (previous == "next" && word == "value") {
-            return true;
-        }
-        previous = word;
-    }
-    false
+        (WRITE_WORDS.contains(&word.as_str()) && !reads_a_file)
+            || (previous == "next" && word == "value")
+    })
 }
 
 /// Whether `sql` runs a transaction of its own (BEGIN TRAN, COMMIT,
@@ -443,6 +446,21 @@ pub fn controls_transaction(sql: &str, kind: Kind) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_synapse_select_over_lake_files_only_reads() {
+        let sql = "SELECT r.filepath(1) AS date, count(*) AS orders FROM OPENROWSET(BULK \
+                   'https://contosolake.dfs.core.windows.net/raw/sales/orders/date=*/*.parquet', \
+                   FORMAT = 'PARQUET') AS r GROUP BY r.filepath(1)";
+        assert!(!writes(sql, Kind::Mssql));
+        for sql in [
+            "select * from openrowset('SQLNCLI', 'server=x', 'exec dbo.purge')",
+            "select * from openquery(linked, 'select 1')",
+            "bulk insert t from 'f.csv'",
+        ] {
+            assert!(writes(sql, Kind::Mssql), "{sql}");
+        }
+    }
 
     #[test]
     fn a_statement_that_runs_its_own_transaction_is_told_apart() {

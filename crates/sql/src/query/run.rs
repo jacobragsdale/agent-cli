@@ -145,7 +145,7 @@ fn rolled_back(session: &mut Session, deadline: Instant) -> Result<bool> {
 command! {
     pub QUERY_RUN = ["sql", "query", "run"], Varies,
     "Run SQL on a connection and return every result set as JSON",
-    keywords: ["select", "execute", "statement", "script", "rows", "insert", "update", "delete", "how many"],
+    keywords: ["select", "execute", "statement", "script", "rows", "insert", "update", "delete", "how many", "synapse", "serverless", "openrowset", "parquet"],
     example: "sql query run --conn local-mssql 'select top 5 id, name from bench.customers'",
     run: query_run,
 }

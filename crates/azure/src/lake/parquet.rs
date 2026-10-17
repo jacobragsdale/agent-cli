@@ -1,20 +1,12 @@
-//! Parquet without downloading it: a file ends in its metadata, the
-//! metadata's length and `PAR1`, so a ranged GET of the tail fetches what
-//! DuckDB's `parquet_file_metadata` and `DESCRIBE` read. The tail is written
-//! at its offset into a sparse file of the file's size, which DuckDB reads
-//! without touching the holes. `query run` downloads whole files instead
-//! (`download`), into a folder it reuses while their etags hold.
-//!
-//! DuckDB runs in memory with extensions neither installed nor loaded, and
-//! may read no file outside the one folder it is handed ([`duck`]).
+//! Parquet without downloading it. A file ends in its metadata (a Thrift
+//! compact-encoded `FileMetaData`), the metadata's 4-byte little-endian
+//! length and `PAR1`, so one ranged read of the tail (two for a footer past
+//! 64 KiB) is all `path get`, `table get` and `partition list` read. Only
+//! the schema, the row count and the writer are decoded; every other field
+//! is skipped by its wire type. Field ids are parquet-format's
+//! `parquet.thrift`; the encoding is Thrift's compact protocol.
 
-use std::fs::File;
-use std::io::{Seek, SeekFrom, Write};
-use std::path::{Path, PathBuf};
-
-use agent_cli_core::Failure;
 use anyhow::{Context, Result, bail};
-use duckdb::Connection;
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -23,14 +15,15 @@ use crate::lake::{Lake, Ref};
 
 /// One tail read holds the footer of all but the widest files.
 const TAIL: u64 = 64 * 1024;
-/// A download's ranged reads, each well under core's 64 MiB answer cap.
-const CHUNK: u64 = 32 * 1024 * 1024;
+/// Deeper than any real schema; a bound on what a corrupt footer can ask.
+const DEPTH: usize = 64;
 
-/// A column as DuckDB reads it.
+/// A top-level column, typed as Parquet types it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
 pub struct Column {
     pub name: String,
-    /// DuckDB's type: `BIGINT`, `VARCHAR`, `DATE`, `STRUCT(…)`.
+    /// `INT64`, `STRING`, `DECIMAL(12,2)`, `DATE`, `TIMESTAMP(MICROS, UTC)`,
+    /// `STRUCT`, `LIST`, `MAP`.
     #[serde(rename = "type")]
     pub kind: String,
 }
@@ -44,280 +37,492 @@ pub(crate) struct Footer {
     pub schema: Vec<Column>,
 }
 
-/// An in-memory DuckDB that loads no extension and reads only under `dir`.
-pub(crate) fn duck(dir: &Path) -> Result<Connection> {
-    let config = duckdb::Config::default()
-        .enable_autoload_extension(false)?
-        .with("autoinstall_known_extensions", "false")?;
-    let connection = Connection::open_in_memory_with_flags(config)?;
-    let dir = format!("{}/", dir.display());
-    connection.execute_batch(&format!(
-        "SET allowed_directories = [{}]; SET enable_external_access = false; SET lock_configuration = true;",
-        literal(&dir)
-    ))?;
-    Ok(connection)
-}
-
-/// `raw` as a SQL string literal.
-pub(crate) fn literal(raw: &str) -> String {
-    format!("'{}'", raw.replace('\'', "''"))
-}
-
 /// Each file's footer (`files`: each one's id and size), read side by side;
 /// one that cannot be read says why.
-pub(crate) fn footers(lake: &Lake, files: &[(Ref, u64)]) -> Result<Vec<Result<Footer>>> {
-    let dir = tempfile::tempdir()?;
-    let indexed: Vec<(usize, &(Ref, u64))> = files.iter().enumerate().collect();
-    let tails = parallel(&indexed, lake.azure.parallel(), |(index, (file, size))| {
-        let local = dir.path().join(format!("{index}.parquet"));
-        tail(lake, file, *size, &local).map(|()| local)
-    });
-    let connection = duck(dir.path())?;
-    Ok(tails
-        .into_iter()
-        .map(|local| local.and_then(|local| describe(&connection, &local)))
-        .collect())
+pub(crate) fn footers(lake: &Lake, files: &[(Ref, u64)]) -> Vec<Result<Footer>> {
+    parallel(files, lake.azure.parallel(), |(file, size)| {
+        tail(lake, file, *size)
+            .and_then(|metadata| parse(&metadata))
+            .with_context(|| format!("{} is not a Parquet file it can read", file.id()))
+    })
 }
 
-/// The file's footer, written at its offset into `local`, a sparse file of
-/// the same size that also starts with `PAR1`.
-fn tail(lake: &Lake, file: &Ref, size: u64, local: &Path) -> Result<()> {
-    let not_parquet = |why: &str| anyhow::anyhow!("{} is not a Parquet file: {why}", file.id());
+/// The file's metadata: the bytes before its length and magic.
+fn tail(lake: &Lake, file: &Ref, size: u64) -> Result<Vec<u8>> {
     if size < 12 {
-        return Err(not_parquet("too small"));
+        bail!("{size} bytes is too small");
     }
     let url = file.url();
     let want = size.min(TAIL);
     let mut held = lake.range(&url, size - want, size - 1)?;
-    if held.len() as u64 != want || &held[held.len() - 4..] != b"PAR1" {
-        return Err(not_parquet("no PAR1 at its end"));
+    if held.len() as u64 != want {
+        bail!("asked for {want} bytes, got {}", held.len());
+    }
+    match &held[held.len() - 4..] {
+        b"PAR1" => {}
+        b"PARE" => bail!("its footer is encrypted"),
+        _ => bail!("no PAR1 at its end"),
     }
     let length = u64::from(u32::from_le_bytes(
         held[held.len() - 8..held.len() - 4].try_into()?,
     ));
-    let need = length + 8;
-    if need + 4 > size {
-        return Err(not_parquet("its footer is longer than the file"));
+    if length + 12 > size {
+        bail!("its footer is longer than the file");
     }
-    if need > want {
-        let mut more = lake.range(&url, size - need, size - want - 1)?;
+    if length + 8 > want {
+        let mut more = lake.range(&url, size - length - 8, size - want - 1)?;
         more.extend_from_slice(&held);
         held = more;
     }
-    let mut out = File::create(local)?;
-    out.set_len(size)?;
-    out.write_all(b"PAR1")?;
-    out.seek(SeekFrom::Start(size - held.len() as u64))?;
-    out.write_all(&held)?;
-    Ok(())
+    let end = held.len() - 8;
+    Ok(held[end - usize::try_from(length)?..end].to_vec())
 }
 
-/// The rows, writer and schema of the Parquet file at `local`.
-pub(crate) fn describe(connection: &Connection, local: &Path) -> Result<Footer> {
-    let path = literal(&local.display().to_string());
-    let (rows, writer) = connection
-        .query_row(
-            &format!("SELECT sum(num_rows)::UBIGINT, any_value(created_by) FROM parquet_file_metadata({path})"),
-            [],
-            |row| Ok((row.get::<_, Option<u64>>(0)?, row.get::<_, Option<String>>(1)?)),
-        )
-        .context("reading its Parquet footer")?;
-    let mut statement = connection.prepare(&format!(
-        "DESCRIBE SELECT * FROM read_parquet({path}, hive_partitioning = false)"
-    ))?;
-    let schema = statement
-        .query_map([], |row| {
-            Ok(Column {
-                name: row.get(0)?,
-                kind: row.get(1)?,
-            })
-        })?
-        .collect::<Result<Vec<_>, _>>()?;
+/// The rows, writer and top-level columns `metadata` (a `FileMetaData`)
+/// holds.
+pub(crate) fn parse(metadata: &[u8]) -> Result<Footer> {
+    let mut reader = Reader {
+        bytes: metadata,
+        at: 0,
+    };
+    let (mut schema, mut rows, mut writer) = (Vec::new(), None, None);
+    let mut last = 0;
+    while let Some((id, kind)) = reader.field(&mut last)? {
+        match (id, kind) {
+            (2, LIST) => {
+                let (count, element) = reader.list()?;
+                if element != STRUCT {
+                    bail!("its schema is not a list of elements");
+                }
+                for _ in 0..count {
+                    schema.push(reader.element()?);
+                }
+            }
+            (3, I64) => rows = Some(reader.zigzag()?),
+            (6, BINARY) => writer = Some(String::from_utf8_lossy(reader.binary()?).into_owned()),
+            (_, kind) => reader.skip(kind, 0)?,
+        }
+    }
+    let rows = rows.context("its footer has no row count")?;
+    let root = schema.first().context("its footer has no schema")?;
+    let mut columns = Vec::new();
+    let mut at = 1;
+    for _ in 0..root.children {
+        let column = schema.get(at).context("its schema ends early")?;
+        columns.push(Column {
+            name: column.name.clone(),
+            kind: column.kind(),
+        });
+        at = past(&schema, at, 0)?;
+    }
     Ok(Footer {
-        rows: rows.unwrap_or(0),
+        rows: u64::try_from(rows).unwrap_or(0),
         writer,
-        schema,
+        schema: columns,
     })
 }
 
-/// One file to download: its id, size and etag.
-#[derive(Clone, Debug)]
-pub(crate) struct Wanted {
-    pub file: Ref,
-    pub size: u64,
-    pub etag: String,
+/// The index just past element `at` and everything nested in it.
+fn past(schema: &[Element], at: usize, depth: usize) -> Result<usize> {
+    if depth > DEPTH {
+        bail!("its schema nests too deep");
+    }
+    let held = schema.get(at).context("its schema ends early")?;
+    let mut next = at + 1;
+    for _ in 0..held.children {
+        next = past(schema, next, depth + 1)?;
+    }
+    Ok(next)
 }
 
-/// Each file under `root`, at `account/container/path` so its partition
-/// folders stay in its path, its etag in its name: one already there is not
-/// fetched again. Each local path in `files`' order, and whether it was
-/// already there.
-pub(crate) fn download(lake: &Lake, root: &Path, files: &[Wanted]) -> Result<Vec<(PathBuf, bool)>> {
-    parallel(
-        files,
-        lake.azure.parallel(),
-        |wanted| -> Result<(PathBuf, bool)> {
-            let local = local_path(root, wanted);
-            if local.metadata().is_ok_and(|held| held.len() == wanted.size) {
-                return Ok((local, true));
-            }
-            let folder = local.parent().context("a download has no folder")?;
-            std::fs::create_dir_all(folder)?;
-            // A temp file renamed into place: a half download is never taken
-            // for the file.
-            let mut out = tempfile::NamedTempFile::new_in(folder)?;
-            let url = wanted.file.url();
-            let mut at = 0;
-            while at < wanted.size {
-                let end = (at + CHUNK).min(wanted.size) - 1;
-                let chunk = lake.range(&url, at, end)?;
-                if chunk.len() as u64 != end - at + 1 {
-                    bail!(
-                        "{} answered {} bytes for {at}-{end}; it changed while downloading",
-                        wanted.file.id(),
-                        chunk.len()
-                    );
-                }
-                out.write_all(&chunk)?;
-                at = end + 1;
-            }
-            out.persist(&local).map_err(|error| error.error)?;
-            Ok((local, false))
-        },
-    )
-    .into_iter()
-    .collect()
+/// A `SchemaElement`, as much of it as names a type.
+#[derive(Debug, Default)]
+struct Element {
+    name: String,
+    physical: Option<i64>,
+    length: Option<i64>,
+    children: i64,
+    converted: Option<i64>,
+    scale: Option<i64>,
+    precision: Option<i64>,
+    logical: Option<String>,
 }
 
-fn local_path(root: &Path, wanted: &Wanted) -> PathBuf {
-    let tag: String = wanted
-        .etag
-        .chars()
-        .filter(char::is_ascii_alphanumeric)
-        .collect();
-    let name = wanted.file.name();
-    let stem = name.strip_suffix(".parquet").unwrap_or(name);
-    let mut local = root.join(&wanted.file.account).join(&wanted.file.container);
-    if let Some(parent) = wanted.file.parent() {
-        for segment in parent.path.split('/').filter(|segment| !segment.is_empty()) {
-            // `..` from a listing must not climb out of the folder.
-            local.push(if segment == ".." { "%2E%2E" } else { segment });
+impl Element {
+    /// Its type as Parquet's logical types name it, else its converted
+    /// type, else its physical one.
+    fn kind(&self) -> String {
+        if self.children > 0 {
+            return match (self.logical.as_deref(), self.converted) {
+                (Some("LIST"), _) | (_, Some(3)) => "LIST",
+                (Some("MAP"), _) | (_, Some(1 | 2)) => "MAP",
+                _ => "STRUCT",
+            }
+            .to_owned();
         }
+        if let Some(logical) = &self.logical {
+            return logical.clone();
+        }
+        let converted = match self.converted {
+            Some(0) => Some("STRING".to_owned()),
+            Some(4) => Some("ENUM".to_owned()),
+            Some(5) => Some(format!(
+                "DECIMAL({},{})",
+                self.precision.unwrap_or(0),
+                self.scale.unwrap_or(0)
+            )),
+            Some(6) => Some("DATE".to_owned()),
+            Some(7) => Some("TIME(MILLIS)".to_owned()),
+            Some(8) => Some("TIME(MICROS)".to_owned()),
+            Some(9) => Some("TIMESTAMP(MILLIS)".to_owned()),
+            Some(10) => Some("TIMESTAMP(MICROS)".to_owned()),
+            Some(code @ 11..=14) => Some(format!("UINT{}", 8 << (code - 11))),
+            Some(code @ 15..=18) => Some(format!("INT{}", 8 << (code - 15))),
+            Some(19) => Some("JSON".to_owned()),
+            Some(20) => Some("BSON".to_owned()),
+            Some(21) => Some("INTERVAL".to_owned()),
+            _ => None,
+        };
+        converted.unwrap_or_else(|| match self.physical {
+            Some(0) => "BOOLEAN".to_owned(),
+            Some(1) => "INT32".to_owned(),
+            Some(2) => "INT64".to_owned(),
+            Some(3) => "INT96".to_owned(),
+            Some(4) => "FLOAT".to_owned(),
+            Some(5) => "DOUBLE".to_owned(),
+            Some(6) => "BINARY".to_owned(),
+            Some(7) => format!("FIXED({})", self.length.unwrap_or(0)),
+            _ => "UNKNOWN".to_owned(),
+        })
     }
-    local.join(format!("{stem}.{tag}.parquet"))
 }
 
-/// The folder downloads go to: under the cache, kept between runs and
-/// private to the user, or a temporary one when the cache is off.
-pub(crate) fn downloads(lake: &Lake) -> Result<(PathBuf, Option<tempfile::TempDir>)> {
-    let Some(cache) = lake.ctx().cache().dir() else {
-        let held = tempfile::tempdir()?;
-        return Ok((held.path().to_owned(), Some(held)));
-    };
-    let root = cache.join("lake");
-    std::fs::create_dir_all(&root)
-        .map_err(|error| Failure::setup(format!("cannot make {}: {error}", root.display())))?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700))?;
+// Thrift compact protocol wire types.
+const TRUE: u8 = 1;
+const FALSE: u8 = 2;
+const BYTE: u8 = 3;
+const I16: u8 = 4;
+const I32: u8 = 5;
+const I64: u8 = 6;
+const DOUBLE: u8 = 7;
+const BINARY: u8 = 8;
+const LIST: u8 = 9;
+const SET: u8 = 10;
+const MAP: u8 = 11;
+const STRUCT: u8 = 12;
+const UUID: u8 = 13;
+
+struct Reader<'a> {
+    bytes: &'a [u8],
+    at: usize,
+}
+
+impl<'a> Reader<'a> {
+    fn take(&mut self, count: usize) -> Result<&'a [u8]> {
+        let end = self
+            .at
+            .checked_add(count)
+            .filter(|end| *end <= self.bytes.len())
+            .context("its footer ends early")?;
+        let taken = &self.bytes[self.at..end];
+        self.at = end;
+        Ok(taken)
     }
-    Ok((root, None))
+
+    fn byte(&mut self) -> Result<u8> {
+        Ok(self.take(1)?[0])
+    }
+
+    fn varint(&mut self) -> Result<u64> {
+        let mut value = 0_u64;
+        for shift in (0..64).step_by(7) {
+            let byte = self.byte()?;
+            value |= u64::from(byte & 0x7f) << shift;
+            if byte & 0x80 == 0 {
+                return Ok(value);
+            }
+        }
+        bail!("a varint runs past 64 bits")
+    }
+
+    fn zigzag(&mut self) -> Result<i64> {
+        let raw = self.varint()?;
+        Ok((raw >> 1) as i64 ^ -((raw & 1) as i64))
+    }
+
+    fn binary(&mut self) -> Result<&'a [u8]> {
+        let length = usize::try_from(self.varint()?)?;
+        self.take(length)
+    }
+
+    /// The next field's id and wire type, or `None` at its struct's end.
+    /// `last` is the struct's previous field id, which a short header's
+    /// delta counts from.
+    fn field(&mut self, last: &mut i64) -> Result<Option<(i64, u8)>> {
+        let header = self.byte()?;
+        if header == 0 {
+            return Ok(None);
+        }
+        let delta = i64::from(header >> 4);
+        let id = if delta == 0 {
+            self.zigzag()?
+        } else {
+            *last + delta
+        };
+        *last = id;
+        Ok(Some((id, header & 0x0f)))
+    }
+
+    /// A list or set header: its size and its elements' wire type.
+    fn list(&mut self) -> Result<(usize, u8)> {
+        let header = self.byte()?;
+        let size = match header >> 4 {
+            15 => usize::try_from(self.varint()?)?,
+            short => usize::from(short),
+        };
+        Ok((size, header & 0x0f))
+    }
+
+    /// Skips a value of wire type `kind`. A boolean in a list or map is a
+    /// byte of its own; one in a struct field lives in its header.
+    fn skip(&mut self, kind: u8, depth: usize) -> Result<()> {
+        if depth > DEPTH {
+            bail!("its footer nests too deep");
+        }
+        let element = |reader: &mut Self, kind: u8| match kind {
+            TRUE | FALSE => reader.byte().map(drop),
+            other => reader.skip(other, depth + 1),
+        };
+        match kind {
+            TRUE | FALSE => {}
+            BYTE => {
+                self.byte()?;
+            }
+            I16 | I32 | I64 => {
+                self.varint()?;
+            }
+            DOUBLE => {
+                self.take(8)?;
+            }
+            BINARY => {
+                self.binary()?;
+            }
+            LIST | SET => {
+                let (count, inner) = self.list()?;
+                for _ in 0..count {
+                    element(self, inner)?;
+                }
+            }
+            MAP => {
+                let count = self.varint()?;
+                if count > 0 {
+                    let types = self.byte()?;
+                    for _ in 0..count {
+                        element(self, types >> 4)?;
+                        element(self, types & 0x0f)?;
+                    }
+                }
+            }
+            STRUCT => {
+                let mut last = 0;
+                while let Some((_, inner)) = self.field(&mut last)? {
+                    self.skip(inner, depth + 1)?;
+                }
+            }
+            UUID => {
+                self.take(16)?;
+            }
+            other => bail!("wire type {other} is not Thrift's compact protocol"),
+        }
+        Ok(())
+    }
+
+    fn element(&mut self) -> Result<Element> {
+        let mut element = Element::default();
+        let mut last = 0;
+        while let Some((id, kind)) = self.field(&mut last)? {
+            match (id, kind) {
+                (1, I32) => element.physical = Some(self.zigzag()?),
+                (2, I32) => element.length = Some(self.zigzag()?),
+                (4, BINARY) => element.name = String::from_utf8_lossy(self.binary()?).into_owned(),
+                (5, I32) => element.children = self.zigzag()?.max(0),
+                (6, I32) => element.converted = Some(self.zigzag()?),
+                (7, I32) => element.scale = Some(self.zigzag()?),
+                (8, I32) => element.precision = Some(self.zigzag()?),
+                (10, STRUCT) => element.logical = self.logical()?,
+                (_, kind) => self.skip(kind, 1)?,
+            }
+        }
+        Ok(element)
+    }
+
+    /// A `LogicalType` union's name with its parameters; `None` for one
+    /// this does not name, which falls back to the converted type.
+    fn logical(&mut self) -> Result<Option<String>> {
+        let mut named = None;
+        let mut last = 0;
+        while let Some((id, kind)) = self.field(&mut last)? {
+            if kind != STRUCT {
+                self.skip(kind, 1)?;
+                continue;
+            }
+            let fields = self.parameters()?;
+            let int = |at: i64| {
+                fields
+                    .iter()
+                    .find(|(id, _)| *id == at)
+                    .map(|(_, value)| *value)
+            };
+            let unit = match int(2) {
+                Some(1) => "MILLIS",
+                Some(3) => "NANOS",
+                _ => "MICROS",
+            };
+            let utc = if int(1) == Some(1) { ", UTC" } else { "" };
+            named = match id {
+                1 => Some("STRING".to_owned()),
+                2 => Some("MAP".to_owned()),
+                3 => Some("LIST".to_owned()),
+                4 => Some("ENUM".to_owned()),
+                5 => Some(format!(
+                    "DECIMAL({},{})",
+                    int(2).unwrap_or(0),
+                    int(1).unwrap_or(0)
+                )),
+                6 => Some("DATE".to_owned()),
+                7 => Some(format!("TIME({unit}{utc})")),
+                8 => Some(format!("TIMESTAMP({unit}{utc})")),
+                10 => Some(format!(
+                    "{}INT{}",
+                    if int(2) == Some(1) { "" } else { "U" },
+                    int(1).unwrap_or(0)
+                )),
+                12 => Some("JSON".to_owned()),
+                13 => Some("BSON".to_owned()),
+                14 => Some("UUID".to_owned()),
+                15 => Some("FLOAT16".to_owned()),
+                _ => None,
+            };
+        }
+        Ok(named)
+    }
+
+    /// A logical type's parameters, flattened to each field's id and value:
+    /// a boolean as 1 or 0, a time unit union as its member's id (1 millis,
+    /// 2 micros, 3 nanos).
+    fn parameters(&mut self) -> Result<Vec<(i64, i64)>> {
+        let mut fields = Vec::new();
+        let mut last = 0;
+        while let Some((id, kind)) = self.field(&mut last)? {
+            let value = match kind {
+                TRUE => 1,
+                FALSE => 0,
+                BYTE => i64::from(self.byte()?.cast_signed()),
+                I16 | I32 | I64 => self.zigzag()?,
+                STRUCT => {
+                    let (mut member, mut inner) = (0, 0);
+                    while let Some((id, kind)) = self.field(&mut inner)? {
+                        member = id;
+                        self.skip(kind, 2)?;
+                    }
+                    member
+                }
+                other => {
+                    self.skip(other, 2)?;
+                    0
+                }
+            };
+            fields.push((id, value));
+        }
+        Ok(fields)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::lake::testing::world;
+
+    /// The metadata in a whole file's bytes.
+    fn metadata(file: &[u8]) -> &[u8] {
+        let length = u32::from_le_bytes(file[file.len() - 8..file.len() - 4].try_into().unwrap());
+        &file[file.len() - 8 - length as usize..file.len() - 8]
+    }
+
+    fn types(footer: Footer) -> Vec<(String, String)> {
+        footer
+            .schema
+            .into_iter()
+            .map(|column| (column.name, column.kind))
+            .collect()
+    }
+
+    fn named(pairs: &[(&str, &str)]) -> Vec<(String, String)> {
+        pairs
+            .iter()
+            .map(|(a, b)| ((*a).to_owned(), (*b).to_owned()))
+            .collect()
+    }
 
     #[test]
-    fn a_footer_alone_in_a_sparse_file_gives_the_rows_writer_and_schema() {
-        let dir = tempfile::tempdir().unwrap();
-        let whole = dir.path().join("whole.parquet");
-        let connection = Connection::open_in_memory().unwrap();
-        connection
-            .execute_batch(&format!(
-                "COPY (SELECT range AS id, 'x' || range AS name FROM range(1000)) TO {} (FORMAT parquet)",
-                literal(&whole.display().to_string())
-            ))
-            .unwrap();
-        let bytes = std::fs::read(&whole).unwrap();
-        let size = bytes.len() as u64;
-        let length = u64::from(u32::from_le_bytes(
-            bytes[bytes.len() - 8..bytes.len() - 4].try_into().unwrap(),
-        ));
-        let tail = &bytes[bytes.len() - (length as usize + 8)..];
-
-        let sparse = dir.path().join("sparse.parquet");
-        let mut out = File::create(&sparse).unwrap();
-        out.set_len(size).unwrap();
-        out.write_all(b"PAR1").unwrap();
-        out.seek(SeekFrom::Start(size - tail.len() as u64)).unwrap();
-        out.write_all(tail).unwrap();
-        drop(out);
-
-        let footer = describe(&duck(dir.path()).unwrap(), &sparse).unwrap();
-        assert_eq!(footer.rows, 1000);
-        assert!(footer.writer.unwrap().starts_with("DuckDB"));
+    fn a_footer_gives_the_rows_writer_and_parquet_types_of_the_top_level_columns() {
+        let orders = world("contosolake/raw/sales/orders/date=2026-09-29/part-0001.parquet");
+        let footer = parse(metadata(&orders)).unwrap();
+        assert_eq!(footer.rows, 7);
+        assert!(footer.writer.clone().unwrap().starts_with("DuckDB"));
         assert_eq!(
-            footer.schema,
-            [
-                Column {
-                    name: "id".into(),
-                    kind: "BIGINT".into()
-                },
-                Column {
-                    name: "name".into(),
-                    kind: "VARCHAR".into()
-                },
-            ]
+            types(footer),
+            named(&[
+                ("order_id", "INT64"),
+                ("customer_id", "INT64"),
+                ("total", "DOUBLE"),
+                ("placed_at", "TIMESTAMP(MICROS, UTC)"),
+            ])
+        );
+        let ledger = world("contosolake/curated/finance/ledger/part-0000.parquet");
+        let footer = parse(metadata(&ledger)).unwrap();
+        assert_eq!(footer.rows, 120);
+        assert_eq!(
+            types(footer),
+            named(&[
+                ("entry_id", "INT64"),
+                ("account", "STRING"),
+                ("amount", "DECIMAL(12,2)"),
+                ("posted", "DATE"),
+            ])
         );
     }
 
     #[test]
-    fn duckdb_reads_nothing_outside_its_folder_and_loads_no_extension() {
-        let dir = tempfile::tempdir().unwrap();
-        let outside = tempfile::tempdir().unwrap();
-        let file = outside.path().join("o.parquet");
-        Connection::open_in_memory()
-            .unwrap()
-            .execute_batch(&format!(
-                "COPY (SELECT 1 AS a) TO {} (FORMAT parquet)",
-                literal(&file.display().to_string())
-            ))
-            .unwrap();
-        let connection = duck(dir.path()).unwrap();
-        for sql in [
-            format!(
-                "SELECT * FROM read_parquet({})",
-                literal(&file.display().to_string())
-            ),
-            "INSTALL httpfs".to_owned(),
-            "SET enable_external_access = true".to_owned(),
-        ] {
-            assert!(connection.execute_batch(&sql).is_err(), "{sql}");
-        }
-    }
-
-    #[test]
-    fn a_download_keeps_its_partition_folders_and_never_climbs_out() {
-        let wanted = |path: &str| Wanted {
-            file: Ref::parse(path).unwrap(),
-            size: 1,
-            etag: "\"0x8DD1\"".into(),
+    fn a_nested_column_is_one_column_and_a_cut_footer_is_an_error_not_a_panic() {
+        // FileMetaData { schema: [root (2 children), s (1 child: x INT32), y BOOLEAN], num_rows: 3 }
+        let element = |name: &str, children: Option<u8>, physical: Option<u8>| {
+            let mut out = Vec::new();
+            if let Some(physical) = physical {
+                out.extend([0x15, physical * 2]);
+            }
+            // name is field 4: a delta of 3 after the type, else of 4.
+            out.extend([if physical.is_some() { 0x38 } else { 0x48 }]);
+            out.push(u8::try_from(name.len()).unwrap());
+            out.extend(name.as_bytes());
+            if let Some(children) = children {
+                out.extend([0x15, children * 2]);
+            }
+            out.push(0);
+            out
         };
-        let root = Path::new("/cache/lake");
-        assert_eq!(
-            local_path(
-                root,
-                &wanted("contosolake/raw/sales/orders/date=2026-09-29/part-0001.parquet")
-            ),
-            Path::new(
-                "/cache/lake/contosolake/raw/sales/orders/date=2026-09-29/part-0001.0x8DD1.parquet"
-            )
-        );
-        assert_eq!(
-            local_path(root, &wanted("contosolake/raw/a/../../b.parquet")),
-            Path::new("/cache/lake/contosolake/raw/a/%2E%2E/%2E%2E/b.0x8DD1.parquet")
-        );
+        let mut footer = vec![0x29, 0x4c];
+        footer.extend(element("root", Some(2), None));
+        footer.extend(element("s", Some(1), None));
+        footer.extend(element("x", None, Some(1)));
+        footer.extend(element("y", None, Some(0)));
+        footer.extend([0x16, 6, 0]);
+        let parsed = parse(&footer).unwrap();
+        assert_eq!(parsed.rows, 3);
+        assert_eq!(types(parsed), named(&[("s", "STRUCT"), ("y", "BOOLEAN")]));
+        for cut in 0..footer.len() {
+            assert!(parse(&footer[..cut]).is_err(), "cut at {cut}");
+        }
+        assert!(parse(&[0x19, 0xfc, 0xff, 0xff, 0xff, 0x0f]).is_err());
     }
 }

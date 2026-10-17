@@ -77,7 +77,7 @@ fn path_get(ctx: &Ctx, args: PathGetArgs) -> Result<PathDetail> {
         schema: Vec::new(),
     };
     if let (false, true, Some(size)) = (directory, at.path.ends_with(".parquet"), size) {
-        match footers(&lake, &[(at.clone(), size)])?.remove(0) {
+        match footers(&lake, &[(at.clone(), size)]).remove(0) {
             Ok(footer) => {
                 detail.rows = Some(footer.rows);
                 detail.writer = footer.writer;
@@ -104,14 +104,12 @@ mod tests {
     use serde_json::json;
 
     use crate::LAKE;
-    use crate::lake::testing::{parquet, tail};
+    use crate::lake::testing::{tail, world};
     use crate::testing::{self, azure};
 
     #[test]
     fn a_parquet_file_shows_its_properties_its_acl_and_its_footer_without_a_download() {
-        let bytes = parquet(
-            "SELECT range AS order_id, CASE WHEN range = 2 THEN NULL ELSE 'c' || range END AS customer_id FROM range(4)",
-        );
+        let bytes = world("contosolake/raw/sales/orders/date=2026-09-28/part-0001.parquet");
         let size = bytes.len().to_string();
         let (outcome, transport) = azure(
             &[LAKE],
@@ -153,7 +151,8 @@ mod tests {
         assert_eq!(got["acl"][1], "user:etl@contoso.example:rw-");
         assert_eq!(
             got["schema"],
-            json!([{"name": "order_id", "type": "BIGINT"}, {"name": "customer_id", "type": "VARCHAR"}])
+            json!([{"name": "order_id", "type": "INT64"}, {"name": "customer_id", "type": "INT64"},
+                {"name": "total", "type": "DOUBLE"}, {"name": "placed_at", "type": "TIMESTAMP(MICROS, UTC)"}])
         );
         let sent = transport.sent();
         let url = "https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-29/part-0001.parquet";
@@ -165,7 +164,7 @@ mod tests {
         assert_eq!(sent[3].url, url);
         let range = format!("bytes=0-{}", bytes.len() - 1);
         assert!(
-            sent[3].headers.contains(&("x-ms-range".into(), range)),
+            sent[3].headers.contains(&("Range".into(), range)),
             "{:?}",
             sent[3].headers
         );

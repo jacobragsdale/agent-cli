@@ -24,7 +24,7 @@
 //! request with no recording is an error naming the closest one, and the
 //! body that was sent, which is what to record next. `body_file` answers a
 //! file's bytes instead (a path under the world's directory), and a request
-//! carrying `x-ms-range` or `Range: bytes=A-B` gets just those, as a 206.
+//! carrying `Range: bytes=A-B` gets just those, as a 206.
 //!
 //! `AGENT_CLI_FIXTURES_MATCH=loose` is for trials, where an agent picks its
 //! own windows and limits (`--since 2d`, `--limit 10`): a miss is answered by
@@ -349,9 +349,10 @@ impl Transport for Replay {
 
 /// The `bytes=A-B` (B optional, inclusive) a request asked for.
 fn range(request: &Request<'_>) -> Option<(u64, Option<u64>)> {
-    let (_, value) = request.headers.iter().find(|(name, _)| {
-        name.eq_ignore_ascii_case("x-ms-range") || name.eq_ignore_ascii_case("range")
-    })?;
+    let (_, value) = request
+        .headers
+        .iter()
+        .find(|(name, _)| name.eq_ignore_ascii_case("range"))?;
     let (start, end) = value.trim().strip_prefix("bytes=")?.split_once('-')?;
     Some((start.parse().ok()?, end.parse().ok()))
 }
@@ -532,7 +533,7 @@ mod tests {
         assert_eq!((whole.status, whole.into_bytes().len()), (200, 10));
         let tail = send(
             &replay,
-            Request::get("https://h.example/a.bin").header("x-ms-range", "bytes=6-9"),
+            Request::get("https://h.example/a.bin").header("Range", "bytes=6-9"),
         )
         .unwrap();
         assert_eq!((tail.status, tail.into_bytes()), (206, b"PAR1".to_vec()));

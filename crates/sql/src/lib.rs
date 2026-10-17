@@ -43,6 +43,7 @@ pub const DOMAIN: Domain = Domain {
         ("sequence", &["object"]),
         ("database", &["sql"]),
         ("oracle", &["sql"]),
+        ("synapse", &["sql"]),
         ("db", &["sql"]),
         ("statement", &["query"]),
         ("owner", &["schema"]),

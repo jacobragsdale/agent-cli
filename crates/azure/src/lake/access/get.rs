@@ -190,13 +190,20 @@ fn base64url(raw: &str) -> Option<Vec<u8>> {
     Some(out)
 }
 
-/// Every group `principal` is in, transitively, from Microsoft Graph.
-// VERIFY(work): that the az login's Graph token may call getMemberObjects.
-fn groups(ctx: &Ctx, principal: &str) -> Result<Vec<String>> {
-    let url = format!(
-        "https://graph.microsoft.com/v1.0/directoryObjects/{}/getMemberObjects",
-        encoded(principal, false)
-    );
+/// Every group `principal` is in, transitively, from Microsoft Graph. For
+/// the signed-in user (`me`) that is `/me`, which needs only User.Read;
+/// anyone else's needs Directory.Read.All.
+// VERIFY(work): that the az login's Graph token holds Directory.Read.All
+// (a user's az token usually carries Directory.AccessAsUser.All).
+fn groups(ctx: &Ctx, principal: &str, me: bool) -> Result<Vec<String>> {
+    let url = if me {
+        "https://graph.microsoft.com/v1.0/me/getMemberObjects".to_owned()
+    } else {
+        format!(
+            "https://graph.microsoft.com/v1.0/directoryObjects/{}/getMemberObjects",
+            encoded(principal, false)
+        )
+    };
     if !host_under(&url, "graph.microsoft.com") {
         bail!("{url} is not Microsoft Graph; the Graph token is not sent there");
     }
@@ -227,6 +234,7 @@ fn access_get(ctx: &Ctx, args: AccessGetArgs) -> Result<AccessDetail> {
     let lake = Lake::load(ctx)?;
     let at = lake.resolve(&args.path, true)?;
     let account = lake.account(&at.account)?.clone();
+    let myself = args.principal.trim() == "@me";
     let principal = match args.principal.trim() {
         "@me" => me(ctx)?,
         other if guid(other) => other.to_ascii_lowercase(),
@@ -236,7 +244,7 @@ fn access_get(ctx: &Ctx, args: AccessGetArgs) -> Result<AccessDetail> {
                 .into());
         }
     };
-    let groups = groups(ctx, &principal).unwrap_or_else(|error| {
+    let groups = groups(ctx, &principal, myself).unwrap_or_else(|error| {
         ctx.note(format!("[the principal's groups were not read, so ACL entries for its groups do not count: {error:#}]"));
         Vec::new()
     });
@@ -260,6 +268,13 @@ fn access_get(ctx: &Ctx, args: AccessGetArgs) -> Result<AccessDetail> {
         DATA_ROLES
             .iter()
             .any(|(id, writes)| held.role_id.eq_ignore_ascii_case(id) && (*writes || !args.write))
+    });
+    // Appending to a file needs rw- on it, or -w- alone beside a role
+    // that already reads (the access control model's table).
+    let reads = roles.iter().any(|held| {
+        DATA_ROLES
+            .iter()
+            .any(|(id, _)| held.role_id.eq_ignore_ascii_case(id))
     });
     if let Some(role) = granting {
         return Ok(AccessDetail {
@@ -299,7 +314,8 @@ fn access_get(ctx: &Ctx, args: AccessGetArgs) -> Result<AccessDetail> {
             (true, false, true) => "r-x",
             (true, false, false) => "r--",
             (true, true, true) => "-wx",
-            (true, true, false) => "-w-",
+            (true, true, false) if reads => "-w-",
+            (true, true, false) => "rw-",
         };
         let acl = answer.header("x-ms-acl").map(str::to_owned);
         let (has, ok) = evaluate(
@@ -485,6 +501,55 @@ mod tests {
         assert_eq!(
             sent[6].url,
             "https://contosolake.dfs.core.windows.net/curated/finance/ledger?action=getAccessControl"
+        );
+    }
+
+    #[test]
+    fn at_me_is_the_tokens_object_id_and_appending_beside_a_read_role_needs_only_write() {
+        let claims = agent_cli_core::base64(format!(r#"{{"oid":"{ME}"}}"#).as_bytes());
+        let token = format!(
+            "h.{}.s",
+            claims
+                .trim_end_matches('=')
+                .replace('+', "-")
+                .replace('/', "_")
+        );
+        let transport = agent_cli_core::testing::FakeTransport::answering(vec![
+            testing::inventory(vec![testing::storage("contosolake")]),
+            Answer::json(&json!({"value": []})),
+            testing::inventory(vec![
+                json!({"id": "a3", "principalId": ME, "role": "Storage Blob Data Reader",
+                "roleId": "2a2b9908-6ea1-4ae2-8e65-a410df84e7d1", "scope": testing::RG}),
+            ]),
+            Answer::ok("").with_header("x-ms-resource-type", "file"),
+            acl("$superuser", "user::rwx,group::r-x,other::--x"),
+            acl("$superuser", "user::rw-,group::r--,other::-w-"),
+        ]);
+        let outcome = agent_cli_core::testing::run(
+            &[LAKE],
+            &[
+                "lake",
+                "access",
+                "get",
+                "contosolake/raw/x.parquet",
+                "--principal",
+                "@me",
+                "--write",
+            ],
+            agent_cli_core::Setup::fake(transport.clone())
+                .with_config(testing::SERIAL)
+                .with_token(&token),
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let got = outcome.json();
+        assert_eq!(
+            (got["principal"].clone(), got["allowed"].clone()),
+            (json!(ME), json!(true))
+        );
+        assert_eq!(got["steps"][1]["grants"], "-w-");
+        assert_eq!(
+            transport.sent()[1].url,
+            "https://graph.microsoft.com/v1.0/me/getMemberObjects"
         );
     }
 

@@ -109,10 +109,17 @@ pub(crate) fn doctor(ctx: &Ctx) -> Vec<Check> {
             Err(error) => Check::failed(
                 check,
                 format!("{error:#}"),
-                format!(
-                    "check host, port, user and password of {:?} in [sql]",
-                    spec.name
-                ),
+                if spec.az {
+                    format!(
+                        "az login, then check host and database of {:?} in [sql] and that your Entra ID account is a user there",
+                        spec.name
+                    )
+                } else {
+                    format!(
+                        "check host, port, user and password of {:?} in [sql]",
+                        spec.name
+                    )
+                },
             ),
         });
     }

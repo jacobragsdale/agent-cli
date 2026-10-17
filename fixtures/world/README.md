@@ -91,7 +91,7 @@ Airflow's identity refused the finance ledger, and what the lake holds:
 agent-cli arm identity get id-contoso-airflow --fields principal_id
 agent-cli lake access get contosolake/curated/finance/ledger --principal 00000000-0000-4000-8000-00000000a1f2
 agent-cli lake partition list contosolake/raw/sales/orders --fields id,rows,modified   # date=2026-09-27 missing
-agent-cli lake query run 'select count(*) from o where customer_id is null' --table o=contosolake/raw/sales/orders/date=2026-09-29
+agent-cli lake table get contosolake/raw/sales/orders --fields schema,rows,bulk   # bulk: what Synapse's OPENROWSET reads
 ```
 
 ## Files
@@ -127,8 +127,8 @@ Each `http/*.json` is a list of exchanges; the replayer reads every file in
 - `status` (default 200) and `headers` (an object) shape the answer; `answer`
   is JSON, `text` a body taken as it is.
 - `body_file` (optional): a file under this directory whose bytes are the
-  answer; a request with `x-ms-range` or `Range: bytes=A-B` gets those bytes
-  as a 206 (a Parquet footer read).
+  answer; a request with `Range: bytes=A-B` gets those bytes as a 206 (a
+  Parquet footer read).
 - `exact` (optional): the query parameters or body fields that name *what*
   is asked for (`["path"]` on a file read, `["searchText"]` on a code
   search). Trials match loosely, answering a miss with the closest recording

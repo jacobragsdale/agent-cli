@@ -29,7 +29,6 @@ pub struct Assignment {
     /// The role definition's GUID, lowercase, which names a built-in role
     /// whatever its display name (`lake access get` matches data roles by it).
     #[serde(skip)]
-    #[cfg_attr(not(feature = "lake"), allow(dead_code))]
     pub role_id: String,
     /// Where it is granted: a subscription, a group or a resource, as an ARM id.
     pub scope: String,

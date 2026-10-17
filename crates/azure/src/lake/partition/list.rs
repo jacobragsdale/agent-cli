@@ -12,7 +12,7 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 use time::OffsetDateTime;
 
-use crate::lake::table::{FOOTERS, day, files, partitions, read_footers};
+use crate::lake::table::{FOOTERS, bulk, day, files, partitions, read_footers};
 use crate::lake::{Entry, Lake};
 
 /// The most missing days a note names.
@@ -41,6 +41,8 @@ pub struct PartitionRow {
     rows: Option<u64>,
     /// When its newest file was written.
     modified: Option<String>,
+    /// What Synapse's `OPENROWSET(BULK …)` takes for its files (`sql query run`).
+    bulk: String,
 }
 
 struct Partition<'f> {
@@ -131,8 +133,10 @@ fn partition_list(ctx: &Ctx, args: PartitionListArgs) -> Result<Vec<PartitionRow
                         .map(|(_, footer)| footer.rows)
                 })
                 .sum();
+            let folder = table.at(&held.path);
             PartitionRow {
-                id: table.at(&held.path).id(),
+                id: folder.id(),
+                bulk: bulk(&folder, &[]),
                 values: held
                     .values
                     .iter()
@@ -207,12 +211,12 @@ mod tests {
     use serde_json::json;
 
     use crate::LAKE;
-    use crate::lake::testing::{file, file_at, listing, parquet, tail};
+    use crate::lake::testing::{file, file_at, listing, tail, world};
     use crate::testing::{self, azure};
 
     #[test]
     fn partitions_come_newest_first_with_rows_and_a_missing_day_noted() {
-        let one = parquet("SELECT range AS order_id FROM range(4)");
+        let one = world("contosolake/raw/sales/orders/date=2026-09-28/part-0001.parquet");
         let (outcome, _) = azure(
             &[LAKE],
             &["lake", "partition", "list", "contosolake/raw/sales/orders"],
@@ -241,7 +245,8 @@ mod tests {
         assert_eq!(
             got[0],
             json!({"id": "contosolake/raw/sales/orders/date=2026-09-29", "values": {"date": "2026-09-29"},
-                "files": 1, "size": one.len(), "rows": 4, "modified": "2026-09-29T06:02:11Z"})
+                "files": 1, "size": one.len(), "rows": 4, "modified": "2026-09-29T06:02:11Z",
+                "bulk": "https://contosolake.dfs.core.windows.net/raw/sales/orders/date=2026-09-29/*.parquet"})
         );
         assert_eq!(got[2]["id"], "contosolake/raw/sales/orders/date=2026-09-25");
         assert!(

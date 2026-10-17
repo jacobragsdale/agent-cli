@@ -1,4 +1,4 @@
-# lake — Data Lake Storage (9 commands)
+# lake — Data Lake Storage (8 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -10,7 +10,6 @@
 | [`lake table get`](#lake-table-get) | read | Show a Parquet table's schema, rows, size and last write, read from its footers |
 | [`lake partition list`](#lake-partition-list) | read | List a Parquet table's partitions with files, rows and writes; note missing days |
 | [`lake access get`](#lake-access-get) | read | Say whether a principal can read or write a Data Lake path, and where it breaks |
-| [`lake query run`](#lake-query-run) | read | Run SQL (DuckDB) over Data Lake Parquet files bound as tables with --table |
 
 ### lake account list
 
@@ -65,7 +64,7 @@ agent-cli lake table list — List the Parquet tables under a Data Lake folder o
   <path> str   Where to look: an account, container or folder id, or its URL; every data domain by default
   --depth int  How many folder levels below it to look (default 3)
   --limit int  (default 50)
-Returns: [{id,partitioned_by[],files,modified}]
+Returns: [{id,partitioned_by[],files,modified,bulk}]
 Read. Globals: --fields --raw --timeout --output
 e.g. agent-cli lake table list contosolake/raw --fields id,partitioned_by,files,modified
 ```
@@ -75,7 +74,7 @@ e.g. agent-cli lake table list contosolake/raw --fields id,partitioned_by,files,
 ```text
 agent-cli lake table get — Show a Parquet table's schema, rows, size and last write, read from its footers
  *<path> str  The table's folder: an id from lake table list, or its abfss:// or https:// URL
-Returns: {id,partitioned_by[],schema[{name,type}],files,size,rows,modified,newest}
+Returns: {id,partitioned_by[],schema[{name,type}],files,size,rows,modified,newest,bulk}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli lake table get contosolake/curated/finance/ledger --fields schema,rows,modified
 ```
@@ -88,7 +87,7 @@ agent-cli lake partition list — List a Parquet table's partitions with files, 
   --since time  Only partitions written to since then
   --limit int   (default 50)
 A time is 15m, 2h, 7d, 1w (ago), now-15m, 2026-09-29, or RFC 3339.
-Returns: [{id,values,files,size,rows,modified}]
+Returns: [{id,values,files,size,rows,modified,bulk}]
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli lake partition list contosolake/raw/sales/orders --since 7d --fields id,files,rows,modified
 ```
@@ -103,18 +102,4 @@ agent-cli lake access get — Say whether a principal can read or write a Data L
 Returns: {id,principal,allowed,via,broken_at{path,needs,has},steps[{path,acl,grants}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli lake access get contosolake/curated/finance/ledger --principal 00000000-0000-4000-8000-00000000a1f2
-```
-
-### lake query run
-
-```text
-agent-cli lake query run — Run SQL (DuckDB) over Data Lake Parquet files bound as tables with --table
-  <sql> str        The SQL (DuckDB's dialect), or - to read it from stdin. Statements before the last run; the last one's rows return
- *--table str[]    A view the SQL reads: NAME=REF, REF a Parquet file, a folder (every file under it) or a glob in its last segment (…/date=2026-09-2*); repeat for more
-  --sql-file path  The SQL from a file
-  --max-mb int     The most to download, all tables together, in MiB (default 1024)
-  --max-rows int   Keep at most this many rows (default 1000)
-Returns: {results[{columns[],types[],rows[],truncated}],elapsed_ms,read{files,bytes,cached}}
-Read. * required. Globals: --fields --raw --timeout (default 100s) --output
-e.g. agent-cli lake query run 'select count(*) from orders where customer_id is null' --table orders=contosolake/raw/sales/orders/date=2026-09-29
 ```

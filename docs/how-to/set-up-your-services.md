@@ -41,8 +41,7 @@ hand it only to the people those credentials are for. Rebuild to change it.
 To build only some domains, name them: `--no-default-features --features
 sql,airflow,builtin-config` gives a binary with only `sql` and `airflow`.
 The features are the domain names (`ado`, `confluence`, `kv`, `acr`, `aks`,
-`aisearch`, `arm`, `net`, `lake`, `k8s`, `sql`, `airflow`, `controlm`, `dd`);
-leaving out `lake` also leaves out DuckDB, its query engine. The
+`aisearch`, `arm`, `net`, `lake`, `k8s`, `sql`, `airflow`, `controlm`, `dd`). The
 config decides which databases, instances and environments the build
 reaches, so give each group its own file: one holding only the dev
 `[[airflow.instance]]` carries nothing for prod. Leave out the sections of
@@ -220,7 +219,7 @@ agent-cli doctor k8s
 A failed `kubectl` row means it is not installed or not on `PATH`; a failed
 scope row names the cluster and namespace your login cannot read.
 
-## 6. SQL Server and Oracle (sql)
+## 6. SQL Server, Oracle and Synapse (sql)
 
 ```sh
 agent-cli config example sql
@@ -261,6 +260,34 @@ agent-cli doctor sql
 A failed Oracle client row says why the client did not load: the directory,
 or libaio. A connection that does not answer within doctor's 5 seconds is a
 host, port, VPN or firewall problem; a refused login is the user or password.
+
+Synapse's serverless SQL pool queries the Data Lake's files where they are.
+Connect to it as SQL Server, signing in with your `az login` instead of a
+password:
+
+```toml
+[[sql.connection]]
+name = "synapse"
+kind = "mssql"
+host = "contoso-ws-ondemand.sql.azuresynapse.net"   # the workspace's serverless endpoint
+database = "master"                                 # or a database made for views
+auth = "az"
+```
+
+The token is minted for `https://database.windows.net/`, and your Entra ID
+account must be a user of that Synapse workspace. Synapse then reads the
+files as you, so you need Storage Blob Data Reader on the account or ACLs
+that let you in: "File cannot be opened because it does not exist or it is
+used by another process" usually means you lack them, which
+`agent-cli lake access get PATH --principal @me` shows. `agent-cli lake table
+get TABLE` prints the `bulk` path `OPENROWSET` takes:
+
+```sh
+agent-cli sql query run --conn synapse "SELECT r.filepath(1) AS date, count(*) AS orders FROM OPENROWSET(BULK 'https://contosolake.dfs.core.windows.net/raw/sales/orders/date=*/*.parquet', FORMAT = 'PARQUET') AS r GROUP BY r.filepath(1)"
+```
+
+Serverless bills by the data a query scans (at least 10 MB a query), and
+stops a query at 30 minutes.
 
 ## 7. Airflow (airflow)
 

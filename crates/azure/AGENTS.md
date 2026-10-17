@@ -1,8 +1,7 @@
 # azure: kv, acr, aks, aisearch, arm, net and lake
 
-Seven domains, `KV`, `ACR`, `AKS`, `AISEARCH`, `ARM`, `NET`, `LAKE` (feature
-`lake`, which brings DuckDB), over plain HTTPS with `az` tokens; no Azure
-SDK. `arm resource` and `arm query run` read any resource; a curated command
+Seven domains, `KV`, `ACR`, `AKS`, `AISEARCH`, `ARM`, `NET`, `LAKE`, over
+plain HTTPS with `az` tokens; no Azure SDK. `arm resource` and `arm query run` read any resource; a curated command
 adds a join or a bound. Never calls k8s: joins are ids one side prints.
 
 ## Config
@@ -35,9 +34,9 @@ A command is `<domain>/<resource>/<verb>.rs`. Each domain's module doc
 - `net/mod.rs`: `Place`, `read`, `found`, `leaf`, `usages`, `rule`.
 - `lake/mod.rs`: ids `account/container/path` (`Ref`, which also reads
   abfss, wasbs, https and azure URLs); `Lake`, the door (`list`, `head`,
-  `range`, `containers`). `lake/parquet.rs`: `footers` by ranged reads,
-  `download`, `duck` (no extensions, one folder). `lake/table/mod.rs`:
-  tables and partitions in a listing.
+  `range`, `containers`). `lake/parquet.rs`: `footers` by a ranged read and
+  a Thrift decoder of the fields wanted. `lake/table/mod.rs`: tables,
+  partitions and `bulk` (the path Synapse's OPENROWSET takes).
 
 ## Fixtures
 `fixtures/world/http/{azure,aisearch,lake}.json`; `scripts/seed/lake.py`
@@ -49,7 +48,6 @@ writes the lake recordings and the Parquet files it serves. Facts in
 ## Quirks
 - Only `kv secret get` (a `Reveal`) returns a value.
 - `VERIFY(work)` marks API behaviour no live call has confirmed yet.
-- DuckDB is C++: minutes on a cold build.
 
 ## Never needed
 Other crates' sources, `docs/reference/`.

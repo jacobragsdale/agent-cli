@@ -31,13 +31,6 @@ impl Cache {
         Self { dir, read: true }
     }
 
-    /// Where the cache lives, for a command that keeps files of its own
-    /// there; `None` when the cache is off (tests, fixture worlds).
-    #[must_use]
-    pub fn dir(&self) -> Option<&std::path::Path> {
-        self.dir.as_deref()
-    }
-
     /// The value under `key`, if it is there and has not expired.
     #[must_use]
     pub fn get<T: DeserializeOwned>(&self, key: &str) -> Option<T> {

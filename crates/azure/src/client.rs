@@ -22,10 +22,8 @@ pub(crate) const REGISTRY: &str = "https://containerregistry.azure.net";
 /// AI Search's data plane, without a trailing slash, as `az` asks for it.
 pub(crate) const SEARCH: &str = "https://search.azure.com";
 /// Storage's data plane (Data Lake, Blob), as `az storage --auth-mode login` asks.
-#[cfg(feature = "lake")]
 pub(crate) const STORAGE: &str = "https://storage.azure.com/";
 /// Microsoft Graph, for a principal's groups.
-#[cfg(feature = "lake")]
 pub(crate) const GRAPH: &str = "https://graph.microsoft.com/";
 
 /// `az`'s token for `resource` (`Setup::with_token` stands in for it in tests).

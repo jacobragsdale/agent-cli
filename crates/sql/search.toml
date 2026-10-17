@@ -102,3 +102,12 @@ expect = "sql query bench"
 [[query]]
 text = "how many customers and orders are in the database"
 expect = "sql query run"
+
+[[query]]
+text = "query the data lake parquet files with synapse serverless sql"
+expect = "sql query run"
+
+[[query]]
+text = "select from adls parquet files with openrowset in synapse"
+expect = "sql query run"
+

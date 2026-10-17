@@ -156,14 +156,15 @@ Azure side names the k8s object where it can (a load balancer frontend's
 service).
 
 The lake reads Parquet without downloading it: a footer is a file's last
-bytes, so two ranged reads and DuckDB's metadata functions give a schema and
-row counts, and `table get` and `partition list` read only footers. A query
-is the one place data moves: `lake query run` binds each table by
-`--table NAME=REF`, so nothing parses the SQL and every file fetched is on
-the command line, refuses past `--max-mb` before any download, and runs in
-an in-memory DuckDB that loads no extension and reads only its download
-folder, which keeps files by etag. The upgrade, if partitions outgrow the
-cap, is DuckDB's azure extension reading only the row groups a query needs.
+bytes, so one ranged read and a decoder of the few Thrift fields wanted
+give a schema and row counts, and `table get` and `partition list` read only
+footers. Queries over the files are Synapse's: its serverless SQL pool reads
+them where they are, and `sql` connects to it as SQL Server with the az
+login's token. lake owns what SQL cannot see (when a file landed, which
+partitions are missing, why a path is refused) and prints each table's
+`bulk` path for `OPENROWSET`, the join. An in-process engine (DuckDB, over
+downloads) was built and dropped: it duplicated Synapse at the cost of a
+C++ build and a download cap.
 Why a path is refused is a walk Azure does itself: a data role at the
 container or above grants and ACLs are never read; else each folder needs
 execute and the path read, for the principal, its groups (Graph) or other,

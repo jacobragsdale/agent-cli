@@ -8,7 +8,7 @@ use serde::Serialize;
 
 use crate::lake::Lake;
 use crate::lake::parquet::Column;
-use crate::lake::table::{FOOTERS, files, newest, partitioned_by, read_footers};
+use crate::lake::table::{FOOTERS, bulk, files, newest, partitioned_by, read_footers};
 
 #[derive(clap::Args)]
 pub struct TableGetArgs {
@@ -31,6 +31,9 @@ pub struct TableDetail {
     modified: Option<String>,
     /// The newest file, which `lake path get` takes.
     newest: Option<String>,
+    /// What Synapse's `OPENROWSET(BULK …)` takes for its files: each `*` a
+    /// partition, `filepath(1)` the first (`sql query run`).
+    bulk: String,
 }
 
 fn table_get(ctx: &Ctx, args: TableGetArgs) -> Result<TableDetail> {
@@ -80,9 +83,11 @@ fn table_get(ctx: &Ctx, args: TableGetArgs) -> Result<TableDetail> {
             found.len()
         ));
     }
+    let partitioned_by = partitioned_by(&table, &found);
     Ok(TableDetail {
         id: table.id(),
-        partitioned_by: partitioned_by(&table, &found),
+        bulk: bulk(&table, &partitioned_by),
+        partitioned_by,
         schema,
         files: found.len(),
         size: found.iter().map(|file| file.size).sum(),
@@ -105,13 +110,13 @@ mod tests {
     use serde_json::json;
 
     use crate::LAKE;
-    use crate::lake::testing::{file, file_at, listing, parquet, tail};
+    use crate::lake::testing::{file, file_at, listing, tail, world};
     use crate::testing::{self, azure};
 
     #[test]
     fn the_schema_is_the_newest_files_and_rows_add_up_across_footers() {
-        let new = parquet("SELECT range AS id, 1.5::DOUBLE AS amount FROM range(3)");
-        let old = parquet("SELECT range AS id FROM range(2)");
+        let new = world("contosolake/curated/finance/ledger/part-0000.parquet");
+        let old = world("contosolake/raw/finance/journal/part-0000.parquet");
         let (outcome, _) = azure(
             &[LAKE],
             &["lake", "table", "get", "contosolake/curated/finance/ledger"],
@@ -133,7 +138,7 @@ mod tests {
         let got = outcome.json();
         assert_eq!(
             (got["rows"].clone(), got["files"].clone()),
-            (json!(5), json!(2))
+            (json!(140), json!(2))
         );
         assert_eq!(
             got["newest"],
@@ -141,7 +146,7 @@ mod tests {
         );
         assert_eq!(
             got["schema"][1],
-            json!({"name": "amount", "type": "DOUBLE"})
+            json!({"name": "account", "type": "STRING"})
         );
         assert!(
             outcome.stderr.contains("[columns differ from the newest file's in contosolake/curated/finance/ledger/part-0.parquet]"),

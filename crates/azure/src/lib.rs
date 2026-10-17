@@ -2,7 +2,7 @@
 //! certificates (`kv`), container registry images and builds (`acr`) and
 //! AKS clusters (`aks`), ported from az-tui, Azure AI Search (`aisearch`),
 //! any ARM resource (`arm`), virtual networks (`net`), and Data Lake
-//! Storage Gen2 (`lake`, behind the feature of its name: DuckDB is in it).
+//! Storage Gen2 (`lake`).
 //!
 //! There is no Azure SDK and no credential of our own. Each plane gets an
 //! `az` token for its own audience (or, for an AI Search service that takes
@@ -28,7 +28,6 @@ mod config;
 mod doctor;
 mod graph;
 mod kv;
-#[cfg(feature = "lake")]
 mod lake;
 mod net;
 #[cfg(test)]
@@ -232,7 +231,6 @@ pub const NET: Domain = Domain {
     doctor: doctor::arm_doctor,
 };
 
-#[cfg(feature = "lake")]
 pub const LAKE: Domain = Domain {
     name: "lake",
     summary: "Data Lake Storage",
@@ -245,7 +243,6 @@ pub const LAKE: Domain = Domain {
         lake::table::get::TABLE_GET,
         lake::partition::list::PARTITION_LIST,
         lake::access::get::ACCESS_GET,
-        lake::query::run::QUERY_RUN,
     ],
     synonyms: &[
         ("adls", &["lake"]),
@@ -271,16 +268,7 @@ mod tests {
 
     #[test]
     fn the_registry_keeps_every_rule() {
-        let domains = [
-            KV,
-            ACR,
-            AKS,
-            AISEARCH,
-            ARM,
-            NET,
-            #[cfg(feature = "lake")]
-            LAKE,
-        ];
+        let domains = [KV, ACR, AKS, AISEARCH, ARM, NET, LAKE];
         assert_eq!(check_registry(&domains), Vec::<String>::new());
         assert_eq!(check_layout(&domains), Vec::<String>::new());
     }

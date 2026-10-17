@@ -15,6 +15,13 @@
 //! password_env = "VAR"   # or password = "...", or password_cmd = "pass show x"
 //! trust_cert = true      # mssql only, default false
 //! encrypt = true         # mssql only, default true
+//!
+//! [[sql.connection]]     # Synapse serverless, Azure SQL: Entra ID sign-in
+//! name = "synapse"
+//! kind = "mssql"
+//! host = "contoso-ws-ondemand.sql.azuresynapse.net"
+//! database = "master"
+//! auth = "az"            # your az login's token, no user or password
 //! ```
 //!
 //! Everything is checked when a sql command reads the section, except the
@@ -63,9 +70,12 @@ pub struct Connection {
     pub database: Option<String>,
     /// Always set for oracle, never for mssql.
     pub service: Option<String>,
+    /// Empty for `auth = "az"`.
     pub user: String,
     /// `password`, `password_env` or `password_cmd`: core's [`Credential`].
     pub password: Option<Credential>,
+    /// `auth = "az"`: sign in with the az login's Entra ID token.
+    pub az: bool,
     pub trust_cert: bool,
     pub encrypt: bool,
 }
@@ -101,7 +111,8 @@ struct Raw {
     port: Option<u16>,
     database: Option<String>,
     service: Option<String>,
-    user: String,
+    user: Option<String>,
+    auth: Option<String>,
     password: Option<String>,
     password_env: Option<String>,
     password_cmd: Option<String>,
@@ -204,12 +215,28 @@ impl Raw {
             Some(port) => port,
             None => kind.default_port(),
         };
+        let az = match self.auth.as_deref() {
+            None | Some("password") => false,
+            Some("az") if kind == Kind::Mssql => true,
+            Some("az") => return Err("auth \"az\" is for kind \"mssql\" only".to_owned()),
+            Some(other) => return Err(format!("auth {other:?} is not \"password\" or \"az\"")),
+        };
         let password = Credential::from_keys(
             "password",
             self.password,
             self.password_env,
             self.password_cmd,
         )?;
+        let user = match (az, self.user) {
+            (true, None) if password.is_none() => String::new(),
+            (true, _) => {
+                return Err(
+                    "auth \"az\" signs in as your az login: leave out user and password".to_owned(),
+                );
+            }
+            (false, Some(user)) => user,
+            (false, None) => return Err("user is missing (or set auth = \"az\")".to_owned()),
+        };
         Ok(Connection {
             name: self.name,
             kind,
@@ -217,8 +244,9 @@ impl Raw {
             port,
             database: self.database,
             service: self.service,
-            user: self.user,
+            user,
             password,
+            az,
             trust_cert: self.trust_cert.unwrap_or(false),
             encrypt: self.encrypt.unwrap_or(true),
         })
@@ -226,10 +254,17 @@ impl Raw {
 }
 
 impl Connection {
-    /// The password, resolved now that the connection is opening: a
-    /// `password_cmd` runs under the command's deadline like any other child
-    /// process. None is an empty one, which is what a trusted login sends.
+    /// What the connection signs in with, resolved now that it is opening:
+    /// the password (a `password_cmd` runs under the command's deadline like
+    /// any other child process; none is an empty one, which is what a trusted
+    /// login sends), or for `auth = "az"` the az login's token for Azure SQL,
+    /// which Synapse takes too.
     pub fn password(&self, ctx: &Ctx) -> Result<Secret> {
+        if self.az {
+            return ctx
+                .az_token(AZURE_SQL, false)
+                .map_err(|error| error.context(format!("connection {:?}", self.name)));
+        }
         match &self.password {
             None => Ok(Secret::new(String::new())),
             Some(credential) => credential
@@ -238,6 +273,9 @@ impl Connection {
         }
     }
 }
+
+/// The audience of an Entra ID token for Azure SQL and Synapse SQL.
+pub const AZURE_SQL: &str = "https://database.windows.net/";
 
 /// A leading `~/` is the home directory; nothing else is expanded.
 fn expand_home(path: &str) -> PathBuf {
@@ -347,6 +385,38 @@ trust_cert = true
             assert_eq!(exit, Some(agent_cli_core::Exit::Setup), "{message}");
         }
         assert!(failure("[sql]\nnope = 1\n").contains("unknown field `nope`"));
+    }
+
+    #[test]
+    fn auth_az_signs_in_with_the_az_token_for_azure_sql_and_takes_no_user_or_password() {
+        let synapse = |extra: &str| {
+            format!(
+                "[[sql.connection]]\nname = \"synapse\"\nkind = \"mssql\"\nhost = \"contoso-ws-ondemand.sql.azuresynapse.net\"\ndatabase = \"master\"\nauth = \"az\"\n{extra}\n"
+            )
+        };
+        let sql = load(&synapse("")).unwrap();
+        let spec = sql.connection(None).unwrap();
+        assert!(spec.az && spec.encrypt && spec.user.is_empty());
+        let ctx = agent_cli_core::testing::ctx(agent_cli_core::Setup::fake(
+            agent_cli_core::testing::FakeTransport::default(),
+        ));
+        assert_eq!(
+            spec.password(&ctx).unwrap().expose(),
+            "token@https://database.windows.net/"
+        );
+        for (extra, want) in [
+            ("user = \"u\"", "leave out user and password"),
+            ("password_env = \"P\"", "leave out user and password"),
+        ] {
+            assert!(failure(&synapse(extra)).contains(want), "{extra}");
+        }
+        assert!(failure(&MSSQL.replace("user = \"sa\"\n", "")).contains("user is missing"));
+        assert!(
+            failure(&format!("{MSSQL}auth = \"kerberos\"\n"))
+                .contains("not \"password\" or \"az\"")
+        );
+        let oracle = "[[sql.connection]]\nname = \"o\"\nkind = \"oracle\"\nhost = \"h\"\nservice = \"S\"\nauth = \"az\"\n";
+        assert!(failure(oracle).contains("for kind \"mssql\" only"));
     }
 
     #[test]

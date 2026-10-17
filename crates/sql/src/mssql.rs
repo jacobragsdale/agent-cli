@@ -62,7 +62,11 @@ impl Session {
         if let Some(database) = &spec.database {
             config.database(database);
         }
-        config.authentication(AuthMethod::sql_server(&spec.user, password.expose()));
+        config.authentication(if spec.az {
+            AuthMethod::aad_token(password.expose())
+        } else {
+            AuthMethod::sql_server(&spec.user, password.expose())
+        });
         config.encryption(if spec.encrypt {
             EncryptionLevel::Required
         } else {
@@ -500,6 +504,33 @@ fn decimal(value: tiberius::numeric::Numeric) -> String {
     )
 }
 
+/// The next step for Synapse's refusal of a lake file or folder, which it
+/// words as missing ("File '…' cannot be opened because it does not exist
+/// or it is used by another process", "Content of directory on path '…'
+/// cannot be listed"): it usually means the caller may not read it. The
+/// path is cut before its first wildcard, which no lake id holds.
+fn unreadable(message: &str) -> Option<String> {
+    if !message.contains("cannot be opened because it does not exist")
+        && !message.contains("cannot be listed")
+    {
+        return None;
+    }
+    let quoted = message.split('\'').nth(1)?;
+    if !quoted.starts_with("https://") {
+        return None;
+    }
+    let (host, path) = quoted["https://".len()..].split_once('/')?;
+    let kept: Vec<&str> = path
+        .split('/')
+        .take_while(|segment| !segment.contains(['*', '?']))
+        .filter(|segment| !segment.is_empty())
+        .collect();
+    Some(format!(
+        "Synapse reads the lake as you and words a refusal as missing; `agent-cli lake access get https://{host}/{} --principal @me` shows where it breaks",
+        kept.join("/")
+    ))
+}
+
 /// What went wrong, with the line of the batch when the server says.
 fn failure(why: TiberiusError) -> anyhow::Error {
     match why {
@@ -516,7 +547,13 @@ fn failure(why: TiberiusError) -> anyhow::Error {
                 name: crate::db::UnknownObject::quoted(token.message()),
             })
         }
-        TiberiusError::Server(token) => anyhow!("line {}: {}", token.line(), token.message()),
+        TiberiusError::Server(token) => {
+            let said = format!("line {}: {}", token.line(), token.message());
+            match unreadable(token.message()) {
+                Some(hint) => Failure::new(Exit::Failed, said).hint(hint).into(),
+                None => anyhow!(said),
+            }
+        }
         TiberiusError::Io { message, .. } => anyhow!(
             "connection lost: {}",
             message.trim_start_matches("An error occured during the attempt of performing I/O: ")
@@ -539,6 +576,29 @@ mod tests {
     use tiberius::time::{Date, DateTime, DateTime2, DateTimeOffset, Time};
 
     use super::*;
+
+    #[test]
+    fn synapse_refusing_a_lake_file_names_lake_access_get_for_where_it_breaks() {
+        let hint = unreadable(
+            "File 'https://contosolake.dfs.core.windows.net/curated/finance/ledger/part-0000.parquet' cannot be opened because it does not exist or it is used by another process.",
+        )
+        .unwrap();
+        assert!(
+            hint.contains("`agent-cli lake access get https://contosolake.dfs.core.windows.net/curated/finance/ledger/part-0000.parquet --principal @me`"),
+            "{hint}"
+        );
+        let hint = unreadable(
+            "Content of directory on path 'https://contosolake.dfs.core.windows.net/raw/sales/orders/date=*/*.parquet' cannot be listed.",
+        )
+        .unwrap();
+        assert!(
+            hint.contains(
+                "access get https://contosolake.dfs.core.windows.net/raw/sales/orders --principal"
+            ),
+            "{hint}"
+        );
+        assert_eq!(unreadable("Invalid object name 'dbo.orders'."), None);
+    }
 
     #[test]
     fn dates_and_times_are_rfc_3339_with_every_digit_of_their_scale() {

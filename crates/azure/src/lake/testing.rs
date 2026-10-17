@@ -1,5 +1,5 @@
-//! Answers the lake's tests share: Path List entries, and Parquet files
-//! DuckDB writes.
+//! Answers the lake's tests share: Path List entries, and the contoso
+//! world's Parquet files.
 
 use agent_cli_core::testing::Answer;
 use serde_json::{Value, json};
@@ -26,18 +26,13 @@ pub fn listing(entries: Vec<Value>) -> Answer {
     Answer::json(&json!({"paths": entries}))
 }
 
-/// The Parquet file DuckDB writes for `select`.
-pub fn parquet(select: &str) -> Vec<u8> {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("t.parquet");
-    duckdb::Connection::open_in_memory()
-        .unwrap()
-        .execute_batch(&format!(
-            "COPY ({select}) TO '{}' (FORMAT parquet)",
-            path.display()
-        ))
-        .unwrap();
-    std::fs::read(path).unwrap()
+/// A Parquet file of the contoso world's lake, by its id.
+pub fn world(id: &str) -> Vec<u8> {
+    let path = format!(
+        "{}/../../fixtures/world/files/lake/{id}",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    std::fs::read(&path).unwrap_or_else(|error| panic!("{path}: {error}"))
 }
 
 /// What a tail read of `bytes` answers: the last 64 KiB at most.

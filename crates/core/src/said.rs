@@ -3,7 +3,8 @@
 use serde_json::Value;
 
 /// What a service says when it refuses. ARM and Key Vault write it under
-/// `error.message` (with the actionable part in `error.details`), a registry
+/// `error.message` (with the actionable part in `error.details`), Azure
+/// Storage's spec under `error.Message`, a registry
 /// under `errors[0].message`, Azure DevOps under `message`, FastAPI (Airflow)
 /// under `detail` (a string, or a 422's list of `{loc, msg}`), Datadog as
 /// `errors: ["…"]`, Confluence's v2 as `errors: [{title, detail}]` and its v1
@@ -31,6 +32,7 @@ pub fn failure_message(text: &str) -> String {
         .collect();
     for candidate in [
         &parsed["error"]["message"],
+        &parsed["error"]["Message"],
         &parsed["errors"][0]["message"],
         &parsed["message"],
         // RFC 7807's problem+json with a null `detail` (Airflow 2).
@@ -108,6 +110,10 @@ mod tests {
     #[test]
     fn a_refusal_is_read_in_whichever_shape_the_service_wrote_it() {
         assert_eq!(failure_message(r#"{"error":{"message":"nope"}}"#), "nope");
+        assert_eq!(
+            failure_message(r#"{"error":{"Code":"PathNotFound","Message":"gone"}}"#),
+            "gone"
+        );
         assert_eq!(
             failure_message(r#"{"errors":[{"message":"denied"}]}"#),
             "denied"
