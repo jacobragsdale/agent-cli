@@ -18,7 +18,8 @@
 ## Ctx: every effect goes through it
 - `Ctx`: `read(op)`, `write(effect, op)` (--dry-run and --yes enforced),
   `note`, `env`, `section`, `config`, `cache`, `deadline`, `remaining`,
-  `long_text` (a `LongText`), `save` (bytes to `--output`). `Op`: what read and write perform.
+  `long_text` (a `LongText`), `save` (bytes to `--output`). `Op`: what
+  read and write perform.
 - `Globals`, `Setup`, `DEFAULT_TIMEOUT`: the run's surroundings.
 - `Config`; `pick`: the rule for scope flags; `Cache`: keyed, with a TTL.
   A doctor with no checks reads as not set up.

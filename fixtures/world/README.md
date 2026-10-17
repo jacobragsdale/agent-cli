@@ -12,7 +12,7 @@ answered end to end.
 ```sh
 cargo build --features fixtures -p agent-cli     # the replayer is compiled in only with this feature
 eval "$(scripts/trial-env.sh)"                   # prints the env; pass another world's directory to use that
-agent-cli k8s deployment list
+agent-cli k8s deployment list --cluster prod
 ```
 
 `scripts/trial-env.sh` sets:
@@ -43,7 +43,7 @@ DAG failed on is the one AI Search's indexer left out.
 The deploy trace, for example (see AGENTS.md):
 
 ```sh
-agent-cli k8s deployment list --fields id,images            # api runs contosoacr.azurecr.io/api:v1.4.2
+agent-cli k8s deployment list --cluster prod --fields id,images   # api runs contosoacr.azurecr.io/api:v1.4.2
 agent-cli ado run list --branch refs/tags/v1.4.2 --fields id,result
 agent-cli ado run get 8812 --fields commit,pr,workitems     # PR 431, work items 1207 and 1210
 ```
@@ -51,10 +51,10 @@ agent-cli ado run get 8812 --fields commit,pr,workitems     # PR 431, work items
 Why last night's DAG failed, and the hop to its pod:
 
 ```sh
-agent-cli airflow run list --dag etl_nightly --state failed --since 1d --fields id
-agent-cli airflow run get etl_nightly/latest --fields failed      # …/load_orders/2
-agent-cli airflow task logs etl_nightly/latest/load_orders/2 --tail 20 --fields error
-agent-cli airflow task get etl_nightly/latest/load_orders --fields pod
+agent-cli airflow run list --dag etl_nightly --state failed --since 1d --instance prod --fields id
+agent-cli airflow run get etl_nightly/latest --instance prod --fields failed   # …/load_orders/2
+agent-cli airflow task logs etl_nightly/latest/load_orders/2 --tail 20 --instance prod --fields error
+agent-cli airflow task get etl_nightly/latest/load_orders --instance prod --fields pod
 agent-cli k8s pod logs prod/web/etl-nightly-load-orders-q8x1k2vz --tail 20
 ```
 
@@ -77,12 +77,22 @@ agent-cli net endpoint list --fields id,target        # pe-kv-contoso-billing: n
 # 2. Multi-Attach: orders-db-0 stuck creating, its disk on the NotReady node
 agent-cli k8s pvc get prod/web/data-orders-db-0       # notes node get, then aks nodepool get
 # 3. Pending pods: reports-api's two new pods fit nowhere
-agent-cli k8s node list aks-user --fields id,nodepool,cpu
+agent-cli k8s node list aks-user --cluster prod --fields id,nodepool,cpu
 agent-cli aks nodepool get aks-contoso-prod/user      # the autoscaler at its maximum
 # 4. Workload identity 403: the notifier's Key Vault reads refused
 agent-cli k8s serviceaccount get prod/web/notifier --fields client_id
 agent-cli arm identity get 00000000-0000-4000-8000-00000000b0f1 --fields principal_id,roles
 agent-cli arm activity list --resource kv-contoso-prod     # dana deleted its role
+```
+
+It works in staging and fails in prod: the two worker deployments match, so
+their notes walk to the Secret both read and the vault secret behind it, where
+prod's expired (`crates/cli/tests/world_cross.rs`):
+
+```sh
+agent-cli k8s deployment diff staging/web/worker prod/web/worker    # same; notes k8s secret diff
+agent-cli k8s secret diff staging/web/worker-db prod/web/worker-db  # password differs; notes kv secret diff
+agent-cli kv secret diff kv-contoso-staging/worker-db-password kv-contoso-prod/worker-db-password
 ```
 
 Airflow's identity refused the finance ledger, and what the lake holds:

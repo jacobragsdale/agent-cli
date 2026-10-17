@@ -22,12 +22,13 @@ match winning). A connection is its `name`.
 ## Where things are (`src/`)
 A command is `<resource>/<verb>.rs`: its args, rows, handler, `command!`
 and tests (`query/run.rs` is `sql query run`). Copy a sibling.
-- `lib.rs`: `DOMAIN`, whose `commands` registers every command (its order
-  is the listing's). `doctor.rs`: status and doctor. `testing.rs`: the
-  tests' `sql(argv, setup)` over a `CONFIG` whose servers listen on port 9.
+- `lib.rs`: `DOMAIN` (its order is the listing's). `doctor.rs`. `testing.rs`:
+  `sql(argv, setup)` over a `CONFIG` whose servers listen on port 9.
 - `query/mod.rs`: what run and bench share (`statements`, `plan`, `door`,
   `failed_at`). `catalog.rs`: the catalog SQL the object and schema
-  commands share (`objects_sql`, `catalog_read`, `ObjectRow`, …).
+  commands share (`objects_sql`, `catalog_read`, `ObjectRow`, …);
+  `catalog/detail.rs`: the diffs' (`table_row`, schema-wide reads).
+  `object/mod.rs`: `find`, `compared`.
 - `config.rs`: `Sql::load(config)`, `connection(name)`, `Connection`, `Kind`.
 - `db.rs`: `OnConnection` (the `Op` every sql command performs through
   `ctx.read` / `ctx.write`), `Session::run(sql, Fetch, deadline)`,
@@ -43,10 +44,10 @@ without the variable they skip. Queries `crates/sql/search.toml`.
 ## Quirks
 - The classifier decides the effect: a batch holding any write goes through
   `ctx.write` as destructive.
-- `panic = "unwind"` stays in the release profile: tiberius panics on some
-  column types (`sql_variant`) and `mssql.rs` catches that as a failed query.
-- ODPI-C `dlopen`s the Instant Client on the first Oracle connection, so
-  the binary runs without it; doctor reports whether it loaded.
+- `panic = "unwind"` stays: tiberius panics on some column types
+  (`sql_variant`); `mssql.rs` catches that as a failed query.
+- ODPI-C `dlopen`s the Instant Client on the first Oracle connection;
+  doctor reports whether it loaded.
 - Stopping at `--max-rows` drops the SQL Server socket, which ends the
   session: the next statement reconnects, and `bench` names the reconnects.
   So only a read with no write before it is cut, and a transaction a script

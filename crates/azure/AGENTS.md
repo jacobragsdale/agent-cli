@@ -23,12 +23,14 @@ A command is `<domain>/<resource>/<verb>.rs`. Each domain's module doc
   `parallel`, `limited`, `stamp`, `text`, `decode`, `arm_only`, `settle`.
 - `graph.rs`: `rows` (any Resource Graph query, paged); the cached
   inventory of vaults, registries, clusters, search services, lakes.
-- `kv/mod.rs`: ids `vault/name[/version]`; `get`, `found`, `put`.
+- `kv/mod.rs`: ids `vault/name[/version]`; `get`, `found`, `put`; the
+  diffs' `compared`, `secret_for_diff`.
 - `acr/mod.rs`: ids `loginserver/repo[:tag|@digest]`; `Session`.
 - `aks/mod.rs`: a cluster's name, ARM id or portal link; `locate`.
 - `aisearch/mod.rs`: `Search`, the door; ids in `aisearch/refs.rs`.
 - `arm/mod.rs`: `subscriptions`, `scope`, `quote`, `of_type`, `scrub`.
-  `arm/resource/mod.rs`: `resolve`, `any`. `arm/role/mod.rs`: `assignments`.
+  `arm/resource/mod.rs`: `resolve`, `any`, `fetch`. `arm/role/mod.rs`:
+  `assignments`.
   `arm/identity/mod.rs`: `federated` (a subject as a serviceaccount id).
 - `net/mod.rs`: `Place`, `read`, `found`, `leaf`, `usages`, `rule`.
 - `lake/mod.rs`: ids `account/container/path` (`Ref`, also abfss, wasbs,

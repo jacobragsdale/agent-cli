@@ -486,6 +486,7 @@ same rules as the contract.
 | Credentials | Resolved by the domain client from `KEY_env` or `KEY_cmd`, sent only to hosts that pass `host_under` | review |
 | Errors | Return `Failure::usage` (exit 2), `setup` (3), `not_found` (4), `conflict` (5) or `timed_out` (124); anything else is exit 1. Add a `.hint(…)` that names the next command to run | review |
 | An answer with a failing exit | `Failure::…(…).with_data(value)`: core prints `value` like a success, then the error, and exits with the failure's code (`ado run wait` on a failed run) | review |
+| Diff | A `diff` flattens core's `DiffArgs`, builds each side's row from what its resource's `get` reads, and calls `agent_cli_core::diff` with `Rules` naming its keyed lists and noise. A side is the id when the id holds the scope, else `SCOPE:ID` through `agent_cli_core::scoped`; one side alone compares with the thing's own past. A secret's value goes into `Side::secrets`, never the row | R (flags), review |
 | Hints and notes | Every `agent-cli …` they print must parse. Write placeholders in capitals (`ID`, `NAME`) and end the command where prose resumes (`, then`, ` (`, two spaces, a backtick) | T |
 | Deadlines | Nothing waits past `ctx.deadline()`; a blocking call outside HTTP and child processes takes `ctx.remaining()` | review |
 

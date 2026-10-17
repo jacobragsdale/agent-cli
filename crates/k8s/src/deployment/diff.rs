@@ -60,18 +60,16 @@ fn read(ctx: &Ctx, at: &At, raw: &str, all: bool) -> Result<(Target, String, Val
     let listed = target.json(ctx, &["get", "pods", "-o", "json"])?;
     let pods: Vec<&Value> = items(&listed).collect();
     let mut compared = workload(&item, all);
-    if let Some(row) = row(&target, &item, &pods) {
-        let digests = serde_json::to_value(row)?;
-        for container in compared["containers"].as_array_mut().into_iter().flatten() {
-            let digest = digests["images"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .find(|image| image["container"] == container["name"])
-                .and_then(|image| image.get("digest").cloned());
-            if let (Some(digest), Some(map)) = (digest, container.as_object_mut()) {
-                map.insert("digest".to_owned(), digest);
-            }
+    let images = row(&target, &item, &pods)
+        .map(|row| row.images)
+        .unwrap_or_default();
+    for container in compared["containers"].as_array_mut().into_iter().flatten() {
+        let digest = images
+            .iter()
+            .find(|image| container["name"] == image.container.as_str())
+            .and_then(|image| image.digest.clone());
+        if let (Some(digest), Some(map)) = (digest, container.as_object_mut()) {
+            map.insert("digest".to_owned(), Value::String(digest));
         }
     }
     let id = target.id(&item);

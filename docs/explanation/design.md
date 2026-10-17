@@ -92,7 +92,14 @@ config key that refuses writes is a guard the agent's own config can lift,
 and a credential that can only read is one it cannot. Secrets get the same
 treatment: a value lives in a `Secret` that has no serializer, only a
 `reveal` command prints one, and a token is attached only to its own
-service's hosts. In design.md agents ran `--dry-run` unprompted before
+service's hosts. The one exception is `diff`: two secrets' values are
+compared in memory and the answer says only whether they are equal
+(`redacted: true` with `same`, which is absent where the service masks the
+value), never a value, hash, length or prefix. That is one bit per secret,
+and for a secret of little entropy (a flag kept as a secret) the bit is the
+value; "is prod still on the old password" is worth it. A diff that reads
+values is still a read: it returns none, and `kv secret get` and `k8s
+secret get` stay the only commands that reveal. In design.md agents ran `--dry-run` unprompted before
 writes. This round, a restart without `--yes` and a secret read without
 `--reveal` each cost one refused call, and the refusal said what to add.
 
@@ -212,9 +219,50 @@ Some words mean different things in different domains:
 | table | a SQL table or view (sql's `object`); a folder of Parquet files (lake's `table`) | `SHARED_WORDS`, with labeled queries for each reading |
 | group | an Azure resource group (arm's); an Entra group (entra's) | the domain word decides; arm keeps "resource group" and "rg", entra takes "security group", "ad group"; labeled queries for each reading |
 | role | an Azure RBAC role assignment (arm's); an Entra directory role (entra's) | the domain word decides; entra takes "global admin", "directory role"; labeled queries for each reading |
+| diff | the verb every domain's comparisons share; ado's resource for a pull request's or two refs' code (`ado diff get`) | "compare", "difference", "differ" and "drift" are synonyms of the verb; the domain word decides |
 
 A question that spans domains ("which build made prod's image") has no single
 right first command, so it belongs in a trial, not in `search.toml`.
+
+## One comparison for every diff
+
+"It works in staging but not in prod" is a question every domain gets, and
+the raw tools answer it badly: two `kubectl get -o yaml` differ in uids,
+resource versions, timestamps and every hostname that names its
+environment, nothing compares two Airflow instances, and comparing two
+secrets means printing both. So `diff` is a verb, not a domain: each domain
+adds it where drift bites, over one comparison in core (`diff`). A diff
+compares the rows its resource's `get` already reads, so a field `get` adds
+is compared for free, and its `Rules` say only which lists match by a key
+(containers by name, tasks by `task_id`), which paths are noise (shown with
+`--all`) and how texts compare. Every diff answers the same shape (`left`,
+`right`, `same`, `as`, `changes` of `path`, `left`, `right`, `lines`) and
+exits 0 whether or not the two differ: the differences are the answer.
+
+Two environments' objects differ in every value that names the environment,
+so a naive diff reports everything. The two ids usually already say what
+the difference is: tokens that differ in place (`staging/web/api` against
+`prod/web/api`) are treated as one wherever the word stands alone in a
+value, never inside a longer word, and a note says so; `--as A=B` replaces
+the guess, `--as none` drops it, and numbers never pair, so two runs' dates
+are not taken for environments. Values of different shapes (`db-qa` against
+`dbprod`) need `--as`. A string that holds JSON on both sides compares as
+JSON, so key order and whitespace never count; any other text compares by
+lines, with a Myers diff capped at 1,000 edits ("texts differ" past it,
+rather than spending the deadline) and comments, whitespace and SQL's
+keyword case left aside unless `--exact`.
+
+Where the scope is part of the id, a side is the id (`staging/web/api`,
+`kv-contoso-staging/db-password`); where it is a flag, a side takes a
+`SCOPE:` prefix (`qa:dbo.orders`, `qa:etl_nightly`) and a side without one
+takes the flag's default. One side alone compares a thing with its own past
+where it has one: a deployment with its previous revision, an Airflow run
+with the last successful run before it, a page with its version before.
+A diff notes one next step only when it is obvious: two deployments that
+match name the Secret both read, a Secret the CSI driver syncs from Key
+Vault names the vault secret, a run's failed task names its log. Oracle
+against SQL Server, Helm or git against live objects, and row-by-row data
+are not compared.
 
 ## A recorded world for trials
 

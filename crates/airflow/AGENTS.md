@@ -8,15 +8,14 @@ variables, connections over Airflow 3's REST API (`/api/v2`) or 2.9's
 `[[airflow.instance]]`: `name` (`--instance`; the only one by default,
 `pick`), `base_url`, `api` (`v1` or `v2`; else `probe` asks
 `/api/v2/version` with no credential, a 404 being Airflow 2, cached an
-hour: cheaper than a failing call naming the fix, and a wrong password
-never reads as a wrong version), `k8s_scope` and
-`k8s_namespace` (a row's `pod` is a k8s id), `dags_repo` (`REPO[:FOLDER]`:
-`source get` prints `repo_file`). Credential: `username` with `password`,
-`password_env` or `password_cmd`, or `token`, `token_env`, `token_cmd`;
-none: `Auth::Missing`, failing at sign-in.
+hour, so a wrong password never reads as a wrong version), `k8s_scope`,
+`k8s_namespace` (a row's `pod` is a k8s id), `dags_repo` (`REPO[:FOLDER]`,
+for `repo_file`).
+Credential: `username` with `password`, `password_env` or `password_cmd`,
+or `token`, `token_env`, `token_cmd`; none: `Auth::Missing`.
 A password is a JWT from `/auth/token` on 3; on 2 HTTP Basic, else (401
-or 403) the web form (`sign_in_form`, whose 302 carries the cookie). Only
-under `base_url/` (`same_origin`). `connection list` matches
+or 403) the web form (`sign_in_form`). Only under `base_url/`
+(`same_origin`). `connection list` matches
 `[[sql.connection]]` hosts for `sql_conn`.
 
 ## Ids
@@ -34,11 +33,12 @@ tests. Copy a sibling.
   `list`, `list_like`, `resolve`, `v1`, `newest_first`; row
   helpers `text`, `stamp`, `seconds`, `note_more`, `Instance::pod`.
   `client/auth.rs`: which API, and sign-in. `client/id.rs`: `Ref`, `ti_id`.
-- `dag_run.rs`: `RUN_STATES`, `cleared_ids`; `instance/mod.rs`:
-  `check_base_url`; `run/mod.rs`: `run_after`; `source/mod.rs`:
-  `failing_line`, `repo_file`, `dag_file`.
+- `dag_run.rs`: `RUN_STATES`, `cleared_ids`; `run/mod.rs`: `run_after`;
+  `source/mod.rs`: `dag_source`, `failing_line`, `repo_file`, `dag_file`;
+  `dag/mod.rs`: `detail`. `diff.rs`: `Instances` (set diffs), `unmasked`.
+  Notes carry `Instance::flag` (`--instance`, when several).
 - `testing.rs`: `airflow`, `airflow_v1`, `airflow_with`, `paths`,
-  `dry_run_with`, `CONFIG` (3), `CONFIG_V1`, rows `dag_v1`, `run_v1`, `ti`.
+  `dry_run_with`, `CONFIG` (3), `CONFIG_V1`, `TWO`, rows `dag_v1`, `ti`.
 
 ## Fixtures
 `fixtures/world/http/airflow.json`, `fixtures/world/facts/airflow.md`,
@@ -51,9 +51,9 @@ tests. Copy a sibling.
   send only that version's. Each `v1()` branch says what 2.9 lacks.
 - A clear's `dry_run` **defaults to true**: a real retry sends `false`.
 - Pages cap at `maximum_page_limit` (100); the log token is a query value.
-- 2.9 answers a refused credential with 403, logs as a Python repr (read
-  as `text/plain`), XCom values as `str()` (`from_python`); its session
-  sign-in is rate-limited (5 per 40 s), and the cookie stays in memory.
+- 2.9 answers a refused credential with 403, logs as a Python repr
+  (`text/plain`), XCom values as `str()` (`from_python`); its session
+  sign-in allows 5 per 40 s; the cookie stays in memory.
 
 ## Never needed
 Other crates' sources, `docs/plans/`, `docs/reference/`.

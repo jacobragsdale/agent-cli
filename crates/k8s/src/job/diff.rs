@@ -17,10 +17,9 @@ fn job_diff(ctx: &Ctx, args: Sides) -> Result<Diff> {
         let name = item["metadata"]["name"].as_str().unwrap_or_default();
         let mut compared = workload(item, args.diff.all);
         if let Some(job) = row(target, item) {
-            let job = serde_json::to_value(job)?;
-            for field in ["status", "started", "duration"] {
-                compared[field] = job[field].clone();
-            }
+            compared["status"] = json!(job.status);
+            compared["started"] = json!(job.started);
+            compared["duration"] = json!(job.duration);
         }
         let listed = target.json(ctx, &["get", "pods", "-o", "json"])?;
         // RFC 3339 stamps in UTC sort as text: the newest try.

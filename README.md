@@ -82,7 +82,8 @@ Every command declares an effect, shown in search and help:
 | reveals a secret | Refused without `--reveal`, or `--output FILE`, which writes the value to a 0600 file and prints only the path. |
 | read or write | Decided by the input, as for SQL: a write follows the rules above. |
 
-Tokens and passwords never appear in output, plans or errors. Where an agent
+Tokens and passwords never appear in output, plans or errors; a `diff`
+compares two secrets' values in memory and prints only whether they match. Where an agent
 must not change something, give it a credential that can only read: a Reader
 role, a read-only database login, an Airflow Viewer.
 

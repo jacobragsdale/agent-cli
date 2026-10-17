@@ -31,7 +31,7 @@ A run: `SERVER:ORDER_ID` (`job_id`; words get a hint naming `job list
   helpers `text`, `stamp`, `order_date`, `note_more`.
 - `job/mod.rs`: `JobRow`, `JobIdArgs`, `Status`, `FAILED`.
 - `definition/mod.rs`: `DefRef`, `DefRow`, `found` (walks a `deploy/jobs`
-  answer).
+  answer), `one` (what get and diff read).
 - `testing.rs`: `controlm`, `controlm_with`, `paths`, `dry_run`, `CONFIG`,
   `PASSWORD_CONFIG`, `job`.
 

@@ -50,7 +50,8 @@ when you work there): config, ids, where things are, fixtures, quirks.
   `[50 of 312; --limit N]` go through `ctx.note`.
 - **Secrets** live in `Secret` (no `Serialize`). Check `host_under(url,
   suffix)` before a token goes to any URL, `nextLink`s included. No row type
-  has a field that can hold a secret; only `Reveal` commands return one.
+  has a field that can hold a secret; only `Reveal` commands return one. A
+  `diff` compares values in memory (`Side::secrets`) and prints only `same`.
 - **Errors carry the next step:** `Failure` with its exit code (2 usage, 3
   setup, 4 not found, 5 conflict, 124 timed out) and a `hint` naming the
   command to run. Anything else is exit 1.
@@ -95,6 +96,10 @@ They make one domain's output the next domain's input; (tested) marks what
   where prose resumes (`, then`, ` (`, two spaces, a backtick).
 - **An answer with a failing exit:** `Failure::…(…).with_data(value)` prints
   `value` like a success, then the error, with the failure's code.
+- **Diffs.** `<resource> diff` compares two of what its `get` reads through
+  core's `diff`: one answer shape, exit 0 either way, sides as ids (or
+  `SCOPE:ID` where the scope is a flag), environment names inferred from the
+  two ids (`--as`), noise and keyed lists in its `Rules`.
 - **Next steps.** A field is not a signpost; a note naming the command is.
   A one-object verb whose answer exits 0 but needs attention (a failed
   run, an alerting monitor, a restarted container) prints one

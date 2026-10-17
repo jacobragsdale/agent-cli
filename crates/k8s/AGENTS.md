@@ -1,8 +1,7 @@
 # k8s: Kubernetes through kubectl
 
 A bounded `kubectl` wrapper: `k8s object` reads any kind; a curated command
-adds a join or a bound. Never calls azure: joins are ids it prints
-(`pv.disk`, `vm`, `nodepool`, `client_id`).
+adds a join or a bound. Never calls azure: joins are ids it prints.
 
 ## Config
 `[[k8s.scope]]`: `name` (what `--cluster` takes), `context` (the kube
@@ -26,6 +25,8 @@ A command is `<resource>/<verb>.rs`; copy a sibling.
     `row_namespace(item)`; `kubectl(args)`, `finished`.
   - `items`, `age`, `limited`, `name_has`, `digest`, `Changed`,
     `owner_of` (a Job named for its schedule is its CronJob), `owned_by`.
+- `diff.rs`: `Sides` (`read`, `workloads`, `manifests`), `RULES`,
+  `workload`, `clean`, `inline_secrets`, `next_secret`.
 - `shape.rs`: `events_for` (five newest, by uid), `events_in` (from a
   joined read), `newest`, `event_row`, `conditions`, `trim`, `listing_for`
   (the not-found hint), `selects`, `selector_text`.
@@ -36,19 +37,19 @@ A command is `<resource>/<verb>.rs`; copy a sibling.
   `attached_to`; `node/mod.rs`: `row`, `top` (metrics-server, else a
   note), `requests`, `quantity`; `access/mod.rs`: `rules` (can-i --list);
   `deployment/mod.rs`: `revisions`; `daemonset/mod.rs` reads kube-system).
-- `testing.rs`: `k8s(argv)`, `k8s_with(argv, config)`, `SCOPES`;
-  `dry_run(argv)`, `assert_dry_run` over `SCOPES`.
+- `testing.rs`: `k8s(argv)`, `k8s_with(argv, config)`, `SCOPES`,
+  `dry_run(argv)`.
 
 ## Fixtures
 Tests run `scripts/fake/kubectl` over `fixtures/cluster.json` (contexts
-`aks-qa`, `aks-prod`; a new kind is data there; `server`, `top`, `access`
-and `exec` answer version, metrics, can-i and `pod run`). Trials read
-`fixtures/world/kubectl.json`. Facts `fixtures/world/facts/k8s.md`;
-checks `crates/cli/tests/world_k8s.rs`; queries `search.toml`.
+`aks-qa`, `aks-prod`; a kind is data; `server`, `top`, `access`, `exec`
+answer version, metrics, can-i, `pod run`). Trials read
+`fixtures/world/kubectl.json` (scopes `prod`, `staging`); facts
+`fixtures/world/facts/k8s.md`; checks `crates/cli/tests/world_k8s.rs`.
 
 ## Quirks
-- Every call is `kubectl --context C --request-timeout=10s …`, its process
-  group killed at the deadline: a kubelogin prompt cannot hang.
+- Every call is `kubectl --context C --request-timeout=10s …`, killed at
+  the deadline.
 - A new kubectl flag may need teaching `scripts/fake/kubectl`.
 - Node events carry the name as uid: `node get` matches kind and name.
 - Only `secret get` (a `Reveal`) prints values; `pod run` masks those named

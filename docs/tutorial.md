@@ -48,7 +48,7 @@ Start here:  agent-cli search <what you want to do>    e.g. agent-cli search "li
 Browse:      agent-cli <domain> [<resource>]    Details: agent-cli <domain> <resource> <verb> --help
 Flags:       --fields a,b.c  --raw  --dry-run  --yes  --reveal  --timeout S (60)  --output FILE  --no-cache
 Exit:        0 ok · 1 failed · 2 fix the call · 3 needs setup (run doctor) · 4 not found · 5 conflict · 124 timed out
-Config:      ado contoso/Fabrikam · kv 1 vault · acr 1 registry · k8s 1 scope · sql not set up · airflow 1 instance · dd eu    Check: agent-cli doctor · agent-cli config
+Config:      ado contoso/Fabrikam · kv 2 vaults · acr 1 registry · k8s 2 scopes · sql not set up · airflow 2 instances · dd eu    Check: agent-cli doctor · agent-cli config
 Now:         2026-09-29T12:00Z
 Domains:     ado(29)  kv(4)  acr(4)  aks(2)  k8s(13)  sql(6)  airflow(15)  dd(20)
 ```
@@ -103,13 +103,14 @@ e.g. agent-cli k8s deployment list --cluster prod --namespace web --fields id,re
 ```
 
 Notice the `Returns:` line: it is the exact shape of the answer, so we can ask
-for only the fields we need. `--cluster` and `--namespace` default to the only
-ones configured, so we can leave them out.
+for only the fields we need. `--namespace` defaults to the scope's only one;
+the world configures two clusters, `prod` and `staging`, so `--cluster` names
+one.
 
 ## Ask for only what you need
 
 ```sh
-agent-cli k8s deployment list --fields id,images
+agent-cli k8s deployment list --cluster prod --fields id,images
 ```
 
 You should see:
@@ -180,7 +181,7 @@ request 431: three calls from the cluster to the backlog.
 Last night's `etl_nightly` run failed. Find it:
 
 ```sh
-agent-cli airflow run list --dag etl_nightly --state failed --since 1d --fields id
+agent-cli airflow run list --dag etl_nightly --state failed --since 1d --fields id --instance prod
 ```
 
 You should see:
@@ -193,7 +194,7 @@ Ask the run which task failed. In any Airflow id, `latest` stands for the
 DAG's most recent run:
 
 ```sh
-agent-cli airflow run get etl_nightly/latest --fields failed
+agent-cli airflow run get etl_nightly/latest --fields failed --instance prod
 ```
 
 You should see:
@@ -206,7 +207,7 @@ The failed task instance's id is `dag/run/task/try`: `load_orders` failed on
 its second try. Read that try's exception:
 
 ```sh
-agent-cli airflow task logs etl_nightly/latest/load_orders/2 --tail 20 --fields error
+agent-cli airflow task logs etl_nightly/latest/load_orders/2 --tail 20 --fields error --instance prod
 ```
 
 You should see:
@@ -220,7 +221,7 @@ This Airflow runs each task as a Kubernetes pod, and a failed task's pod
 stays in the cluster. Ask the task, without a try number, for its pod:
 
 ```sh
-agent-cli airflow task get etl_nightly/latest/load_orders --fields pod
+agent-cli airflow task get etl_nightly/latest/load_orders --fields pod --instance prod
 ```
 
 You should see:
