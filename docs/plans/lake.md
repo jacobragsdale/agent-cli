@@ -1,8 +1,14 @@
 # Plan: lake, Azure Data Lake Storage Gen2
 
 Status: plan (2026-10-16), nothing built. A domain that connects with the
-`az login` already in use, shows every container and table in the lake, and
-runs SQL over its files. Gen1 was retired in 2024 and is out of scope.
+`az login` already in use, shows every container and the data domains in
+it, and runs SQL over its Parquet files. Gen1 was retired in 2024 and is out
+of scope.
+
+Decided with the user: the lake's data domains are its top-level folders
+(perhaps its containers), so a container's row carries both; the data is
+Parquet, so no Delta, CSV or JSON reader is planned; no Synapse or
+Databricks SQL sits over the lake, so queries run locally.
 
 ## Why it earns a domain
 
@@ -10,12 +16,12 @@ The recurring tasks, seven against the bar's six:
 
 1. Did today's file or partition land, and when?
 2. Which partitions of a table are missing or late?
-3. What is in a file: its first lines, size, writer and time?
-4. A table's schema, version, last write and the operation that made it.
+3. What is in a file: its schema, rows, size, writer and time?
+4. A table's schema, row count and last write.
 5. Why does a pipeline's identity get 403 on a path?
 6. Query a file or table: a count, the nulls, a sample, raw against curated.
-7. Every container across the accounts (the lake's data domains), and the
-   tables in each.
+7. Every container across the accounts, the data domains in each, and their
+   tables.
 
 Where the raw tools lose (step 0's trial confirms or refutes each):
 
@@ -27,8 +33,8 @@ Where the raw tools lose (step 0's trial confirms or refutes each):
   folder, read on the file. Agents check the file's ACL alone, and miss that a
   data role (Storage Blob Data Reader) bypasses ACLs while Owner on the
   account grants no data at all.
-- A query needs a local engine, a download of the right files and a token:
-  many calls, and the wrong files when a Delta table has removed some.
+- A Parquet file's schema or row count means downloading it; a query means a
+  local engine, a download of the right files and a token: many calls.
 - An `abfss://` URL from a log has to be split into account, filesystem and
   path by hand.
 
@@ -40,7 +46,7 @@ as kv's data plane does. `crates/cli` gains the feature `lake`; the query
 engine is an optional dependency of `agent-cli-azure` behind a `lake`
 feature of its own, so a build without lake compiles no DuckDB.
 
-Synonyms: adls, datalake, data lake, abfss, blob, storage, parquet, delta.
+Synonyms: adls, datalake, data lake, abfss, blob, storage, parquet.
 
 ## Connect: config and doctor
 
@@ -71,13 +77,13 @@ the others (the cache key moves to inventory4).
 
 ## Ids
 
-- An account `contosolake`, a container `contosolake/sales`, a path
-  `contosolake/sales/orders/date=2026-10-16/part-0001.parquet` (a directory
-  the same, without a trailing slash).
+- An account `contosolake`, a container `contosolake/raw`, a path
+  `contosolake/raw/sales/orders/date=2026-10-16/part-0001.parquet` (a
+  directory the same, without a trailing slash).
 - Every verb that takes a path also takes `abfss://` and `abfs://`
-  (`sales@contosolake.dfs.core.windows.net/orders/…`), `wasbs://`, the
+  (`raw@contosolake.dfs.core.windows.net/sales/…`), `wasbs://`, the
   `https://` URL on `dfs` or `blob`, and Snowflake's `azure://` stage URL
-  (`contosolake.blob.core.windows.net/sales/…`): parsed and percent-decoded,
+  (`contosolake.blob.core.windows.net/raw/…`): parsed and percent-decoded,
   never fetched.
 - Rows name other domains' things by their ids: an account's `arm` (for
   `arm resource get`) and `endpoints[]` (for `net endpoint get`); `access
@@ -92,39 +98,49 @@ All Read. Writes (`lake path delete`, Destructive) wait until asked.
 | Command | API | Returns |
 |---|---|---|
 | `lake account list` | the inventory (Resource Graph) | `[{id,subscription,resource_group,location,sku,public_network_access,default_action,endpoints[],arm}]` |
-| `lake container list [ACCOUNT]` | `GET https://{a}.dfs.core.windows.net/?resource=account` per account, through `client::parallel` | `[{id,account,modified,metadata}]` |
+| `lake container list [ACCOUNT]` | `GET https://{a}.dfs.core.windows.net/?resource=account` per account, then each container's root, one level, through `client::parallel` | `[{id,account,modified,folders[]}]` |
 | `lake path list REF` | `GET https://{a}.dfs.core.windows.net/{fs}?resource=filesystem&directory={dir}&recursive=false&maxResults=5000`, paged by `x-ms-continuation` | `[{id,kind,size,modified,owner}]` |
-| `lake path get REF` | `HEAD` the path, `HEAD ?action=getAccessControl&upn=true`, and for a text file `GET` with `x-ms-range: bytes=0-16383` | `{id,kind,size,modified,etag,content_type,owner,group,permissions,acl[],head[]}` |
+| `lake path get REF` | `HEAD` the path and `HEAD ?action=getAccessControl&upn=true`; for a Parquet file, its footer (below) | `{id,kind,size,modified,etag,owner,group,permissions,acl[],rows,schema[{name,type}]}` |
 
-- `container list` with no account lists every container in every account:
-  the data domains in one call.
+- `container list` with no account lists every container in every account,
+  each with its top-level folders as path ids: the data domains in one call.
+  At most 50 folders a container, with a note naming `lake path list
+  CONTAINER` when there are more.
 - `path list` reads one level; `--recursive` descends, bounded by `--limit`
   (50) and the deadline. `--since` and `--until` filter on last-modified
   client-side, since the API has none. The note gives the totals:
-  `[312 files, 4.1 GiB under contosolake/sales/orders; --limit N]`.
-- `path get`'s `head` is the first lines of a CSV, JSON, JSON Lines or text
-  file (by extension, else content type), within 16 KiB.
+  `[312 files, 4.1 GiB under contosolake/raw/sales/orders; --limit N]`.
 - Core gains `Method::Head`: Get Properties and the ACL come only as a HEAD's
   headers.
+
+### Reading a Parquet footer
+
+A Parquet file ends in its metadata, its length and `PAR1`. Two ranged GETs
+(`x-ms-range`: the last 8 bytes, then the footer) fetch it without the data.
+The bytes are written at their offsets into a sparse local file of the
+file's size, and DuckDB's `parquet_schema()` and `parquet_metadata()` read
+the schema and each row group's row count from it, never touching the
+holes (VERIFY: else the parquet crate's metadata reader, a second
+dependency). `path get`, `table get` and `partition list` read footers this
+way; only `query run` downloads data.
 
 ### Phase 2: tables
 
 | Command | API | Returns |
 |---|---|---|
-| `lake table list REF` | listings, at most `--depth` (3) levels below REF | `[{id,format,partitioned_by[],modified}]` |
-| `lake table get REF` | Delta: `_delta_log/_last_checkpoint`, the checkpoint, the JSON commits after it. Else the newest data file's schema | `{id,format,version,modified,operation,operation_parameters,partitioned_by[],schema[{name,type,nullable}],files,size}` |
-| `lake partition list REF` | Delta: the log's add actions. Else one listing per partition level | `[{id,values{},files,size,modified}]` |
+| `lake table list REF` | listings, at most `--depth` (3) levels below REF | `[{id,partitioned_by[],files,modified}]` |
+| `lake table get REF` | a recursive listing and the footers of at most 200 files | `{id,partitioned_by[],schema[{name,type}],files,size,rows,modified,newest}` |
+| `lake partition list REF` | one listing per partition level, and each partition's footers within the same 200 | `[{id,values{},files,size,rows,modified}]` |
 
-- A table root is a folder holding `_delta_log/` (delta), or `key=value`
-  folders, or data files of one format (parquet, csv, json). `table list`
-  stops descending at a root.
-- `table get` reads a Delta checkpoint (Parquet) and a plain Parquet file's
-  schema with the query engine, so phase 2 needs phase 4's dependency.
+- A table root is a folder holding `key=value` folders or `.parquet` files.
+  `table list` stops descending at one; with no REF it starts at every data
+  domain (each container's top-level folders).
+- `table get`'s schema is the newest file's; a file whose schema differs is
+  named in a note. Past 200 files, `rows` counts the newest 200 and the note
+  says so.
 - `partition list` takes `--since` and `--limit`. A date-valued partition
   column's gaps go in a note:
   `[missing between 2026-10-10 and 2026-10-16: date=2026-10-12, date=2026-10-14]`.
-  A Delta table's partitions come from its log, exact for the current
-  version, with no listing.
 
 ### Phase 3: access
 
@@ -155,23 +171,21 @@ A denial exits 0 and prints
 ### Phase 4: queries
 
 `lake query run SQL --table NAME=REF …` runs SQL in an in-memory DuckDB
-(the `duckdb` crate, bundled, with its parquet and json features; no httpfs
-or azure extension; extension autoload and autoinstall off). `SQL` reads
-stdin for `-`, and `--sql-file` reads a file, as `sql query run`'s do. Each
-`--table` (repeatable) is bound before the SQL runs:
+(the `duckdb` crate, bundled, with its parquet feature; no httpfs or azure
+extension; extension autoload and autoinstall off). `SQL` reads stdin for
+`-`, and `--sql-file` reads a file, as `sql query run`'s do. Each `--table`
+(repeatable) is bound before the SQL runs:
 
-1. REF resolves to files: one file; a folder (every data file under it, of
-   one format); a Delta table (its active files from the log, so removed
-   files are never read); or a glob in the last segment
-   (`…/orders/date=2026-10-1*`).
+1. REF resolves to Parquet files: one file, a folder (every `.parquet`
+   under it), or a glob in the last segment (`…/orders/date=2026-10-1*`).
 2. Past the cap (`--max-mb`, 1024) the command is exit 2 before any
    download, naming the size and `agent-cli lake partition list REF`. It
    never samples quietly.
 3. Each file downloads through `ctx.read`, the token checked per URL, in
    parallel, into a private folder under the cache dir keyed by path and
    etag, so the next query on the same files downloads nothing.
-4. `CREATE VIEW NAME AS SELECT * FROM read_parquet([...], hive_partitioning = true)`
-   (or `read_csv_auto`, `read_json_auto`).
+4. `CREATE VIEW NAME AS SELECT * FROM read_parquet([...], hive_partitioning = true)`,
+   so partition folders' values are columns.
 
 The SQL then runs with external access limited to that folder
 (VERIFY `allowed_directories` in the pinned DuckDB). `--max-rows` (1000)
@@ -206,20 +220,22 @@ takes.
 In `fixtures/world`, scrubbed like the rest:
 
 - Accounts `contosolake` (prod, private endpoint `pe-contosolake-dfs`) and
-  `contosolakedev`; containers `raw`, `sales` and `finance` in
-  `contosolake`.
-- `raw/landing/orders_20261016.csv`, written at 06:02 by a Control-M job (a
-  job the controlm world already has, if one fits).
-- `sales/orders`: Delta, partitioned by date, with `date=2026-10-14`
-  missing and `date=2026-10-16` written by an Airflow DAG run.
-- `finance/ledger`: Parquet. Airflow's workload identity holds no data role,
+  `contosolakedev`; containers `raw` and `curated` in `contosolake`, each
+  with the data domains `sales` and `finance` as top-level folders.
+- `raw/sales/orders`: Parquet, partitioned by `date`, with
+  `date=2026-10-14` missing and `date=2026-10-16` written by a Control-M job
+  at 06:02 (a job the controlm world already has, if one fits).
+- `curated/sales/orders_daily`: written by an Airflow DAG run from
+  `raw/sales/orders`, one row a day, so raw against curated finds the gap.
+- `curated/finance/ledger`: Airflow's workload identity holds no data role,
   and r-x on `/finance` but no execute on `/finance/ledger`. Its task log
   prints the 403 with the `abfss://` URL.
 - The trace `world_cross.rs` walks: the Airflow task's 403, `lake access get`
   breaking at `/finance/ledger`, `arm role list --principal`.
-- Replay answers are text today. Parquet files and Delta checkpoints need a
-  binary body (a `body_file` under `fixtures/world/files/`, generated by a
-  seed script with DuckDB): a core change.
+- Replay answers are text today. Parquet files need binary bodies (a
+  `body_file` under `fixtures/world/files/`, generated by a seed script with
+  DuckDB), and the footer reads need replay to serve an `x-ms-range` from
+  that file: a core change.
 
 ## Step 0: the trial
 
@@ -228,10 +244,10 @@ Before code, as `docs/how-to/add-a-domain.md` asks: agents with `az` and the
 (`scripts/seed/lake.sh`), on five tasks:
 
 1. Did yesterday's orders partition land, and when?
-2. Which days of October are missing from `sales/orders`?
-3. What is `finance/ledger`'s schema, and its row count for October?
-4. Why does Airflow's identity get 403 on `finance/ledger`?
-5. How many rows of today's landing file have no `customer_id`?
+2. Which days of October are missing from `raw/sales/orders`?
+3. What is `curated/finance/ledger`'s schema, and its row count?
+4. Why does Airflow's identity get 403 on `curated/finance/ledger`?
+5. How many of today's orders have no `customer_id`?
 
 Count calls, tokens and wrong answers. lake earns its place if it wins at
 least half.
@@ -241,12 +257,11 @@ least half.
 - DuckDB is C++: minutes on a cold build, `g++` (which `build-essential`
   already brings for Oracle), and about 20 to 30 MB of binary. DataFusion is
   the pure-Rust alternative, with a larger dependency tree and a dialect
-  agents know less well. DuckDB, for `read_parquet`, `read_csv_auto` and
-  hive partitioning built in.
+  agents know less well. DuckDB, for `read_parquet`, hive partitioning and
+  `parquet_metadata()` built in.
 - Download then query: a GiB cap and no pushdown to the lake. The upgrade is
-  DuckDB's azure extension with a secret scoped to the accounts, or a
-  Synapse serverless or Databricks SQL connection kind in sql where the org
-  has one.
+  DuckDB's azure extension with a secret scoped to the accounts, which reads
+  only the row groups a query needs.
 - Path List has no time filter: `--since` scans, bounded by `--limit` and
   the deadline, with a note.
 - Shared key and SAS: not planned; RBAC through the az login only.
@@ -255,17 +270,14 @@ least half.
 
 ## Open questions
 
-1. "Domains" at work: containers, top-level folders, or a catalog
-   (Purview, Unity Catalog)?
-2. Formats: Delta, Parquet, CSV, JSON, Avro? Avro needs DuckDB's avro
-   extension, excluded above.
-3. Typical partition sizes: does a 1 GiB cap cover the questions agents ask?
-4. Is the lake reachable only through private endpoints (WSL resolving
+1. Are the data domains the same top-level folders in every container
+   (zones as containers, domains as folders), or does each container hold
+   one domain?
+2. Typical partition sizes: does a 1 GiB cap cover the questions agents ask?
+3. Is the lake reachable only through private endpoints (WSL resolving
    privatelink)?
-5. May the az login's Graph token call `getMemberObjects` at work?
-6. Does the org already have Synapse serverless or Databricks SQL over the
-   lake?
-7. Query rows reach the agent's context, as sql's do. Do some containers
+4. May the az login's Graph token call `getMemberObjects` at work?
+5. Query rows reach the agent's context, as sql's do. Do some containers
    need to stay out (a container allowlist beside `storage_accounts`)?
 
 Once built: what stays true moves to `crates/azure/AGENTS.md` and
