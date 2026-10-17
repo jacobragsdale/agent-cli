@@ -15,6 +15,7 @@ use serde::{Deserialize, Deserializer};
 /// vaults = ["kv-contoso-dev", "kv-contoso-prod"]
 /// registries = "contosoacr"
 /// search_services = ["srch-contoso-prod", "srch-contoso-dev"]
+/// storage_accounts = ["contosolake"]   # lake: accounts with a hierarchical namespace
 /// refresh = 300    # seconds the Resource Graph inventory, subscriptions, api-versions, ACR attributes and index fields are cached
 /// parallel = 8     # vaults, registries or repositories read at once
 /// ```
@@ -29,6 +30,8 @@ pub(crate) struct Azure {
     pub registries: Vec<String>,
     #[serde(deserialize_with = "one_or_many")]
     pub search_services: Vec<String>,
+    #[serde(deserialize_with = "one_or_many")]
+    pub storage_accounts: Vec<String>,
     pub refresh: Option<u64>,
     pub parallel: Option<usize>,
 }

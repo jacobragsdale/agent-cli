@@ -26,13 +26,13 @@ fn role_list(ctx: &Ctx, args: RoleListArgs) -> Result<Vec<Assignment>> {
         Some(raw) => Some(any(ctx, &azure, raw, None)?),
         None => None,
     };
-    assignments(
-        ctx,
-        &azure,
-        args.principal.as_deref().map(str::trim),
-        at.as_ref(),
-        args.limit,
-    )
+    let principals: Vec<&str> = args
+        .principal
+        .as_deref()
+        .map(str::trim)
+        .into_iter()
+        .collect();
+    assignments(ctx, &azure, &principals, at.as_ref(), args.limit)
 }
 
 command! {

@@ -70,6 +70,17 @@ pub fn cluster(name: &str) -> Value {
     )
 }
 
+/// A storage account with a hierarchical namespace, behind its private
+/// endpoint `pe-NAME-dfs`.
+pub fn storage(name: &str) -> Value {
+    row(
+        "Microsoft.Storage/storageAccounts",
+        name,
+        json!({"sku": "Standard_LRS", "publicNetworkAccess": "Disabled", "defaultAction": "Deny",
+            "privateEndpoints": [{"properties": {"privateEndpoint": {"id": format!("{RG}/providers/Microsoft.Network/privateEndpoints/pe-{name}-dfs")}}}]}),
+    )
+}
+
 /// The resource group every row above is in, as an ARM id.
 pub const RG: &str =
     "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-contoso";

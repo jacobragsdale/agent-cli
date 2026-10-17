@@ -1,6 +1,6 @@
 [package]
 name = "agent-cli-azure"
-description = "The kv, acr and aks domains of agent-cli: Key Vault secrets, registry images, AKS clusters"
+description = "The Azure domains of agent-cli: kv, acr, aks, aisearch, arm, net and lake"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,13 +8,20 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[features]
+default = ["lake"]
+# The lake domain and its query engine, DuckDB: C++, minutes on a cold build.
+lake = ["dep:duckdb", "dep:tempfile"]
+
 [dependencies]
 agent-cli-core.workspace = true
 anyhow.workspace = true
 clap.workspace = true
+duckdb = { workspace = true, optional = true }
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tempfile = { workspace = true, optional = true }
 time.workspace = true
 
 [dev-dependencies]

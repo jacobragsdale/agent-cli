@@ -155,6 +155,20 @@ the node pool as `cluster/pool`, a workload identity's client id), and the
 Azure side names the k8s object where it can (a load balancer frontend's
 service).
 
+The lake reads Parquet without downloading it: a footer is a file's last
+bytes, so two ranged reads and DuckDB's metadata functions give a schema and
+row counts, and `table get` and `partition list` read only footers. A query
+is the one place data moves: `lake query run` binds each table by
+`--table NAME=REF`, so nothing parses the SQL and every file fetched is on
+the command line, refuses past `--max-mb` before any download, and runs in
+an in-memory DuckDB that loads no extension and reads only its download
+folder, which keeps files by etag. The upgrade, if partitions outgrow the
+cap, is DuckDB's azure extension reading only the row groups a query needs.
+Why a path is refused is a walk Azure does itself: a data role at the
+container or above grants and ACLs are never read; else each folder needs
+execute and the path read, for the principal, its groups (Graph) or other,
+under the mask.
+
 Retention decides which way a question chains. Kubernetes keeps events for
 an hour, and a KubernetesExecutor task pod is deleted when it finishes, so
 "why did last night's run fail" goes from airflow to dd, whose logs last; the
@@ -182,6 +196,7 @@ Some words mean different things in different domains:
 | container | a pod; an image | phrases: "container image" is acr, "container logs" is `k8s pod logs` |
 | search | the built-in command search; Confluence's page search; an AI Search query | no domain takes the word: Confluence searches with `page list`, AI Search with `document list`, in the domain `aisearch` |
 | comment | a verb (`ado workitem comment`, `confluence page comment`); Confluence's resource (`comment list`) | the verb adds one, the resource reads them |
+| table | a SQL table or view (sql's `object`); a folder of Parquet files (lake's `table`) | `SHARED_WORDS`, with labeled queries for each reading |
 
 A question that spans domains ("which build made prod's image") has no single
 right first command, so it belongs in a trial, not in `search.toml`.

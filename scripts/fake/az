@@ -13,7 +13,8 @@ if [ "$1 $2" = "account show" ]; then
   exit 0
 fi
 if [ "$1 $2" = "account get-access-token" ]; then
-  echo "fake-az-token"
+  # A JWT whose claims name the signed-in user (lake access get --principal @me).
+  echo "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJvaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwZTEiLCJ1cG4iOiJvcHNAY29udG9zby5leGFtcGxlIn0.fake"
   exit 0
 fi
 echo "ERROR: the fake az does not know: $*" >&2

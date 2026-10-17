@@ -804,3 +804,75 @@ expect = "acr tag delete"
 [[query]]
 text = "untag an image in the container registry"
 expect = "acr tag delete"
+
+[[query]]
+text = "which data lake storage accounts can I reach"
+expect = "lake account list"
+
+[[query]]
+text = "list adls gen2 accounts"
+expect = "lake account list"
+
+[[query]]
+text = "what containers and data domains are in the lake"
+expect = "lake container list"
+
+[[query]]
+text = "list adls containers"
+expect = "lake container list"
+
+[[query]]
+text = "list files in an abfss folder"
+expect = "lake path list"
+
+[[query]]
+text = "did today's file land in the data lake"
+expect = "lake path list"
+
+[[query]]
+text = "schema and row count of a parquet file in the lake"
+expect = "lake path get"
+
+[[query]]
+text = "show the acl and owner of an adls file"
+expect = "lake path get"
+
+[[query]]
+text = "find the parquet tables in the data lake"
+expect = "lake table list"
+
+[[query]]
+text = "what datasets are in the sales domain of the lake"
+expect = "lake table list"
+
+[[query]]
+text = "schema and row count of a lake table"
+expect = "lake table get"
+
+[[query]]
+text = "when was the parquet table last written"
+expect = "lake table get"
+
+[[query]]
+text = "which partitions of the orders table are missing"
+expect = "lake partition list"
+
+[[query]]
+text = "did yesterday's partition land and when"
+expect = "lake partition list"
+
+[[query]]
+text = "why does the pipeline identity get 403 on an adls path"
+expect = "lake access get"
+
+[[query]]
+text = "can this managed identity read the data lake folder"
+expect = "lake access get"
+
+[[query]]
+text = "count rows with null customer_id in the parquet files"
+expect = "lake query run"
+
+[[query]]
+text = "run sql over data lake parquet with duckdb"
+expect = "lake query run"

@@ -30,7 +30,7 @@ fn the_world_answers_what_a_trial_asks_of_arm() {
         "run",
         "resources | summarize count() by type",
     ]);
-    assert_eq!(counts.as_array().map(Vec::len), Some(17), "{counts}");
+    assert_eq!(counts.as_array().map(Vec::len), Some(18), "{counts}");
     assert!(
         counts
             .as_array()
@@ -49,7 +49,7 @@ fn every_resource_list_id_is_what_resource_get_takes() {
         .iter()
         .map(|row| row["id"].as_str().unwrap())
         .collect();
-    assert_eq!(ids.len(), 26, "{listed}");
+    assert_eq!(ids.len(), 29, "{listed}");
     let aks = ids
         .iter()
         .find(|id| id.ends_with("/aks-contoso-prod"))
@@ -110,7 +110,7 @@ fn the_notifier_identity_has_lost_its_key_vault_role_and_the_log_says_who() {
     assert_eq!(changes[0]["resource"], log[0]["resource"]);
     assert_eq!(
         ok(&["arm", "identity", "list"]).as_array().map(Vec::len),
-        Some(3)
+        Some(4)
     );
 }
 

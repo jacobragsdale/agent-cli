@@ -14,13 +14,15 @@ agent-cli-ado = { path = "crates/ado" }
 agent-cli-confluence = { path = "crates/confluence" }
 agent-cli-core = { path = "crates/core" }
 agent-cli-sql = { path = "crates/sql" }
-agent-cli-azure = { path = "crates/azure" }
+# Without its default lake feature, so a build that leaves lake out compiles no DuckDB.
+agent-cli-azure = { path = "crates/azure", default-features = false }
 agent-cli-k8s = { path = "crates/k8s" }
 agent-cli-airflow = { path = "crates/airflow" }
 agent-cli-controlm = { path = "crates/controlm" }
 agent-cli-dd = { path = "crates/dd" }
 anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive"] }
+duckdb = { version = "1.10506.0", features = ["bundled", "parquet"] }
 futures-util = "0.3.34"
 oracle = "0.6.3"
 pulldown-cmark = { version = "0.13.4", default-features = false }

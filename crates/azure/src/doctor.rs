@@ -1,5 +1,5 @@
-//! The overview's lines for kv, acr, aks, aisearch, arm and net, and `agent-cli
-//! doctor` for each.
+//! The overview's lines for kv, acr, aks, aisearch, arm, net and lake, and
+//! `agent-cli doctor` for each.
 
 use agent_cli_core::{Check, Config, Ctx};
 
@@ -353,6 +353,85 @@ pub(crate) fn aisearch_doctor(ctx: &Ctx) -> Vec<Check> {
     checks
 }
 
+// ---------- lake ----------
+
+/// As arm's: the overview's config line has no room for one more allowlist.
+#[cfg(feature = "lake")]
+pub(crate) fn lake_status(config: &Config) -> String {
+    match config.section::<Azure>("azure") {
+        Ok(_) => String::new(),
+        Err(_) => "lake config broken".to_owned(),
+    }
+}
+
+/// The login and its storage token, the accounts in reach, and one call to
+/// each account's Data Lake: listing one container proves the data plane
+/// answers this address and the login holds a data role, or says which not.
+#[cfg(feature = "lake")]
+pub(crate) fn lake_doctor(ctx: &Ctx) -> Vec<Check> {
+    if !ctx.config().has_section("azure") {
+        return Vec::new();
+    }
+    let mut checks = Vec::new();
+    if doctor_login(
+        ctx,
+        &mut checks,
+        &[("storage token", crate::client::STORAGE)],
+    )
+    .is_none()
+    {
+        return checks;
+    }
+    let lake = match crate::lake::Lake::load(ctx) {
+        Ok(lake) => lake,
+        Err(error) => {
+            checks.push(Check::failed(
+                "inventory",
+                format!("{error:#}"),
+                "az account list; check [azure] subscriptions and storage_accounts",
+            ));
+            return checks;
+        }
+    };
+    checks.push(Check::ok(
+        "inventory",
+        format!("{} Data Lake accounts in reach", lake.accounts.len()),
+    ));
+    for account in &lake.accounts {
+        let check = format!("account {}", account.id);
+        if ctx.remaining().is_err() {
+            checks.push(Check::failed(
+                check,
+                "not checked: --timeout ran out",
+                "agent-cli doctor lake --timeout 120",
+            ));
+            continue;
+        }
+        let started = std::time::Instant::now();
+        let url = format!(
+            "https://{}.dfs.core.windows.net/?resource=account&maxResults=1",
+            account.id
+        );
+        checks.push(match lake.get(&url) {
+            Ok(_) => Check::ok(check, format!("answered in {} ms", started.elapsed().as_millis())),
+            Err(error) => {
+                let said = format!("{error:#}");
+                let hint = if said.contains("control plane only") {
+                    format!("needs a data role such as Storage Blob Data Reader (Owner or Contributor is control plane only); `agent-cli arm role list --scope {}` shows who has one", account.arm)
+                } else if crate::client::refused_with(&error) == Some(403) {
+                    "the account's firewall refused this address; `agent-cli net endpoint list` shows its private endpoints".to_owned()
+                } else if said.contains("lookup") || said.contains("resolve") || said.contains("dns") {
+                    "the name does not resolve here; `agent-cli net endpoint list` shows the private endpoints and their DNS".to_owned()
+                } else {
+                    "az login, then `agent-cli doctor lake`".to_owned()
+                };
+                Check::failed(check, said, hint)
+            }
+        });
+    }
+    checks
+}
+
 #[cfg(test)]
 mod tests {
     use agent_cli_core::testing::Answer;
@@ -489,6 +568,58 @@ mod tests {
             ]
         );
         assert_eq!(checks[1].detail, "1 subscriptions in reach");
+    }
+
+    #[cfg(feature = "lake")]
+    #[test]
+    fn doctor_lists_one_container_per_account_and_names_the_data_role_when_refused() {
+        let (ctx, transport) = testing::doctor_ctx(
+            vec![
+                testing::inventory(vec![
+                    testing::storage("contosolake"),
+                    testing::storage("contosolakedev"),
+                ]),
+                Answer::json(&json!({"filesystems": [{"name": "raw"}]})),
+                Answer::status(
+                    403,
+                    r#"{"error":{"code":"AuthorizationPermissionMismatch","message":"This request is not authorized to perform this operation using this permission."}}"#,
+                ),
+            ],
+            "[azure]\nparallel = 1\n",
+        );
+        let checks = lake_doctor(&ctx);
+        assert_eq!(
+            testing::rows(&checks),
+            [
+                ("az login".to_owned(), true),
+                ("storage token".to_owned(), true),
+                ("inventory".to_owned(), true),
+                ("account contosolake".to_owned(), true),
+                ("account contosolakedev".to_owned(), false),
+            ]
+        );
+        assert!(
+            checks[4]
+                .hint
+                .as_deref()
+                .unwrap()
+                .contains("`agent-cli arm role list --scope /subscriptions/"),
+            "{:?}",
+            checks[4]
+        );
+        assert_eq!(
+            transport.sent()[1].url,
+            "https://contosolake.dfs.core.windows.net/?resource=account&maxResults=1"
+        );
+        let config = |toml: &str| Config::parse("c.toml", Some(toml), Vec::new());
+        assert_eq!(
+            lake_status(&config("[azure]\nstorage_accounts = \"contosolake\"\n")),
+            ""
+        );
+        assert_eq!(
+            lake_status(&config("[azure]\nstorage_account = \"typo\"\n")),
+            "lake config broken"
+        );
     }
 
     #[test]

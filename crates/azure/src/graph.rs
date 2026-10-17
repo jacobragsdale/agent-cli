@@ -1,5 +1,6 @@
-//! Resource Graph: one query for every vault, registry, AKS cluster and AI
-//! Search service the login can reach, rather than one list call per provider per subscription.
+//! Resource Graph: one query for every vault, registry, AKS cluster, AI
+//! Search service and Data Lake (a storage account with a hierarchical
+//! namespace) the login can reach, rather than one list call per provider per subscription.
 //! Ported from az-tui's `graph::inventory`, with clusters and the
 //! subscription added, and cached for `[azure] refresh` seconds.
 
@@ -14,11 +15,12 @@ use crate::config::Azure;
 
 const URL: &str = "https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01";
 
-/// The four resource types the domains know, with what each needs projected
+/// The five resource types the domains know, with what each needs projected
 /// under one name. The sort names `id` too: a skip token paging over a
 /// non-unique sort column can hand a row back twice and miss another.
 const QUERY: &str = r"resources
-| where type in~ ('microsoft.keyvault/vaults', 'microsoft.containerregistry/registries', 'microsoft.containerservice/managedclusters', 'microsoft.search/searchservices')
+| where type in~ ('microsoft.keyvault/vaults', 'microsoft.containerregistry/registries', 'microsoft.containerservice/managedclusters', 'microsoft.search/searchservices', 'microsoft.storage/storageaccounts')
+| where type !~ 'microsoft.storage/storageaccounts' or tobool(properties.isHnsEnabled)
 | project id, name, type, subscriptionId, resourceGroup, location,
           loginServer = tostring(properties.loginServer),
           vaultUri = tostring(properties.vaultUri),
@@ -33,7 +35,9 @@ const QUERY: &str = r"resources
           publicNetworkAccess = tostring(properties.publicNetworkAccess),
           semanticSearch = tostring(properties.semanticSearch),
           authOptions = properties.authOptions,
-          disableLocalAuth = tobool(properties.disableLocalAuth)
+          disableLocalAuth = tobool(properties.disableLocalAuth),
+          defaultAction = tostring(properties.networkAcls.defaultAction),
+          privateEndpoints = properties.privateEndpointConnections
 | order by name asc, id asc";
 
 /// Resource Graph's own cap on one page.
@@ -136,6 +140,25 @@ fn auth_options(value: &Value) -> String {
         .unwrap_or_default()
 }
 
+/// One storage account with a hierarchical namespace: a Data Lake.
+#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+pub struct StorageAccount {
+    /// Its name: what `lake container list` takes, and every lake ref's first segment.
+    pub id: String,
+    pub subscription: String,
+    pub resource_group: String,
+    pub location: String,
+    pub sku: String,
+    /// Enabled, Disabled or SecuredByPerimeter.
+    pub public_network_access: Option<String>,
+    /// Allow or Deny: what the firewall does with an address it does not list.
+    pub default_action: Option<String>,
+    /// Its private endpoints' ARM ids, which `net endpoint get` takes.
+    pub endpoints: Vec<String>,
+    /// Its ARM id, which `arm resource get` and `arm role list --scope` take.
+    pub arm: String,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Inventory {
     pub vaults: Vec<Vault>,
@@ -143,6 +166,8 @@ pub struct Inventory {
     pub clusters: Vec<Cluster>,
     #[serde(default)]
     pub search_services: Vec<SearchService>,
+    #[serde(default)]
+    pub storage_accounts: Vec<StorageAccount>,
 }
 
 /// Everything the login reaches in `[azure] subscriptions` (all of them when
@@ -150,8 +175,8 @@ pub struct Inventory {
 /// else from Resource Graph. The cache holds names and addresses only, and
 /// every address read back from it is checked again before a token goes to it.
 pub fn inventory(ctx: &Ctx, azure: &Azure) -> Result<Inventory> {
-    // Not `azure:inventory2:`, whose vaults and registries have no `id`.
-    let key = format!("azure:inventory3:{}", azure.subscriptions.join(","));
+    // Not `azure:inventory3:`, which has no storage accounts.
+    let key = format!("azure:inventory4:{}", azure.subscriptions.join(","));
     if let Some(held) = ctx.cache().get::<Inventory>(&key) {
         return Ok(held);
     }
@@ -161,7 +186,8 @@ pub fn inventory(ctx: &Ctx, azure: &Azure) -> Result<Inventory> {
     let empty = read.vaults.is_empty()
         && read.registries.is_empty()
         && read.clusters.is_empty()
-        && read.search_services.is_empty();
+        && read.search_services.is_empty()
+        && read.storage_accounts.is_empty();
     // The check is advice: if it cannot be made, the empty answer stands.
     if empty && azure.subscriptions.is_empty() && no_subscriptions(ctx).unwrap_or(false) {
         return Err(Failure::setup("the login can see no Azure subscriptions")
@@ -231,6 +257,24 @@ fn query(ctx: &Ctx, azure: &Azure) -> Result<Inventory> {
                     semantic: field("semanticSearch"),
                     auth_options: auth_options(&row["authOptions"]),
                     local_auth_disabled: row["disableLocalAuth"].as_bool(),
+                });
+            }
+            "microsoft.storage/storageaccounts" => {
+                inventory.storage_accounts.push(StorageAccount {
+                    id: field("name"),
+                    subscription: field("subscriptionId"),
+                    resource_group: field("resourceGroup"),
+                    location: field("location"),
+                    sku: field("sku"),
+                    public_network_access: text(&row["publicNetworkAccess"]),
+                    default_action: text(&row["defaultAction"]),
+                    endpoints: row["privateEndpoints"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|held| text(&held["properties"]["privateEndpoint"]["id"]))
+                        .collect(),
+                    arm: field("id"),
                 });
             }
             _ => {}
@@ -345,6 +389,7 @@ mod tests {
                 testing::inventory(vec![
                     testing::registry("contosoacr"),
                     testing::search_service("srch-contoso", "aadOrApiKey"),
+                    testing::storage("contosolake"),
                 ]),
             ],
             "",
@@ -374,6 +419,18 @@ mod tests {
             )
         );
         assert!(search.complete());
+        let lake = &inventory.storage_accounts[0];
+        assert_eq!(
+            (lake.id.as_str(), lake.default_action.as_deref()),
+            ("contosolake", Some("Deny"))
+        );
+        assert_eq!(
+            lake.endpoints,
+            [format!(
+                "{}/providers/Microsoft.Network/privateEndpoints/pe-contosolake-dfs",
+                testing::RG
+            )]
+        );
         let sent = transport.sent();
         assert_eq!(sent.len(), 2);
         assert_eq!(

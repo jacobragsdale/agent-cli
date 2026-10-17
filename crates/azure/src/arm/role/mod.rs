@@ -26,6 +26,11 @@ pub struct Assignment {
     pub principal_type: Option<String>,
     /// The role's name: Key Vault Secrets User.
     pub role: Option<String>,
+    /// The role definition's GUID, lowercase, which names a built-in role
+    /// whatever its display name (`lake access get` matches data roles by it).
+    #[serde(skip)]
+    #[cfg_attr(not(feature = "lake"), allow(dead_code))]
+    pub role_id: String,
     /// Where it is granted: a subscription, a group or a resource, as an ARM id.
     pub scope: String,
     /// With `--scope`: granted above it (its group or subscription), not on it.
@@ -46,12 +51,12 @@ fn ancestors(target: &Target) -> Vec<String> {
         .collect()
 }
 
-/// The assignments of `principal` (an object id), those that apply at `at`,
-/// or every one, first by scope, at most `limit`.
+/// The assignments of `principals` (object ids; none is everyone's), those
+/// that apply at `at`, or every one, first by scope, at most `limit`.
 pub(crate) fn assignments(
     ctx: &Ctx,
     azure: &Azure,
-    principal: Option<&str>,
+    principals: &[&str],
     at: Option<&Target>,
     limit: usize,
 ) -> Result<Vec<Assignment>> {
@@ -61,8 +66,16 @@ pub(crate) fn assignments(
          \n| extend principalId = tostring(properties.principalId), principalType = tostring(properties.principalType), \
          scope = tostring(properties.scope), roleId = tolower(extract('[^/]+$', 0, tostring(properties.roleDefinitionId)))",
     );
-    if let Some(principal) = principal {
-        kql.push_str(&format!("\n| where principalId =~ {}", quote(principal)));
+    match principals {
+        [] => {}
+        [one] => kql.push_str(&format!("\n| where principalId =~ {}", quote(one))),
+        many => {
+            let quoted: Vec<String> = many.iter().map(|id| quote(id)).collect();
+            kql.push_str(&format!(
+                "\n| where principalId in~ ({})",
+                quoted.join(", ")
+            ));
+        }
     }
     if let Some(target) = at {
         let quoted: Vec<String> = ancestors(target).iter().map(|id| quote(id)).collect();
@@ -74,7 +87,7 @@ pub(crate) fn assignments(
         "\n| join kind=leftouter (authorizationresources \
          | where type =~ 'microsoft.authorization/roledefinitions' \
          | project roleId = tolower(name), role = tostring(properties.roleName)) on roleId\
-         \n| project id, principalId, principalType, role, scope\
+         \n| project id, principalId, principalType, role, roleId, scope\
          \n| order by scope asc, id asc",
     );
     Ok(rows(ctx, &azure.subscriptions, &kql, limit)?
@@ -86,6 +99,7 @@ pub(crate) fn assignments(
                 principal_id: text(&row["principalId"]).unwrap_or_default(),
                 principal_type: text(&row["principalType"]),
                 role: text(&row["role"]),
+                role_id: text(&row["roleId"]).unwrap_or_default(),
                 inherited: at.map(|target| !scope.eq_ignore_ascii_case(&target.id)),
                 scope,
             }

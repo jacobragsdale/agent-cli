@@ -33,7 +33,8 @@ Each domain's facts are in `facts/`: [ado](facts/ado.md),
 [confluence](facts/confluence.md), [acr](facts/acr.md),
 [k8s](facts/k8s.md), [kv](facts/kv.md), [aks](facts/aks.md),
 [airflow](facts/airflow.md), [dd](facts/dd.md),
-[aisearch](facts/aisearch.md), [arm](facts/arm.md), [net](facts/net.md). They tie the domains together:
+[aisearch](facts/aisearch.md), [arm](facts/arm.md), [net](facts/net.md),
+[lake](facts/lake.md). They tie the domains together:
 the api image the cluster runs is the one the registry and the build hold, the
 worker crash-loops on the password Key Vault let expire, the nightly DAG's pod
 runs in the same namespace, Datadog alerted at the rollout, and the order the
@@ -84,6 +85,15 @@ agent-cli arm identity get 00000000-0000-4000-8000-00000000b0f1 --fields princip
 agent-cli arm activity list --resource kv-contoso-prod     # dana deleted its role
 ```
 
+Airflow's identity refused the finance ledger, and what the lake holds:
+
+```sh
+agent-cli arm identity get id-contoso-airflow --fields principal_id
+agent-cli lake access get contosolake/curated/finance/ledger --principal 00000000-0000-4000-8000-00000000a1f2
+agent-cli lake partition list contosolake/raw/sales/orders --fields id,rows,modified   # date=2026-09-27 missing
+agent-cli lake query run 'select count(*) from o where customer_id is null' --table o=contosolake/raw/sales/orders/date=2026-09-29
+```
+
 ## Files
 
 ```
@@ -92,6 +102,8 @@ http/ado.json     Azure DevOps answers
 http/confluence.json Confluence Cloud answers (contoso.atlassian.net)
 http/azure.json   Resource Graph, Key Vault and ACR answers
 http/aisearch.json AI Search's data plane and its admin key (ARM)
+http/lake.json    Data Lake answers and Graph's groups, written with files/ by scripts/seed/lake.py
+files/lake/       the Data Lake's Parquet files, which lake.json's body_file answers serve
 http/airflow.json Airflow's REST API (/api/v2 and /auth/token)
 http/dd.json      Datadog answers (api.datadoghq.eu)
 kubectl.json      what the fake kubectl knows: objects per context, and logs
@@ -114,6 +126,9 @@ Each `http/*.json` is a list of exchanges; the replayer reads every file in
   preferred over one without.
 - `status` (default 200) and `headers` (an object) shape the answer; `answer`
   is JSON, `text` a body taken as it is.
+- `body_file` (optional): a file under this directory whose bytes are the
+  answer; a request with `x-ms-range` or `Range: bytes=A-B` gets those bytes
+  as a 206 (a Parquet footer read).
 - `exact` (optional): the query parameters or body fields that name *what*
   is asked for (`["path"]` on a file read, `["searchText"]` on a code
   search). Trials match loosely, answering a miss with the closest recording

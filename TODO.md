@@ -5,7 +5,7 @@ Open work only. What is built is in the code, the crate cards and
 
 ## Live runs
 
-- [ ] Work through `docs/first-live-run.md`: sql, ado (a sandbox organization, 2026-10-02) and airflow (local 2.9.3 and 3.3.2, `scripts/airflow-up.sh`, 2026-10-03) have run against real services; confluence's reads have run against a public site; kv, acr, aks, aisearch, arm, net, k8s and dd have not
+- [ ] Work through `docs/first-live-run.md`: sql, ado (a sandbox organization, 2026-10-02) and airflow (local 2.9.3 and 3.3.2, `scripts/airflow-up.sh`, 2026-10-03) have run against real services; confluence's reads have run against a public site; kv, acr, aks, aisearch, arm, net, lake, k8s and dd have not
 - [ ] Then the one-line global CLAUDE.md note that agent-cli exists (the README gives the line)
 
 ## Confluence and AI Search (built 2026-10-07 from the API specs; no live service yet)
@@ -26,6 +26,14 @@ Each `VERIFY(work)` in `crates/k8s` and `crates/azure` is a line below; settle i
 - [ ] net (`crates/azure/src/net`): that usages' `limit` already leaves out Azure's five reserved addresses (`mod.rs`); that Resource Graph holds private zones' vnet links as resources (`zone/list.rs`); that `backendhealth` takes an empty body and answers 202 with a Location (`appgw/get.rs`); that AKS tags a LoadBalancer service's public IP `k8s-azure-service` (`ip/mod.rs`); that AKS tags its scale sets `aks-managed-poolName` (`subnet/get.rs`); in `nic/get.rs`, that a scale set instance's NIC answers at `2018-10-01` only, the effective rules' and routes' 202 and Location, and whether Azure answers either for an AKS node's NIC at all (today the subnet's NSG and route table stand in, with a note)
 - [ ] kv (`crates/azure/src/kv`): that an imported certificate's policy holds its own subject and SANs (`certificate/mod.rs`); that a key with no rotation policy answers 404, not an empty policy, and that Key Vault Crypto User may read it (`key/get.rs`)
 - [ ] acr (`crates/azure/src/acr`): the ACR Tasks runs `$filter`'s field names and that runs come newest first (`run/list.rs`); that a run's log blob is plain UTF-8, not gzipped (`run/logs.rs`)
+
+## lake (built 2026-10-16 against the contoso world; no live account yet)
+
+- [ ] Step 0's trial, not run: agents with `az` and the `duckdb` CLI against a sandbox account seeded with the world's files (`fixtures/world/files/lake/`), on the five tasks in `crates/cli/tests/world_lake.rs` (did today's partition land, which days are missing, the ledger's schema and rows, Airflow's 403, today's orders without a customer). Count calls, tokens and wrong answers; lake keeps its place if it wins at least half
+- [ ] Open questions from the plan: whether every container holds the same data domains as top-level folders; typical partition sizes against `--max-mb` 1024; whether the lake is reachable only through private endpoints (WSL resolving `privatelink.dfs.core.windows.net`); whether some containers must stay out of query rows (a container allowlist beside `storage_accounts`)
+- [ ] `VERIFY(work)` in `crates/azure/src/lake`: the newest `x-ms-version` the accounts take (`mod.rs`); that `HEAD /{container}/` answers for the root directory (`mod.rs`); that the az login's Graph token may call `getMemberObjects`, else group ACL entries never count (`access/get.rs`); where `authorizationresources` keeps a custom role's `dataActions`, which `access get` ignores today (`access/get.rs`)
+- [ ] The world: Airflow's task log printing the 403 with the `abfss://` URL (a failed run in `http/airflow.json`, which ripples through its DAG and run lists), and `net endpoint get pe-contosolake-dfs` with its NIC and zone record
+- [ ] When asked: `lake path delete` (Destructive); airflow and controlm notes naming `lake path get` when a log holds an `abfss://` URL; DuckDB's azure extension for row-group reads past the download cap
 
 ## Phase 5: consolidate
 

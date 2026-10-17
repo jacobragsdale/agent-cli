@@ -36,9 +36,12 @@ const BODY_LIMIT: u64 = 64 * 1024 * 1024;
 /// The verbs a request can use. [`Method::Query`] is a `POST` that only reads
 /// (WIQL, Resource Graph, a token exchange): it is the one POST
 /// [`Ctx::read`] accepts, so a create cannot slip through the read path.
+/// [`Method::Head`] is for services that answer only in headers (a Data Lake
+/// path's properties and ACL).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Method {
     Get,
+    Head,
     Query,
     Post,
     Put,
@@ -51,6 +54,7 @@ impl Method {
     pub const fn wire(self) -> &'static str {
         match self {
             Self::Get => "GET",
+            Self::Head => "HEAD",
             Self::Query | Self::Post => "POST",
             Self::Put => "PUT",
             Self::Patch => "PATCH",
@@ -60,7 +64,7 @@ impl Method {
 
     #[must_use]
     pub const fn is_read(self) -> bool {
-        matches!(self, Self::Get | Self::Query)
+        matches!(self, Self::Get | Self::Head | Self::Query)
     }
 }
 
@@ -260,6 +264,7 @@ impl Transport for Https {
         // the body are chosen together.
         let sent = match request.method {
             Method::Get => prepare(agent.get(url), &headers, timeout).call(),
+            Method::Head => prepare(agent.head(url), &headers, timeout).call(),
             Method::Delete => prepare(agent.delete(url), &headers, timeout).call(),
             Method::Query | Method::Post => {
                 send_body(prepare(agent.post(url), &headers, timeout), &request.body)
@@ -476,7 +481,11 @@ fn checked(method: Method, response: Response) -> Result<Response> {
         Some(location) if (300..400).contains(&status) => {
             format!("a redirect to {location}, which is not followed")
         }
-        _ => failure_message(&response.body),
+        // A HEAD's refusal has no body; Azure Storage names it in a header.
+        _ => match response.header("x-ms-error-code") {
+            Some(code) if response.body.trim().is_empty() => code.to_owned(),
+            _ => failure_message(&response.body),
+        },
     };
     let mut failure = Failure::new(
         exit,
@@ -718,6 +727,22 @@ mod tests {
         assert_eq!(
             (kept.status, kept.header("set-cookie")),
             (302, Some("session=s1; Path=/"))
+        );
+    }
+
+    #[test]
+    fn a_refused_head_says_the_error_code_its_header_carries() {
+        let (ctx, _) =
+            fake(vec![Answer::status(403, "").with_header(
+                "x-ms-error-code",
+                "AuthorizationPermissionMismatch",
+            )]);
+        let error = ctx
+            .read(Request::new(Method::Head, "https://h.example/x"))
+            .unwrap_err();
+        assert_eq!(
+            describe(&error).1,
+            "HEAD https://h.example/x answered 403: AuthorizationPermissionMismatch"
         );
     }
 

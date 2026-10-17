@@ -22,7 +22,9 @@
 //! order; an exchange without one answers any body. `status` defaults to
 //! 200, `headers` to none; `answer` is JSON, `text` a body as it is. A
 //! request with no recording is an error naming the closest one, and the
-//! body that was sent, which is what to record next.
+//! body that was sent, which is what to record next. `body_file` answers a
+//! file's bytes instead (a path under the world's directory), and a request
+//! carrying `x-ms-range` or `Range: bytes=A-B` gets just those, as a 206.
 //!
 //! `AGENT_CLI_FIXTURES_MATCH=loose` is for trials, where an agent picks its
 //! own windows and limits (`--since 2d`, `--limit 10`): a miss is answered by
@@ -73,6 +75,9 @@ struct Recorded {
     answer: Option<Value>,
     #[serde(default)]
     text: Option<String>,
+    /// A file under the world's directory whose bytes are the answer.
+    #[serde(default)]
+    body_file: Option<String>,
     /// Query parameters or body fields loose matching must not substitute.
     #[serde(default)]
     exact: Vec<String>,
@@ -89,6 +94,7 @@ struct Exchange {
     status: u16,
     headers: Vec<(String, String)>,
     answer: String,
+    file: Option<Vec<u8>>,
     exact: Vec<String>,
 }
 
@@ -178,6 +184,13 @@ fn read(dir: &Path) -> Result<Vec<Exchange>> {
         let recorded: Vec<Recorded> = serde_json::from_str(&text)
             .with_context(|| format!("{} is not a list of exchanges", file.display()))?;
         for entry in recorded {
+            let body_file = match &entry.body_file {
+                Some(path) => Some(
+                    std::fs::read(dir.join(path))
+                        .with_context(|| format!("{}: cannot read {path}", file.display()))?,
+                ),
+                None => None,
+            };
             let (method, url) = entry.request.split_once(' ').with_context(|| {
                 format!(
                     "{}: {:?} is not `METHOD URL`",
@@ -204,6 +217,7 @@ fn read(dir: &Path) -> Result<Vec<Exchange>> {
                     (None, Some(answer)) => answer.to_string(),
                     (None, None) => String::new(),
                 },
+                file: body_file,
                 exact: entry.exact,
             });
         }
@@ -302,6 +316,27 @@ impl Transport for Replay {
                 !same_url.is_empty(),
             ));
         };
+        if let Some(file) = &exchange.file {
+            let (status, bytes) = match range(request) {
+                Some((start, end)) => {
+                    let end = end.map_or(file.len(), |end| {
+                        usize::try_from(end).map_or(file.len(), |end| (end + 1).min(file.len()))
+                    });
+                    match file.get(usize::try_from(start).unwrap_or(usize::MAX)..end) {
+                        Some(slice) if !slice.is_empty() => (206, slice.to_vec()),
+                        _ => (416, Vec::new()),
+                    }
+                }
+                None => (exchange.status, file.clone()),
+            };
+            return Ok(Response {
+                status,
+                headers: exchange.headers.clone(),
+                body: String::new(),
+                bytes: Some(bytes),
+                url: request.url.clone(),
+            });
+        }
         Ok(Response {
             status: exchange.status,
             headers: exchange.headers.clone(),
@@ -310,6 +345,15 @@ impl Transport for Replay {
             url: request.url.clone(),
         })
     }
+}
+
+/// The `bytes=A-B` (B optional, inclusive) a request asked for.
+fn range(request: &Request<'_>) -> Option<(u64, Option<u64>)> {
+    let (_, value) = request.headers.iter().find(|(name, _)| {
+        name.eq_ignore_ascii_case("x-ms-range") || name.eq_ignore_ascii_case("range")
+    })?;
+    let (start, end) = value.trim().strip_prefix("bytes=")?.split_once('-')?;
+    Some((start.parse().ok()?, end.parse().ok()))
 }
 
 /// No recording for `wanted`: the closest key, and the body to record.
@@ -470,6 +514,34 @@ mod tests {
         let strict = load(&files, false);
         assert!(send(&strict, Request::get("https://h.example/runs?limit=10")).is_err());
         assert!(send(&strict, Request::query("https://h.example/q", wiql)).is_err());
+    }
+
+    #[test]
+    fn a_body_file_is_answered_whole_or_by_the_range_asked_for() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("http")).unwrap();
+        std::fs::create_dir_all(dir.path().join("files")).unwrap();
+        std::fs::write(dir.path().join("files/a.bin"), b"PAR1\xff\x00PAR1").unwrap();
+        std::fs::write(
+            dir.path().join("http/a.json"),
+            r#"[{"request": "GET https://h.example/a.bin", "body_file": "files/a.bin"}]"#,
+        )
+        .unwrap();
+        let replay = Replay::load(dir.path(), false);
+        let whole = send(&replay, Request::get("https://h.example/a.bin")).unwrap();
+        assert_eq!((whole.status, whole.into_bytes().len()), (200, 10));
+        let tail = send(
+            &replay,
+            Request::get("https://h.example/a.bin").header("x-ms-range", "bytes=6-9"),
+        )
+        .unwrap();
+        assert_eq!((tail.status, tail.into_bytes()), (206, b"PAR1".to_vec()));
+        let past = send(
+            &replay,
+            Request::get("https://h.example/a.bin").header("Range", "bytes=20-"),
+        )
+        .unwrap();
+        assert_eq!(past.status, 416);
     }
 
     #[test]

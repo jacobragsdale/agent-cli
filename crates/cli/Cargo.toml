@@ -15,7 +15,7 @@ path = "src/main.rs"
 [features]
 # One feature per domain, all on by default. A team build picks its own:
 # --no-default-features --features sql,airflow.
-default = ["ado", "confluence", "kv", "acr", "aks", "aisearch", "arm", "net", "k8s", "sql", "airflow", "controlm", "dd"]
+default = ["ado", "confluence", "kv", "acr", "aks", "aisearch", "arm", "net", "lake", "k8s", "sql", "airflow", "controlm", "dd"]
 ado = ["dep:agent-cli-ado"]
 confluence = ["dep:agent-cli-confluence"]
 kv = ["dep:agent-cli-azure"]
@@ -24,6 +24,7 @@ aks = ["dep:agent-cli-azure"]
 aisearch = ["dep:agent-cli-azure"]
 arm = ["dep:agent-cli-azure"]
 net = ["dep:agent-cli-azure"]
+lake = ["dep:agent-cli-azure", "agent-cli-azure/lake"]
 k8s = ["dep:agent-cli-k8s"]
 sql = ["dep:agent-cli-sql"]
 airflow = ["dep:agent-cli-airflow"]

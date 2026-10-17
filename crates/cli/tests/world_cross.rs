@@ -840,3 +840,44 @@ fn a_key_vault_403_leads_from_the_pod_to_its_identity_and_who_deleted_its_role()
             "operation": "Microsoft.Authorization/roleAssignments/delete"})
     );
 }
+
+/// The fifth trace: Airflow's identity is refused the finance ledger. Its
+/// identity's principal, then access get breaks at the ledger's folder and
+/// notes the roles to look at, which hold no data role.
+#[test]
+fn airflows_403_on_the_ledger_breaks_at_its_folder_and_no_data_role_saves_it() {
+    let identity = ok(&[
+        "arm",
+        "identity",
+        "get",
+        "id-contoso-airflow",
+        "--fields",
+        "principal_id,federated_credentials",
+    ]);
+    assert_eq!(
+        identity["federated_credentials"][0]["serviceaccount"],
+        "aks-contoso-prod/web/airflow-worker"
+    );
+    let principal = identity["principal_id"].as_str().unwrap();
+    let walked = follow(&[
+        "lake",
+        "access",
+        "get",
+        "contosolake/curated/finance/ledger",
+        "--principal",
+        principal,
+    ]);
+    assert_eq!(walked.len(), 2, "access get, then the roles its note names");
+    let access = walked[0].json();
+    assert_eq!(access["allowed"], false);
+    assert_eq!(
+        access["broken_at"],
+        json!({"path": "contosolake/curated/finance/ledger", "needs": "r-x", "has": "---"})
+    );
+    assert_eq!(
+        access["steps"][1]["grants"], "r-x",
+        "r-x on /finance: {access}"
+    );
+    assert_eq!(walked[1].code, 0, "{}", walked[1].stderr);
+    assert_eq!(walked[1].json()[0]["role"], "Reader", "control plane only");
+}

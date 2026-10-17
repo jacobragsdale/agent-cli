@@ -1,7 +1,7 @@
 # agent-cli
 
 One command-line tool that gives AI coding agents Azure DevOps, Confluence
-Cloud, Azure (Key Vault, Container Registry, AKS, AI Search), Kubernetes, SQL
+Cloud, Azure (Key Vault, Container Registry, AKS, AI Search, Data Lake), Kubernetes, SQL
 Server and Oracle, Apache Airflow, BMC Control-M and Datadog. Its only users
 are agents: every command is `agent-cli <domain> <resource> <verb>`, output is
 compact JSON that `--fields` narrows, errors name the command to run next, and
@@ -37,7 +37,7 @@ any key, for example `AGENT_CLI_ADO_PROJECT=web`.
 |---|---|---|
 | ado | `[ado]` org, project, team | `pat`, else `AZURE_DEVOPS_EXT_PAT`, else your `az login` |
 | confluence | `[confluence]` url, email | an API token: `token` |
-| kv, acr, aks, aisearch, arm, net | `[azure]` (optional allowlists) | your `az login` (aisearch: a token, or an admin key it fetches, per service) |
+| kv, acr, aks, aisearch, arm, net, lake | `[azure]` (optional allowlists) | your `az login` (aisearch: a token, or an admin key it fetches, per service; lake: a data role or ACLs) |
 | k8s | `[[k8s.scope]]` per cluster | your kubeconfig; `agent-cli aks cluster connect NAME` fetches it for AKS |
 | sql | `[[sql.connection]]` per database | `user` and `password` |
 | airflow | `[[airflow.instance]]` per server | `username` and `password`, or `token` |
@@ -98,6 +98,7 @@ role, a read-only database login, an Airflow Viewer.
 | aisearch | Azure AI Search services, indexes, documents (keyword, vector, hybrid, semantic), indexers | 16 |
 | arm | Any Azure resource: Resource Graph lists and queries, ARM reads by id, activity log, changes, role assignments, managed identities, policy, metrics | 12 |
 | net | Azure vnets, subnets and their free IPs, NSG rules, NICs' effective rules and routes, route tables | 7 |
+| lake | Data Lake Storage Gen2: containers, folders, Parquet tables and partitions from footers, why a path is refused, SQL over Parquet (DuckDB) | 9 |
 | k8s | Kubernetes pods, logs, events, deployments, config maps, secrets | 14 |
 | sql | SQL Server and Oracle queries and catalog | 6 |
 | airflow | Apache Airflow 2.9+ and 3 DAGs, runs, task instances, logs, import errors | 21 |

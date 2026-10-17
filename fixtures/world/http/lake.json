@@ -1,0 +1,1962 @@
+[
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/?resource=account",
+  "answer": {
+   "filesystems": [
+    {
+     "name": "curated",
+     "lastModified": "Tue, 29 Sep 2026 02:15:03 GMT",
+     "etag": "0x8DDFF1A00000001"
+    },
+    {
+     "name": "raw",
+     "lastModified": "Tue, 29 Sep 2026 06:02:11 GMT",
+     "etag": "0x8DDFF1A00000092"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/?resource=account&maxResults=1",
+  "note": "doctor lake",
+  "answer": {
+   "filesystems": [
+    {
+     "name": "curated",
+     "lastModified": "Tue, 29 Sep 2026 02:15:03 GMT",
+     "etag": "0x8DDFF1A00000001"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolakedev.dfs.core.windows.net/?resource=account",
+  "answer": {
+   "filesystems": [
+    {
+     "name": "scratch",
+     "lastModified": "Wed, 02 Sep 2026 09:30:00 GMT",
+     "etag": "0x8DDFF1A00000123"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolakedev.dfs.core.windows.net/?resource=account&maxResults=1",
+  "note": "doctor lake",
+  "answer": {
+   "filesystems": [
+    {
+     "name": "scratch",
+     "lastModified": "Wed, 02 Sep 2026 09:30:00 GMT",
+     "etag": "0x8DDFF1A00000123"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/curated?resource=filesystem&recursive=false&maxResults=5000",
+  "answer": {
+   "paths": [
+    {
+     "name": "finance",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A0000001E",
+     "lastModified": "Tue, 29 Sep 2026 02:15:03 GMT",
+     "owner": "$superuser",
+     "group": "$superuser",
+     "permissions": "rwxr-x---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A00000058",
+     "lastModified": "Sun, 27 Sep 2026 00:38:10 GMT",
+     "owner": "$superuser",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/curated?resource=filesystem&recursive=true&maxResults=5000",
+  "answer": {
+   "paths": [
+    {
+     "name": "finance",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A0000001E",
+     "lastModified": "Tue, 29 Sep 2026 02:15:03 GMT",
+     "owner": "$superuser",
+     "group": "$superuser",
+     "permissions": "rwxr-x---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "finance/ledger",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A0000003B",
+     "lastModified": "Tue, 29 Sep 2026 02:15:03 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a2f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "finance/ledger/part-0000.parquet",
+     "contentLength": "2352",
+     "etag": "0x8DDFF1A000001EE",
+     "lastModified": "Tue, 29 Sep 2026 02:15:03 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a2f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A00000058",
+     "lastModified": "Sun, 27 Sep 2026 00:38:10 GMT",
+     "owner": "$superuser",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders_daily",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A00000075",
+     "lastModified": "Sun, 27 Sep 2026 00:38:10 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders_daily/part-0000.parquet",
+     "contentLength": "452",
+     "etag": "0x8DDFF1A0000020B",
+     "lastModified": "Sun, 27 Sep 2026 00:38:10 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/curated?resource=filesystem&recursive=false&maxResults=5000&directory=finance",
+  "answer": {
+   "paths": [
+    {
+     "name": "finance/ledger",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A0000003B",
+     "lastModified": "Tue, 29 Sep 2026 02:15:03 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a2f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/curated?resource=filesystem&recursive=true&maxResults=5000&directory=finance",
+  "answer": {
+   "paths": [
+    {
+     "name": "finance/ledger",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A0000003B",
+     "lastModified": "Tue, 29 Sep 2026 02:15:03 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a2f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "finance/ledger/part-0000.parquet",
+     "contentLength": "2352",
+     "etag": "0x8DDFF1A000001EE",
+     "lastModified": "Tue, 29 Sep 2026 02:15:03 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a2f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/curated?resource=filesystem&recursive=false&maxResults=5000&directory=finance%2Fledger",
+  "answer": {
+   "paths": [
+    {
+     "name": "finance/ledger/part-0000.parquet",
+     "contentLength": "2352",
+     "etag": "0x8DDFF1A000001EE",
+     "lastModified": "Tue, 29 Sep 2026 02:15:03 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a2f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/curated?resource=filesystem&recursive=true&maxResults=5000&directory=finance%2Fledger",
+  "answer": {
+   "paths": [
+    {
+     "name": "finance/ledger/part-0000.parquet",
+     "contentLength": "2352",
+     "etag": "0x8DDFF1A000001EE",
+     "lastModified": "Tue, 29 Sep 2026 02:15:03 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a2f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/curated?resource=filesystem&recursive=false&maxResults=5000&directory=sales",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders_daily",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A00000075",
+     "lastModified": "Sun, 27 Sep 2026 00:38:10 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/curated?resource=filesystem&recursive=true&maxResults=5000&directory=sales",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders_daily",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A00000075",
+     "lastModified": "Sun, 27 Sep 2026 00:38:10 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders_daily/part-0000.parquet",
+     "contentLength": "452",
+     "etag": "0x8DDFF1A0000020B",
+     "lastModified": "Sun, 27 Sep 2026 00:38:10 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/curated?resource=filesystem&recursive=false&maxResults=5000&directory=sales%2Forders_daily",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders_daily/part-0000.parquet",
+     "contentLength": "452",
+     "etag": "0x8DDFF1A0000020B",
+     "lastModified": "Sun, 27 Sep 2026 00:38:10 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/curated?resource=filesystem&recursive=true&maxResults=5000&directory=sales%2Forders_daily",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders_daily/part-0000.parquet",
+     "contentLength": "452",
+     "etag": "0x8DDFF1A0000020B",
+     "lastModified": "Sun, 27 Sep 2026 00:38:10 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=false&maxResults=5000",
+  "answer": {
+   "paths": [
+    {
+     "name": "finance",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A000000AF",
+     "lastModified": "Mon, 28 Sep 2026 23:50:41 GMT",
+     "owner": "$superuser",
+     "group": "$superuser",
+     "permissions": "rwxr-x---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A000000E9",
+     "lastModified": "Tue, 29 Sep 2026 06:02:11 GMT",
+     "owner": "$superuser",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=true&maxResults=5000",
+  "answer": {
+   "paths": [
+    {
+     "name": "finance",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A000000AF",
+     "lastModified": "Mon, 28 Sep 2026 23:50:41 GMT",
+     "owner": "$superuser",
+     "group": "$superuser",
+     "permissions": "rwxr-x---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "finance/journal",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A000000CC",
+     "lastModified": "Mon, 28 Sep 2026 23:50:41 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a2f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "finance/journal/part-0000.parquet",
+     "contentLength": "745",
+     "etag": "0x8DDFF1A00000228",
+     "lastModified": "Mon, 28 Sep 2026 23:50:41 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a2f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A000000E9",
+     "lastModified": "Tue, 29 Sep 2026 06:02:11 GMT",
+     "owner": "$superuser",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A00000106",
+     "lastModified": "Tue, 29 Sep 2026 06:02:11 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-23",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A00000140",
+     "lastModified": "Wed, 23 Sep 2026 06:01:58 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-23/part-0001.parquet",
+     "contentLength": "722",
+     "etag": "0x8DDFF1A00000245",
+     "lastModified": "Wed, 23 Sep 2026 06:01:58 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales/orders/date=2026-09-24",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A0000015D",
+     "lastModified": "Thu, 24 Sep 2026 06:02:03 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-24/part-0001.parquet",
+     "contentLength": "694",
+     "etag": "0x8DDFF1A00000262",
+     "lastModified": "Thu, 24 Sep 2026 06:02:03 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales/orders/date=2026-09-25",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A0000017A",
+     "lastModified": "Fri, 25 Sep 2026 06:01:49 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-25/part-0001.parquet",
+     "contentLength": "748",
+     "etag": "0x8DDFF1A0000027F",
+     "lastModified": "Fri, 25 Sep 2026 06:01:49 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales/orders/date=2026-09-26",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A00000197",
+     "lastModified": "Sat, 26 Sep 2026 06:02:20 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-26/part-0001.parquet",
+     "contentLength": "750",
+     "etag": "0x8DDFF1A0000029C",
+     "lastModified": "Sat, 26 Sep 2026 06:02:20 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales/orders/date=2026-09-28",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A000001B4",
+     "lastModified": "Mon, 28 Sep 2026 06:02:09 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-28/part-0001.parquet",
+     "contentLength": "695",
+     "etag": "0x8DDFF1A000002B9",
+     "lastModified": "Mon, 28 Sep 2026 06:02:09 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales/orders/date=2026-09-29",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A000001D1",
+     "lastModified": "Tue, 29 Sep 2026 06:02:11 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-29/part-0001.parquet",
+     "contentLength": "768",
+     "etag": "0x8DDFF1A000002D6",
+     "lastModified": "Tue, 29 Sep 2026 06:02:11 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=false&maxResults=5000&directory=finance",
+  "answer": {
+   "paths": [
+    {
+     "name": "finance/journal",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A000000CC",
+     "lastModified": "Mon, 28 Sep 2026 23:50:41 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a2f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=true&maxResults=5000&directory=finance",
+  "answer": {
+   "paths": [
+    {
+     "name": "finance/journal",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A000000CC",
+     "lastModified": "Mon, 28 Sep 2026 23:50:41 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a2f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "finance/journal/part-0000.parquet",
+     "contentLength": "745",
+     "etag": "0x8DDFF1A00000228",
+     "lastModified": "Mon, 28 Sep 2026 23:50:41 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a2f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=false&maxResults=5000&directory=finance%2Fjournal",
+  "answer": {
+   "paths": [
+    {
+     "name": "finance/journal/part-0000.parquet",
+     "contentLength": "745",
+     "etag": "0x8DDFF1A00000228",
+     "lastModified": "Mon, 28 Sep 2026 23:50:41 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a2f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=true&maxResults=5000&directory=finance%2Fjournal",
+  "answer": {
+   "paths": [
+    {
+     "name": "finance/journal/part-0000.parquet",
+     "contentLength": "745",
+     "etag": "0x8DDFF1A00000228",
+     "lastModified": "Mon, 28 Sep 2026 23:50:41 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a2f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=false&maxResults=5000&directory=sales",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A00000106",
+     "lastModified": "Tue, 29 Sep 2026 06:02:11 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=true&maxResults=5000&directory=sales",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A00000106",
+     "lastModified": "Tue, 29 Sep 2026 06:02:11 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-23",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A00000140",
+     "lastModified": "Wed, 23 Sep 2026 06:01:58 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-23/part-0001.parquet",
+     "contentLength": "722",
+     "etag": "0x8DDFF1A00000245",
+     "lastModified": "Wed, 23 Sep 2026 06:01:58 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales/orders/date=2026-09-24",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A0000015D",
+     "lastModified": "Thu, 24 Sep 2026 06:02:03 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-24/part-0001.parquet",
+     "contentLength": "694",
+     "etag": "0x8DDFF1A00000262",
+     "lastModified": "Thu, 24 Sep 2026 06:02:03 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales/orders/date=2026-09-25",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A0000017A",
+     "lastModified": "Fri, 25 Sep 2026 06:01:49 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-25/part-0001.parquet",
+     "contentLength": "748",
+     "etag": "0x8DDFF1A0000027F",
+     "lastModified": "Fri, 25 Sep 2026 06:01:49 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales/orders/date=2026-09-26",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A00000197",
+     "lastModified": "Sat, 26 Sep 2026 06:02:20 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-26/part-0001.parquet",
+     "contentLength": "750",
+     "etag": "0x8DDFF1A0000029C",
+     "lastModified": "Sat, 26 Sep 2026 06:02:20 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales/orders/date=2026-09-28",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A000001B4",
+     "lastModified": "Mon, 28 Sep 2026 06:02:09 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-28/part-0001.parquet",
+     "contentLength": "695",
+     "etag": "0x8DDFF1A000002B9",
+     "lastModified": "Mon, 28 Sep 2026 06:02:09 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales/orders/date=2026-09-29",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A000001D1",
+     "lastModified": "Tue, 29 Sep 2026 06:02:11 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-29/part-0001.parquet",
+     "contentLength": "768",
+     "etag": "0x8DDFF1A000002D6",
+     "lastModified": "Tue, 29 Sep 2026 06:02:11 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=false&maxResults=5000&directory=sales%2Forders",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders/date=2026-09-23",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A00000140",
+     "lastModified": "Wed, 23 Sep 2026 06:01:58 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-24",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A0000015D",
+     "lastModified": "Thu, 24 Sep 2026 06:02:03 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-25",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A0000017A",
+     "lastModified": "Fri, 25 Sep 2026 06:01:49 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-26",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A00000197",
+     "lastModified": "Sat, 26 Sep 2026 06:02:20 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-28",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A000001B4",
+     "lastModified": "Mon, 28 Sep 2026 06:02:09 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-29",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A000001D1",
+     "lastModified": "Tue, 29 Sep 2026 06:02:11 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=true&maxResults=5000&directory=sales%2Forders",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders/date=2026-09-23",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A00000140",
+     "lastModified": "Wed, 23 Sep 2026 06:01:58 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-23/part-0001.parquet",
+     "contentLength": "722",
+     "etag": "0x8DDFF1A00000245",
+     "lastModified": "Wed, 23 Sep 2026 06:01:58 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales/orders/date=2026-09-24",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A0000015D",
+     "lastModified": "Thu, 24 Sep 2026 06:02:03 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-24/part-0001.parquet",
+     "contentLength": "694",
+     "etag": "0x8DDFF1A00000262",
+     "lastModified": "Thu, 24 Sep 2026 06:02:03 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales/orders/date=2026-09-25",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A0000017A",
+     "lastModified": "Fri, 25 Sep 2026 06:01:49 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-25/part-0001.parquet",
+     "contentLength": "748",
+     "etag": "0x8DDFF1A0000027F",
+     "lastModified": "Fri, 25 Sep 2026 06:01:49 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales/orders/date=2026-09-26",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A00000197",
+     "lastModified": "Sat, 26 Sep 2026 06:02:20 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-26/part-0001.parquet",
+     "contentLength": "750",
+     "etag": "0x8DDFF1A0000029C",
+     "lastModified": "Sat, 26 Sep 2026 06:02:20 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales/orders/date=2026-09-28",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A000001B4",
+     "lastModified": "Mon, 28 Sep 2026 06:02:09 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-28/part-0001.parquet",
+     "contentLength": "695",
+     "etag": "0x8DDFF1A000002B9",
+     "lastModified": "Mon, 28 Sep 2026 06:02:09 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    },
+    {
+     "name": "sales/orders/date=2026-09-29",
+     "contentLength": "0",
+     "etag": "0x8DDFF1A000001D1",
+     "lastModified": "Tue, 29 Sep 2026 06:02:11 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rwxrwx---+",
+     "isDirectory": "true"
+    },
+    {
+     "name": "sales/orders/date=2026-09-29/part-0001.parquet",
+     "contentLength": "768",
+     "etag": "0x8DDFF1A000002D6",
+     "lastModified": "Tue, 29 Sep 2026 06:02:11 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolakedev.dfs.core.windows.net/scratch?resource=filesystem&recursive=false&maxResults=5000",
+  "answer": {
+   "paths": []
+  }
+ },
+ {
+  "request": "GET https://contosolakedev.dfs.core.windows.net/scratch?resource=filesystem&recursive=true&maxResults=5000",
+  "answer": {
+   "paths": []
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=false&maxResults=5000&directory=sales%2Forders%2Fdate%3D2026-09-23",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders/date=2026-09-23/part-0001.parquet",
+     "contentLength": "722",
+     "etag": "0x8DDFF1A00000245",
+     "lastModified": "Wed, 23 Sep 2026 06:01:58 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=true&maxResults=5000&directory=sales%2Forders%2Fdate%3D2026-09-23",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders/date=2026-09-23/part-0001.parquet",
+     "contentLength": "722",
+     "etag": "0x8DDFF1A00000245",
+     "lastModified": "Wed, 23 Sep 2026 06:01:58 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=false&maxResults=5000&directory=sales%2Forders%2Fdate%3D2026-09-24",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders/date=2026-09-24/part-0001.parquet",
+     "contentLength": "694",
+     "etag": "0x8DDFF1A00000262",
+     "lastModified": "Thu, 24 Sep 2026 06:02:03 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=true&maxResults=5000&directory=sales%2Forders%2Fdate%3D2026-09-24",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders/date=2026-09-24/part-0001.parquet",
+     "contentLength": "694",
+     "etag": "0x8DDFF1A00000262",
+     "lastModified": "Thu, 24 Sep 2026 06:02:03 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=false&maxResults=5000&directory=sales%2Forders%2Fdate%3D2026-09-25",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders/date=2026-09-25/part-0001.parquet",
+     "contentLength": "748",
+     "etag": "0x8DDFF1A0000027F",
+     "lastModified": "Fri, 25 Sep 2026 06:01:49 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=true&maxResults=5000&directory=sales%2Forders%2Fdate%3D2026-09-25",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders/date=2026-09-25/part-0001.parquet",
+     "contentLength": "748",
+     "etag": "0x8DDFF1A0000027F",
+     "lastModified": "Fri, 25 Sep 2026 06:01:49 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=false&maxResults=5000&directory=sales%2Forders%2Fdate%3D2026-09-26",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders/date=2026-09-26/part-0001.parquet",
+     "contentLength": "750",
+     "etag": "0x8DDFF1A0000029C",
+     "lastModified": "Sat, 26 Sep 2026 06:02:20 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=true&maxResults=5000&directory=sales%2Forders%2Fdate%3D2026-09-26",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders/date=2026-09-26/part-0001.parquet",
+     "contentLength": "750",
+     "etag": "0x8DDFF1A0000029C",
+     "lastModified": "Sat, 26 Sep 2026 06:02:20 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=false&maxResults=5000&directory=sales%2Forders%2Fdate%3D2026-09-28",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders/date=2026-09-28/part-0001.parquet",
+     "contentLength": "695",
+     "etag": "0x8DDFF1A000002B9",
+     "lastModified": "Mon, 28 Sep 2026 06:02:09 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=true&maxResults=5000&directory=sales%2Forders%2Fdate%3D2026-09-28",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders/date=2026-09-28/part-0001.parquet",
+     "contentLength": "695",
+     "etag": "0x8DDFF1A000002B9",
+     "lastModified": "Mon, 28 Sep 2026 06:02:09 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=false&maxResults=5000&directory=sales%2Forders%2Fdate%3D2026-09-29",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders/date=2026-09-29/part-0001.parquet",
+     "contentLength": "768",
+     "etag": "0x8DDFF1A000002D6",
+     "lastModified": "Tue, 29 Sep 2026 06:02:11 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw?resource=filesystem&recursive=true&maxResults=5000&directory=sales%2Forders%2Fdate%3D2026-09-29",
+  "answer": {
+   "paths": [
+    {
+     "name": "sales/orders/date=2026-09-29/part-0001.parquet",
+     "contentLength": "768",
+     "etag": "0x8DDFF1A000002D6",
+     "lastModified": "Tue, 29 Sep 2026 06:02:11 GMT",
+     "owner": "00000000-0000-4000-8000-00000000a1f2",
+     "group": "$superuser",
+     "permissions": "rw-rw----+"
+    }
+   ]
+  }
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/",
+  "headers": {
+   "Last-Modified": "Tue, 29 Sep 2026 02:15:03 GMT",
+   "ETag": "\"0x8DDFF1A00000001\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "$superuser",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxr-x--x",
+   "x-ms-acl": "user::rwx,group::r-x,other::--x"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "$superuser",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxr-x--x",
+   "x-ms-acl": "user::rwx,group::r-x,other::--x"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/finance",
+  "headers": {
+   "Last-Modified": "Tue, 29 Sep 2026 02:15:03 GMT",
+   "ETag": "\"0x8DDFF1A0000001E\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/finance?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "$superuser",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxr-x---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:r-x,mask::r-x,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/finance?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "$superuser",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxr-x---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:r-x,mask::r-x,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/finance/ledger",
+  "headers": {
+   "Last-Modified": "Tue, 29 Sep 2026 02:15:03 GMT",
+   "ETag": "\"0x8DDFF1A0000003B\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/finance/ledger?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a2f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a2f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/finance/ledger?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a2f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a2f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/sales",
+  "headers": {
+   "Last-Modified": "Sun, 27 Sep 2026 00:38:10 GMT",
+   "ETag": "\"0x8DDFF1A00000058\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/sales?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "$superuser",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/sales?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "$superuser",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/sales/orders_daily",
+  "headers": {
+   "Last-Modified": "Sun, 27 Sep 2026 00:38:10 GMT",
+   "ETag": "\"0x8DDFF1A00000075\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/sales/orders_daily?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/sales/orders_daily?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/",
+  "headers": {
+   "Last-Modified": "Tue, 29 Sep 2026 06:02:11 GMT",
+   "ETag": "\"0x8DDFF1A00000092\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "$superuser",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxr-x--x",
+   "x-ms-acl": "user::rwx,group::r-x,other::--x"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "$superuser",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxr-x--x",
+   "x-ms-acl": "user::rwx,group::r-x,other::--x"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/finance",
+  "headers": {
+   "Last-Modified": "Mon, 28 Sep 2026 23:50:41 GMT",
+   "ETag": "\"0x8DDFF1A000000AF\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/finance?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "$superuser",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxr-x---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:r-x,mask::r-x,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/finance?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "$superuser",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxr-x---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:r-x,mask::r-x,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/finance/journal",
+  "headers": {
+   "Last-Modified": "Mon, 28 Sep 2026 23:50:41 GMT",
+   "ETag": "\"0x8DDFF1A000000CC\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/finance/journal?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a2f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a2f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/finance/journal?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a2f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a2f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales",
+  "headers": {
+   "Last-Modified": "Tue, 29 Sep 2026 06:02:11 GMT",
+   "ETag": "\"0x8DDFF1A000000E9\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "$superuser",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "$superuser",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders",
+  "headers": {
+   "Last-Modified": "Tue, 29 Sep 2026 06:02:11 GMT",
+   "ETag": "\"0x8DDFF1A00000106\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolakedev.dfs.core.windows.net/scratch/",
+  "headers": {
+   "Last-Modified": "Wed, 02 Sep 2026 09:30:00 GMT",
+   "ETag": "\"0x8DDFF1A00000123\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolakedev.dfs.core.windows.net/scratch/?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "$superuser",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxr-x--x",
+   "x-ms-acl": "user::rwx,group::r-x,other::--x"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolakedev.dfs.core.windows.net/scratch/?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "$superuser",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxr-x--x",
+   "x-ms-acl": "user::rwx,group::r-x,other::--x"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-23",
+  "headers": {
+   "Last-Modified": "Wed, 23 Sep 2026 06:01:58 GMT",
+   "ETag": "\"0x8DDFF1A00000140\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-23?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-23?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-24",
+  "headers": {
+   "Last-Modified": "Thu, 24 Sep 2026 06:02:03 GMT",
+   "ETag": "\"0x8DDFF1A0000015D\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-24?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-24?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-25",
+  "headers": {
+   "Last-Modified": "Fri, 25 Sep 2026 06:01:49 GMT",
+   "ETag": "\"0x8DDFF1A0000017A\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-25?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-25?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-26",
+  "headers": {
+   "Last-Modified": "Sat, 26 Sep 2026 06:02:20 GMT",
+   "ETag": "\"0x8DDFF1A00000197\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-26?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-26?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-28",
+  "headers": {
+   "Last-Modified": "Mon, 28 Sep 2026 06:02:09 GMT",
+   "ETag": "\"0x8DDFF1A000001B4\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-28?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-28?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-29",
+  "headers": {
+   "Last-Modified": "Tue, 29 Sep 2026 06:02:11 GMT",
+   "ETag": "\"0x8DDFF1A000001D1\"",
+   "x-ms-resource-type": "directory",
+   "Content-Length": "0"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-29?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-29?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rwxrwx---+",
+   "x-ms-acl": "user::rwx,group::r-x,user:00000000-0000-4000-8000-00000000a1f2:rwx,mask::rwx,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/finance/ledger/part-0000.parquet",
+  "headers": {
+   "Last-Modified": "Tue, 29 Sep 2026 02:15:03 GMT",
+   "ETag": "\"0x8DDFF1A000001EE\"",
+   "x-ms-resource-type": "file",
+   "Content-Length": "2352"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/finance/ledger/part-0000.parquet?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a2f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a2f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/finance/ledger/part-0000.parquet?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a2f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a2f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/curated/finance/ledger/part-0000.parquet",
+  "body_file": "files/lake/contosolake/curated/finance/ledger/part-0000.parquet",
+  "headers": {
+   "Content-Type": "application/octet-stream"
+  }
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/sales/orders_daily/part-0000.parquet",
+  "headers": {
+   "Last-Modified": "Sun, 27 Sep 2026 00:38:10 GMT",
+   "ETag": "\"0x8DDFF1A0000020B\"",
+   "x-ms-resource-type": "file",
+   "Content-Length": "452"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/sales/orders_daily/part-0000.parquet?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a1f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/curated/sales/orders_daily/part-0000.parquet?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a1f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/curated/sales/orders_daily/part-0000.parquet",
+  "body_file": "files/lake/contosolake/curated/sales/orders_daily/part-0000.parquet",
+  "headers": {
+   "Content-Type": "application/octet-stream"
+  }
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/finance/journal/part-0000.parquet",
+  "headers": {
+   "Last-Modified": "Mon, 28 Sep 2026 23:50:41 GMT",
+   "ETag": "\"0x8DDFF1A00000228\"",
+   "x-ms-resource-type": "file",
+   "Content-Length": "745"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/finance/journal/part-0000.parquet?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a2f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a2f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/finance/journal/part-0000.parquet?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a2f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a2f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw/finance/journal/part-0000.parquet",
+  "body_file": "files/lake/contosolake/raw/finance/journal/part-0000.parquet",
+  "headers": {
+   "Content-Type": "application/octet-stream"
+  }
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-23/part-0001.parquet",
+  "headers": {
+   "Last-Modified": "Wed, 23 Sep 2026 06:01:58 GMT",
+   "ETag": "\"0x8DDFF1A00000245\"",
+   "x-ms-resource-type": "file",
+   "Content-Length": "722"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-23/part-0001.parquet?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a1f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-23/part-0001.parquet?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a1f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-23/part-0001.parquet",
+  "body_file": "files/lake/contosolake/raw/sales/orders/date=2026-09-23/part-0001.parquet",
+  "headers": {
+   "Content-Type": "application/octet-stream"
+  }
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-24/part-0001.parquet",
+  "headers": {
+   "Last-Modified": "Thu, 24 Sep 2026 06:02:03 GMT",
+   "ETag": "\"0x8DDFF1A00000262\"",
+   "x-ms-resource-type": "file",
+   "Content-Length": "694"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-24/part-0001.parquet?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a1f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-24/part-0001.parquet?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a1f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-24/part-0001.parquet",
+  "body_file": "files/lake/contosolake/raw/sales/orders/date=2026-09-24/part-0001.parquet",
+  "headers": {
+   "Content-Type": "application/octet-stream"
+  }
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-25/part-0001.parquet",
+  "headers": {
+   "Last-Modified": "Fri, 25 Sep 2026 06:01:49 GMT",
+   "ETag": "\"0x8DDFF1A0000027F\"",
+   "x-ms-resource-type": "file",
+   "Content-Length": "748"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-25/part-0001.parquet?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a1f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-25/part-0001.parquet?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a1f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-25/part-0001.parquet",
+  "body_file": "files/lake/contosolake/raw/sales/orders/date=2026-09-25/part-0001.parquet",
+  "headers": {
+   "Content-Type": "application/octet-stream"
+  }
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-26/part-0001.parquet",
+  "headers": {
+   "Last-Modified": "Sat, 26 Sep 2026 06:02:20 GMT",
+   "ETag": "\"0x8DDFF1A0000029C\"",
+   "x-ms-resource-type": "file",
+   "Content-Length": "750"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-26/part-0001.parquet?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a1f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-26/part-0001.parquet?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a1f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-26/part-0001.parquet",
+  "body_file": "files/lake/contosolake/raw/sales/orders/date=2026-09-26/part-0001.parquet",
+  "headers": {
+   "Content-Type": "application/octet-stream"
+  }
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-28/part-0001.parquet",
+  "headers": {
+   "Last-Modified": "Mon, 28 Sep 2026 06:02:09 GMT",
+   "ETag": "\"0x8DDFF1A000002B9\"",
+   "x-ms-resource-type": "file",
+   "Content-Length": "695"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-28/part-0001.parquet?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a1f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-28/part-0001.parquet?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a1f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-28/part-0001.parquet",
+  "body_file": "files/lake/contosolake/raw/sales/orders/date=2026-09-28/part-0001.parquet",
+  "headers": {
+   "Content-Type": "application/octet-stream"
+  }
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-29/part-0001.parquet",
+  "headers": {
+   "Last-Modified": "Tue, 29 Sep 2026 06:02:11 GMT",
+   "ETag": "\"0x8DDFF1A000002D6\"",
+   "x-ms-resource-type": "file",
+   "Content-Length": "768"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-29/part-0001.parquet?action=getAccessControl&upn=true",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a1f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "HEAD https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-29/part-0001.parquet?action=getAccessControl",
+  "headers": {
+   "x-ms-owner": "00000000-0000-4000-8000-00000000a1f2",
+   "x-ms-group": "$superuser",
+   "x-ms-permissions": "rw-rw----+",
+   "x-ms-acl": "user::rw-,group::r--,user:00000000-0000-4000-8000-00000000a1f2:rw-,mask::rw-,other::---"
+  },
+  "text": ""
+ },
+ {
+  "request": "GET https://contosolake.dfs.core.windows.net/raw/sales/orders/date%3D2026-09-29/part-0001.parquet",
+  "body_file": "files/lake/contosolake/raw/sales/orders/date=2026-09-29/part-0001.parquet",
+  "headers": {
+   "Content-Type": "application/octet-stream"
+  }
+ },
+ {
+  "request": "POST https://graph.microsoft.com/v1.0/directoryObjects/00000000-0000-4000-8000-00000000a1f2/getMemberObjects",
+  "note": "lake access get: id-contoso-airflow is in no group",
+  "answer": {
+   "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#Collection(Edm.String)",
+   "value": []
+  }
+ }
+]

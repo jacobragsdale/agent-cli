@@ -17,8 +17,9 @@ when you add a fact.
   `privatelink.vaultcore.azure.net` and its links `link-hub` and `link-aks`,
   `contoso.example`, `agw-contoso-prod` and its public IP, and in the node
   group the load balancer `kubernetes` and its two public IPs, plus
-  `kv-contoso-billing` (trace 1, facts/net.md), three user-assigned
-  identities and the orders-db disk (below): twenty-six rows.
+  `kv-contoso-billing` (trace 1, facts/net.md), four user-assigned
+  identities, the orders-db disk (below) and the Data Lake accounts
+  `contosolake` and `contosolakedev` (facts/lake.md): twenty-nine rows.
 - `arm resource get aks-contoso-prod` reads the cluster at `2026-07-01`, the
   newest stable version Microsoft.ContainerService lists (a newer
   `2026-07-02-preview` is passed over): Kubernetes 1.30.4, Azure CNI overlay,
@@ -27,8 +28,9 @@ when you add a fact.
 - That subnet, `arm resource get …/virtualNetworks/vnet-contoso-prod/subnets/aks`,
   is `10.1.0.0/22`, read at `2024-05-01`, as `net subnet get` reads it.
 - `arm query run 'resources | summarize count() by type'` answers one row per
-  type (seventeen): two vaults, two search services, two private endpoints,
-  two NICs, two zone links, three public IPs, three identities.
+  type (eighteen): two vaults, two search services, two storage accounts,
+  two private endpoints, two NICs, two zone links, three public IPs, four
+  identities.
 - Identities (`arm identity list`): the kubelet's `aks-contoso-prod-agentpool`
   (client `…c002`, principal `…c003`) and the Key Vault CSI add-on's
   `azurekeyvaultsecretsprovider-aks-contoso-prod` (`…c004`, `…c005`) in the
@@ -36,12 +38,15 @@ when you add a fact.
   `00000000-0000-4000-8000-00000000b0f1`, principal `…b0f2`), whose one
   federated credential trusts the cluster's OIDC issuer (facts/aks.md) for
   `system:serviceaccount:web:notifier`, so `arm identity get` (by name or
-  client id) names it `aks-contoso-prod/web/notifier`.
+  client id) names it `aks-contoso-prod/web/notifier`; and
+  `id-contoso-airflow` (client `…a1f1`, principal `…a1f2`), trusted for `system:serviceaccount:web:airflow-worker`, the
+  Airflow task pods' identity (facts/lake.md).
 - Role assignments (`arm role list`): the group `…f001` is Contributor on
   the subscription; the kubelet AcrPull on `contosoacr`; the CSI add-on Key
   Vault Secrets User on `kv-contoso-prod` (what the worker's secrets mount
   through); the notifier only Monitoring Metrics Publisher on
-  rg-contoso-prod. `--scope kv-contoso-prod` gives the first, the last
+  rg-contoso-prod; Airflow's identity only Reader on rg-contoso-prod, no
+  data role on `contosolake` (`--principal …a1f2 --scope` its ARM id). `--scope kv-contoso-prod` gives the first, the last
   (both inherited) and the add-on's.
 - Trace 4, workload identity 403: the notifier's Key Vault Secrets User on
   `kv-contoso-prod` (assignment `…0a5e05`) was deleted at 2026-09-28T16:42:11Z

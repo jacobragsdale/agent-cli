@@ -137,7 +137,7 @@ fn identity_get(ctx: &Ctx, args: IdentityGetArgs) -> Result<IdentityDetail> {
     let props = &identity["properties"];
     let principal_id = text(&props["principalId"]);
     let roles = match &principal_id {
-        Some(principal) => assignments(ctx, &azure, Some(principal), None, usize::MAX)?,
+        Some(principal) => assignments(ctx, &azure, &[principal], None, usize::MAX)?,
         None => Vec::new(),
     };
     Ok(IdentityDetail {

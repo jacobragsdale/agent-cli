@@ -41,7 +41,8 @@ hand it only to the people those credentials are for. Rebuild to change it.
 To build only some domains, name them: `--no-default-features --features
 sql,airflow,builtin-config` gives a binary with only `sql` and `airflow`.
 The features are the domain names (`ado`, `confluence`, `kv`, `acr`, `aks`,
-`aisearch`, `arm`, `net`, `k8s`, `sql`, `airflow`, `controlm`, `dd`). The
+`aisearch`, `arm`, `net`, `lake`, `k8s`, `sql`, `airflow`, `controlm`, `dd`);
+leaving out `lake` also leaves out DuckDB, its query engine. The
 config decides which databases, instances and environments the build
 reaches, so give each group its own file: one holding only the dev
 `[[airflow.instance]]` carries nothing for prod. Leave out the sections of
@@ -134,7 +135,7 @@ The credential row names where the token came from. A 401 means the token is
 wrong or expired; a project check that fails means a name under `project` is
 misspelled or belongs to another organization.
 
-## 4. Azure: Key Vault, Container Registry, AKS and AI Search (kv, acr, aks, aisearch)
+## 4. Azure: Key Vault, Container Registry, AKS, AI Search and Data Lake (kv, acr, aks, aisearch, lake)
 
 These sign in with the Azure CLI's login. Install `az`, then:
 
@@ -149,14 +150,16 @@ az account list -o table
 ```
 
 The section may be empty; it must be there for doctor to check Azure. Lists
-of `subscriptions`, `vaults`, `registries` and `search_services` narrow what
-the commands see (`agent-cli config example azure` shows them).
+of `subscriptions`, `vaults`, `registries`, `search_services` and
+`storage_accounts` narrow what the commands see (`agent-cli config example
+azure` shows them).
 
 ```sh
 agent-cli doctor kv
 agent-cli doctor acr
 agent-cli doctor aks
 agent-cli doctor aisearch
+agent-cli doctor lake
 ```
 
 A failed `az login` check means the login expired: run `az login` again. A
@@ -180,6 +183,15 @@ fetching it needs Contributor or Search Service Contributor. Owner and
 Contributor give no data access by token. A role takes 5 to 10 minutes to
 apply. `agent-cli aisearch service list` shows which way each service is
 called (`auth`).
+
+A Data Lake (a storage account with a hierarchical namespace) reads data
+with your `az` token, which needs a data role on the account or a container
+(Storage Blob Data Reader to read, Contributor to write) or ACLs that let
+you in: Owner or Contributor on the account gives no data access. A doctor
+account check that fails with a 403 names which is missing;
+`agent-cli lake access get PATH --principal @me` shows where an ACL stops
+you. An account reachable only through a private endpoint needs this
+machine to resolve its `privatelink` name (`agent-cli net endpoint list`).
 
 ## 5. Kubernetes (k8s), through AKS
 

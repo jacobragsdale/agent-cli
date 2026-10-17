@@ -1,11 +1,83 @@
 [
  {
   "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
-  "note": "the Resource Graph inventory every kv, acr, aks and aisearch command starts from; any body",
+  "note": "the Resource Graph inventory every kv, acr, aks, aisearch and lake command starts from; any body",
   "answer": {
-   "totalRecords": 6,
-   "count": 6,
+   "totalRecords": 8,
+   "count": 8,
    "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod",
+     "name": "aks-contoso-prod",
+     "type": "microsoft.containerservice/managedclusters",
+     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "loginServer": "",
+     "vaultUri": "",
+     "kubernetesVersion": "1.30",
+     "currentKubernetesVersion": "1.30.4",
+     "powerState": "Running"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr",
+     "name": "contosoacr",
+     "type": "microsoft.containerregistry/registries",
+     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "loginServer": "contosoacr.azurecr.io",
+     "vaultUri": "",
+     "kubernetesVersion": "",
+     "currentKubernetesVersion": "",
+     "powerState": ""
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/contosolake",
+     "name": "contosolake",
+     "type": "microsoft.storage/storageaccounts",
+     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "loginServer": "",
+     "vaultUri": "",
+     "kubernetesVersion": "",
+     "currentKubernetesVersion": "",
+     "powerState": "",
+     "sku": "Standard_ZRS",
+     "publicNetworkAccess": "Disabled",
+     "defaultAction": "Deny",
+     "privateEndpoints": [
+      {
+       "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/contosolake/privateEndpointConnections/pe-contosolake-dfs.conn",
+       "properties": {
+        "privateEndpoint": {
+         "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Network/privateEndpoints/pe-contosolake-dfs"
+        },
+        "privateLinkServiceConnectionState": {
+         "status": "Approved"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-dev/providers/Microsoft.Storage/storageAccounts/contosolakedev",
+     "name": "contosolakedev",
+     "type": "microsoft.storage/storageaccounts",
+     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+     "resourceGroup": "rg-contoso-dev",
+     "location": "westeurope",
+     "loginServer": "",
+     "vaultUri": "",
+     "kubernetesVersion": "",
+     "currentKubernetesVersion": "",
+     "powerState": "",
+     "sku": "Standard_LRS",
+     "publicNetworkAccess": "Enabled",
+     "defaultAction": "Allow",
+     "privateEndpoints": []
+    },
     {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-billing",
      "name": "kv-contoso-billing",
@@ -31,32 +103,6 @@
      "kubernetesVersion": "",
      "currentKubernetesVersion": "",
      "powerState": ""
-    },
-    {
-     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerRegistry/registries/contosoacr",
-     "name": "contosoacr",
-     "type": "microsoft.containerregistry/registries",
-     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
-     "resourceGroup": "rg-contoso-prod",
-     "location": "westeurope",
-     "loginServer": "contosoacr.azurecr.io",
-     "vaultUri": "",
-     "kubernetesVersion": "",
-     "currentKubernetesVersion": "",
-     "powerState": ""
-    },
-    {
-     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ContainerService/managedClusters/aks-contoso-prod",
-     "name": "aks-contoso-prod",
-     "type": "microsoft.containerservice/managedclusters",
-     "subscriptionId": "00000000-0000-4000-8000-000000005b01",
-     "resourceGroup": "rg-contoso-prod",
-     "location": "westeurope",
-     "loginServer": "",
-     "vaultUri": "",
-     "kubernetesVersion": "1.30",
-     "currentKubernetesVersion": "1.30.4",
-     "powerState": "Running"
     },
     {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-dev/providers/Microsoft.Search/searchServices/srch-contoso-dev",
@@ -1275,8 +1321,8 @@
    }
   },
   "answer": {
-   "totalRecords": 26,
-   "count": 26,
+   "totalRecords": 29,
+   "count": 29,
    "data": [
     {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.Network/publicIPAddresses/00000000-0000-4000-8000-00000000e1b1",
@@ -1340,6 +1386,33 @@
      "location": "westeurope",
      "sku": "Standard",
      "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/contosolake",
+     "name": "contosolake",
+     "type": "microsoft.storage/storageaccounts",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "Standard_ZRS",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-dev/providers/Microsoft.Storage/storageAccounts/contosolakedev",
+     "name": "contosolakedev",
+     "type": "microsoft.storage/storageaccounts",
+     "resourceGroup": "rg-contoso-dev",
+     "location": "westeurope",
+     "sku": "Standard_LRS",
+     "provisioningState": "Succeeded"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-airflow",
+     "name": "id-contoso-airflow",
+     "type": "microsoft.managedidentity/userassignedidentities",
+     "resourceGroup": "rg-contoso-prod",
+     "location": "westeurope",
+     "sku": "",
+     "provisioningState": ""
     },
     {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-notifier",
@@ -1581,8 +1654,8 @@
    }
   },
   "answer": {
-   "totalRecords": 17,
-   "count": 17,
+   "totalRecords": 18,
+   "count": 18,
    "data": [
     {
      "type": "microsoft.containerservice/managedclusters",
@@ -1598,6 +1671,10 @@
     },
     {
      "type": "microsoft.search/searchservices",
+     "count_": 2
+    },
+    {
+     "type": "microsoft.storage/storageaccounts",
      "count_": 2
     },
     {
@@ -1646,7 +1723,7 @@
     },
     {
      "type": "microsoft.managedidentity/userassignedidentities",
-     "count_": 3
+     "count_": 4
     },
     {
      "type": "microsoft.compute/disks",
@@ -4384,7 +4461,7 @@
   "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
   "note": "arm role list: every assignment in scope",
   "body": {
-   "query": "authorizationresources\n| where type =~ 'microsoft.authorization/roleassignments'\n| extend principalId = tostring(properties.principalId), principalType = tostring(properties.principalType), scope = tostring(properties.scope), roleId = tolower(extract('[^/]+$', 0, tostring(properties.roleDefinitionId)))\n| join kind=leftouter (authorizationresources | where type =~ 'microsoft.authorization/roledefinitions' | project roleId = tolower(name), role = tostring(properties.roleName)) on roleId\n| project id, principalId, principalType, role, scope\n| order by scope asc, id asc",
+   "query": "authorizationresources\n| where type =~ 'microsoft.authorization/roleassignments'\n| extend principalId = tostring(properties.principalId), principalType = tostring(properties.principalType), scope = tostring(properties.scope), roleId = tolower(extract('[^/]+$', 0, tostring(properties.roleDefinitionId)))\n| join kind=leftouter (authorizationresources | where type =~ 'microsoft.authorization/roledefinitions' | project roleId = tolower(name), role = tostring(properties.roleName)) on roleId\n| project id, principalId, principalType, role, roleId, scope\n| order by scope asc, id asc",
    "subscriptions": [
     "00000000-0000-4000-8000-000000005b01"
    ],
@@ -4432,7 +4509,7 @@
   "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
   "note": "arm role list --principal: the notifier's identity holds no Key Vault role",
   "body": {
-   "query": "authorizationresources\n| where type =~ 'microsoft.authorization/roleassignments'\n| extend principalId = tostring(properties.principalId), principalType = tostring(properties.principalType), scope = tostring(properties.scope), roleId = tolower(extract('[^/]+$', 0, tostring(properties.roleDefinitionId)))\n| where principalId =~ '00000000-0000-4000-8000-00000000b0f2'\n| join kind=leftouter (authorizationresources | where type =~ 'microsoft.authorization/roledefinitions' | project roleId = tolower(name), role = tostring(properties.roleName)) on roleId\n| project id, principalId, principalType, role, scope\n| order by scope asc, id asc",
+   "query": "authorizationresources\n| where type =~ 'microsoft.authorization/roleassignments'\n| extend principalId = tostring(properties.principalId), principalType = tostring(properties.principalType), scope = tostring(properties.scope), roleId = tolower(extract('[^/]+$', 0, tostring(properties.roleDefinitionId)))\n| where principalId =~ '00000000-0000-4000-8000-00000000b0f2'\n| join kind=leftouter (authorizationresources | where type =~ 'microsoft.authorization/roledefinitions' | project roleId = tolower(name), role = tostring(properties.roleName)) on roleId\n| project id, principalId, principalType, role, roleId, scope\n| order by scope asc, id asc",
    "subscriptions": [
     "00000000-0000-4000-8000-000000005b01"
    ],
@@ -4459,7 +4536,7 @@
   "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
   "note": "arm identity get id-contoso-notifier: its roles",
   "body": {
-   "query": "authorizationresources\n| where type =~ 'microsoft.authorization/roleassignments'\n| extend principalId = tostring(properties.principalId), principalType = tostring(properties.principalType), scope = tostring(properties.scope), roleId = tolower(extract('[^/]+$', 0, tostring(properties.roleDefinitionId)))\n| where principalId =~ '00000000-0000-4000-8000-00000000b0f2'\n| join kind=leftouter (authorizationresources | where type =~ 'microsoft.authorization/roledefinitions' | project roleId = tolower(name), role = tostring(properties.roleName)) on roleId\n| project id, principalId, principalType, role, scope\n| order by scope asc, id asc",
+   "query": "authorizationresources\n| where type =~ 'microsoft.authorization/roleassignments'\n| extend principalId = tostring(properties.principalId), principalType = tostring(properties.principalType), scope = tostring(properties.scope), roleId = tolower(extract('[^/]+$', 0, tostring(properties.roleDefinitionId)))\n| where principalId =~ '00000000-0000-4000-8000-00000000b0f2'\n| join kind=leftouter (authorizationresources | where type =~ 'microsoft.authorization/roledefinitions' | project roleId = tolower(name), role = tostring(properties.roleName)) on roleId\n| project id, principalId, principalType, role, roleId, scope\n| order by scope asc, id asc",
    "subscriptions": [
     "00000000-0000-4000-8000-000000005b01"
    ],
@@ -4486,7 +4563,7 @@
   "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
   "note": "arm role list --scope kv-contoso-prod: what applies at the vault",
   "body": {
-   "query": "authorizationresources\n| where type =~ 'microsoft.authorization/roleassignments'\n| extend principalId = tostring(properties.principalId), principalType = tostring(properties.principalType), scope = tostring(properties.scope), roleId = tolower(extract('[^/]+$', 0, tostring(properties.roleDefinitionId)))\n| where scope in~ ('/subscriptions/00000000-0000-4000-8000-000000005b01', '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod', '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod')\n| join kind=leftouter (authorizationresources | where type =~ 'microsoft.authorization/roledefinitions' | project roleId = tolower(name), role = tostring(properties.roleName)) on roleId\n| project id, principalId, principalType, role, scope\n| order by scope asc, id asc",
+   "query": "authorizationresources\n| where type =~ 'microsoft.authorization/roleassignments'\n| extend principalId = tostring(properties.principalId), principalType = tostring(properties.principalType), scope = tostring(properties.scope), roleId = tolower(extract('[^/]+$', 0, tostring(properties.roleDefinitionId)))\n| where scope in~ ('/subscriptions/00000000-0000-4000-8000-000000005b01', '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod', '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod')\n| join kind=leftouter (authorizationresources | where type =~ 'microsoft.authorization/roledefinitions' | project roleId = tolower(name), role = tostring(properties.roleName)) on roleId\n| project id, principalId, principalType, role, roleId, scope\n| order by scope asc, id asc",
    "subscriptions": [
     "00000000-0000-4000-8000-000000005b01"
    ],
@@ -4519,6 +4596,62 @@
      "principalType": "ServicePrincipal",
      "role": "Key Vault Secrets User",
      "scope": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.KeyVault/vaults/kv-contoso-prod"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "lake access get contosolake/curated/…: id-contoso-airflow's roles at the container and above: Reader only, no data role",
+  "body": {
+   "query": "authorizationresources\n| where type =~ 'microsoft.authorization/roleassignments'\n| extend principalId = tostring(properties.principalId), principalType = tostring(properties.principalType), scope = tostring(properties.scope), roleId = tolower(extract('[^/]+$', 0, tostring(properties.roleDefinitionId)))\n| where principalId =~ '00000000-0000-4000-8000-00000000a1f2'\n| where scope in~ ('/subscriptions/00000000-0000-4000-8000-000000005b01', '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod', '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/contosolake', '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/contosolake/blobServices/default', '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/contosolake/blobServices/default/containers/curated')\n| join kind=leftouter (authorizationresources | where type =~ 'microsoft.authorization/roledefinitions' | project roleId = tolower(name), role = tostring(properties.roleName)) on roleId\n| project id, principalId, principalType, role, roleId, scope\n| order by scope asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e07",
+     "principalId": "00000000-0000-4000-8000-00000000a1f2",
+     "principalType": "ServicePrincipal",
+     "role": "Reader",
+     "roleId": "acdd72a7-3385-48ef-bd42-f606fba81ae7",
+     "scope": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod"
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm role list --principal id-contoso-airflow --scope contosolake: what lake access get's next note asks",
+  "body": {
+   "query": "authorizationresources\n| where type =~ 'microsoft.authorization/roleassignments'\n| extend principalId = tostring(properties.principalId), principalType = tostring(properties.principalType), scope = tostring(properties.scope), roleId = tolower(extract('[^/]+$', 0, tostring(properties.roleDefinitionId)))\n| where principalId =~ '00000000-0000-4000-8000-00000000a1f2'\n| where scope in~ ('/subscriptions/00000000-0000-4000-8000-000000005b01', '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod', '/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Storage/storageAccounts/contosolake')\n| join kind=leftouter (authorizationresources | where type =~ 'microsoft.authorization/roledefinitions' | project roleId = tolower(name), role = tostring(properties.roleName)) on roleId\n| project id, principalId, principalType, role, roleId, scope\n| order by scope asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 51,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e07",
+     "principalId": "00000000-0000-4000-8000-00000000a1f2",
+     "principalType": "ServicePrincipal",
+     "role": "Reader",
+     "roleId": "acdd72a7-3385-48ef-bd42-f606fba81ae7",
+     "scope": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod"
     }
    ]
   }
@@ -4560,8 +4693,8 @@
    }
   },
   "answer": {
-   "totalRecords": 3,
-   "count": 3,
+   "totalRecords": 4,
+   "count": 4,
    "data": [
     {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/MC_rg-contoso-prod_aks-contoso-prod_westeurope/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aks-contoso-prod-agentpool",
@@ -4576,6 +4709,13 @@
      "resourceGroup": "mc_rg-contoso-prod_aks-contoso-prod_westeurope",
      "clientId": "00000000-0000-4000-8000-00000000c004",
      "principalId": "00000000-0000-4000-8000-00000000c005"
+    },
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-airflow",
+     "name": "id-contoso-airflow",
+     "resourceGroup": "rg-contoso-prod",
+     "clientId": "00000000-0000-4000-8000-00000000a1f1",
+     "principalId": "00000000-0000-4000-8000-00000000a1f2"
     },
     {
      "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-notifier",
@@ -4667,6 +4807,94 @@
        "api://AzureADTokenExchange"
       ]
      }
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm identity get id-contoso-airflow: the name, found",
+  "body": {
+   "query": "resources\n| where name =~ 'id-contoso-airflow'\n| where type =~ 'Microsoft.ManagedIdentity/userAssignedIdentities'\n| project id\n| order by id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-airflow"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-airflow?api-version=2023-01-31",
+  "note": "arm identity get: Airflow's task pods' identity",
+  "answer": {
+   "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-airflow",
+   "name": "id-contoso-airflow",
+   "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+   "location": "westeurope",
+   "tags": {
+    "app": "airflow"
+   },
+   "properties": {
+    "tenantId": "00000000-0000-4000-8000-00000000a001",
+    "principalId": "00000000-0000-4000-8000-00000000a1f2",
+    "clientId": "00000000-0000-4000-8000-00000000a1f1"
+   }
+  }
+ },
+ {
+  "request": "GET https://management.azure.com/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-airflow/federatedIdentityCredentials?api-version=2023-01-31",
+  "note": "arm identity get: it trusts the cluster's serviceaccount web/airflow-worker",
+  "answer": {
+   "value": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-contoso-airflow/federatedIdentityCredentials/fc-aks-contoso-prod-web-airflow-worker",
+     "name": "fc-aks-contoso-prod-web-airflow-worker",
+     "type": "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials",
+     "properties": {
+      "issuer": "https://westeurope.oic.prod-aks.azure.com/00000000-0000-4000-8000-00000000a001/00000000-0000-4000-8000-00000000c0de/",
+      "subject": "system:serviceaccount:web:airflow-worker",
+      "audiences": [
+       "api://AzureADTokenExchange"
+      ]
+     }
+    }
+   ]
+  }
+ },
+ {
+  "request": "POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2024-04-01",
+  "note": "arm identity get id-contoso-airflow: its roles, Reader only (no data role on the lake)",
+  "body": {
+   "query": "authorizationresources\n| where type =~ 'microsoft.authorization/roleassignments'\n| extend principalId = tostring(properties.principalId), principalType = tostring(properties.principalType), scope = tostring(properties.scope), roleId = tolower(extract('[^/]+$', 0, tostring(properties.roleDefinitionId)))\n| where principalId =~ '00000000-0000-4000-8000-00000000a1f2'\n| join kind=leftouter (authorizationresources | where type =~ 'microsoft.authorization/roledefinitions' | project roleId = tolower(name), role = tostring(properties.roleName)) on roleId\n| project id, principalId, principalType, role, roleId, scope\n| order by scope asc, id asc",
+   "subscriptions": [
+    "00000000-0000-4000-8000-000000005b01"
+   ],
+   "options": {
+    "$top": 1000,
+    "resultFormat": "objectArray"
+   }
+  },
+  "answer": {
+   "totalRecords": 1,
+   "count": 1,
+   "data": [
+    {
+     "id": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-0000000a5e07",
+     "principalId": "00000000-0000-4000-8000-00000000a1f2",
+     "principalType": "ServicePrincipal",
+     "role": "Reader",
+     "scope": "/subscriptions/00000000-0000-4000-8000-000000005b01/resourceGroups/rg-contoso-prod"
     }
    ]
   }

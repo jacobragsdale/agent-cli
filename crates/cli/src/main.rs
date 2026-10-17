@@ -25,6 +25,8 @@ const DOMAINS: &[Domain] = &[
     agent_cli_azure::ARM,
     #[cfg(feature = "net")]
     agent_cli_azure::NET,
+    #[cfg(feature = "lake")]
+    agent_cli_azure::LAKE,
     #[cfg(feature = "k8s")]
     agent_cli_k8s::K8S,
     #[cfg(feature = "sql")]
@@ -338,7 +340,7 @@ mod tests {
                 {
                     continue;
                 }
-                let file = [".rs", ".md", ".json", ".toml", ".sh", ".txt"]
+                let file = [".rs", ".md", ".json", ".toml", ".sh", ".txt", ".py"]
                     .iter()
                     .any(|ext| span.ends_with(ext))
                     && !span.starts_with('.')
@@ -517,6 +519,7 @@ subscriptions = "00000000-0000-4000-8000-000000000001"
 vaults = ["kv-contoso-prod-westeurope", "kv-contoso-staging-westeurope"]
 registries = "contosoacr"
 search_services = ["srch-contoso-prod-westeurope", "srch-contoso-dev-westeurope"]
+storage_accounts = ["contosolakeprodweu", "contosolakedevweu"]
 
 [[k8s.scope]]
 name = "prod"

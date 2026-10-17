@@ -1,7 +1,8 @@
 //! The Azure domains of agent-cli: Key Vault secrets, keys and
 //! certificates (`kv`), container registry images and builds (`acr`) and
 //! AKS clusters (`aks`), ported from az-tui, Azure AI Search (`aisearch`),
-//! any ARM resource (`arm`), and virtual networks (`net`).
+//! any ARM resource (`arm`), virtual networks (`net`), and Data Lake
+//! Storage Gen2 (`lake`, behind the feature of its name: DuckDB is in it).
 //!
 //! There is no Azure SDK and no credential of our own. Each plane gets an
 //! `az` token for its own audience (or, for an AI Search service that takes
@@ -10,8 +11,9 @@
 //! guardrails az-tui kept are kept here:
 //!
 //! - a token goes only to its own hosts (`management.azure.com`,
-//!   `*.vault.azure.net`, `*.azurecr.io`, `*.search.windows.net`), checked on
-//!   every URL, `nextLink`s and cached addresses included;
+//!   `*.vault.azure.net`, `*.azurecr.io`, `*.search.windows.net`, an
+//!   account in reach's `*.dfs.core.windows.net`, `graph.microsoft.com`),
+//!   checked on every URL, `nextLink`s and cached addresses included;
 //! - an allowlist that reaches nothing is an error, never an empty answer;
 //! - a name found in two vaults, registries or search services is exit 2,
 //!   never a guess;
@@ -26,6 +28,8 @@ mod config;
 mod doctor;
 mod graph;
 mod kv;
+#[cfg(feature = "lake")]
+mod lake;
 mod net;
 #[cfg(test)]
 mod testing;
@@ -228,6 +232,37 @@ pub const NET: Domain = Domain {
     doctor: doctor::arm_doctor,
 };
 
+#[cfg(feature = "lake")]
+pub const LAKE: Domain = Domain {
+    name: "lake",
+    summary: "Data Lake Storage",
+    commands: &[
+        lake::account::list::ACCOUNT_LIST,
+        lake::container::list::CONTAINER_LIST,
+        lake::path::list::PATH_LIST,
+        lake::path::get::PATH_GET,
+        lake::table::list::TABLE_LIST,
+        lake::table::get::TABLE_GET,
+        lake::partition::list::PARTITION_LIST,
+        lake::access::get::ACCESS_GET,
+        lake::query::run::QUERY_RUN,
+    ],
+    synonyms: &[
+        ("adls", &["lake"]),
+        ("datalake", &["lake"]),
+        ("data lake", &["lake"]),
+        ("abfss", &["lake", "path"]),
+        ("blob", &["lake", "path"]),
+        ("storage", &["lake", "account"]),
+        ("parquet", &["lake"]),
+        ("folder", &["path"]),
+        ("partitions", &["partition"]),
+        ("tables", &["table"]),
+    ],
+    status: doctor::lake_status,
+    doctor: doctor::lake_doctor,
+};
+
 #[cfg(test)]
 mod tests {
     use agent_cli_core::{check_layout, check_registry};
@@ -236,13 +271,17 @@ mod tests {
 
     #[test]
     fn the_registry_keeps_every_rule() {
-        assert_eq!(
-            check_registry(&[KV, ACR, AKS, AISEARCH, ARM, NET]),
-            Vec::<String>::new()
-        );
-        assert_eq!(
-            check_layout(&[KV, ACR, AKS, AISEARCH, ARM, NET]),
-            Vec::<String>::new()
-        );
+        let domains = [
+            KV,
+            ACR,
+            AKS,
+            AISEARCH,
+            ARM,
+            NET,
+            #[cfg(feature = "lake")]
+            LAKE,
+        ];
+        assert_eq!(check_registry(&domains), Vec::<String>::new());
+        assert_eq!(check_layout(&domains), Vec::<String>::new());
     }
 }

@@ -41,7 +41,7 @@
 #                                        # prints it); with no email, Bearer
 
 # [azure]
-# kv, acr, aks, aisearch, arm and net sign in with your `az login`; nothing is
+# kv, acr, aks, aisearch, arm, net and lake sign in with your `az login`; nothing is
 # required. An empty or missing list means everything the login reaches; a
 # list is an allowlist that also sets the order rows come in. Each takes a
 # string or a list. Add the section (even empty) for `agent-cli doctor` to
@@ -55,6 +55,10 @@
 # indexers, Search Service Contributor and Search Index Data Contributor to
 # change them), else an admin key fetched from ARM per run, which needs
 # Contributor or Search Service Contributor.
+# storage_accounts = ["contosolake"]    # lake: accounts with a hierarchical
+#                                        # namespace; reading data needs a data
+#                                        # role (Storage Blob Data Reader) or ACLs,
+#                                        # since Owner on the account grants none
 # refresh = 300                          # seconds the resource inventory,
 #                                        # subscriptions, api-versions, registry
 #                                        # counts and index fields are cached;
