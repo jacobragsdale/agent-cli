@@ -31,7 +31,9 @@ Sign-in is one section with a list of instances, `doctor` checks each with
 and `scripts/seed/redis.py` fills them: 200k keys in real patterns
 (`order:{id}`, `session:{guid}`, `config:feature-flags`), TTLs mixed with
 persistent keys, a 20 MB string, a 100k-field hash, a list, set, sorted set
-and stream, a gzip value, and `config:feature-flags` differing between the
+and stream, values as the apps write them (JSON, gzip and zlib JSON, a zstd
+blob, a Django-style pickle at `:1:report:7`, a .NET `IDistributedCache`
+hash), and `config:feature-flags` differing between the
 two. Six tasks against `redis-cli`:
 
 1. When does `session:…` expire, and when was it last read?
@@ -55,8 +57,8 @@ commands in one pipelined round trip where they do not depend on each other.
 | `redis instance list` | per instance: `INFO server memory stats clients replication keyspace` | one row each: `id`, host, `ok` or `error`, version, role, `used_pct`, `evicted_keys`, `clients`, `keys`. An unreachable instance is a row with `error`, not a failure. |
 | `redis instance get [NAME]` | `INFO` (default sections) | version, role, `started_at`; memory (used, peak, `maxmemory`, `free`, `used_pct`, rss, fragmentation, `maxmemory_policy`); keys per db (keys, with expiry, average TTL); stats since start (hits, misses, `hit_ratio`, `evicted_keys`, `expired_keys`, ops/s, rejected connections); clients (connected, blocked, max); persistence (`last_save_at`, last bgsave status, AOF on); replication (role, replicas, link status, lag). |
 | `redis key list [--match P] [--type T] [--by size [--sample N]] [--limit 50]` | `DBSIZE`; `SCAN c MATCH P COUNT 1000 TYPE T` until `--limit` rows, cursor 0 or the deadline; per page, pipelined `TYPE`, `PEXPIRETIME`, `MEMORY USAGE`, `OBJECT IDLETIME` | rows: `id` (the key), type, `size`, `expires_at` (absent when persistent), `last_access`. `--by size` scans up to `--sample` keys (10,000) and prints the largest. |
-| `redis key get KEY [--limit 50]` | `TYPE`, `PEXPIRETIME`, `MEMORY USAGE`, `OBJECT ENCODING`, `OBJECT IDLETIME`, then by type: `STRLEN` + `GETRANGE 0 8191`; `HLEN` + `HSCAN`; `LLEN` + `LRANGE`; `SCARD` + `SSCAN`; `ZCARD` + `ZRANGE … WITHSCORES`; `XLEN` + `XREVRANGE … COUNT` | type, encoding, `length`, `size`, `expires_at`, `last_access`, `value`. A string is JSON when it parses whole, else text, else base64 with `binary: true`. A string past 8 KB prints its first 8 KB with `truncated: true` and a note naming `--output FILE`, which saves the whole value. A collection prints its first `--limit` items, long strings cut as `aisearch document list` cuts them. |
-| `redis key diff A B` | `key get`'s reads on each side, the whole value up to 1 MB a side (a larger one compares by length, noted) | core's `diff`: sides `[INSTANCE:]KEY`, environments inferred from the two instance names. Compared: type, value (JSON as JSON, text by lines, a hash keyed by field, a set as a set, a sorted set keyed by member), and whether it expires at all. Noise: `size`, encoding, `last_access`, the `expires_at` time itself. |
+| `redis key get KEY [--limit 50]` | `TYPE`, `PEXPIRETIME`, `MEMORY USAGE`, `OBJECT ENCODING`, `OBJECT IDLETIME`, then by type: `STRLEN` + `GETRANGE` of up to 1 MB; `HLEN` + `HSCAN`; `LLEN` + `LRANGE`; `SCARD` + `SSCAN`; `ZCARD` + `ZRANGE … WITHSCORES`; `XLEN` + `XREVRANGE … COUNT` | type, encoding, `length`, `size`, `expires_at`, `last_access`, `value`, decoded as Values says. A value past 8 KB decoded prints its first 8 KB with `truncated: true` and a note naming `--output FILE`, which saves the whole value. A collection prints its first `--limit` items, long strings cut as `aisearch document list` cuts them. |
+| `redis key diff A B` | `key get`'s reads on each side, the whole value up to 1 MB a side (a larger one compares by length, noted) | core's `diff`: sides `[INSTANCE:]KEY`, environments inferred from the two instance names. Compared: type, `compression`, the decoded value (gzip JSON in qa and plain JSON in prod compare by content; JSON as JSON, text by lines, a hash keyed by field, a set as a set, a sorted set keyed by member), and whether it expires at all. Noise: `size`, encoding, `last_access`, the `expires_at` time itself. |
 | `redis slowlog list [--since] [--limit 50]` | `SLOWLOG GET 128` | rows: `at` (UTC), `duration_ms`, `command` (its name), `key` (the first key argument, when the command has one), `client`, `client_name`. Other arguments are values and never print. |
 | `redis client list [--limit 50]` | `CLIENT LIST` | rows: `addr`, `name`, `user`, `db`, `connected_at`, `last_command_at`, `command`, flags, our own connection left out. |
 
@@ -71,7 +73,32 @@ Lifespan: Redis keeps no creation time. `expires_at` comes from
 `PEXPIRETIME`, `last_access` from `OBJECT IDLETIME`; under an LFU
 `maxmemory_policy` idle time is not tracked, so `access_frequency` from
 `OBJECT FREQ` takes its place. A sliding expiry the application renews on
-read looks like any other TTL.
+read looks like any other TTL, except in a .NET entry, which says so.
+
+## Values
+
+Most caches are not compressed: redis-py, Django's cache, django-redis,
+Flask-Caching and .NET's `IDistributedCache` store values as they are by
+default, and teams add compression when values grow. So `key get` and `key
+diff` decode by what the bytes are, never by configuration, in this order:
+
+1. A hash of exactly `absexp`, `sldexp` and `data` is a .NET
+   `IDistributedCache` entry: `absolute_expires_at` and `sliding` (a `Span`)
+   from its ticks, and `data` decoded by the steps below. Any other hash is
+   a hash.
+2. gzip (`1f 8b`) or zlib (`78` then `01`, `5e`, `9c` or `da`) is
+   decompressed, up to 1 MB, and named in `compression`. A value that fails
+   to decompress is taken as it is: a text value may begin with `x^`.
+3. JSON when it parses whole, else UTF-8 text.
+4. A pickle (`80` then a protocol byte, 2 to 5) is `format: "pickle"` with
+   no value and a note naming `--output FILE` and `python -m pickletools
+   FILE`, which disassembles it without running it. `pickle.loads` would
+   run the classes a pickle names, so nothing loads one.
+5. zstd (`28 b5 2f fd`), an lz4 frame (`04 22 4d 18`) and xz (`fd 37 7a 58
+   5a 00`) are named in `compression` and print as base64; their pure-Rust
+   decoders (ruzstd, lz4_flex) come when a real value shows one. Anything
+   else is base64 with `binary: true`: MessagePack, snappy and brotli carry
+   no magic bytes, so they land here.
 
 ## Ids
 
@@ -126,7 +153,8 @@ trust_cert = true      # accept a self-signed certificate
   dev server. The password goes only to the instance's own host.
 
 TLS is rustls 0.23 with `rustls-platform-verifier` 0.7, both already built
-for ureq: two direct dependency lines, nothing new compiled. No `redis`
+for ureq, and gzip and zlib are flate2 1.1, also ureq's: three direct
+dependency lines, nothing new compiled. No `redis`
 crate: read-only RESP2 over a `TcpStream` is a writer of arrays and a parser
 of five reply types.
 
@@ -187,17 +215,18 @@ every command against the two seeded containers under
 
 ## Open questions
 
-1. Are the apps .NET with `IDistributedCache`? Its entries are hashes of
-   `absexp`, `sldexp` and `data`; `key get` could print the absolute and
-   sliding expiry as times and decode `data` as the value.
-2. Are values compressed (gzip, MessagePack)? Decode gzip only if the trial
-   or work shows it.
-3. VERIFY(work): which commands each Azure kind allows its principal.
+Python writes most of the caches and .NET some, no project uses RedisJSON,
+and no one knows yet whether values are compressed.
+
+1. Which Python libraries write the caches? redis-py with `json.dumps`
+   needs nothing more; Django's cache and Flask-Caching pickle by default.
+   If pickles are common at work, a pickle reader that never runs code
+   (builtins as JSON, a class as its name and arguments) replaces the
+   pickletools note.
+2. VERIFY(work): which commands each Azure kind allows its principal.
    Azure's built-in "Data Reader" access policy may refuse `INFO`,
    `SLOWLOG` and `CLIENT LIST`; a custom policy may be needed for
    `instance get`. Azure Managed Redis may leave `rdb_*` and some memory
    fields out of `INFO`, so every field is optional.
-4. VERIFY(work): the Entra user for `AUTH` is the token's `oid` on both
+3. VERIFY(work): the Entra user for `AUTH` is the token's `oid` on both
    Azure kinds.
-5. RedisJSON values (type `ReJSON-RL`) on Azure Managed Redis: add
-   `JSON.GET` to the allowlist if any project uses them.
