@@ -7880,5 +7880,519 @@
     }
    ]
   }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/serviceendpoint/endpoints?api-version=7.1",
+  "note": "service connections: contoso-prod (still holds the secret that expired 2026-09-20), contoso-dev, contosoacr",
+  "answer": {
+   "count": 3,
+   "value": [
+    {
+     "data": {
+      "environment": "AzureCloud",
+      "scopeLevel": "Subscription",
+      "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+      "subscriptionName": "contoso-prod",
+      "creationMode": "Manual",
+      "appObjectId": "",
+      "spnObjectId": "",
+      "azureSpnRoleAssignmentId": "",
+      "azureSpnPermissions": ""
+     },
+     "id": "00000000-0000-4000-8000-0000000ad5c1",
+     "name": "contoso-prod",
+     "type": "azurerm",
+     "url": "https://management.azure.com/",
+     "createdBy": {
+      "displayName": "Sam Lee",
+      "uniqueName": "sam@contoso.com"
+     },
+     "description": "Deploys api and worker to contoso-prod",
+     "authorization": {
+      "parameters": {
+       "tenantid": "00000000-0000-4000-8000-00000000a001",
+       "serviceprincipalid": "00000000-0000-4000-8000-000000005d01",
+       "authenticationType": "spnKey",
+       "serviceprincipalkey": null
+      },
+      "scheme": "ServicePrincipal"
+     },
+     "isShared": false,
+     "isReady": true,
+     "owner": "Library",
+     "serviceEndpointProjectReferences": [
+      {
+       "projectReference": {
+        "id": "00000000-0000-4000-8000-00000000f001",
+        "name": "Fabrikam"
+       },
+       "name": "contoso-prod",
+       "description": "Deploys api and worker to contoso-prod"
+      }
+     ]
+    },
+    {
+     "data": {
+      "environment": "AzureCloud",
+      "scopeLevel": "Subscription",
+      "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+      "subscriptionName": "contoso-prod",
+      "creationMode": "Automatic",
+      "appObjectId": "00000000-0000-4000-8000-000000005f02",
+      "spnObjectId": "00000000-0000-4000-8000-000000005f03",
+      "azureSpnRoleAssignmentId": "",
+      "azureSpnPermissions": "",
+      "workloadIdentityFederationIssuerType": "AzureDevOps"
+     },
+     "id": "00000000-0000-4000-8000-0000000ad5c2",
+     "name": "contoso-dev",
+     "type": "azurerm",
+     "url": "https://management.azure.com/",
+     "createdBy": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com"
+     },
+     "description": "",
+     "authorization": {
+      "parameters": {
+       "tenantid": "00000000-0000-4000-8000-00000000a001",
+       "serviceprincipalid": "00000000-0000-4000-8000-000000005f01",
+       "workloadIdentityFederationIssuer": "https://vstoken.dev.azure.com/00000000-0000-4000-8000-0000000ad001",
+       "workloadIdentityFederationSubject": "sc://contoso/Fabrikam/contoso-dev"
+      },
+      "scheme": "WorkloadIdentityFederation"
+     },
+     "isShared": false,
+     "isReady": true,
+     "owner": "Library",
+     "serviceEndpointProjectReferences": [
+      {
+       "projectReference": {
+        "id": "00000000-0000-4000-8000-00000000f001",
+        "name": "Fabrikam"
+       },
+       "name": "contoso-dev",
+       "description": ""
+      }
+     ]
+    },
+    {
+     "data": {
+      "registrytype": "Others"
+     },
+     "id": "00000000-0000-4000-8000-0000000ad5c3",
+     "name": "contosoacr",
+     "type": "dockerregistry",
+     "url": "https://contosoacr.azurecr.io",
+     "createdBy": {
+      "displayName": "Priya Patel",
+      "uniqueName": "priya@contoso.com"
+     },
+     "description": "Pushes images from api-ci",
+     "authorization": {
+      "parameters": {
+       "registry": "https://contosoacr.azurecr.io",
+       "username": "contosoacr",
+       "password": null,
+       "email": ""
+      },
+      "scheme": "UsernamePassword"
+     },
+     "isShared": false,
+     "isReady": true,
+     "owner": "Library",
+     "serviceEndpointProjectReferences": [
+      {
+       "projectReference": {
+        "id": "00000000-0000-4000-8000-00000000f001",
+        "name": "Fabrikam"
+       },
+       "name": "contosoacr",
+       "description": "Pushes images from api-ci"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/serviceendpoint/endpoints?type=azurerm&api-version=7.1",
+  "answer": {
+   "count": 2,
+   "value": [
+    {
+     "data": {
+      "environment": "AzureCloud",
+      "scopeLevel": "Subscription",
+      "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+      "subscriptionName": "contoso-prod",
+      "creationMode": "Manual",
+      "appObjectId": "",
+      "spnObjectId": "",
+      "azureSpnRoleAssignmentId": "",
+      "azureSpnPermissions": ""
+     },
+     "id": "00000000-0000-4000-8000-0000000ad5c1",
+     "name": "contoso-prod",
+     "type": "azurerm",
+     "url": "https://management.azure.com/",
+     "createdBy": {
+      "displayName": "Sam Lee",
+      "uniqueName": "sam@contoso.com"
+     },
+     "description": "Deploys api and worker to contoso-prod",
+     "authorization": {
+      "parameters": {
+       "tenantid": "00000000-0000-4000-8000-00000000a001",
+       "serviceprincipalid": "00000000-0000-4000-8000-000000005d01",
+       "authenticationType": "spnKey",
+       "serviceprincipalkey": null
+      },
+      "scheme": "ServicePrincipal"
+     },
+     "isShared": false,
+     "isReady": true,
+     "owner": "Library",
+     "serviceEndpointProjectReferences": [
+      {
+       "projectReference": {
+        "id": "00000000-0000-4000-8000-00000000f001",
+        "name": "Fabrikam"
+       },
+       "name": "contoso-prod",
+       "description": "Deploys api and worker to contoso-prod"
+      }
+     ]
+    },
+    {
+     "data": {
+      "environment": "AzureCloud",
+      "scopeLevel": "Subscription",
+      "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+      "subscriptionName": "contoso-prod",
+      "creationMode": "Automatic",
+      "appObjectId": "00000000-0000-4000-8000-000000005f02",
+      "spnObjectId": "00000000-0000-4000-8000-000000005f03",
+      "azureSpnRoleAssignmentId": "",
+      "azureSpnPermissions": "",
+      "workloadIdentityFederationIssuerType": "AzureDevOps"
+     },
+     "id": "00000000-0000-4000-8000-0000000ad5c2",
+     "name": "contoso-dev",
+     "type": "azurerm",
+     "url": "https://management.azure.com/",
+     "createdBy": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com"
+     },
+     "description": "",
+     "authorization": {
+      "parameters": {
+       "tenantid": "00000000-0000-4000-8000-00000000a001",
+       "serviceprincipalid": "00000000-0000-4000-8000-000000005f01",
+       "workloadIdentityFederationIssuer": "https://vstoken.dev.azure.com/00000000-0000-4000-8000-0000000ad001",
+       "workloadIdentityFederationSubject": "sc://contoso/Fabrikam/contoso-dev"
+      },
+      "scheme": "WorkloadIdentityFederation"
+     },
+     "isShared": false,
+     "isReady": true,
+     "owner": "Library",
+     "serviceEndpointProjectReferences": [
+      {
+       "projectReference": {
+        "id": "00000000-0000-4000-8000-00000000f001",
+        "name": "Fabrikam"
+       },
+       "name": "contoso-dev",
+       "description": ""
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/serviceendpoint/endpoints/00000000-0000-4000-8000-0000000ad5c1?api-version=7.1",
+  "answer": {
+   "data": {
+    "environment": "AzureCloud",
+    "scopeLevel": "Subscription",
+    "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+    "subscriptionName": "contoso-prod",
+    "creationMode": "Manual",
+    "appObjectId": "",
+    "spnObjectId": "",
+    "azureSpnRoleAssignmentId": "",
+    "azureSpnPermissions": ""
+   },
+   "id": "00000000-0000-4000-8000-0000000ad5c1",
+   "name": "contoso-prod",
+   "type": "azurerm",
+   "url": "https://management.azure.com/",
+   "createdBy": {
+    "displayName": "Sam Lee",
+    "uniqueName": "sam@contoso.com"
+   },
+   "description": "Deploys api and worker to contoso-prod",
+   "authorization": {
+    "parameters": {
+     "tenantid": "00000000-0000-4000-8000-00000000a001",
+     "serviceprincipalid": "00000000-0000-4000-8000-000000005d01",
+     "authenticationType": "spnKey",
+     "serviceprincipalkey": null
+    },
+    "scheme": "ServicePrincipal"
+   },
+   "isShared": false,
+   "isReady": true,
+   "owner": "Library",
+   "serviceEndpointProjectReferences": [
+    {
+     "projectReference": {
+      "id": "00000000-0000-4000-8000-00000000f001",
+      "name": "Fabrikam"
+     },
+     "name": "contoso-prod",
+     "description": "Deploys api and worker to contoso-prod"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/serviceendpoint/endpoints?endpointNames=contoso-prod&api-version=7.1",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "data": {
+      "environment": "AzureCloud",
+      "scopeLevel": "Subscription",
+      "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+      "subscriptionName": "contoso-prod",
+      "creationMode": "Manual",
+      "appObjectId": "",
+      "spnObjectId": "",
+      "azureSpnRoleAssignmentId": "",
+      "azureSpnPermissions": ""
+     },
+     "id": "00000000-0000-4000-8000-0000000ad5c1",
+     "name": "contoso-prod",
+     "type": "azurerm",
+     "url": "https://management.azure.com/",
+     "createdBy": {
+      "displayName": "Sam Lee",
+      "uniqueName": "sam@contoso.com"
+     },
+     "description": "Deploys api and worker to contoso-prod",
+     "authorization": {
+      "parameters": {
+       "tenantid": "00000000-0000-4000-8000-00000000a001",
+       "serviceprincipalid": "00000000-0000-4000-8000-000000005d01",
+       "authenticationType": "spnKey",
+       "serviceprincipalkey": null
+      },
+      "scheme": "ServicePrincipal"
+     },
+     "isShared": false,
+     "isReady": true,
+     "owner": "Library",
+     "serviceEndpointProjectReferences": [
+      {
+       "projectReference": {
+        "id": "00000000-0000-4000-8000-00000000f001",
+        "name": "Fabrikam"
+       },
+       "name": "contoso-prod",
+       "description": "Deploys api and worker to contoso-prod"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/serviceendpoint/endpoints/00000000-0000-4000-8000-0000000ad5c2?api-version=7.1",
+  "answer": {
+   "data": {
+    "environment": "AzureCloud",
+    "scopeLevel": "Subscription",
+    "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+    "subscriptionName": "contoso-prod",
+    "creationMode": "Automatic",
+    "appObjectId": "00000000-0000-4000-8000-000000005f02",
+    "spnObjectId": "00000000-0000-4000-8000-000000005f03",
+    "azureSpnRoleAssignmentId": "",
+    "azureSpnPermissions": "",
+    "workloadIdentityFederationIssuerType": "AzureDevOps"
+   },
+   "id": "00000000-0000-4000-8000-0000000ad5c2",
+   "name": "contoso-dev",
+   "type": "azurerm",
+   "url": "https://management.azure.com/",
+   "createdBy": {
+    "displayName": "Jane Doe",
+    "uniqueName": "jane@contoso.com"
+   },
+   "description": "",
+   "authorization": {
+    "parameters": {
+     "tenantid": "00000000-0000-4000-8000-00000000a001",
+     "serviceprincipalid": "00000000-0000-4000-8000-000000005f01",
+     "workloadIdentityFederationIssuer": "https://vstoken.dev.azure.com/00000000-0000-4000-8000-0000000ad001",
+     "workloadIdentityFederationSubject": "sc://contoso/Fabrikam/contoso-dev"
+    },
+    "scheme": "WorkloadIdentityFederation"
+   },
+   "isShared": false,
+   "isReady": true,
+   "owner": "Library",
+   "serviceEndpointProjectReferences": [
+    {
+     "projectReference": {
+      "id": "00000000-0000-4000-8000-00000000f001",
+      "name": "Fabrikam"
+     },
+     "name": "contoso-dev",
+     "description": ""
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/serviceendpoint/endpoints?endpointNames=contoso-dev&api-version=7.1",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "data": {
+      "environment": "AzureCloud",
+      "scopeLevel": "Subscription",
+      "subscriptionId": "00000000-0000-4000-8000-000000005b01",
+      "subscriptionName": "contoso-prod",
+      "creationMode": "Automatic",
+      "appObjectId": "00000000-0000-4000-8000-000000005f02",
+      "spnObjectId": "00000000-0000-4000-8000-000000005f03",
+      "azureSpnRoleAssignmentId": "",
+      "azureSpnPermissions": "",
+      "workloadIdentityFederationIssuerType": "AzureDevOps"
+     },
+     "id": "00000000-0000-4000-8000-0000000ad5c2",
+     "name": "contoso-dev",
+     "type": "azurerm",
+     "url": "https://management.azure.com/",
+     "createdBy": {
+      "displayName": "Jane Doe",
+      "uniqueName": "jane@contoso.com"
+     },
+     "description": "",
+     "authorization": {
+      "parameters": {
+       "tenantid": "00000000-0000-4000-8000-00000000a001",
+       "serviceprincipalid": "00000000-0000-4000-8000-000000005f01",
+       "workloadIdentityFederationIssuer": "https://vstoken.dev.azure.com/00000000-0000-4000-8000-0000000ad001",
+       "workloadIdentityFederationSubject": "sc://contoso/Fabrikam/contoso-dev"
+      },
+      "scheme": "WorkloadIdentityFederation"
+     },
+     "isShared": false,
+     "isReady": true,
+     "owner": "Library",
+     "serviceEndpointProjectReferences": [
+      {
+       "projectReference": {
+        "id": "00000000-0000-4000-8000-00000000f001",
+        "name": "Fabrikam"
+       },
+       "name": "contoso-dev",
+       "description": ""
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/serviceendpoint/endpoints/00000000-0000-4000-8000-0000000ad5c3?api-version=7.1",
+  "answer": {
+   "data": {
+    "registrytype": "Others"
+   },
+   "id": "00000000-0000-4000-8000-0000000ad5c3",
+   "name": "contosoacr",
+   "type": "dockerregistry",
+   "url": "https://contosoacr.azurecr.io",
+   "createdBy": {
+    "displayName": "Priya Patel",
+    "uniqueName": "priya@contoso.com"
+   },
+   "description": "Pushes images from api-ci",
+   "authorization": {
+    "parameters": {
+     "registry": "https://contosoacr.azurecr.io",
+     "username": "contosoacr",
+     "password": null,
+     "email": ""
+    },
+    "scheme": "UsernamePassword"
+   },
+   "isShared": false,
+   "isReady": true,
+   "owner": "Library",
+   "serviceEndpointProjectReferences": [
+    {
+     "projectReference": {
+      "id": "00000000-0000-4000-8000-00000000f001",
+      "name": "Fabrikam"
+     },
+     "name": "contosoacr",
+     "description": "Pushes images from api-ci"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://dev.azure.com/contoso/Fabrikam/_apis/serviceendpoint/endpoints?endpointNames=contosoacr&api-version=7.1",
+  "answer": {
+   "count": 1,
+   "value": [
+    {
+     "data": {
+      "registrytype": "Others"
+     },
+     "id": "00000000-0000-4000-8000-0000000ad5c3",
+     "name": "contosoacr",
+     "type": "dockerregistry",
+     "url": "https://contosoacr.azurecr.io",
+     "createdBy": {
+      "displayName": "Priya Patel",
+      "uniqueName": "priya@contoso.com"
+     },
+     "description": "Pushes images from api-ci",
+     "authorization": {
+      "parameters": {
+       "registry": "https://contosoacr.azurecr.io",
+       "username": "contosoacr",
+       "password": null,
+       "email": ""
+      },
+      "scheme": "UsernamePassword"
+     },
+     "isShared": false,
+     "isReady": true,
+     "owner": "Library",
+     "serviceEndpointProjectReferences": [
+      {
+       "projectReference": {
+        "id": "00000000-0000-4000-8000-00000000f001",
+        "name": "Fabrikam"
+       },
+       "name": "contosoacr",
+       "description": "Pushes images from api-ci"
+      }
+     ]
+    }
+   ]
+  }
  }
 ]

@@ -26,6 +26,7 @@ mod query;
 mod relation;
 mod repo;
 mod run;
+mod serviceconnection;
 mod sprint;
 mod team;
 mod test;
@@ -101,6 +102,8 @@ pub const DOMAIN: Domain = Domain {
         approval::list::APPROVAL_LIST,
         approval::approve::APPROVAL_APPROVE,
         approval::reject::APPROVAL_REJECT,
+        serviceconnection::list::SERVICECONNECTION_LIST,
+        serviceconnection::get::SERVICECONNECTION_GET,
     ],
     synonyms: &[
         ("ticket", &["workitem"]),
@@ -160,6 +163,6 @@ mod tests {
     fn the_registry_keeps_every_rule() {
         assert_eq!(check_registry(&[DOMAIN]), Vec::<String>::new());
         assert_eq!(check_layout(&[DOMAIN]), Vec::<String>::new());
-        assert_eq!(DOMAIN.commands.len(), 57);
+        assert_eq!(DOMAIN.commands.len(), 59);
     }
 }

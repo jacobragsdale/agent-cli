@@ -57,9 +57,59 @@ fn the_world_answers_what_a_trial_asks_of_ado() {
         ],
         &["ado", "approval", "list"],
         &["ado", "pipeline", "list"],
+        &["ado", "serviceconnection", "list", "--type", "azurerm"],
+        &["ado", "serviceconnection", "get", "contosoacr"],
     ] {
         ok(args);
     }
+}
+
+#[test]
+fn a_service_connection_names_the_entra_app_it_signs_in_as() {
+    let connections = ok(&[
+        "ado",
+        "serviceconnection",
+        "list",
+        "--fields",
+        "name,scheme,app_id",
+    ]);
+    assert_eq!(
+        connections,
+        json!([
+            {"name": "contoso-prod", "scheme": "ServicePrincipal",
+                "app_id": "00000000-0000-4000-8000-000000005d01"},
+            {"name": "contoso-dev", "scheme": "WorkloadIdentityFederation",
+                "app_id": "00000000-0000-4000-8000-000000005f01"},
+            {"name": "contosoacr", "scheme": "UsernamePassword"},
+        ])
+    );
+    let prod = ok(&["ado", "serviceconnection", "get", "contoso-prod"]);
+    assert_eq!(
+        prod,
+        ok(&[
+            "ado",
+            "serviceconnection",
+            "get",
+            "00000000-0000-4000-8000-0000000ad5c1"
+        ]),
+        "by name and by id"
+    );
+    assert_eq!(prod["creation_mode"], "Manual");
+    let dev = ok(&["ado", "serviceconnection", "get", "contoso-dev"]);
+    assert_eq!(
+        dev["service_principal"],
+        "00000000-0000-4000-8000-000000005f03"
+    );
+    assert_eq!(dev["subject"], "sc://contoso/Fabrikam/contoso-dev");
+    assert_eq!(
+        dev,
+        ok(&[
+            "ado",
+            "serviceconnection",
+            "get",
+            "00000000-0000-4000-8000-0000000ad5c2"
+        ])
+    );
 }
 
 /// The value of a field that holds a string.

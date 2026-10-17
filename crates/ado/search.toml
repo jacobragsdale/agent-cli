@@ -744,3 +744,27 @@ expect = "ado activity list"
 [[query]]
 text = "what has Priya been working on this week in azure devops"
 expect = "ado activity list"
+
+[[query]]
+text = "list service connections"
+expect = "ado serviceconnection list"
+
+[[query]]
+text = "which azurerm service connections does the project have"
+expect = "ado serviceconnection list"
+
+[[query]]
+text = "find the service endpoints our pipelines deploy with"
+expect = "ado serviceconnection list"
+
+[[query]]
+text = "which app id does the contoso-prod service connection use"
+expect = "ado serviceconnection get"
+
+[[query]]
+text = "show the contoso-dev service connection's workload identity federation subject"
+expect = "ado serviceconnection get"
+
+[[query]]
+text = "service principal object id behind the deploy service connection"
+expect = "ado serviceconnection get"
