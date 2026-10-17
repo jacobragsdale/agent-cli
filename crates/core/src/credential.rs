@@ -90,9 +90,7 @@ impl Credential {
                     .into()
             }),
             Source::Cmd(command) => {
-                let mut sh = Command::new("sh");
-                sh.args(["-c", command]);
-                let output = ctx.read(sh)?;
+                let output = ctx.read(shell(command))?;
                 let said = output.stdout.trim_end_matches(['\r', '\n']);
                 if !output.status.success() {
                     let why = output.stderr.trim();
@@ -113,6 +111,25 @@ impl Credential {
                 Ok(Secret::new(said))
             }
         }
+    }
+}
+
+/// `sh -c COMMAND`, or on Windows `cmd /D /S /C "COMMAND"`: `/S` takes the
+/// line between the outer quotes as written, and `/D` keeps an AutoRun from
+/// printing into the secret. Passed raw, as Rust's quoting is not cmd's.
+fn shell(command: &str) -> Command {
+    #[cfg(windows)]
+    {
+        let mut cmd = Command::new("cmd");
+        cmd.args(["/D", "/S", "/C"]);
+        std::os::windows::process::CommandExt::raw_arg(&mut cmd, format!("\"{command}\""));
+        cmd
+    }
+    #[cfg(not(windows))]
+    {
+        let mut sh = Command::new("sh");
+        sh.args(["-c", command]);
+        sh
     }
 }
 
@@ -182,6 +199,16 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_command_runs_under_cmd_with_its_quotes_as_written() {
+        let ctx = ctx(Setup::fake(FakeTransport::default()));
+        let secret = credential(None, None, Some(r#"echo "a b""#))
+            .resolve(&ctx)
+            .unwrap();
+        assert_eq!(secret.expose(), r#""a b""#);
     }
 
     #[test]

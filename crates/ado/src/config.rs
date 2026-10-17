@@ -230,7 +230,7 @@ pub(crate) fn az_defaults(path: Option<PathBuf>) -> (Option<String>, Option<Stri
 
 pub(crate) fn az_config_path() -> Option<PathBuf> {
     let dir = std::env::var_os("AZURE_CONFIG_DIR").map_or_else(
-        || std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".azure")),
+        || std::env::home_dir().map(|home| home.join(".azure")),
         |dir| Some(PathBuf::from(dir)),
     )?;
     Some(dir.join("azuredevops").join("config"))

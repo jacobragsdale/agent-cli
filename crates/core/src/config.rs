@@ -456,7 +456,7 @@ pub(crate) fn xdg_dir(variable: &str, fallback: &str) -> Option<PathBuf> {
     std::env::var_os(variable)
         .map(PathBuf::from)
         .filter(|path| path.is_absolute())
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(fallback)))
+        .or_else(|| std::env::home_dir().map(|home| home.join(fallback)))
 }
 
 #[cfg(test)]

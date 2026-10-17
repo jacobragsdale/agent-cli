@@ -34,6 +34,8 @@ pub fn run_until(mut command: Command, deadline: Instant) -> Result<Output> {
     let program = command.get_program().to_string_lossy().into_owned();
     #[cfg(unix)]
     std::os::unix::process::CommandExt::process_group(&mut command, 0);
+    #[cfg(windows)]
+    found(&mut command);
     let mut child = command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -103,6 +105,44 @@ fn kill_group(leader: u32) {
     let _ = leader;
 }
 
+/// Windows installs `az` as `az.cmd`, and `Command` tries a bare name only
+/// with `.exe`, so it is looked up as a shell would: each directory of the
+/// PATH the child gets, `.exe` before `.bat` and `.cmd`.
+#[cfg(windows)]
+fn found(command: &mut Command) {
+    let program = std::path::Path::new(command.get_program());
+    if program.extension().is_some() || program.components().count() > 1 {
+        return;
+    }
+    let path = command
+        .get_envs()
+        .find(|(key, _)| key.eq_ignore_ascii_case("PATH"))
+        .map_or_else(
+            || std::env::var_os("PATH"),
+            |(_, value)| value.map(ToOwned::to_owned),
+        )
+        .unwrap_or_default();
+    let Some(script) = std::env::split_paths(&path)
+        .flat_map(|dir| ["exe", "bat", "cmd"].map(|ext| dir.join(program).with_extension(ext)))
+        .find(|candidate| candidate.is_file())
+        .filter(|candidate| candidate.extension() != Some("exe".as_ref()))
+    else {
+        return;
+    };
+    let mut wrapped = Command::new(script);
+    wrapped.args(command.get_args());
+    for (key, value) in command.get_envs() {
+        match value {
+            Some(value) => wrapped.env(key, value),
+            None => wrapped.env_remove(key),
+        };
+    }
+    if let Some(dir) = command.get_current_dir() {
+        wrapped.current_dir(dir);
+    }
+    *command = wrapped;
+}
+
 /// Reads one pipe to its end on a thread of its own.
 fn drain(pipe: Option<impl Read + Send + 'static>) -> thread::JoinHandle<String> {
     thread::spawn(move || {
@@ -137,6 +177,17 @@ impl Op for Command {
 mod tests {
     use super::*;
     use crate::error::{Exit, describe};
+
+    #[cfg(windows)]
+    #[test]
+    fn a_bare_name_runs_a_cmd_script_on_the_path_the_child_gets() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("agent-cli-fake-az.cmd"), "@echo %1\r\n").unwrap();
+        let mut command = Command::new("agent-cli-fake-az");
+        command.arg("account").env("PATH", dir.path());
+        let output = run_until(command, Instant::now() + Duration::from_secs(10)).unwrap();
+        assert_eq!(output.stdout.trim(), "account");
+    }
 
     #[test]
     fn a_finished_child_hands_back_its_status_and_both_pipes() {

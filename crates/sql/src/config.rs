@@ -279,8 +279,8 @@ pub const AZURE_SQL: &str = "https://database.windows.net/";
 
 /// A leading `~/` is the home directory; nothing else is expanded.
 fn expand_home(path: &str) -> PathBuf {
-    match (path.strip_prefix("~/"), std::env::var_os("HOME")) {
-        (Some(rest), Some(home)) => PathBuf::from(home).join(rest),
+    match (path.strip_prefix("~/"), std::env::home_dir()) {
+        (Some(rest), Some(home)) => home.join(rest),
         _ => PathBuf::from(path),
     }
 }
@@ -339,7 +339,10 @@ trust_cert = true
             Some(PathBuf::from("/elsewhere/ic"))
         );
         let tilde = load("[sql]\noracle_client_dir = \"~/ic\"\n").unwrap();
-        assert!(tilde.client_dir.unwrap().ends_with("ic") && std::env::var_os("HOME").is_some());
+        assert_eq!(
+            tilde.client_dir,
+            std::env::home_dir().map(|home| home.join("ic"))
+        );
     }
 
     #[test]

@@ -6,6 +6,10 @@
 //! registers how to stop it ([`on_stop`]), and the first signal runs every
 //! such stop at once, waits for them at most [`GRACE`], says on stderr what
 //! it stopped and exits 128 + the signal. A second signal exits at once.
+// ponytail: no handler on Windows (signal-hook's iterator is Unix-only), so
+// what only the handler calls is unused there; Ctrl-C reaches the children
+// anyway. A console handler (the ctrlc crate) if a stop matters there.
+#![cfg_attr(not(unix), allow(dead_code))]
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};

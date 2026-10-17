@@ -1,0 +1,3 @@
+# A Windows checkout keeps LF: the reference and docs gate tests compare text,
+# and the scripts run under sh.
+* text=auto eol=lf
