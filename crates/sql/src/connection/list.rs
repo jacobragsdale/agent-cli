@@ -12,14 +12,15 @@ pub struct NoArgs {}
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct ConnectionRow {
     name: String,
-    /// mssql or oracle.
+    /// mssql, oracle or postgres.
     kind: &'static str,
     host: String,
     port: u16,
     database: Option<String>,
     /// Oracle's service name.
     service: Option<String>,
-    /// Empty when it signs in as the az login.
+    /// Empty when an mssql connection signs in as the az login; on postgres
+    /// the Entra user or group it signs in as.
     user: String,
     /// `az` when it signs in with the az login's Entra ID token.
     auth: Option<&'static str>,

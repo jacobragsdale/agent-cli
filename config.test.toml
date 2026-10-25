@@ -1,4 +1,4 @@
-# The two local containers scripts/db-up.sh starts (compose.yaml), for the
+# The three local containers scripts/db-up.sh starts (compose.yaml), for the
 # integration tests and dev loops. Committed on purpose: these credentials are
 # throwaway, localhost only, and open nothing but a disposable database.
 
@@ -23,3 +23,13 @@ port = 1521
 service = "FREEPDB1"
 user = "bench"
 password = "bench"
+
+[[sql.connection]]
+name = "local-postgres"
+kind = "postgres"
+host = "localhost"
+port = 5433
+database = "bench"
+user = "bench"
+password = "bench"
+trust_cert = true

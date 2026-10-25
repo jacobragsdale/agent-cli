@@ -15,13 +15,14 @@ use serde::Serialize;
 use serde_json::{Number, Value};
 
 use crate::config::{Connection, Kind};
-use crate::{mssql, oracle};
+use crate::{mssql, oracle, postgres};
 
 /// One result set, or one statement's count when it returned none.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, JsonSchema)]
 pub struct ResultSet {
     pub columns: Vec<String>,
-    /// As the server names them: `nvarchar`, `decimal`, `NUMBER(10,2)`.
+    /// As the server names them: `nvarchar`, `decimal`, `NUMBER(10,2)`,
+    /// `int4`.
     pub types: Vec<String>,
     /// Positional, in `columns` order. NULL is null; integers past 2^53,
     /// decimals and money are strings that keep their scale; binary is
@@ -113,7 +114,7 @@ pub struct Session {
 }
 
 /// A statement named a table or view the database does not have: SQL Server
-/// error 208, Oracle ORA-00942. The drivers raise it; [`Session::run`], which
+/// error 208, Oracle ORA-00942, Postgres 42P01. The drivers raise it; [`Session::run`], which
 /// knows the connection, turns it into exit 4 with the search that finds the
 /// right name.
 #[derive(Debug)]
@@ -151,6 +152,7 @@ impl UnknownObject {
 enum Driver {
     Mssql(mssql::Session),
     Oracle(oracle::Session),
+    Postgres(postgres::Session),
 }
 
 impl Session {
@@ -174,8 +176,9 @@ impl Session {
         }
     }
 
-    /// `read_only` makes an Oracle session read only itself; SQL Server has
-    /// no such thing for a session, so there the login is the guard.
+    /// `read_only` makes an Oracle or Postgres session read only itself; SQL
+    /// Server has no such thing for a session, so there the login is the
+    /// guard.
     pub fn open(
         spec: &Connection,
         password: &agent_cli_core::Secret,
@@ -188,6 +191,9 @@ impl Session {
             Kind::Mssql => Driver::Mssql(mssql::Session::open(spec, password, deadline)?),
             Kind::Oracle => Driver::Oracle(oracle::Session::open(
                 spec, password, client_dir, deadline, read_only,
+            )?),
+            Kind::Postgres => Driver::Postgres(postgres::Session::open(
+                spec, password, deadline, read_only,
             )?),
         };
         Ok(Self {
@@ -204,6 +210,7 @@ impl Session {
         let ran = match &mut self.driver {
             Driver::Mssql(session) => session.run(sql, fetch, deadline),
             Driver::Oracle(session) => session.run(sql, fetch, deadline),
+            Driver::Postgres(session) => session.run(sql, fetch, deadline),
         };
         ran.map_err(|error| match error.downcast::<UnknownObject>() {
             Ok(unknown) => Failure::not_found(unknown.message)
@@ -256,14 +263,21 @@ impl<T, F: FnOnce(&mut Session) -> Result<T>> Op for OnConnection<'_, F> {
 }
 
 /// The server refused the login itself: SQL Server error 18456, Oracle
-/// ORA-01017. The drivers make it exit 3 and keep the server's words, which
-/// is what tells it from the other exit 3 an open can be (no Oracle client).
+/// ORA-01017, Postgres 28P01 (or 28000 from LDAP, PAM or RADIUS). The
+/// drivers make it exit 3 and keep the server's words, which is what tells
+/// it from the other exit 3 an open can be (no Oracle client).
 fn refused_login(error: &anyhow::Error) -> bool {
     error.chain().any(|cause| {
         cause.downcast_ref::<Failure>().is_some_and(|failure| {
             failure.exit == agent_cli_core::Exit::Setup
-                && (failure.message.contains("(error 18456)")
-                    || failure.message.contains("ORA-01017"))
+                && [
+                    "(error 18456)",
+                    "ORA-01017",
+                    "(SQLSTATE 28P01)",
+                    "(SQLSTATE 28000)",
+                ]
+                .iter()
+                .any(|code| failure.message.contains(code))
         })
     })
 }
@@ -461,6 +475,12 @@ mod tests {
         assert!(refused_login(
             &setup("ORA-01017: invalid username/password").context("connection \"ora\"")
         ));
+        assert!(refused_login(&setup(
+            "cannot connect to db:5432/orders: password authentication failed for user \"app\" (SQLSTATE 28P01)"
+        )));
+        assert!(refused_login(&setup(
+            "cannot connect to db:5432/orders: LDAP authentication failed for user \"app\" (SQLSTATE 28000)"
+        )));
         assert!(!refused_login(&setup("Oracle client library not found")));
         assert!(!refused_login(&anyhow::Error::from(Failure::new(
             agent_cli_core::Exit::Failed,

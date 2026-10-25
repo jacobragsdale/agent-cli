@@ -4,13 +4,14 @@
 use serde_json::{Value, json};
 
 use super::detail::of_table;
-use super::{owner, qualified, quoted};
+use super::{owner, postgres, qualified, quoted};
 use crate::config::Kind;
 use crate::db::{maybe, text};
 
 /// A sequence's settings as text, so the DDL needs no number rules:
-/// SQL Server's `type, start, increment, min, max, cycling, current, cache,
-/// name`, Oracle's `min, max, increment, cycle, last number, cache, name`.
+/// SQL Server's and Postgres's `type, start, increment, min, max, cycling,
+/// current, cache, name`, Oracle's `min, max, increment, cycle, last number,
+/// cache, name`.
 pub(crate) fn sequence_sql(backend: Kind, schema: &str, name: Option<&str>) -> String {
     match backend {
         Kind::Mssql => format!(
@@ -32,6 +33,7 @@ pub(crate) fn sequence_sql(backend: Kind, schema: &str, name: Option<&str>) -> S
             owner(schema),
             of_table("sequence_name", name),
         ),
+        Kind::Postgres => postgres::sequence_sql(schema, name),
     }
 }
 
@@ -41,20 +43,25 @@ pub(crate) fn sequence_sql(backend: Kind, schema: &str, name: Option<&str>) -> S
 pub(crate) fn sequence_ddl(backend: Kind, schema: &str, name: &str, row: &[Value]) -> String {
     let qualified = qualified(backend, schema, name);
     match backend {
-        Kind::Mssql => format!(
-            "CREATE SEQUENCE {qualified} AS {} START WITH {} INCREMENT BY {} MINVALUE {} MAXVALUE {} {}\n-- current value {}",
-            text(row, 0),
-            text(row, 1),
-            text(row, 2),
-            text(row, 3),
-            text(row, 4),
-            if row.get(5) == Some(&Value::Bool(true)) {
-                "CYCLE"
-            } else {
-                "NO CYCLE"
-            },
-            text(row, 6),
-        ),
+        Kind::Mssql | Kind::Postgres => {
+            let ddl = format!(
+                "CREATE SEQUENCE {qualified} AS {} START WITH {} INCREMENT BY {} MINVALUE {} MAXVALUE {} {}",
+                text(row, 0),
+                text(row, 1),
+                text(row, 2),
+                text(row, 3),
+                text(row, 4),
+                if row.get(5) == Some(&Value::Bool(true)) {
+                    "CYCLE"
+                } else {
+                    "NO CYCLE"
+                },
+            );
+            match maybe(row, 6) {
+                Some(current) => format!("{ddl}\n-- current value {current}"),
+                None => ddl,
+            }
+        }
         Kind::Oracle => format!(
             "CREATE SEQUENCE {qualified} START WITH {} INCREMENT BY {} MINVALUE {} MAXVALUE {} {}",
             text(row, 4),
@@ -74,7 +81,7 @@ pub(crate) fn sequence_ddl(backend: Kind, schema: &str, name: &str, row: &[Value
 /// where it stands, which moves with every insert.
 pub(crate) fn sequence_row(backend: Kind, row: &[Value]) -> Value {
     let (data_type, increment, min, max, cycle, cache) = match backend {
-        Kind::Mssql => (
+        Kind::Mssql | Kind::Postgres => (
             maybe(row, 0),
             text(row, 2),
             text(row, 3),

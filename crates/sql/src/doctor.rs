@@ -86,6 +86,7 @@ pub(crate) fn doctor(ctx: &Ctx) -> Vec<Check> {
         let probe = match spec.kind {
             Kind::Mssql => "select 1",
             Kind::Oracle => "select 1 from dual",
+            Kind::Postgres => "select 1",
         };
         let started = Instant::now();
         let op = OnConnection {

@@ -126,3 +126,45 @@ expect = "sql schema diff"
 [[query]]
 text = "compare two database schemas"
 expect = "sql schema diff"
+
+# ---------- Postgres ----------
+
+[[query]]
+text = "query the postgres database"
+expect = "sql query run"
+
+[[query]]
+text = "run a select on postgresql"
+expect = "sql query run"
+
+[[query]]
+text = "show the pg function source"
+expect = "sql object get"
+
+[[query]]
+text = "get the definition of a plpgsql function in postgres"
+expect = "sql object get"
+
+[[query]]
+text = "list the materialized views in postgres"
+expect = "sql object list"
+
+[[query]]
+text = "list tables in the pg database"
+expect = "sql object list"
+
+[[query]]
+text = "list postgres schemas"
+expect = "sql schema list"
+
+[[query]]
+text = "explain analyze a slow postgres query"
+expect = "sql query bench"
+
+[[query]]
+text = "diff a postgres table between staging and prod"
+expect = "sql object diff"
+
+[[query]]
+text = "which postgres connections are configured"
+expect = "sql connection list"

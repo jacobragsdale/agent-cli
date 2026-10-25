@@ -6,6 +6,7 @@
 # edition, which Microsoft licenses for development and test use only --
 # never for production. Oracle Database Free is free to use within its
 # resource limits. ACCEPT_EULA=Y accepts the SQL Server EULA on your behalf.
+# Postgres is under the PostgreSQL License.
 name: agent-cli
 
 services:
@@ -56,6 +57,36 @@ services:
       retries: 90
       start_period: 30s
 
+  # TLS on with the image's self-signed certificate, so both encrypt = true
+  # (with trust_cert) and encrypt = false are tried. On 5433, so a Postgres
+  # of your own on 5432 is left alone.
+  postgres:
+    image: postgres:18
+    container_name: agent-cli-postgres
+    command:
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem
+      - -c
+      - ssl_key_file=/etc/ssl/private/ssl-cert-snakeoil.key
+    environment:
+      POSTGRES_USER: bench
+      POSTGRES_PASSWORD: bench
+      POSTGRES_DB: bench
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      # Over TCP: the image's first-run server listens only on its socket.
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "bench", "-d", "bench"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+      start_period: 5s
+
 volumes:
   mssql-data:
   oracle-data:
+  postgres-data:

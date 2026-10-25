@@ -23,7 +23,7 @@ pub struct RunArgs {
     #[arg(long, default_value_t = 1000, value_parser = clap::value_parser!(u64).range(1..))]
     max_rows: u64,
     /// The SQL, or - to read it from stdin. SQL Server splits at GO lines,
-    /// Oracle at ; and / lines
+    /// Oracle at ; and / lines, Postgres at ;
     #[arg(allow_hyphen_values = true, required_unless_present = "sql_file")]
     sql: Option<String>,
     /// The SQL from a file
@@ -75,7 +75,7 @@ fn query_run(ctx: &Ctx, args: RunArgs) -> Result<QueryResult> {
                         match statements.len() {
                             1 => error,
                             count => {
-                                let own = matches!(spec.kind, Kind::Mssql)
+                                let own = matches!(spec.kind, Kind::Mssql | Kind::Postgres)
                                     && statements[..=index]
                                         .iter()
                                         .any(|it| split::controls_transaction(&it.sql, spec.kind));
@@ -87,12 +87,17 @@ fn query_run(ctx: &Ctx, args: RunArgs) -> Result<QueryResult> {
                 done.push(summary(&ran.sets));
                 results.extend(ran.sets);
             }
-            if wrote && matches!(spec.kind, Kind::Mssql) && rolled_back(session, deadline)? {
+            if wrote && spec.kind != Kind::Oracle && rolled_back(session, spec.kind, deadline)? {
+                let how = match spec.kind {
+                    Kind::Postgres => "a BEGIN with no COMMIT",
+                    _ => "a BEGIN TRAN with no COMMIT, or SET IMPLICIT_TRANSACTIONS ON",
+                };
                 return Err(Failure::new(
                     Exit::Failed,
-                    "the script left a transaction open (a BEGIN TRAN with no COMMIT, or SET \
-                     IMPLICIT_TRANSACTIONS ON), so it was rolled back: nothing that ran inside \
-                     it was kept",
+                    format!(
+                        "the script left a transaction open ({how}), so it was rolled back: \
+                         nothing that ran inside it was kept"
+                    ),
                 )
                 .hint("end the script with COMMIT, then run it again")
                 .into());
@@ -124,11 +129,16 @@ fn query_run(ctx: &Ctx, args: RunArgs) -> Result<QueryResult> {
     })
 }
 
-/// Whether SQL Server still holds a transaction the script began and never
+/// Whether the server still holds a transaction the script began and never
 /// committed. The session's end would roll it back unseen; this rolls it
-/// back now, so the command can say so instead of reporting it done.
-fn rolled_back(session: &mut Session, deadline: Instant) -> Result<bool> {
-    let ran = session.run("select @@trancount", Fetch::ALL, deadline)?;
+/// back now, so the command can say so instead of reporting it done. On
+/// Postgres only one that changed something counts, as only it loses work.
+fn rolled_back(session: &mut Session, kind: Kind, deadline: Instant) -> Result<bool> {
+    let probe = match kind {
+        Kind::Postgres => "select (pg_current_xact_id_if_assigned() is not null)::int",
+        _ => "select @@trancount",
+    };
+    let ran = session.run(probe, Fetch::ALL, deadline)?;
     let open = ran
         .sets
         .first()

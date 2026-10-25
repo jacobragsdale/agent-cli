@@ -7,16 +7,16 @@
 //!
 //! [[sql.connection]]
 //! name = "local-mssql"   # unique; what --conn takes
-//! kind = "mssql"         # or "oracle"
+//! kind = "mssql"         # or "oracle" or "postgres"
 //! host = "localhost"
-//! port = 1433            # left out: 1433 for mssql, 1521 for oracle
-//! database = "contoso"   # mssql only
+//! port = 1433            # left out: 1433 mssql, 1521 oracle, 5432 postgres
+//! database = "contoso"   # mssql and postgres
 //! user = "app"
 //! password_env = "VAR"   # or password = "...", password_cmd = "pass show x",
 //!                        # or password_kv = "VAULT/SECRET" (Key Vault)
 //! read_only = true       # refuse every change here; overrides [sql] read_only
-//! trust_cert = true      # mssql only, default false
-//! encrypt = true         # mssql only, default true
+//! trust_cert = true      # mssql and postgres, default false
+//! encrypt = true         # mssql and postgres, default true: TLS required
 //!
 //! [[sql.connection]]     # Synapse serverless, Azure SQL: Entra ID sign-in
 //! name = "synapse"
@@ -24,6 +24,14 @@
 //! host = "contoso-ws-ondemand.sql.azuresynapse.net"
 //! database = "master"
 //! auth = "az"            # your az login's token, no user or password
+//!
+//! [[sql.connection]]     # Azure Database for PostgreSQL Flexible Server
+//! name = "events"
+//! kind = "postgres"
+//! host = "contoso-events.postgres.database.azure.com"
+//! database = "events"
+//! user = "contoso-pg-readers"  # the Entra user or group the server knows
+//! auth = "az"            # your az login's token is the password
 //! ```
 //!
 //! Everything is checked when a sql command reads the section, except the
@@ -42,6 +50,7 @@ use serde::Deserialize;
 pub enum Kind {
     Mssql,
     Oracle,
+    Postgres,
 }
 
 impl Kind {
@@ -49,6 +58,7 @@ impl Kind {
         match self {
             Self::Mssql => "mssql",
             Self::Oracle => "oracle",
+            Self::Postgres => "postgres",
         }
     }
 
@@ -57,6 +67,7 @@ impl Kind {
         match self {
             Self::Mssql => 1433,
             Self::Oracle => 1521,
+            Self::Postgres => 5432,
         }
     }
 }
@@ -68,11 +79,11 @@ pub struct Connection {
     pub kind: Kind,
     pub host: String,
     pub port: u16,
-    /// Always set for mssql, never for oracle.
+    /// Always set for mssql and postgres, never for oracle.
     pub database: Option<String>,
-    /// Always set for oracle, never for mssql.
+    /// Always set for oracle, never for the others.
     pub service: Option<String>,
-    /// Empty for `auth = "az"`.
+    /// Empty for mssql's `auth = "az"`; Postgres names the Entra principal.
     pub user: String,
     /// `password`, `password_env`, `password_cmd` or `password_kv`: core's
     /// [`Credential`].
@@ -82,7 +93,9 @@ pub struct Connection {
     pub read_only: Option<bool>,
     /// `auth = "az"`: sign in with the az login's Entra ID token.
     pub az: bool,
+    /// Any certificate is taken (mssql, postgres).
     pub trust_cert: bool,
+    /// TLS is required (mssql, postgres); off, the connection is plain.
     pub encrypt: bool,
 }
 
@@ -188,7 +201,12 @@ impl Raw {
         let kind = match self.kind.as_str() {
             "mssql" => Kind::Mssql,
             "oracle" => Kind::Oracle,
-            other => return Err(format!("kind {other:?} is not \"mssql\" or \"oracle\"")),
+            "postgres" => Kind::Postgres,
+            other => {
+                return Err(format!(
+                    "kind {other:?} is not \"mssql\", \"oracle\" or \"postgres\""
+                ));
+            }
         };
         if self.name.trim().is_empty() {
             return Err("name is empty; --conn picks a connection by it".to_owned());
@@ -198,7 +216,7 @@ impl Raw {
         }
         // A key the other kind reads would look like it did something.
         let foreign = match kind {
-            Kind::Mssql => [("service", self.service.is_some())].to_vec(),
+            Kind::Mssql | Kind::Postgres => [("service", self.service.is_some())].to_vec(),
             Kind::Oracle => [
                 ("database", self.database.is_some()),
                 ("trust_cert", self.trust_cert.is_some()),
@@ -210,8 +228,8 @@ impl Raw {
             return Err(format!("{key} is not a setting of kind {:?}", self.kind));
         }
         match kind {
-            Kind::Mssql if self.database.is_none() => {
-                return Err("kind \"mssql\" needs a database".to_owned());
+            Kind::Mssql | Kind::Postgres if self.database.is_none() => {
+                return Err(format!("kind {:?} needs a database", kind.as_str()));
             }
             Kind::Oracle if self.service.is_none() => {
                 return Err("kind \"oracle\" needs a service".to_owned());
@@ -230,8 +248,10 @@ impl Raw {
         };
         let az = match self.auth.as_deref() {
             None | Some("password") => false,
-            Some("az") if kind == Kind::Mssql => true,
-            Some("az") => return Err("auth \"az\" is for kind \"mssql\" only".to_owned()),
+            Some("az") if kind != Kind::Oracle => true,
+            Some("az") => {
+                return Err("auth \"az\" is for kinds \"mssql\" and \"postgres\"".to_owned());
+            }
             Some(other) => return Err(format!("auth {other:?} is not \"password\" or \"az\"")),
         };
         let password = Credential::from_keys(
@@ -242,6 +262,16 @@ impl Raw {
             self.password_kv,
         )?;
         let user = match (az, self.user) {
+            // Flexible Server signs in as the role named for the principal,
+            // which the token does not choose: a user's or a group's name.
+            (true, Some(user)) if kind == Kind::Postgres && password.is_none() => user,
+            (true, _) if kind == Kind::Postgres => {
+                return Err(
+                    "auth \"az\" on postgres takes user (the Entra user or group the server \
+                     knows) and no password"
+                        .to_owned(),
+                );
+            }
             (true, None) if password.is_none() => String::new(),
             (true, _) => {
                 return Err(
@@ -280,11 +310,15 @@ impl Connection {
     /// the password (a `password_cmd` runs under the command's deadline like
     /// any other child process; none is an empty one, which is what a trusted
     /// login sends), or for `auth = "az"` the az login's token for Azure SQL,
-    /// which Synapse takes too.
+    /// which Synapse takes too, or for Azure Database for PostgreSQL.
     pub fn password(&self, ctx: &Ctx) -> Result<Secret> {
         if self.az {
+            let audience = match self.kind {
+                Kind::Postgres => AZURE_POSTGRES,
+                Kind::Mssql | Kind::Oracle => AZURE_SQL,
+            };
             return ctx
-                .az_token(AZURE_SQL, false)
+                .az_token(audience, false)
                 .map_err(|error| error.context(format!("connection {:?}", self.name)));
         }
         match &self.password {
@@ -310,6 +344,10 @@ impl Connection {
 
 /// The audience of an Entra ID token for Azure SQL and Synapse SQL.
 pub const AZURE_SQL: &str = "https://database.windows.net/";
+
+/// The audience of an Entra ID token for Azure Database for PostgreSQL
+/// (`az account get-access-token --resource-type oss-rdbms`).
+pub const AZURE_POSTGRES: &str = "https://ossrdbms-aad.database.windows.net";
 
 /// A leading `~/` is the home directory; nothing else is expanded.
 fn expand_home(path: &str) -> PathBuf {
@@ -412,9 +450,19 @@ trust_cert = true
                 "connection \"ledger\" is named twice",
             ),
             (
-                "[[sql.connection]]\nname = \"x\"\nkind = \"postgres\"\nhost = \"h\"\nuser = \"u\"\n"
+                "[[sql.connection]]\nname = \"x\"\nkind = \"db2\"\nhost = \"h\"\nuser = \"u\"\n"
                     .to_owned(),
-                "kind \"postgres\" is not \"mssql\" or \"oracle\"",
+                "kind \"db2\" is not \"mssql\", \"oracle\" or \"postgres\"",
+            ),
+            (
+                "[[sql.connection]]\nname = \"pg\"\nkind = \"postgres\"\nhost = \"h\"\nuser = \"u\"\n"
+                    .to_owned(),
+                "connection \"pg\": kind \"postgres\" needs a database",
+            ),
+            (
+                "[[sql.connection]]\nname = \"pg\"\nkind = \"postgres\"\nhost = \"h\"\ndatabase = \"d\"\nuser = \"u\"\nservice = \"s\"\n"
+                    .to_owned(),
+                "connection \"pg\": service is not a setting of kind \"postgres\"",
             ),
         ];
         for (toml, want) in cases {
@@ -459,7 +507,49 @@ trust_cert = true
                 .contains("not \"password\" or \"az\"")
         );
         let oracle = "[[sql.connection]]\nname = \"o\"\nkind = \"oracle\"\nhost = \"h\"\nservice = \"S\"\nauth = \"az\"\n";
-        assert!(failure(oracle).contains("for kind \"mssql\" only"));
+        assert!(failure(oracle).contains("for kinds \"mssql\" and \"postgres\""));
+    }
+
+    const FLEXIBLE: &str = "[[sql.connection]]\nname = \"events\"\nkind = \"postgres\"\nhost = \"contoso-events.postgres.database.azure.com\"\ndatabase = \"events\"\nauth = \"az\"\n";
+
+    #[test]
+    fn a_postgres_connection_defaults_to_5432_with_tls_required() {
+        let sql = load(
+            "[[sql.connection]]\nname = \"pg\"\nkind = \"postgres\"\nhost = \"h\"\ndatabase = \"orders\"\nuser = \"u\"\npassword_kv = \"contoso-kv/pg\"\n",
+        )
+        .unwrap();
+        let spec = sql.connection(&ctx(), None).unwrap();
+        assert_eq!((spec.kind, spec.port), (Kind::Postgres, 5432));
+        assert!(spec.encrypt && !spec.trust_cert && !spec.az);
+        assert_eq!(spec.database.as_deref(), Some("orders"));
+        let plain = load(
+            "[[sql.connection]]\nname = \"pg\"\nkind = \"postgres\"\nhost = \"h\"\nport = 15432\ndatabase = \"d\"\nuser = \"u\"\nencrypt = false\n",
+        )
+        .unwrap();
+        let spec = plain.connection(&ctx(), None).unwrap();
+        assert!(!spec.encrypt && spec.port == 15432);
+    }
+
+    #[test]
+    fn auth_az_on_postgres_signs_in_as_the_named_principal_with_the_oss_rdbms_token() {
+        let sql = load(&format!("{FLEXIBLE}user = \"contoso-pg-readers\"\n")).unwrap();
+        let spec = sql.connection(&ctx(), None).unwrap();
+        assert!(spec.az && spec.encrypt);
+        assert_eq!(spec.user, "contoso-pg-readers");
+        assert_eq!(
+            spec.password(&ctx()).unwrap().expose(),
+            "token@https://ossrdbms-aad.database.windows.net"
+        );
+        assert!(
+            spec.refreshed(&ctx()).unwrap().is_none(),
+            "a token is not rotated"
+        );
+        for extra in ["", "user = \"u\"\npassword = \"p\""] {
+            assert!(
+                failure(&format!("{FLEXIBLE}{extra}\n")).contains("takes user (the Entra user"),
+                "{extra}"
+            );
+        }
     }
 
     #[test]

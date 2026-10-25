@@ -3,7 +3,7 @@
 use agent_cli_core::{Ctx, command};
 use anyhow::Result;
 
-use crate::catalog::{OWNERS, catalog_read};
+use crate::catalog::{OWNERS, PG_SCHEMAS, catalog_read};
 use crate::config::{Kind, Sql};
 use crate::db::text;
 
@@ -16,8 +16,8 @@ pub struct SchemaListArgs {
     limit: usize,
 }
 
-/// Schema names: on SQL Server all but the system ones; on Oracle every
-/// account Oracle did not create, and the one logged in as.
+/// Schema names: on SQL Server and Postgres all but the system ones; on
+/// Oracle every account Oracle did not create, and the one logged in as.
 fn schema_list(ctx: &Ctx, args: SchemaListArgs) -> Result<Vec<String>> {
     let sql = Sql::load(ctx.config())?;
     let spec = sql.connection(ctx, args.conn.as_deref())?;
@@ -28,6 +28,9 @@ fn schema_list(ctx: &Ctx, args: SchemaListArgs) -> Result<Vec<String>> {
              order by s.name"
             .to_owned(),
         Kind::Oracle => format!("select username from all_users where {OWNERS} order by username"),
+        Kind::Postgres => {
+            format!("select n.nspname from pg_namespace n where {PG_SCHEMAS} order by n.nspname")
+        }
     };
     let rows = ctx.read(catalog_read(ctx, &sql, spec, "schemas", query))?;
     let mut schemas: Vec<String> = rows.iter().map(|row| text(row, 0)).collect();

@@ -231,6 +231,54 @@ fn mssql_a_signal_ends_the_request_and_rolls_back_its_write() {
     assert_ne!(name, "interrupted");
 }
 
+/// Ctrl-C mid-transaction sends Postgres a cancel, so the statement ends on
+/// the server at once rather than at its next write, and what the
+/// transaction wrote is rolled back.
+#[test]
+fn postgres_a_signal_cancels_the_statement_on_the_server_and_rolls_back_its_write() {
+    if !wanted() {
+        return;
+    }
+    let config = test_config();
+    let sql = "begin; update bench.customers set name = 'interrupted' where id = 50; \
+               select pg_sleep(60) /* signal test */; commit";
+    let running = |_| {
+        first_cell(
+            &config,
+            "local-postgres",
+            "select count(*) from pg_stat_activity \
+             where query like '%/* signal test */' and state = 'active' and pid <> pg_backend_pid()",
+        )
+        .as_i64()
+        .unwrap()
+    };
+    let args = [
+        "sql",
+        "query",
+        "run",
+        "--conn",
+        "local-postgres",
+        sql,
+        "--yes",
+    ];
+    let (code, stderr, after) = stop_midway(&config, &args, Some("INT"), running);
+    assert_eq!(code, Some(130), "{stderr}");
+    assert_eq!(
+        stderr,
+        "agent-cli: SIGINT: stopped the session on local-postgres\n"
+    );
+    assert!(
+        after.as_secs() < 3,
+        "the statement ran {after:?} past the signal"
+    );
+    let name = first_cell(
+        &config,
+        "local-postgres",
+        "select name from bench.customers where id = 50",
+    );
+    assert_ne!(name, "interrupted");
+}
+
 /// A signal, and the deadline, each break a statement the server is busy
 /// with, and the session is gone within moments.
 #[test]

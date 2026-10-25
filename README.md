@@ -114,7 +114,7 @@ role, a read-only database login, an Airflow Viewer.
 | lake | Data Lake Storage Gen2: containers, folders, Parquet tables and partitions from footers, why a path is refused; queries go to Synapse through `sql` | 8 |
 | entra | Microsoft Entra ID through Graph: who an object id is, users, groups and nested members, app registrations and their expiring credentials, service principals and managed identities with their grants, sign-in and audit logs, directory roles, two principals' access compared (read-only) | 12 |
 | k8s | Kubernetes pods, logs, events, deployments, config maps, secrets | 14 |
-| sql | SQL Server, Oracle and Synapse serverless queries and catalog | 6 |
+| sql | SQL Server, Oracle, Postgres and Synapse serverless queries and catalog | 6 |
 | redis | Redis keys, values decoded (JSON, gzip, .NET cache entries; pickles named, never loaded), expiry, qa against prod, instance health, slow log, clients (read-only) | 7 |
 | airflow | Apache Airflow 2.9+ and 3 DAGs, runs, task instances, logs, import errors | 21 |
 | controlm | BMC Control-M job runs, their status, output and definitions; rerun and order | 7 |

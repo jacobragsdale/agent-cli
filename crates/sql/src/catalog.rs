@@ -3,12 +3,13 @@
 //!
 //! Identifiers are folded the way each server folds them: Oracle stores an
 //! unquoted name upper case, so `bench.order_pkg` is looked up as
-//! `BENCH.ORDER_PKG` unless a mixed-case one of that spelling exists; SQL
-//! Server keeps the case it was given, so names compare case-insensitively
-//! and an exact match wins. Names reach the SQL as quoted literals
-//! ([`quoted`]), never as code.
+//! `BENCH.ORDER_PKG` unless a mixed-case one of that spelling exists;
+//! Postgres stores it lower case, the same way round; SQL Server keeps the
+//! case it was given, so names compare case-insensitively and an exact match
+//! wins. Names reach the SQL as quoted literals ([`quoted`]), never as code.
 
 mod detail;
+mod postgres;
 mod reserved;
 mod sequence;
 
@@ -27,7 +28,8 @@ pub(crate) use detail::{
     TableRows, by_table, constraints_sql, extras_sql, grants_sql, indexes_sql, rows_sql,
     schema_columns_sql, schema_sources_sql, table_row, triggers_sql,
 };
-use reserved::{MSSQL_RESERVED, ORACLE_RESERVED};
+pub(crate) use postgres::PG_SCHEMAS;
+use reserved::{MSSQL_RESERVED, ORACLE_RESERVED, POSTGRES_RESERVED};
 pub(crate) use sequence::{sequence_ddl, sequence_row, sequence_sql};
 
 /// What kind of thing an object is. `package` is Oracle's alone.
@@ -81,6 +83,7 @@ impl ObjectKind {
         Self::ALL.into_iter().find(|kind| match backend {
             Kind::Mssql => kind.mssql_types().contains(&code),
             Kind::Oracle => kind.oracle_type() == code,
+            Kind::Postgres => postgres::codes(*kind).contains(&code),
         })
     }
 }
@@ -94,7 +97,8 @@ pub struct ObjectRow {
     pub(crate) schema: String,
     pub(crate) kind: ObjectKind,
     pub(crate) name: String,
-    /// When it last changed, RFC 3339 UTC (the servers keep local time).
+    /// When it last changed, RFC 3339 UTC (the servers keep local time;
+    /// Postgres keeps none).
     // ponytail: converted at the server's offset today, so an hour out across DST.
     pub(crate) modified: Option<String>,
 }
@@ -229,6 +233,7 @@ pub(crate) fn objects_sql(backend: Kind, filter: &Filter) -> String {
                 )),
             )
         }
+        Kind::Postgres => postgres::objects_sql(&kinds, filter),
     }
 }
 
@@ -280,6 +285,7 @@ pub(crate) fn columns_sql(backend: Kind, schema: &str, table: &str) -> String {
             quoted(schema),
             quoted(table),
         ),
+        Kind::Postgres => postgres::columns_sql(schema, table),
         Kind::Oracle => format!(
             "select c.column_name, c.data_type, c.data_length, c.data_precision, \
                     c.data_scale, c.char_used, c.char_length, c.nullable, \
@@ -326,13 +332,16 @@ pub(crate) fn parse_columns(backend: Kind, rows: &[Vec<Value>]) -> Vec<ColumnInf
                 nullable: text(row, 7) == "Y",
                 pk: text(row, 8) == "Y",
             },
+            Kind::Postgres => postgres::column(row),
         })
         .collect()
 }
 
 /// `OBJECT_DEFINITION` is the whole batch that created the object on SQL
 /// Server; Oracle keeps a line per row in `ALL_SOURCE`, and a view's text in
-/// `ALL_VIEWS`. The names are as the lookup found them, so no folding.
+/// `ALL_VIEWS`; Postgres writes a routine out with `pg_get_functiondef` (one
+/// row per overload) and a view's query with `pg_get_viewdef`. The names are
+/// as the lookup found them, so no folding.
 pub(crate) fn source_sql(backend: Kind, schema: &str, name: &str, kind: ObjectKind) -> String {
     match backend {
         Kind::Mssql => format!(
@@ -342,6 +351,7 @@ pub(crate) fn source_sql(backend: Kind, schema: &str, name: &str, kind: ObjectKi
             quoted(schema),
             quoted(name),
         ),
+        Kind::Postgres => postgres::source_sql(schema, name, kind),
         Kind::Oracle if kind == ObjectKind::View => format!(
             "select 'VIEW', text from all_views where owner = {} and view_name = {}",
             quoted(schema),
@@ -374,6 +384,9 @@ pub(crate) fn parse_source(backend: Kind, schema: &str, name: &str, rows: &[Vec<
         );
     }
     let qualified = qualified(backend, schema, name);
+    if backend == Kind::Postgres {
+        return postgres::parse_source(&qualified, rows);
+    }
     if text(first, 0) == "VIEW" {
         return format!("CREATE OR REPLACE VIEW {qualified} AS\n{}", text(first, 1));
     }
@@ -510,19 +523,26 @@ fn qualified(backend: Kind, schema: &str, name: &str) -> String {
 }
 
 /// A name as it has to be written: as it is when it reads back the same,
-/// quoted when a space, a reserved word or (on Oracle, which folds unquoted
-/// names to upper case) a lower-case letter would change what it meant.
+/// quoted when a space, a reserved word or a letter of the case the server
+/// folds away (Oracle folds unquoted names to upper case, Postgres to lower)
+/// would change what it meant.
 fn identifier(backend: Kind, name: &str) -> Cow<'_, str> {
     let (reserved, others, open, close) = match backend {
         Kind::Mssql => (MSSQL_RESERVED, "_@$#", '[', ']'),
         Kind::Oracle => (ORACLE_RESERVED, "_$#", '"', '"'),
+        Kind::Postgres => (POSTGRES_RESERVED, "_$", '"', '"'),
+    };
+    let folds_back = match backend {
+        Kind::Mssql => true,
+        Kind::Oracle => name.to_uppercase() == name,
+        Kind::Postgres => !name.chars().any(|character| character.is_ascii_uppercase()),
     };
     let plain = name.starts_with(|first: char| {
-        first.is_alphabetic() || (first == '_' && backend == Kind::Mssql)
+        first.is_alphabetic() || (first == '_' && backend != Kind::Oracle)
     }) && name
         .chars()
         .all(|character| character.is_alphanumeric() || others.contains(character))
-        && (backend == Kind::Mssql || name.to_uppercase() == name)
+        && folds_back
         && !reserved
             .split_whitespace()
             .any(|word| word.eq_ignore_ascii_case(name));
@@ -614,6 +634,105 @@ mod tests {
         assert_eq!(oracle("BENCH", "ORDER$HIST#1"), "BENCH.ORDER$HIST#1");
         assert_eq!(oracle("BENCH", "MixedCase"), "BENCH.\"MixedCase\"");
         assert_eq!(oracle("BENCH", "ORDER"), "BENCH.\"ORDER\"");
+        let postgres = |schema, name| qualified(Kind::Postgres, schema, name);
+        assert_eq!(postgres("bench", "order_items"), "bench.order_items");
+        assert_eq!(postgres("bench", "Orders"), "bench.\"Orders\"");
+        assert_eq!(postgres("bench", "user"), "bench.\"user\"");
+        assert_eq!(postgres("bench", "_tmp$1"), "bench._tmp$1");
+    }
+
+    #[test]
+    fn postgres_looks_a_name_up_as_given_then_folded_to_lower_case() {
+        let sql = objects_sql(
+            Kind::Postgres,
+            &Filter {
+                schema: Some("Bench"),
+                kind: Some(ObjectKind::View),
+                name: Some(Name::Exact("Customers")),
+                limit: None,
+            },
+        );
+        assert!(sql.contains("o.code in ('view', 'matview')"), "{sql}");
+        assert!(
+            sql.contains("o.name in ('Customers', 'customers')"),
+            "{sql}"
+        );
+        assert!(sql.contains("where nspname = 'Bench'), 'bench')"), "{sql}");
+        assert!(
+            sql.contains("order by case when o.name = 'Customers'"),
+            "{sql}"
+        );
+        let listed = objects_sql(
+            Kind::Postgres,
+            &Filter {
+                schema: None,
+                kind: None,
+                name: Some(Name::Contains("o_r%")),
+                limit: Some(5),
+            },
+        );
+        assert!(
+            listed.contains(r"o.name ilike '%o\_r\%%' escape '\'"),
+            "{listed}"
+        );
+        assert!(
+            listed.contains("n.nspname not in ('pg_catalog'"),
+            "{listed}"
+        );
+        assert!(listed.ends_with(" limit 5"), "{listed}");
+        assert_eq!(
+            ObjectKind::from_code(Kind::Postgres, "matview"),
+            Some(ObjectKind::View)
+        );
+        assert_eq!(ObjectKind::from_code(Kind::Postgres, "aggregate"), None);
+    }
+
+    #[test]
+    fn a_postgres_routine_is_its_definition_and_a_view_is_written_as_its_create() {
+        let rows = |cells: &[(&str, &str)]| -> Vec<Vec<Value>> {
+            cells
+                .iter()
+                .map(|(kind, text)| vec![json!(kind), json!(text)])
+                .collect()
+        };
+        assert_eq!(
+            parse_source(
+                Kind::Postgres,
+                "bench",
+                "v_totals",
+                &rows(&[("VIEW", " SELECT 1 AS one;")])
+            ),
+            "CREATE OR REPLACE VIEW bench.v_totals AS\n SELECT 1 AS one"
+        );
+        assert_eq!(
+            parse_source(
+                Kind::Postgres,
+                "bench",
+                "Daily",
+                &rows(&[("MATERIALIZED VIEW", " SELECT 1;")])
+            ),
+            "CREATE MATERIALIZED VIEW bench.\"Daily\" AS\n SELECT 1"
+        );
+        assert_eq!(
+            parse_source(
+                Kind::Postgres,
+                "bench",
+                "f",
+                &rows(&[
+                    (
+                        "ROUTINE",
+                        "CREATE OR REPLACE FUNCTION bench.f(integer)\n AS $$ 1 $$\n"
+                    ),
+                    (
+                        "ROUTINE",
+                        "CREATE OR REPLACE FUNCTION bench.f(text)\n AS $$ 2 $$\n"
+                    ),
+                ])
+            ),
+            "CREATE OR REPLACE FUNCTION bench.f(integer)\n AS $$ 1 $$\n\n\
+             CREATE OR REPLACE FUNCTION bench.f(text)\n AS $$ 2 $$",
+            "every overload, in order"
+        );
     }
 
     #[test]

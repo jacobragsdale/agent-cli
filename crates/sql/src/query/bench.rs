@@ -145,10 +145,14 @@ fn query_bench(ctx: &Ctx, args: BenchArgs) -> Result<Bench> {
             runs + 1
         ));
     }
-    if cut && matches!(spec.kind, Kind::Mssql) {
-        ctx.note(
-            "[--max-rows cut the read short, which ends a SQL Server session: each run after the first connected again, inside its total]",
-        );
+    if cut && spec.kind != Kind::Oracle {
+        let server = match spec.kind {
+            Kind::Postgres => "Postgres",
+            _ => "SQL Server",
+        };
+        ctx.note(format!(
+            "[--max-rows cut the read short, which ends a {server} session: each run after the first connected again, inside its total]",
+        ));
     }
     Ok(Bench {
         runs,

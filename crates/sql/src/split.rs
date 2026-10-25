@@ -10,7 +10,9 @@
 //! stay together. (sql-bench also cut at blank lines, which broke exactly
 //! that.) Oracle runs one statement per call, so a script is cut at every
 //! `;` and at `/` lines, except inside PL/SQL, which runs to the `end;` that
-//! closes it or to the next `/` line.
+//! closes it or to the next `/` line. Postgres is cut at every `;` as psql
+//! cuts it: a function body is a `$$` string, and only a SQL-standard body
+//! (`begin atomic … end`) holds `;`s outside one.
 
 use std::ops::Range;
 
@@ -58,6 +60,7 @@ fn tokens(text: &str, kind: Kind) -> Vec<Token> {
             let separator = match kind {
                 Kind::Mssql => line.eq_ignore_ascii_case("go"),
                 Kind::Oracle => line == "/",
+                Kind::Postgres => false,
             };
             if separator {
                 out.push(Token::Separator(at..end));
@@ -91,6 +94,12 @@ fn tokens(text: &str, kind: Kind) -> Vec<Token> {
                 out.push(Token::Quoted(at..end));
                 at = end;
             }
+            // `$$…$$` and `$body$…$body$`; `$1` is a parameter.
+            b'$' if kind == Kind::Postgres && dollar_tag(text, at).is_some() => {
+                let end = dollar_quote_end(text, at);
+                out.push(Token::Quoted(at..end));
+                at = end;
+            }
             _ if is_word_byte(byte) => {
                 let start = at;
                 while at < bytes.len() && is_word_byte(bytes[at]) {
@@ -110,6 +119,13 @@ fn tokens(text: &str, kind: Kind) -> Vec<Token> {
                     }
                     if word.eq_ignore_ascii_case("n") {
                         let end = quoted_end(bytes, at + 1, b'\'');
+                        out.push(Token::Quoted(start..end));
+                        at = end;
+                        continue;
+                    }
+                    // Postgres's `E'it\'s'`, where a backslash escapes.
+                    if kind == Kind::Postgres && word.eq_ignore_ascii_case("e") {
+                        let end = escaped_end(bytes, at + 1);
                         out.push(Token::Quoted(start..end));
                         at = end;
                         continue;
@@ -143,15 +159,15 @@ fn quoted_end(bytes: &[u8], mut from: usize, close: u8) -> usize {
     bytes.len()
 }
 
-/// Past the `*/` that closes the comment at `at`. T-SQL comments nest;
-/// Oracle's do not.
+/// Past the `*/` that closes the comment at `at`. T-SQL's and Postgres's
+/// comments nest; Oracle's do not.
 fn comment_end(text: &str, at: usize, kind: Kind) -> usize {
     let bytes = text.as_bytes();
     let mut depth = 0usize;
     let mut index = at;
     while index + 1 < bytes.len() {
         match (bytes[index], bytes[index + 1]) {
-            (b'/', b'*') if depth == 0 || kind == Kind::Mssql => {
+            (b'/', b'*') if depth == 0 || kind != Kind::Oracle => {
                 depth += 1;
                 index += 2;
             }
@@ -188,6 +204,43 @@ fn q_quote_end(text: &str, from: usize) -> usize {
         .map_or(text.len(), |offset| body + offset + end.len())
 }
 
+/// The `$tag$` that opens a Postgres dollar quote at `at`: `$`, a tag that
+/// does not start with a digit, `$`.
+fn dollar_tag(text: &str, at: usize) -> Option<&str> {
+    let rest = &text[at + 1..];
+    let close = rest.find('$')?;
+    let tag = &rest[..close];
+    let word = |character: char| character.is_alphanumeric() || character == '_';
+    (!tag.starts_with(|first: char| first.is_ascii_digit()) && tag.chars().all(word))
+        .then(|| &text[at..at + close + 2])
+}
+
+/// Past the `$tag$` that closes the dollar quote opened at `at`; an unclosed
+/// one runs to the end.
+fn dollar_quote_end(text: &str, at: usize) -> usize {
+    let Some(tag) = dollar_tag(text, at) else {
+        return text.len();
+    };
+    let body = at + tag.len();
+    text[body..]
+        .find(tag)
+        .map_or(text.len(), |offset| body + offset + tag.len())
+}
+
+/// Past the quote that ends an `E'…'` string begun before `from`, where `\`
+/// escapes the next byte and a doubled quote is the string's own.
+fn escaped_end(bytes: &[u8], mut from: usize) -> usize {
+    while from < bytes.len() {
+        match bytes[from] {
+            b'\\' => from += 2,
+            b'\'' if bytes.get(from + 1) == Some(&b'\'') => from += 2,
+            b'\'' => return from + 1,
+            _ => from += 1,
+        }
+    }
+    bytes.len()
+}
+
 /// A statement ready to send, and whether it may change anything.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Statement {
@@ -221,6 +274,9 @@ fn split(text: &str, kind: Kind) -> Vec<String> {
     let mut start: Option<usize> = None;
     // Set while that statement is PL/SQL.
     let mut block: Option<Block> = None;
+    // Set while that statement creates a Postgres function or procedure: how
+    // deep in a `begin atomic` body it is.
+    let mut atomic: Option<usize> = None;
     for (index, token) in tokens.iter().enumerate() {
         match token {
             Token::Separator(range) => {
@@ -247,12 +303,32 @@ fn split(text: &str, kind: Kind) -> Vec<String> {
                 }
                 Some(unit) => unit.header = false,
             },
+            Token::Symbol(at, ';') if kind == Kind::Postgres => {
+                if atomic.is_none_or(|depth| depth == 0)
+                    && let Some(from) = start.take()
+                {
+                    push(from..*at);
+                    atomic = None;
+                }
+            }
             Token::Symbol(_, ';') => {}
             token => {
                 if start.is_none() {
                     start = Some(token.start());
                     block = (kind == Kind::Oracle && is_plsql(text, &tokens[index..]))
                         .then(Block::default);
+                    atomic =
+                        (kind == Kind::Postgres && is_routine(text, &tokens[index..])).then_some(0);
+                }
+                // psql's rule: in a routine, `begin` and `case` open and
+                // `end` closes, and a `;` inside counts for nothing.
+                if let (Some(depth), Token::Word(range)) = (&mut atomic, token) {
+                    match word(range).as_str() {
+                        "begin" => *depth += 1,
+                        "case" if *depth > 0 => *depth += 1,
+                        "end" if *depth > 0 => *depth -= 1,
+                        _ => {}
+                    }
                 }
                 if let (Some(unit), Token::Word(range)) = (&mut block, token) {
                     // Only the very next token: `end; if` is not `end if`.
@@ -292,6 +368,22 @@ fn is_plsql(text: &str, tokens: &[Token]) -> bool {
         }
         _ => false,
     }
+}
+
+/// Whether the statement starting at `tokens[0]` creates a Postgres function
+/// or procedure, whose body may be `begin atomic … end`.
+fn is_routine(text: &str, tokens: &[Token]) -> bool {
+    let mut words = tokens.iter().filter_map(|token| match token {
+        Token::Word(range) => Some(text[range.clone()].to_ascii_lowercase()),
+        _ => None,
+    });
+    words.next().as_deref() == Some("create")
+        && matches!(
+            words
+                .find(|word| !["or", "replace"].contains(&word.as_str()))
+                .as_deref(),
+            Some("function" | "procedure")
+        )
 }
 
 /// Where a PL/SQL unit is in its nesting, word by word.
@@ -391,11 +483,25 @@ const WRITE_WORDS: &[&str] = &[
     "xlock",
 ];
 
+/// Postgres functions a select can call that change something: a sequence,
+/// a setting, another session, a file on the server, another database.
+const POSTGRES_WRITE_WORDS: &[&str] = &[
+    "setval",
+    "set_config",
+    "pg_cancel_backend",
+    "pg_terminate_backend",
+    "lo_import",
+    "lo_export",
+    "dblink_exec",
+];
+
 /// Whether `sql` may change anything. Conservative: it is a read only when
-/// its first word is `select` or `with` and no word in it is one of
-/// [`WRITE_WORDS`]; everything else is a write.
+/// its first word is `select` or `with` (on Postgres also `show`, `table`,
+/// `values` and `explain`, whose `analyze` runs what follows it) and no word
+/// in it is one of [`WRITE_WORDS`]; everything else is a write.
 // ponytail: a function the select calls can still write (an Oracle
-// autonomous transaction); the real guard is a read-only login.
+// autonomous transaction, a Postgres function); the real guard is a
+// read-only login, or a read-only connection on Oracle and Postgres.
 pub fn writes(sql: &str, kind: Kind) -> bool {
     let mut words = tokens(sql, kind)
         .into_iter()
@@ -405,6 +511,7 @@ pub fn writes(sql: &str, kind: Kind) -> bool {
         });
     match words.next().as_deref() {
         Some("select" | "with") => {}
+        Some("show" | "table" | "values" | "explain") if kind == Kind::Postgres => {}
         _ => return true,
     }
     let words: Vec<String> = words.collect();
@@ -415,15 +522,21 @@ pub fn writes(sql: &str, kind: Kind) -> bool {
         // so); OPENROWSET with a provider can run a query elsewhere.
         let reads_a_file = (word == "openrowset" && next == "bulk")
             || (word == "bulk" && previous == "openrowset");
-        // SQL Server's `next value for seq` moves the sequence.
+        // SQL Server's `next value for seq` moves the sequence; Postgres's
+        // `for share` and `for key share` lock rows, which a read-only
+        // transaction refuses.
         (WRITE_WORDS.contains(&word.as_str()) && !reads_a_file)
             || (previous == "next" && word == "value")
+            || (kind == Kind::Postgres
+                && (POSTGRES_WRITE_WORDS.contains(&word.as_str())
+                    || (word == "share" && matches!(previous, "for" | "key"))))
     })
 }
 
 /// Whether `sql` runs a transaction of its own (BEGIN TRAN, COMMIT,
-/// ROLLBACK, SAVE TRAN, SET IMPLICIT_TRANSACTIONS or XACT_ABORT): then what
-/// ran before a failure stays only if no open transaction held it.
+/// ROLLBACK, SAVE TRAN, SET IMPLICIT_TRANSACTIONS or XACT_ABORT; Postgres's
+/// BEGIN, START TRANSACTION, END and ABORT): then what ran before a failure
+/// stays only if no open transaction held it.
 pub fn controls_transaction(sql: &str, kind: Kind) -> bool {
     let words: Vec<String> = tokens(sql, kind)
         .into_iter()
@@ -432,6 +545,14 @@ pub fn controls_transaction(sql: &str, kind: Kind) -> bool {
             _ => None,
         })
         .collect();
+    if kind == Kind::Postgres
+        && matches!(
+            words.first().map(String::as_str),
+            Some("begin" | "start" | "end" | "abort")
+        )
+    {
+        return true;
+    }
     words.iter().enumerate().any(|(at, word)| {
         let next = words.get(at + 1).map_or("", String::as_str);
         match word.as_str() {
@@ -493,6 +614,118 @@ mod tests {
 
     fn oracle(text: &str) -> Vec<String> {
         split(text, Kind::Oracle)
+    }
+
+    fn postgres(text: &str) -> Vec<String> {
+        split(text, Kind::Postgres)
+    }
+
+    #[test]
+    fn postgres_cuts_at_semicolons_outside_strings_dollar_quotes_and_comments() {
+        assert_eq!(
+            postgres("select 1; select ';' as a;\n-- two; three\nselect \"a;b\" from t;"),
+            ["select 1", "select ';' as a", "select \"a;b\" from t"]
+        );
+        assert_eq!(
+            postgres("select E'it\\'s; fine', 'it''s; fine'; select 2"),
+            ["select E'it\\'s; fine', 'it''s; fine'", "select 2"]
+        );
+        assert_eq!(
+            postgres("/* outer /* inner; */ still; */ select 1; select 2"),
+            ["select 1", "select 2"],
+            "Postgres comments nest"
+        );
+        assert_eq!(
+            postgres("select 1\n/\nselect 2;\ngo\n"),
+            ["select 1\n/\nselect 2", "go"],
+            "neither a slash nor GO is a separator"
+        );
+        assert_eq!(postgres(";;\n-- note\n"), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_postgres_function_body_is_one_statement_however_it_is_quoted() {
+        let plpgsql = "create or replace function bench.f(n int) returns int language plpgsql as $$\nbegin\n  if n > 0 then return 1; end if;\n  return 0;\nend;\n$$";
+        let tagged =
+            "create function g() returns text as $body$ select 'a;$$;b' $body$ language sql";
+        let block = "do $do$ begin perform 1; end $do$";
+        assert_eq!(
+            postgres(&format!(
+                "{plpgsql};\n{tagged};\n{block};\nselect $1, a$b from t;"
+            )),
+            [plpgsql, tagged, block, "select $1, a$b from t"]
+        );
+        let atomic = "create procedure bench.p(n int) language sql begin atomic\n  insert into t values (n);\n  select case when n > 0 then 1 else 0 end;\nend";
+        assert_eq!(
+            postgres(&format!("{atomic};\nselect 1;")),
+            [atomic, "select 1"]
+        );
+        assert_eq!(
+            postgres("select 'unclosed $$; select 2"),
+            ["select 'unclosed $$; select 2"]
+        );
+        assert_eq!(
+            postgres("select $$unclosed; select 2"),
+            ["select $$unclosed; select 2"]
+        );
+    }
+
+    #[test]
+    fn postgres_reads_are_selects_shows_and_explains_and_its_locks_and_setters_are_writes() {
+        for read in [
+            "select * from t where note = 'delete me'",
+            "show search_path",
+            "explain select * from t",
+            "explain (analyze, buffers) select count(*) from t",
+            "table t",
+            "values (1), (2)",
+            "select $$drop table t$$",
+        ] {
+            assert!(!writes(read, Kind::Postgres), "{read}");
+        }
+        for write in [
+            "select * from t for update skip locked",
+            "explain analyze delete from t",
+            "select * from t for share",
+            "select * from t for key share",
+            "select setval('s', 1)",
+            "select set_config('default_transaction_read_only', 'off', false)",
+            "select pg_terminate_backend(42)",
+            "select nextval('s')",
+            "with gone as (delete from t returning *) select * from gone",
+            "do $$ begin perform 1; end $$",
+            "copy t to stdout",
+            "vacuum t",
+            "begin",
+        ] {
+            assert!(writes(write, Kind::Postgres), "{write}");
+        }
+        assert!(
+            writes("show x", Kind::Mssql),
+            "show is a read on Postgres only"
+        );
+    }
+
+    #[test]
+    fn a_postgres_script_running_its_own_transaction_is_told_apart() {
+        for sql in [
+            "begin",
+            "BEGIN ISOLATION LEVEL SERIALIZABLE",
+            "start transaction",
+            "commit",
+            "end",
+            "abort",
+            "rollback to savepoint a",
+        ] {
+            assert!(controls_transaction(sql, Kind::Postgres), "{sql}");
+        }
+        for sql in [
+            "create procedure p() language sql begin atomic select 1; end",
+            "select 'begin'",
+            "do $$ begin commit; end $$",
+        ] {
+            assert!(!controls_transaction(sql, Kind::Postgres), "{sql}");
+        }
     }
 
     #[test]

@@ -37,6 +37,8 @@ tempfile = "3.27.0"
 tiberius = { version = "0.12.3", default-features = false, features = ["tds73", "rustls"] }
 time = { version = "0.3.55", features = ["formatting", "macros", "parsing"] }
 tokio = { version = "1.53.1", features = ["rt", "net", "time"] }
+tokio-postgres = { version = "0.7.18", default-features = false }
+tokio-rustls = { version = "0.26.6", default-features = false }
 tokio-util = { version = "0.7.19", features = ["compat"] }
 toml = "0.9.12"
 ureq = { version = "3.4.1", features = ["platform-verifier"] }

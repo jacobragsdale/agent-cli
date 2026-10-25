@@ -107,27 +107,48 @@
 #
 # [[sql.connection]]
 # name = "reporting"                     # what --conn takes; the only one is the default
-# kind = "mssql"                         # or "oracle"
+# kind = "mssql"                         # or "oracle" or "postgres"
 # host = "sql.contoso.example"
-# port = 1433                            # default 1433 (mssql), 1521 (oracle)
-# database = "contoso"                   # mssql only
+# port = 1433                            # default 1433 (mssql), 1521 (oracle),
+#                                        # 5432 (postgres)
+# database = "contoso"                   # mssql and postgres
 # user = "app_reader"
 # password = "..."                       # or password_env, password_cmd (run
 #                                        # under the command's deadline, its
 #                                        # trailing newline dropped), password_kv
 # read_only = true                       # refuse every change here (overrides
 #                                        # [sql] read_only); Oracle also runs
-#                                        # reads in SET TRANSACTION READ ONLY
-# trust_cert = false                     # mssql only: accept a self-signed certificate
-# encrypt = true                         # mssql only
+#                                        # reads in SET TRANSACTION READ ONLY,
+#                                        # Postgres sessions start read-only
+# trust_cert = false                     # mssql and postgres: accept any certificate
+# encrypt = true                         # mssql and postgres: TLS required; false
+#                                        # for a server that speaks none
 #
 # [[sql.connection]]
 # name = "synapse"                       # Synapse serverless or Azure SQL
 # kind = "mssql"
 # host = "contoso-ws-ondemand.sql.azuresynapse.net"
 # database = "master"
-# auth = "az"                            # mssql only: your az login's Entra
-#                                        # ID token, no user or password
+# auth = "az"                            # your az login's Entra ID token,
+#                                        # no user or password
+#
+# [[sql.connection]]
+# name = "orders"                        # Postgres, self-hosted (in AKS, say)
+# kind = "postgres"
+# host = "pg.contoso.example"
+# database = "orders"
+# user = "agent_reader"
+# password_kv = "kv-contoso-team/pg-orders-reader"
+# encrypt = false                        # only if it has no TLS
+#
+# [[sql.connection]]
+# name = "events"                        # Azure Database for PostgreSQL
+# kind = "postgres"                      # Flexible Server, Entra sign-in
+# host = "contoso-events.postgres.database.azure.com"
+# database = "events"
+# user = "contoso-pg-readers"            # the Entra user or group the server
+#                                        # has a role for
+# auth = "az"                            # your az login's token is the password
 #
 # [[sql.connection]]
 # name = "ledger"

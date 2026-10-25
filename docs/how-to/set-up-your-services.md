@@ -172,9 +172,11 @@ read_only = false
 ```
 
 On a read-only Oracle connection every read also runs inside `SET
-TRANSACTION READ ONLY`. SQL Server has no session equivalent, so a prod SQL
-Server still needs a login that can only read: `read_only` stops agent-cli,
-not the login.
+TRANSACTION READ ONLY`, and a read-only Postgres connection starts its
+session with `default_transaction_read_only=on`, so the server itself
+refuses a write agent-cli did not see coming. SQL Server has no session
+equivalent, so a prod SQL Server still needs a login that can only read:
+`read_only` stops agent-cli, not the login.
 
 ## 3. Azure DevOps (ado)
 
@@ -313,7 +315,7 @@ agent-cli doctor k8s
 A failed `kubectl` row means it is not installed or not on `PATH`; a failed
 scope row names the cluster and namespace your login cannot read.
 
-## 6. SQL Server, Oracle and Synapse (sql)
+## 6. SQL Server, Oracle, Postgres and Synapse (sql)
 
 ```sh
 agent-cli config example sql
@@ -382,6 +384,48 @@ agent-cli sql query run --conn synapse "SELECT r.filepath(1) AS date, count(*) A
 
 Serverless bills by the data a query scans (at least 10 MB a query), and
 stops a query at 30 minutes.
+
+Postgres takes a database, a user and a password, and TLS by default
+(`encrypt = true`), checked against the system's certificate store like
+every other connection agent-cli makes:
+
+```toml
+[[sql.connection]]
+name = "orders"
+kind = "postgres"
+host = "pg.contoso.example"          # port 5432 unless you say otherwise
+database = "orders"
+user = "agent_reader"
+password_kv = "kv-contoso-team/pg-orders-reader"
+```
+
+A Postgres in AKS reached straight from WSL (a port-forward or an internal
+load balancer) may speak no TLS: the connection then fails with `server
+does not support TLS`, and `encrypt = false` connects in the clear. One
+with a self-signed certificate wants `trust_cert = true`, or its CA in the
+system store (`/usr/local/share/ca-certificates/`, then `sudo
+update-ca-certificates`).
+
+Azure Database for PostgreSQL Flexible Server signs you in with your
+`az login`: the token is the password, and `user` is the Entra user or
+group the server has a role for (your own `alice@contoso.example`, or a
+group such as `contoso-pg-readers` you are a member of):
+
+```toml
+[[sql.connection]]
+name = "events"
+kind = "postgres"
+host = "contoso-events.postgres.database.azure.com"
+database = "events"
+user = "contoso-pg-readers"
+auth = "az"
+```
+
+The token is minted for `https://ossrdbms-aad.database.windows.net`. The
+server needs Microsoft Entra authentication turned on and a role for that
+principal (`pgaadauth_create_principal`); a refused sign-in says
+`password authentication failed`. Flexible Server requires TLS, so leave
+`encrypt` on.
 
 ## 7. Airflow (airflow)
 

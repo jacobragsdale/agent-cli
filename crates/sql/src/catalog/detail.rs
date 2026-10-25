@@ -3,7 +3,7 @@
 //! and a sequence's settings. Each query reads one table, or with no table
 //! every table of the schema, so a schema costs as many queries as a table;
 //! the table's name is each row's last cell. Each engine answers in the same
-//! row layout, so one parser reads both.
+//! row layout, so one parser reads them all.
 //!
 //! Constraint names that the server made up (`PK__orders__3213E83F…`,
 //! `SYS_C0012345`) differ between two databases built from one script, so
@@ -14,7 +14,7 @@ use std::collections::BTreeMap;
 
 use serde_json::{Map, Value, json};
 
-use super::{ColumnInfo, owner, quoted};
+use super::{ColumnInfo, owner, postgres, quoted};
 use crate::config::Kind;
 use crate::db::{maybe, text};
 
@@ -70,6 +70,7 @@ pub(crate) fn extras_sql(backend: Kind, schema: &str, table: Option<&str>) -> St
             owner(schema),
             of_table("table_name", table),
         ),
+        Kind::Postgres => postgres::extras_sql(schema, table),
     }
 }
 
@@ -134,6 +135,7 @@ pub(crate) fn constraints_sql(backend: Kind, raw_schema: &str, table: Option<&st
             owner(raw_schema),
             of_table("c.table_name", table),
         ),
+        Kind::Postgres => postgres::constraints_sql(raw_schema, table),
     }
 }
 
@@ -174,6 +176,7 @@ pub(crate) fn indexes_sql(backend: Kind, schema: &str, table: Option<&str>) -> S
             owner(schema),
             of_table("i.table_name", table),
         ),
+        Kind::Postgres => postgres::indexes_sql(schema, table),
     }
 }
 
@@ -197,6 +200,7 @@ pub(crate) fn triggers_sql(backend: Kind, schema: &str, table: Option<&str>) -> 
             owner(schema),
             of_table("table_name", table),
         ),
+        Kind::Postgres => postgres::triggers_sql(schema, table),
     }
 }
 
@@ -233,6 +237,7 @@ pub(crate) fn grants_sql(backend: Kind, schema: &str, table: Option<&str>) -> St
             owner(schema),
             of_table("table_name", table),
         ),
+        Kind::Postgres => postgres::grants_sql(schema, table),
     }
 }
 
@@ -253,6 +258,7 @@ pub(crate) fn rows_sql(backend: Kind, schema: &str, table: Option<&str>) -> Stri
             owner(schema),
             of_table("table_name", table),
         ),
+        Kind::Postgres => postgres::rows_sql(schema, table),
     }
 }
 
@@ -280,7 +286,7 @@ pub(crate) fn table_row(backend: Kind, rows: &TableRows) -> Value {
                 "nullable": column.nullable});
             if let Some(row) = extras.get(&column.name) {
                 let (default, identity, computed) = match backend {
-                    Kind::Mssql => (maybe(row, 1), maybe(row, 2), maybe(row, 3)),
+                    Kind::Mssql | Kind::Postgres => (maybe(row, 1), maybe(row, 2), maybe(row, 3)),
                     Kind::Oracle => {
                         let identity = text(row, 2) == "YES";
                         let virtual_column = text(row, 3) == "YES";
@@ -411,7 +417,7 @@ pub(crate) fn table_row(backend: Kind, rows: &TableRows) -> Value {
         .iter()
         .map(|trigger| {
             let source = match backend {
-                Kind::Mssql => text(trigger, 1),
+                Kind::Mssql | Kind::Postgres => text(trigger, 1),
                 Kind::Oracle => format!(
                     "CREATE OR REPLACE TRIGGER {}{}",
                     text(trigger, 1),
@@ -503,6 +509,7 @@ pub(crate) fn schema_columns_sql(backend: Kind, schema: &str) -> String {
              where c.owner = {} order by c.table_name, c.column_id",
             owner(schema),
         ),
+        Kind::Postgres => postgres::schema_columns_sql(schema),
     }
 }
 
@@ -528,6 +535,7 @@ pub(crate) fn schema_sources_sql(backend: Kind, schema: &str) -> Vec<String> {
                 owner(schema),
             ),
         ],
+        Kind::Postgres => postgres::schema_sources_sql(schema),
     }
 }
 

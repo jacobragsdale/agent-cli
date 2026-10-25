@@ -1,4 +1,4 @@
-# sql — SQL Server/Oracle (8 commands)
+# sql — SQL Server/Oracle/Postgres (8 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -15,7 +15,7 @@
 
 ```text
 agent-cli sql query run — Run SQL on a connection and return every result set as JSON
-  <sql> str        The SQL, or - to read it from stdin. SQL Server splits at GO lines, Oracle at ; and / lines
+  <sql> str        The SQL, or - to read it from stdin. SQL Server splits at GO lines, Oracle at ; and / lines, Postgres at ;
   --conn str       Connection name from `sql connection list`; defaults to the only one
   --max-rows int   Keep at most this many rows of each result set (default 1000)
   --sql-file path  The SQL from a file

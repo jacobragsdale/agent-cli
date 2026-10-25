@@ -1,8 +1,9 @@
-//! The sql domain: queries, objects and schemas on SQL Server and Oracle,
-//! ported from sql-bench. JSON out, as every agent-cli command.
+//! The sql domain: queries, objects and schemas on SQL Server, Oracle and
+//! Postgres, ported from sql-bench. JSON out, as every agent-cli command.
 //!
-//! The only crate with tokio (for tiberius) and a C build (ODPI-C, which
-//! loads Oracle's Instant Client at run time, so nothing else needs it).
+//! The only crate with tokio (for tiberius and tokio-postgres) and a C build
+//! (ODPI-C, which loads Oracle's Instant Client at run time, so nothing else
+//! needs it).
 
 mod catalog;
 mod config;
@@ -12,6 +13,7 @@ mod doctor;
 mod mssql;
 mod object;
 mod oracle;
+mod postgres;
 mod query;
 mod schema;
 mod split;
@@ -22,7 +24,7 @@ use agent_cli_core::Domain;
 
 pub const DOMAIN: Domain = Domain {
     name: "sql",
-    summary: "SQL Server/Oracle",
+    summary: "SQL Server/Oracle/Postgres",
     commands: &[
         query::run::QUERY_RUN,
         query::bench::QUERY_BENCH,
@@ -45,6 +47,9 @@ pub const DOMAIN: Domain = Domain {
         ("sequence", &["object"]),
         ("database", &["sql"]),
         ("oracle", &["sql"]),
+        ("pg", &["sql"]),
+        ("psql", &["sql"]),
+        ("materialized view", &["object"]),
         ("synapse", &["sql"]),
         ("db", &["sql"]),
         ("statement", &["query"]),
