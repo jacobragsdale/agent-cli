@@ -100,9 +100,9 @@ include() {
 # replaces on every run in
 #   $team
 # A key here replaces the team's, and an entry with the same name
-# ([[sql.connection]] name = "...") changes only the keys it sets. Your own
-# credentials go here; team.toml's comments say which. \`agent-cli config\`
-# shows what is read.
+# ([[sql.connection]] name = "...") changes only the keys it sets. The
+# team's logins come from Key Vault; a credential set here replaces the
+# team's for that entry. \`agent-cli config\` shows what is read.
 [core]
 $line
 EOF

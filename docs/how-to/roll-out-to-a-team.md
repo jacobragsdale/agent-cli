@@ -14,21 +14,23 @@ placeholders: the fork is where the real names go.
 
 Import the repository into the team's Azure DevOps project as a new
 repository (Repos, Import repository), so the fork has no link back to the
-public one. Everything below happens in the fork.
+public one. Everything below happens in the fork. A fork that already exists
+takes the public repository's later changes as `PORTING.md` says, which also
+walks the whole move for an agent to follow.
 
 `team/team.toml` is the config every teammate gets. Replace each placeholder
 with the team's real names: the `[core] releases` URL, the ADO organization
 and projects, the Confluence address, the subscriptions, vaults and
 registries, one `[[k8s.scope]]` per cluster, one `[[sql.connection]]` per
-database, and the Redis, Airflow and Control-M instances. Its comments say
-what each person adds in their own `config.toml` (their ADO and Confluence
-tokens, their Airflow and Control-M logins, their Datadog token) and what
-stays out of it.
+database, and the Redis, Airflow and Control-M instances. Every login in it
+is shared; only Azure signs in as each person.
 
-- **Shared logins** go in Key Vault, one secret per login, named in the entry
-  as `password_kv = "VAULT/SECRET"` (the vault's name, not its URL). Every
-  teammate needs Key Vault Secrets User on that vault, and nothing else is
-  ever written down.
+- **Shared logins** go in Key Vault, one secret per credential, and never in
+  anyone's file. `[core] vault` names the vault, and `password_kv = true` (or
+  `pat_kv`, `token_kv` …) on an entry reads the secret named for it,
+  `agentcli-SECTION-ENTRY-KEY`; `agent-cli config` prints each name.
+  `scripts/vault-put.sh VAULT/SECRET ENV` puts a value there from stdin.
+  Every teammate needs Key Vault Secrets User on that vault.
 - **Prod entries** keep `read_only = true`, which refuses every write before
   it is sent. Give them logins that can only read as well: on SQL Server the
   login is the only guard, since it has no read-only session.
@@ -140,15 +142,14 @@ patchelf, libaio), then reads the shared logins (`agent-cli config pull`,
 which needs the `az login`) and runs `agent-cli doctor`. If `~/.local/bin` was
 not on their PATH yet, it says to open a new terminal.
 
-Each person then adds their own credentials to `~/.config/agent-cli/config.toml`,
-as `team.toml`'s comments say: an entry with the same name changes only the
-keys it sets, so an Airflow login is three lines:
+Nobody adds credentials: every login comes from Key Vault. A person who
+needs to be themselves somewhere (their own ADO token, so `@me` is them)
+sets it in `~/.config/agent-cli/config.toml`, where an entry with the same
+name changes only the keys it sets, and a credential replaces the team's:
 
 ```toml
-[[airflow.instance]]
-name = "prod"
-username = "YOU"
-password = "..."
+[ado]
+pat_env = "MY_ADO_PAT"
 ```
 
 Last, the line `install.sh` printed goes into each person's agent
@@ -176,7 +177,13 @@ Oracle's site is blocked.
 ## 7. Rotate a shared login
 
 Set the new password on the database, then store it as a new version of its
-Key Vault secret. Nobody else has to do anything: when the kept password
+Key Vault secret (`agent-cli config` prints its name):
+
+```sh
+pass show db/reporting | agent-cli kv secret update kv-contoso-dev/agentcli-sql-reporting-prod-password -
+```
+
+Nobody else has to do anything: when the kept password
 fails to sign in, agent-cli reads the secret again, keeps the new value and
 retries once. To refresh every shared login at once:
 

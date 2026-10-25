@@ -96,8 +96,8 @@ command that prints it, run only when a request needs it, such as
 below). Use `KEY_env` when many connections share one password, so a
 rotation is one change.
 
-An Airflow or Control-M instance whose credential you do not have yet can
-go in the file anyway: only that instance fails, naming the key to add.
+An Airflow instance whose credential you do not have yet can go in the
+file anyway: only that instance fails, naming the key to add.
 
 ### A team's shared file
 
@@ -114,6 +114,8 @@ table merges key by key; an entry of a list whose entries have a `name`
 (`[[sql.connection]]`, `[[k8s.scope]]`, `[[airflow.instance]]`, …) merges
 with the team's entry of that name, so you set only the keys that differ,
 and a new name adds an entry. Any other list you set replaces the team's.
+A credential you set (`pat`, `password_env`, `token_cmd` …) replaces the
+team's for that entry, whichever of the four keys either uses.
 Only your own file may include. An included file that is missing stops
 every domain with exit 3, naming the file and the line that includes it:
 rerun the team's `install.sh`, which puts it there. `agent-cli config`
@@ -135,7 +137,23 @@ name = "ledger"
 password_kv = "kv-contoso-team/ledger-reader"
 ```
 
-The first command that needs it reads the secret with your `az login`
+A team that keeps every shared login in one vault names it once, as
+`[core] vault`, and writes `KEY_kv = true`: the secret is then the one named
+for the key's place in the config, `agentcli-` and the section, the entry's
+name and the key, lower case with anything but letters and digits as `-`:
+
+```toml
+[core]
+vault = "kv-contoso-dev"
+
+[[sql.connection]]
+name = "reporting-prod"
+# …
+password_kv = true            # kv-contoso-dev/agentcli-sql-reporting-prod-password
+```
+
+`agent-cli config` prints each name, so whoever adds the entry knows which
+secret to create. The first command that needs it reads the secret with your `az login`
 (which needs the Key Vault Secrets User role on the vault) and keeps it in
 `secrets.toml` beside your config file (mode 0600; agent-cli writes it,
 nobody edits it). When the kept value stops signing in, because someone
@@ -547,7 +565,9 @@ utc_offset = "-05:00"
 
 The username and password are the ones Control-M's web client takes; each
 command logs in once. An API token (Enterprise Manager 9.0.21 and later,
-made in the web client) goes as `token` instead of the pair. Set
+made in the web client) goes as `token` instead of the pair. An Enterprise
+Manager that answers reads without a sign-in needs neither: with no
+credential, requests go without one, and a 401 says which keys to add. Set
 `utc_offset` to the Control-M/Servers' clock: the API prints times on it, and
 agent-cli turns them into UTC.
 

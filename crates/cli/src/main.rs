@@ -154,7 +154,7 @@ mod tests {
         );
     }
 
-    /// The Markdown a reader follows: README, AGENTS.md, docs/ and the
+    /// The Markdown a reader follows: README, AGENTS.md, PORTING.md, docs/ and the
     /// world's README and facts. Not the plans, which name commands not built yet, nor
     /// the generated reference, whose examples `check_registry` parses.
     fn documents() -> Vec<PathBuf> {
@@ -169,7 +169,11 @@ mod tests {
             }
         }
         let repo = Path::new(REPO);
-        let mut found = vec![repo.join("README.md"), repo.join("AGENTS.md")];
+        let mut found = vec![
+            repo.join("README.md"),
+            repo.join("AGENTS.md"),
+            repo.join("PORTING.md"),
+        ];
         walk(&repo.join("docs"), &mut found);
         walk(&repo.join("fixtures/world"), &mut found);
         found

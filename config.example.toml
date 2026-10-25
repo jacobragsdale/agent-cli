@@ -14,6 +14,9 @@
 # (a team's shared login in Key Vault, read with your `az login` and kept in
 # secrets.toml beside this file; `agent-cli config pull` reads them all
 # again, and a kept value that stops signing in is read again by itself).
+# KEY_kv = true names the secret for you: agentcli-SECTION-ENTRY-KEY in
+# [core] vault, so a [[sql.connection]] named reporting-prod reads
+# agentcli-sql-reporting-prod-password; `agent-cli config` prints each name.
 #
 # read_only = true in a section refuses every change agent-cli would make
 # there (exit 2, before anything is sent); on one entry of a list (a sql
@@ -34,6 +37,7 @@
 # releases = "https://keeper.contoso.example/api/v1/repositories/agent-cli/download"
 #                                        # doctor reads {releases}/latest/VERSION
 #                                        # and says when a newer release is out
+# vault = "kv-contoso-dev"                # the Key Vault every KEY_kv = true reads
 
 # [ado]
 # Sign-in: a personal access token (pat, pat_env or pat_cmd), else
@@ -249,7 +253,8 @@
 # --instance takes the name; the only one is the default. Sign in with the
 # username and password of Control-M's web client (POST {base_url}/session/login,
 # a session token per command), or with an API token (Enterprise Manager
-# 9.0.21+, sent as x-api-key). The credential goes only to URLs under base_url.
+# 9.0.21+, sent as x-api-key), or with neither where reads need no sign-in.
+# The credential goes only to URLs under base_url.
 # name = "prod"
 # base_url = "https://ctm-em.contoso.example:8443/automation-api"
 #                                        # the Automation API endpoint, with

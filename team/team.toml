@@ -7,11 +7,16 @@
 #
 # config.toml wins: a key set there replaces this file's, and an entry there
 # with the same name (a [[sql.connection]], [[airflow.instance]] …) changes
-# only the keys it sets. Personal credentials (ADO and Confluence tokens,
-# Airflow and Control-M logins, Datadog) go in config.toml, never here; the
-# comment by each section says which. Shared logins live in Key Vault as
-# KEY_kv = "VAULT/SECRET", which `agent-cli config pull` (install.sh runs it)
-# reads with the person's `az login`.
+# only the keys it sets. A credential set there replaces this file's for that
+# entry.
+#
+# Every login here is shared and lives in Key Vault; only Azure signs in as
+# each person (`az login`). KEY_kv = true reads the secret named for the
+# key's place in this file, agentcli-SECTION-ENTRY-KEY, from [core] vault:
+# the reporting-prod connection's password_kv = true is
+# agentcli-sql-reporting-prod-password. `agent-cli config` prints each name,
+# `agent-cli config pull` (install.sh runs it) reads them all with the
+# person's az login, and scripts/vault-put.sh puts one in the vault.
 #
 # Everything named contoso here is a placeholder. In the team's fork, replace
 # each with the real name, then cut a release (docs/how-to/roll-out-to-a-team.md).
@@ -22,26 +27,33 @@
 # {releases}/latest/VERSION to say when a newer agent-cli is out, and
 # scripts/release-build.sh writes it into install.sh as its default.
 releases = "https://keeper.contoso.example/api/v1/repositories/agent-cli/download"
+# The vault every KEY_kv = true reads. Each teammate needs Key Vault Secrets
+# User on it (or on each agentcli- secret). A secret kept elsewhere is named
+# whole instead: password_kv = "VAULT/SECRET".
+vault = "contoso-kv-dev"
 
 [ado]
-# Yours, in config.toml: pat = "..." (or pat_env, pat_cmd), a personal access
-# token with Work Items, Code, Build, Test Management, and Project and Team.
+# A shared personal access token (a service account's) with Work Items, Code,
+# Build, Test Management, and Project and Team: in ADO everyone is that
+# account, so @me, comments and changes are its. Someone who needs to be
+# themselves sets pat = "..." (or pat_env, pat_cmd) in config.toml.
 org = "contoso"
 project = ["web", "data"]                # the first is the default --project
 code_project = "web"                     # repos, pull requests, pipelines
 team = ["web team", "data/data team"]    # PROJECT/TEAM for a project other than the first
+pat_kv = true
 
 [confluence]
-# Self-hosted Confluence, the address the browser shows (context path included).
-# Yours, in config.toml: token = "..." (a personal access token from your
-# profile, Personal Access Tokens).
+# Self-hosted Confluence, the address the browser shows (context path
+# included), with a shared account's personal access token.
 url = "https://wiki.contoso.example"
+token_kv = true
 
 [azure]
 # kv, acr, aks, aisearch, arm, net, lake and entra sign in with each person's
 # `az login`; the lists only narrow what they see, and set the order.
 subscriptions = ["00000000-0000-0000-0000-000000000000", "00000000-0000-0000-0000-000000000001"]
-vaults = ["contoso-kv-dev", "contoso-kv", "contoso-kv-prod"]
+vaults = ["contoso-kv-dev", "contoso-kv-qa", "contoso-kv-prod"]
 registries = "contosoacr"
 search_services = ["contoso-search-dev", "contoso-search-prod"]
 storage_accounts = ["contosolake"]
@@ -64,9 +76,8 @@ read_only = true
 # together if it ever moves.
 oracle_client_dir = "~/.local/opt/oracle/instantclient_23_26"
 
-# Shared logins: the password is a Key Vault secret, VAULT/SECRET (the vault's
-# name, not its URL), kept by `agent-cli config pull` and read again on its
-# own when a sign-in fails after a rotation. Prod logins can only read, and
+# Shared logins, kept by `agent-cli config pull` and read again on their own
+# when a sign-in fails after a rotation. Prod logins can only read, and
 # read_only = true refuses writes before anything is sent; on SQL Server the
 # login itself is the guard, since it has no read-only session.
 [[sql.connection]]
@@ -75,7 +86,7 @@ kind = "mssql"
 host = "sql-dev.contoso.example"
 database = "reporting"
 user = "agent_reader"
-password_kv = "contoso-kv/sql-reporting-dev-reader"
+password_kv = true
 
 [[sql.connection]]
 name = "reporting-prod"
@@ -83,7 +94,7 @@ kind = "mssql"
 host = "sql.contoso.example"
 database = "reporting"
 user = "agent_reader"
-password_kv = "contoso-kv/sql-reporting-prod-reader"
+password_kv = true
 read_only = true
 
 [[sql.connection]]
@@ -93,7 +104,7 @@ host = "ora.contoso.example"
 port = 1521
 service = "LEDGER"
 user = "AGENT_READER"
-password_kv = "contoso-kv/ora-ledger-prod-reader"
+password_kv = true
 read_only = true
 
 [[sql.connection]]
@@ -103,7 +114,7 @@ host = "pg.contoso.example"
 port = 5432
 database = "orders"
 user = "agent_reader"
-password_kv = "contoso-kv/pg-orders-prod-reader"
+password_kv = true
 read_only = true
 
 [[sql.connection]]
@@ -133,26 +144,29 @@ auth = "az"
 [[redis.instance]]
 name = "orders-prod"
 host = "contoso-orders.redis.cache.windows.net"
-password_kv = "contoso-kv/redis-orders-prod-key"
+password_kv = true                       # an access key
 read_only = true
 
-# Yours, in config.toml, for each instance you use: an entry with the same
-# name holding username and password (or password_env, password_cmd), or token.
+# A shared login of each instance's web UI.
 [[airflow.instance]]
 name = "dev"
 base_url = "https://airflow-dev.contoso.example"
 k8s_scope = "dev"
 dags_repo = "airflow-dags:dags"
+username = "svc_agent"
+password_kv = true
 
 [[airflow.instance]]
 name = "prod"
 base_url = "https://airflow.contoso.example"
 k8s_scope = "prod"
 dags_repo = "airflow-dags:dags"
+username = "svc_agent"
+password_kv = true
 read_only = true
 
-# Yours, in config.toml: an entry named prod with the username and password of
-# Control-M's web client, or an API token as token.
+# Control-M answers reads with no sign-in, so the entry has no credential;
+# one that wants a sign-in says so on the first call.
 [[controlm.instance]]
 name = "prod"
 base_url = "https://ctm-em.contoso.example:8443/automation-api"
@@ -160,10 +174,11 @@ utc_offset = "-05:00"
 read_only = true
 
 [datadog]
-# Yours, in config.toml: token = "..." (a personal access token with read
-# scopes), or api_key and app_key.
+# A service account's API and application keys.
 site = "datadoghq.com"
 env = "prod"
+api_key_kv = true
+app_key_kv = true
 
 [keeper]
 # Artifact Keeper itself: anonymous reads of the public repositories.

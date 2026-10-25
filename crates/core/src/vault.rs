@@ -17,6 +17,7 @@ use crate::config::Config;
 use crate::ctx::{Ctx, locked};
 use crate::error::{Exit, Failure};
 use crate::http::{Request, host_under};
+use crate::layers::Problem;
 use crate::output;
 use crate::secret::Secret;
 
@@ -45,6 +46,98 @@ pub(crate) fn parse(key: &str, reference: &str) -> Result<(String, String), Stri
         return Err(wrong());
     }
     Ok((vault.to_ascii_lowercase(), secret.to_owned()))
+}
+
+/// What every secret `KEY_kv = true` names starts with, so a team's are
+/// found, and cleared, together in a vault that holds others.
+const PREFIX: &str = "agentcli";
+
+/// `KEY_kv = true` as `"VAULT/SECRET"`: the secret `[core] vault` holds for
+/// the key's place in the config, so a team writes each entry without its
+/// secret and the vault's name for it follows from the entry's.
+/// `[[sql.connection]] name = "reporting-prod"` with `password_kv = true`
+/// reads `agentcli-sql-reporting-prod-password`: the section, each table's
+/// key or list entry's `name`, then the key, lower case, with anything but
+/// letters and digits as `-`.
+pub(crate) fn name_secrets(table: &mut Table) -> Result<(), Problem> {
+    fn walk(value: &mut Value, at: &mut Vec<String>, vault: Option<&str>) -> Result<(), Problem> {
+        match value {
+            Value::Table(table) => {
+                for (key, value) in table.iter_mut() {
+                    match (key.strip_suffix("_kv"), value.as_bool()) {
+                        (Some(stem), Some(true)) => {
+                            let place = format!("{}.{key}", at.join("."));
+                            let Some(vault) = vault else {
+                                return Err(Problem {
+                                    message: format!(
+                                        "{place} = true names its secret in [core] vault, which is not set"
+                                    ),
+                                    hint: Some(
+                                        "add vault = \"VAULT\" (the Key Vault's name) under [core] in the team's file; `agent-cli config` lists the files read"
+                                            .to_owned(),
+                                    ),
+                                });
+                            };
+                            let mut name = PREFIX.to_owned();
+                            for part in at.iter().map(String::as_str).chain([stem]) {
+                                for word in part
+                                    .split(|c: char| !c.is_ascii_alphanumeric())
+                                    .filter(|word| !word.is_empty())
+                                {
+                                    name.push('-');
+                                    name.push_str(&word.to_ascii_lowercase());
+                                }
+                            }
+                            *value = Value::String(format!("{vault}/{name}"));
+                        }
+                        (Some(_), Some(false)) => {
+                            return Err(Problem::plain(format!(
+                                "{}.{key} is true (the secret [core] vault holds for it) or \"VAULT/SECRET\", not false",
+                                at.join(".")
+                            )));
+                        }
+                        _ => {
+                            // A list's entries are named by their own `name`.
+                            let list = value.is_array();
+                            if !list {
+                                at.push(key.clone());
+                            }
+                            walk(value, at, vault)?;
+                            if !list {
+                                at.pop();
+                            }
+                        }
+                    }
+                }
+            }
+            Value::Array(items) => {
+                for (index, item) in items.iter_mut().enumerate() {
+                    let name = item
+                        .get("name")
+                        .and_then(Value::as_str)
+                        .map_or_else(|| index.to_string(), str::to_owned);
+                    at.push(name);
+                    walk(item, at, vault)?;
+                    at.pop();
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+    let vault = table
+        .get("core")
+        .and_then(|core| core.get("vault"))
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|vault| !vault.is_empty())
+        .map(str::to_owned);
+    for (section, value) in table.iter_mut() {
+        if section != "core" {
+            walk(value, &mut vec![section.clone()], vault.as_deref())?;
+        }
+    }
+    Ok(())
 }
 
 /// The secret's current value, from Key Vault.
@@ -269,5 +362,58 @@ mod tests {
         ] {
             assert!(parse("password", wrong).is_err(), "{wrong}");
         }
+    }
+
+    #[test]
+    fn a_kv_key_set_to_true_names_the_secret_for_its_place_in_the_config() {
+        let mut table: Table = "[core]\nvault = \"kv-contoso-dev\"\n\n[ado]\npat_kv = true\n\n[datadog]\napi_key_kv = true\n\n[[sql.connection]]\nname = \"Reporting_Prod\"\npassword_kv = true\n\n[[sql.connection]]\nname = \"ledger\"\npassword_kv = \"kv-contoso-prod/ledger-reader\"\n"
+            .parse()
+            .unwrap();
+        name_secrets(&mut table).unwrap();
+        assert_eq!(
+            table["ado"]["pat_kv"].as_str(),
+            Some("kv-contoso-dev/agentcli-ado-pat")
+        );
+        assert_eq!(
+            table["datadog"]["api_key_kv"].as_str(),
+            Some("kv-contoso-dev/agentcli-datadog-api-key")
+        );
+        let connections = table["sql"]["connection"].as_array().unwrap();
+        assert_eq!(
+            connections[0]["password_kv"].as_str(),
+            Some("kv-contoso-dev/agentcli-sql-reporting-prod-password")
+        );
+        assert_eq!(
+            connections[1]["password_kv"].as_str(),
+            Some("kv-contoso-prod/ledger-reader"),
+            "a named secret stays as written"
+        );
+        let (vault, secret) =
+            parse("password", connections[0]["password_kv"].as_str().unwrap()).unwrap();
+        assert_eq!((vault.as_str(), secret.len()), ("kv-contoso-dev", 36));
+    }
+
+    #[test]
+    fn a_kv_key_set_to_true_without_core_vault_or_set_to_false_is_a_problem_naming_it() {
+        let mut table: Table = "[[sql.connection]]\nname = \"prod\"\npassword_kv = true\n"
+            .parse()
+            .unwrap();
+        let problem = name_secrets(&mut table).unwrap_err();
+        assert!(
+            problem
+                .message
+                .starts_with("sql.prod.password_kv = true names its secret in [core] vault"),
+            "{problem:?}"
+        );
+        assert!(problem.hint.unwrap().starts_with("add vault = "));
+        let mut table: Table = "[core]\nvault = \"kv\"\n\n[ado]\npat_kv = false\n"
+            .parse()
+            .unwrap();
+        assert!(
+            name_secrets(&mut table)
+                .unwrap_err()
+                .message
+                .contains("not false")
+        );
     }
 }

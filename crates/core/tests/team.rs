@@ -473,3 +473,58 @@ fn config_pull_reads_every_kv_key_and_keeps_them_without_printing_one() {
         "kv-contoso-team/shop-token"
     );
 }
+
+#[test]
+fn a_kv_key_set_to_true_reads_the_secret_named_for_its_entry_and_a_persons_own_credential_replaces_it()
+ {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("team.toml"),
+        "[core]\nvault = \"kv-contoso-dev\"\n\n[[shop.store]]\nname = \"Reporting_Prod\"\npassword_kv = true\n\n[[shop.store]]\nname = \"dev\"\npassword_kv = true\n",
+    )
+    .unwrap();
+    let mine =
+        "[core]\ninclude = \"team.toml\"\n\n[[shop.store]]\nname = \"dev\"\npassword = \"mine\"\n";
+    let path = dir.path().join("config.toml");
+    let layered = |transport: FakeTransport| {
+        let mut setup = Setup::fake(transport).with_secrets(&dir.path().join("secrets.toml"));
+        setup.config = Config::parse(&path, Some(mine), Vec::new());
+        setup
+    };
+    let shown = run(DOMAINS, &["config"], layered(FakeTransport::default())).json();
+    let stores = &shown["sections"]["shop"]["store"];
+    assert_eq!(
+        stores[0]["password_kv"],
+        "kv-contoso-dev/agentcli-shop-reporting-prod-password"
+    );
+    assert_eq!(stores[1]["password"], "***");
+    assert!(stores[1].get("password_kv").is_none(), "{stores}");
+
+    let transport = FakeTransport::answering([Answer::json(&json!({"value": "pw-1"}))]);
+    let pulled = run(DOMAINS, &["config", "pull"], layered(transport.clone()));
+    assert_eq!(pulled.code, 0, "{pulled:?}");
+    assert_eq!(pulled.json().as_array().unwrap().len(), 1);
+    assert_eq!(
+        transport.sent()[0].url,
+        "https://kv-contoso-dev.vault.azure.net/secrets/agentcli-shop-reporting-prod-password?api-version=7.4"
+    );
+
+    std::fs::write(
+        dir.path().join("team.toml"),
+        "[[shop.store]]\nname = \"prod\"\npassword_kv = true\n",
+    )
+    .unwrap();
+    let broken = run(
+        DOMAINS,
+        &["shop", "order", "update", "7"],
+        layered(FakeTransport::default()),
+    );
+    assert_eq!(broken.code, 3);
+    assert!(
+        broken
+            .stderr
+            .contains("shop.prod.password_kv = true names its secret in [core] vault"),
+        "{}",
+        broken.stderr
+    );
+}

@@ -56,8 +56,11 @@ pub(crate) enum Auth {
     /// An API token (Enterprise Manager 9.0.21 and later), sent as
     /// `x-api-key`.
     Token(Credential),
-    /// Not given yet: what to add. Said when this instance signs in, so an
-    /// instance added before its password stops no other.
+    /// No credential at all: requests go without one, for an Enterprise
+    /// Manager that answers reads anonymously; a 401 says what to add.
+    Anonymous,
+    /// Half given (a username alone): what to add. Said when this instance
+    /// signs in, so an instance added before its password stops no other.
     Missing(&'static str),
 }
 
@@ -83,7 +86,7 @@ impl Instance {
                 format!("password for {username} ({})", password.source())
             }
             Auth::Token(token) => format!("API token ({})", token.source()),
-            Auth::Missing(_) => "no credential".to_owned(),
+            Auth::Anonymous | Auth::Missing(_) => "no credential".to_owned(),
         }
     }
 }
@@ -111,7 +114,9 @@ impl Raw {
         let auth = match (self.username, password, token) {
             (Some(username), Some(password), None) => Auth::Password { username, password },
             (None, None, Some(token)) => Auth::Token(token),
-            (Some(_), None, None) => Auth::Missing("password (or password_env, password_cmd)"),
+            (Some(_), None, None) => {
+                Auth::Missing("password (or password_env, password_cmd, password_kv)")
+            }
             (None, Some(_), None) => return Err("a password needs username".to_owned()),
             (_, Some(_), Some(_)) => {
                 return Err("give a username and password, or a token, not both".to_owned());
@@ -119,7 +124,7 @@ impl Raw {
             (Some(_), None, Some(_)) => {
                 return Err("an API token needs no username; drop it".to_owned());
             }
-            (None, None, None) => Auth::Missing("username and password, or token"),
+            (None, None, None) => Auth::Anonymous,
         };
         let offset = match self.utc_offset.as_deref().map(str::trim) {
             None | Some("") => UtcOffset::UTC,
@@ -378,6 +383,7 @@ impl Op for Call<'_, '_> {
         let header = match self.client.instance.auth {
             Auth::Password { .. } | Auth::Missing(_) => "Authorization",
             Auth::Token(_) => "x-api-key",
+            Auth::Anonymous => return plan,
         };
         plan["headers"][header] = json!("***");
         plan
@@ -420,6 +426,20 @@ impl Op for Call<'_, '_> {
                 let mint = |fresh: bool| self.client.bearer(fresh);
                 request.auth(&mint).perform(ctx)
             }
+            Auth::Anonymous => request.perform(ctx).map_err(|error| {
+                if status_of(&error) != Some(401) {
+                    return error;
+                }
+                Failure::setup(format!(
+                    "Control-M wants a sign-in, and [[controlm.instance]] {:?} has no credential",
+                    self.client.instance.name
+                ))
+                .hint(format!(
+                    "add username and password_kv (or password, password_env, password_cmd), or token, under it in {}",
+                    ctx.config().path().display()
+                ))
+                .into()
+            }),
             Auth::Missing(what) => Err(Failure::setup(format!(
                 "[[controlm.instance]] {:?} has no credential",
                 self.client.instance.name
@@ -785,6 +805,32 @@ mod tests {
     }
 
     #[test]
+    fn an_instance_with_no_credential_reads_anonymously_and_a_401_names_the_keys_to_add() {
+        let config = "[[controlm.instance]]\nname = \"prod\"\n\
+             base_url = \"https://ctm.contoso.example:8443/automation-api\"\n";
+        let get = ["controlm", "job", "get", "ctm-prod:00a1b"];
+        let answer = job("ctm-prod:00a1b", "load_orders", "Ended OK");
+        let (outcome, transport) = controlm_with(config, &get, vec![Answer::json(&answer)]);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let sent = &transport.sent()[0];
+        assert!(sent.authorization.is_none(), "{:?}", sent.authorization);
+        assert!(
+            sent.headers.iter().all(|(name, _)| name != "x-api-key"),
+            "{:?}",
+            sent.headers
+        );
+
+        let (outcome, _) = controlm_with(config, &get, vec![Answer::status(401, "{}")]);
+        assert_eq!(outcome.code, 3, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("Control-M wants a sign-in"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(outcome.stderr.contains("add username and password_kv"));
+    }
+
+    #[test]
     fn an_instance_with_no_credential_yet_fails_only_when_it_is_used() {
         let config = format!(
             "{CONFIG}[[controlm.instance]]\nname = \"qa\"\n\
@@ -810,7 +856,7 @@ mod tests {
         assert!(
             outcome
                 .stderr
-                .contains("add password (or password_env, password_cmd)"),
+                .contains("add password (or password_env, password_cmd, password_kv)"),
             "{}",
             outcome.stderr
         );

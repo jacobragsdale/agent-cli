@@ -105,7 +105,12 @@ impl Config {
         let path = path.into();
         let raw = text.unwrap_or_default();
         let (table, included) = match raw.parse::<Table>() {
-            Ok(table) => layered(&path, raw, table),
+            Ok(table) => {
+                let (table, included) = layered(&path, raw, table);
+                let table = table
+                    .and_then(|mut table| crate::vault::name_secrets(&mut table).map(|()| table));
+                (table, included)
+            }
             Err(error) => (
                 Err(Problem::plain(format!(
                     "cannot parse {}: {error}",

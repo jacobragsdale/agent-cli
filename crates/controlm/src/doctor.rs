@@ -2,7 +2,7 @@
 
 use agent_cli_core::{Check, Config, Ctx, Failure};
 
-use crate::client::{Client, ControlM, text};
+use crate::client::{Auth, Client, ControlM, text};
 
 /// `controlm 2 instances`, from config alone.
 pub(crate) fn status(config: &Config) -> String {
@@ -59,11 +59,14 @@ pub(crate) fn doctor(ctx: &Ctx) -> Vec<Check> {
                     .as_ref()
                     .map(|version| format!(" to Enterprise Manager {version}"))
                     .unwrap_or_default();
+                let who = match instance.auth {
+                    Auth::Anonymous => "reads with no credential".to_owned(),
+                    _ => format!("{} signs in", instance.auth_source()),
+                };
                 checks.push(Check::ok(
                     format!("{name} credential"),
                     format!(
-                        "{} signs in{version} at {}; servers: {}",
-                        instance.auth_source(),
+                        "{who}{version} at {}; servers: {}",
                         instance.base_url,
                         servers.join(", ")
                     ),

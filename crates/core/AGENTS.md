@@ -22,8 +22,8 @@
   scope; `read_only()`: changes refused there (the entry's key, else the
   section's, which core owns).
 - `Globals`, `Setup` (`state_dir`, `secrets`), `DEFAULT_TIMEOUT`.
-- `Config` (`[core] include`, merged by name); `pick`: scope flags;
-  `Cache`. A doctor with no checks is not set up.
+- `Config` (`[core] include` by name; `KEY_kv = true` from `[core] vault`);
+  `pick`: scope flags; `Cache`. No doctor checks: not set up.
 
 ## HTTP and processes
 - `Request` (`get`, `query` = a POST that only reads, `.json`, `.form`,
@@ -46,7 +46,7 @@
 - `Secret` (no Serialize; `expose`), `redact`, `redact_value`, `sensitive_key`.
 - `Credential::from_keys(key, value, env, cmd, kv)`, `.resolve(ctx)`,
   `.source()`; `.refresh(ctx)` after a refused sign-in: a changed `KEY_kv`
-  value to retry once with, else `None` (the refusal stands).
+  value to retry once with, else `None`.
 
 ## Time
 `When` (`--since`, `--until`; `.utc()`, `.unix()`), `Span` (a length),

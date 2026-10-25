@@ -14,7 +14,8 @@ UTC). Credential: `username` with `password`, `password_env`,
 `password_cmd`, `password_kv` (a session token from `POST /session/login`,
 `Bearer`, once per command and again after a 401), or `token`,
 `token_env`, `token_cmd`, `token_kv` (an API token, `x-api-key`); none
-yet is `Auth::Missing`, an error when a call goes out, so only that
+is `Auth::Anonymous` (no header; a 401 names the keys to add), a username
+alone `Auth::Missing`, an error when a call goes out, so only that
 instance fails. Only under `base_url/` (`same_origin`). A refused kv one
 (`VAULT/SECRET`) is read again and, when Key Vault's value changed, tried
 once more. `read_only` (the entry's, else `[controlm]`'s, read by core)

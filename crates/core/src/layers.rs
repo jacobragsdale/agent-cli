@@ -161,7 +161,24 @@ fn line_of(text: &str, name: &str) -> usize {
 
 /// `over` onto `base`: scalars and other lists replace, tables merge key by
 /// key, and lists of entries that all have a `name` merge entry by entry.
+/// A credential's four keys are one setting, so a person's `password`
+/// replaces the team's `password_kv` rather than sitting beside it, which
+/// `Credential::from_keys` refuses.
 pub(crate) fn merge(base: &mut Table, over: Table) {
+    for key in over.keys() {
+        let stem = ["_env", "_cmd", "_kv"]
+            .iter()
+            .find_map(|suffix| key.strip_suffix(suffix))
+            .unwrap_or(key);
+        if !(crate::secret::sensitive_key(stem) || stem == "pat") {
+            continue;
+        }
+        for form in ["", "_env", "_cmd", "_kv"].map(|suffix| format!("{stem}{suffix}")) {
+            if !over.contains_key(&form) {
+                base.remove(&form);
+            }
+        }
+    }
     for (key, value) in over {
         match (base.get_mut(&key), value) {
             (Some(Value::Table(old)), Value::Table(new)) => merge(old, new),
@@ -225,6 +242,35 @@ mod tests {
         assert_eq!(names, ["prod", "qa", "mine"]);
         assert_eq!(entries[0]["host"].as_str(), Some("db"));
         assert_eq!(entries[0]["read_only"].as_bool(), Some(false));
+    }
+
+    #[test]
+    fn a_credential_set_later_replaces_the_earlier_source_of_it_and_nothing_else() {
+        let mut base = table(
+            "[ado]\npat_kv = true\nproject = \"web\"\n\n[[sql.connection]]\nname = \"prod\"\nuser = \"reader\"\npassword_kv = \"kv/prod\"\n\n[datadog]\napi_key_kv = true\napp_key_kv = true\nenv = \"prod\"\n",
+        );
+        merge(
+            &mut base,
+            table(
+                "[ado]\npat_env = \"MY_PAT\"\n\n[[sql.connection]]\nname = \"prod\"\npassword = \"mine\"\n\n[datadog]\napi_key = \"mine\"\nenv_cmd = \"echo dev\"\n",
+            ),
+        );
+        let keys = |table: &Value| {
+            table
+                .as_table()
+                .unwrap()
+                .keys()
+                .cloned()
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(keys(&base["ado"]), ["pat_env", "project"]);
+        let prod = &base["sql"]["connection"][0];
+        assert_eq!(keys(prod), ["name", "password", "user"]);
+        assert_eq!(
+            keys(&base["datadog"]),
+            ["api_key", "app_key_kv", "env", "env_cmd"],
+            "only credentials are one setting"
+        );
     }
 
     #[test]
