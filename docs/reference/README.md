@@ -7,7 +7,7 @@ Every command also takes the globals `--fields a,b.c`, `--raw`, `--dry-run`, `--
 | Domain | Summary |
 |---|---|
 | [ado](ado.md) | Azure DevOps |
-| [confluence](confluence.md) | Confluence Cloud |
+| [confluence](confluence.md) | Confluence Data Center |
 | [kv](kv.md) | Key Vault |
 | [acr](acr.md) | Container Registry |
 | [aks](aks.md) | AKS |

@@ -5,7 +5,7 @@ use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::client::{Confluence, Content, stamp, text};
+use crate::client::{Confluence, Content, PAGE, person, stamp, text};
 use crate::ids;
 use crate::markdown::{Context, mentions, to_markdown};
 use crate::storage::{find, parse, sections};
@@ -88,27 +88,19 @@ fn page_get(ctx: &Ctx, args: PageGetArgs) -> Result<Pages> {
     let confluence = Confluence::load(ctx)?;
     let mut fetched = Vec::new();
     let mut failed = Vec::new();
-    let mut spaces = HashMap::new();
     for raw in &args.page {
-        match fetch(ctx, &confluence, &args, raw, &mut spaces) {
+        match fetch(ctx, &confluence, &args, raw) {
             Ok(page) => fetched.push(page),
             Err(error) if args.page.len() == 1 => return Err(error),
             Err(error) => failed.push((raw, error)),
         }
     }
-    // One users-bulk for every person the pages name.
-    let ids: Vec<String> = fetched
+    // Authors come with each page; mentions in the bodies need their names.
+    let keys: Vec<String> = fetched
         .iter()
-        .flat_map(|page| {
-            let mut ids = vec![
-                text(&page.content.value["authorId"]).unwrap_or_default(),
-                text(&page.content.value["version"]["authorId"]).unwrap_or_default(),
-            ];
-            ids.extend(mentions(&parse(&page.storage)));
-            ids
-        })
+        .flat_map(|page| mentions(&parse(&page.storage)))
         .collect();
-    let names = confluence.names(ctx, &ids);
+    let names = confluence.names(ctx, &keys);
     let budget = GUARD / args.page.len();
     let mut rows = Vec::new();
     for page in fetched {
@@ -142,32 +134,17 @@ fn page_get(ctx: &Ctx, args: PageGetArgs) -> Result<Pages> {
 }
 
 struct Fetched {
+    /// The page's own id: an older version answers with an id of its own.
+    id: String,
     content: Content,
-    space: Option<String>,
     /// The storage shown: the whole body, or the section's.
     storage: String,
 }
 
-fn fetch(
-    ctx: &Ctx,
-    confluence: &Confluence,
-    args: &PageGetArgs,
-    raw: &str,
-    spaces: &mut HashMap<String, String>,
-) -> Result<Fetched> {
+fn fetch(ctx: &Ctx, confluence: &Confluence, args: &PageGetArgs, raw: &str) -> Result<Fetched> {
     let (id, version) = ids::page(ctx, confluence, raw, args.version.as_deref())?;
-    let mut query = vec![
-        ("body-format", "storage".to_owned()),
-        ("include-labels", "true".to_owned()),
-    ];
-    if let Some(version) = version {
-        query.push(("version", version.to_string()));
-    }
-    let content = confluence.content(ctx, &id, &query)?;
-    let whole = content.value["body"]["storage"]["value"]
-        .as_str()
-        .unwrap_or_default()
-        .to_owned();
+    let content = confluence.content(ctx, &id, PAGE, version)?;
+    let whole = content.storage().to_owned();
     let storage = match &args.section {
         Some(name) => {
             let nodes = parse(&whole);
@@ -176,13 +153,9 @@ fn fetch(
         }
         None => whole,
     };
-    let space = match text(&content.value["spaceId"]) {
-        Some(space_id) => Some(confluence.space_key(ctx, &space_id, spaces)?),
-        None => None,
-    };
     Ok(Fetched {
+        id,
         content,
-        space,
         storage,
     })
 }
@@ -196,14 +169,11 @@ fn render(
     budget: usize,
 ) -> Result<PageText> {
     let value = &page.content.value;
-    let id = text(&value["id"]).unwrap_or_default();
-    let name = |field: &serde_json::Value| {
-        text(field).map(|account| names.get(&account).cloned().unwrap_or(account))
-    };
+    let space = page.content.space();
     let read = to_markdown(
         &parse(&page.storage),
         &Context {
-            space: page.space.as_deref().unwrap_or_default(),
+            space: space.as_deref().unwrap_or_default(),
             names,
         },
     );
@@ -213,23 +183,18 @@ fn render(
         read.text
     };
     let mut row = PageText {
-        id: id.clone(),
-        kind: page.content.type_name().to_owned(),
+        id: page.id.clone(),
+        kind: page.content.kind.clone(),
         title: text(&value["title"]),
-        space: page.space.clone(),
+        space,
         status: text(&value["status"]),
         version: page.content.version(),
-        parent: text(&value["parentId"]),
-        author: name(&value["authorId"]),
-        created: stamp(&value["createdAt"]),
-        updated: stamp(&value["version"]["createdAt"]),
-        updated_by: name(&value["version"]["authorId"]),
-        labels: value["labels"]["results"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(|label| text(&label["name"]))
-            .collect(),
+        parent: page.content.parent(),
+        author: person(&value["history"]["createdBy"]),
+        created: stamp(&value["history"]["createdDate"]),
+        updated: stamp(&value["version"]["when"]),
+        updated_by: person(&value["version"]["by"]),
+        labels: page.content.labels(),
         url: confluence.web_of(value),
         lines: None,
         total: body.lines().count(),
@@ -334,9 +299,16 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{V2, confluence, page, people, space, urls};
+    use crate::testing::{API, BASE, SAM, confluence, page, urls, user};
 
-    const BODY: &str = "<h2>Steps</h2><p>Fix the order in the CRM.</p><h2>An order without customer_id</h2><p>Retry <code>load_orders</code>.</p><ac:structured-macro ac:name=\"toc\" />";
+    const BODY: &str = "<h2>Steps</h2><p>Fix the order in the CRM.</p><h2>An order without customer_id</h2><p>Retry <code>load_orders</code>, then tell <ac:link><ri:user ri:userkey=\"8a8080a1000000000000000000000002\" /></ac:link>.</p><ac:structured-macro ac:name=\"toc\" />";
+
+    const EXPAND: &str =
+        "expand=body.storage%2Cversion%2Cspace%2Cancestors%2Cmetadata.labels%2Chistory";
+
+    fn sam() -> Answer {
+        Answer::json(&user(SAM, "sam", "Sam Lee"))
+    }
 
     #[test]
     fn words_that_are_no_page_ask_for_one_search_of_all_of_them() {
@@ -376,12 +348,11 @@ mod tests {
                 "confluence",
                 "page",
                 "get",
-                "https://contoso.atlassian.net/wiki/spaces/ENG/pages/1101/Runbook",
+                &format!("{BASE}/spaces/ENG/pages/1101/Runbook"),
             ],
             vec![
                 Answer::json(&page("1101", "Runbook: etl_nightly", 4, BODY)),
-                Answer::json(&space()),
-                people(),
+                sam(),
             ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
@@ -391,22 +362,25 @@ mod tests {
                 "status": "current", "version": 4, "parent": "1100", "author": "Sam Lee",
                 "created": "2026-09-01T09:00:00Z", "updated": "2026-09-28T16:20:00Z",
                 "updated_by": "Jane Doe", "labels": ["runbook"],
-                "url": "https://contoso.atlassian.net/wiki/spaces/ENG/pages/1101/Page",
+                "url": format!("{BASE}/spaces/ENG/pages/1101/Page"),
                 "lines": "1-9", "total": 9, "lossy": ["toc"],
-                "body": "## Steps\n\nFix the order in the CRM.\n\n## An order without customer_id\n\nRetry `load_orders`.\n\n\u{27e6}toc\u{27e7}"})
+                "body": "## Steps\n\nFix the order in the CRM.\n\n## An order without customer_id\n\nRetry `load_orders`, then tell @<Sam Lee>.\n\n\u{27e6}toc\u{27e7}"})
         );
         assert_eq!(
             urls(&transport),
             [
-                format!("{V2}/pages/1101?body-format=storage&include-labels=true"),
-                format!("{V2}/spaces/2001"),
-                format!("{V2}/users-bulk"),
+                format!("{API}/content/1101?{EXPAND}"),
+                format!("{API}/user?key={SAM}"),
             ]
         );
     }
 
     #[test]
-    fn a_section_an_old_version_and_a_blog_post_are_asked_for_as_such() {
+    fn a_section_of_an_old_version_is_asked_for_as_such() {
+        let mut old = page("1101", "Shipped", 2, BODY);
+        old["status"] = json!("historical");
+        old["id"] = json!("1188");
+        old["type"] = json!("blogpost");
         let (outcome, transport) = confluence(
             &[
                 "confluence",
@@ -416,32 +390,47 @@ mod tests {
                 "--section",
                 "an order WITHOUT customer_id",
             ],
-            vec![
-                Answer::status(404, r#"{"errors":[{"status":404,"title":"Not found"}]}"#),
-                Answer::json(&page("1101", "Shipped", 2, BODY)),
-                Answer::json(&space()),
-                people(),
-            ],
+            vec![Answer::json(&old), sam()],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
         let row = outcome.json();
-        assert_eq!(row["type"], "blogpost");
         assert_eq!(
-            row["body"],
-            "## An order without customer_id\n\nRetry `load_orders`.\n\n\u{27e6}toc\u{27e7}"
+            (&row["id"], &row["type"], &row["status"], &row["version"]),
+            (
+                &json!("1101"),
+                &json!("blogpost"),
+                &json!("historical"),
+                &json!(2)
+            )
         );
         assert_eq!(
-            urls(&transport)[..2],
-            [
-                format!("{V2}/pages/1101?body-format=storage&include-labels=true&version=2"),
-                format!("{V2}/blogposts/1101?body-format=storage&include-labels=true&version=2"),
-            ]
+            row["body"],
+            "## An order without customer_id\n\nRetry `load_orders`, then tell @<Sam Lee>.\n\n\u{27e6}toc\u{27e7}"
+        );
+        assert_eq!(
+            urls(&transport)[0],
+            format!("{API}/content/1101?{EXPAND}&version=2")
         );
         let (outcome, _) = confluence(
             &["confluence", "page", "get", "1101@2", "--version", "3"],
             vec![],
         );
         assert_eq!(outcome.code, 2, "{outcome:?}");
+        let (outcome, _) = confluence(
+            &["confluence", "page", "get", "1101@9"],
+            vec![Answer::status(
+                404,
+                r#"{"statusCode":404,"message":"No content found with id: ContentId{id=1101}"}"#,
+            )],
+        );
+        assert_eq!(outcome.code, 4, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("agent-cli confluence version list 1101"),
+            "{}",
+            outcome.stderr
+        );
     }
 
     #[test]
@@ -453,13 +442,7 @@ mod tests {
                 body.push_str("<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor.</p>");
             }
         }
-        let answers = || {
-            vec![
-                Answer::json(&page("1101", "Long", 1, &body)),
-                Answer::json(&space()),
-                people(),
-            ]
-        };
+        let answers = || vec![Answer::json(&page("1101", "Long", 1, &body))];
         let (outcome, _) = confluence(&["confluence", "page", "get", "1101"], answers());
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert!(outcome.stdout.len() <= 12_000, "{}", outcome.stdout.len());
@@ -506,26 +489,36 @@ mod tests {
 
     #[test]
     fn several_pages_print_in_order_and_a_missing_one_fails_with_the_rest_as_data() {
-        let missing = || {
-            Answer::status(
-                404,
-                r#"{"errors":[{"status":404,"title":"Cannot find a page with id [9]","detail":null}]}"#,
-            )
-        };
         let (outcome, _) = confluence(
             &["confluence", "page", "get", "1101", "9"],
             vec![
                 Answer::json(&page("1101", "Runbook", 4, "<p>x</p>")),
-                Answer::json(&space()),
-                missing(),
-                missing(),
-                people(),
+                Answer::status(
+                    404,
+                    r#"{"statusCode":404,"data":{"authorized":false,"valid":true,"errors":[],"successful":false},"message":"No content found with id: ContentId{id=9}","reason":"Not Found"}"#,
+                ),
             ],
         );
         assert_eq!(outcome.code, 4, "{outcome:?}");
         assert_eq!(outcome.json()[0]["id"], "1101");
         assert!(
             outcome.stderr.contains("or you may not see it"),
+            "{}",
+            outcome.stderr
+        );
+    }
+
+    #[test]
+    fn a_comment_id_is_no_page() {
+        let (outcome, _) = confluence(
+            &["confluence", "page", "get", "5001"],
+            vec![Answer::json(
+                &json!({"id": "5001", "type": "comment", "title": "Re: x"}),
+            )],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("5001 is a comment"),
             "{}",
             outcome.stderr
         );

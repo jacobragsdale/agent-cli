@@ -25,7 +25,7 @@ fn the_world_answers_what_a_trial_asks_of_confluence() {
             "confluence",
             "page",
             "get",
-            "https://contoso.atlassian.net/wiki/spaces/ENG/pages/1101/Runbook+etl_nightly",
+            "https://wiki.contoso.example/spaces/ENG/pages/1101/Runbook+etl_nightly",
         ],
         &["confluence", "tree", "get", "ENG"],
         &["confluence", "tree", "get", "1100"],
@@ -81,9 +81,9 @@ fn the_release_notes_link_ado_and_their_changelog_downloads() {
         "{body}"
     );
     assert_eq!(notes["updated_by"], "Jane Doe");
-    let changes = ok(&["confluence", "attachment", "get", "att7001"]);
+    let changes = ok(&["confluence", "attachment", "get", "7001"]);
     assert!(changes["text"].as_str().unwrap().contains("PR 431"));
-    let png = agent_cli(&["confluence", "attachment", "get", "att7002"]);
+    let png = agent_cli(&["confluence", "attachment", "get", "7002"]);
     assert_eq!(png.code, 2, "a binary file needs --output: {}", png.stderr);
 }
 
@@ -100,7 +100,9 @@ fn a_rollback_section_appends_to_the_runbook_and_leaves_the_rest() {
         "## Rollback\n\nClear the run's tasks in Airflow.",
         "--dry-run",
     ]);
-    let sent = plan["would"][0]["body"]["body"]["value"].as_str().unwrap();
+    let sent = plan["would"][0]["body"]["body"]["storage"]["value"]
+        .as_str()
+        .unwrap();
     assert!(
         sent.ends_with(".</p><h2>Rollback</h2><p>Clear the run&rsquo;s tasks in Airflow.</p>")
             || sent.ends_with(".</p><h2>Rollback</h2><p>Clear the run's tasks in Airflow.</p>"),

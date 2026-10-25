@@ -514,8 +514,7 @@ org = "contoso-engineering-platform"
 project = "Fabrikam Fiber Commerce"
 
 [confluence]
-url = "https://contoso-engineering.atlassian.net/wiki"
-email = "jane.doe@contoso-engineering.com"
+url = "https://confluence.contoso-engineering.example/wiki"
 token_env = "CONFLUENCE_TOKEN"
 
 [azure]
@@ -613,7 +612,7 @@ token_cmd = "pup auth token"
         );
         for status in [
             "ado contoso-engineeri\u{2026}",
-            "confluence contoso-en\u{2026}",
+            "confluence confluenc\u{2026}",
             "kv 2 vaults",
             "acr 1 registry",
             "aisearch 2 services",

@@ -4,7 +4,7 @@ use agent_cli_core::{Ctx, Effect, Failure, Method, command, status_of};
 use anyhow::Result;
 use serde_json::{Value, json};
 
-use crate::client::{Confluence, Content, text};
+use crate::client::{Confluence, PAGE, text};
 use crate::compose::{Target, to_storage};
 use crate::ids::current_page;
 use crate::markdown::{Context, mentions, to_markdown};
@@ -34,7 +34,7 @@ pub struct PageUpdateArgs {
     /// The section --body replaces or --append extends: its heading's text, any case
     #[arg(long)]
     section: Option<String>,
-    /// Move the page under this page id, in any space
+    /// Move the page under this page id, in the same space (the REST API moves no page to another)
     #[arg(long)]
     parent: Option<u64>,
     /// The labels it should have, comma-separated (replaces them; "" removes all)
@@ -101,109 +101,89 @@ fn page_update(ctx: &Ctx, args: PageUpdateArgs) -> Result<Written> {
         .hint(format!("agent-cli confluence page get {id} --fields version"))
         .into());
     }
-    let content = confluence.content(
-        ctx,
-        &id,
-        &[
-            ("body-format", "storage".to_owned()),
-            ("include-labels", "true".to_owned()),
-        ],
-    )?;
+    let content = confluence.content(ctx, &id, PAGE, None)?;
     let version = content.version();
     if let Some(wanted) = args.if_version
         && wanted != version
     {
         return Err(changed(&id, wanted, version));
     }
-    let space_id = text(&content.value["spaceId"]).unwrap_or_default();
-    let key = confluence.space_key(ctx, &space_id, &mut Default::default())?;
+    let key = content.space().unwrap_or_default();
+    let url = confluence.api(&format!("/content/{id}"), &[]);
+    let title = args.title.clone().or_else(|| text(&content.value["title"]));
     let mut written = Written {
         id: id.clone(),
-        title: text(&content.value["title"]),
+        title: title.clone(),
         space: Some(key.clone()),
         version: Some(version),
         url: confluence.web_of(&content.value),
     };
-    if let Some(parent) = args.parent {
-        let url = confluence.v1(&format!("/content/{id}/move/append/{parent}"), &[]);
-        confluence.change(ctx, Effect::Write, Method::Put, &url, None)?;
-        let moved = confluence.content(ctx, &id, &[])?;
-        let space_id = text(&moved.value["spaceId"]).unwrap_or_default();
-        written.space = Some(confluence.space_key(ctx, &space_id, &mut Default::default())?);
-        written.url = confluence.web_of(&moved.value);
-        return Ok(written);
-    }
-    if let Some(wanted) = args.labels.as_deref().map(labels) {
-        relabel(ctx, &confluence, &content, &wanted)?;
-        return Ok(written);
-    }
-    let old = content.value["body"]["storage"]["value"]
-        .as_str()
-        .unwrap_or_default()
-        .to_owned();
-    let title = args.title.clone().or_else(|| text(&content.value["title"]));
-    let new = match (&body, &append) {
-        (None, None) if content.kind == "pages" => {
-            // A title alone never resends the body, which another tool's
-            // stale copy once wiped pages with.
-            let url = confluence.v2(&format!("/pages/{id}/title"), &[]);
-            let answer = confluence
-                .change(
-                    ctx,
-                    Effect::Write,
-                    Method::Put,
-                    &url,
-                    Some(json!({"status": "current", "title": title})),
-                )
-                .map_err(|error| conflict(error, &id, version))?;
-            written.title = text(&answer["title"]).or(title);
-            written.version = answer["version"]["number"].as_u64().or(Some(version + 1));
-            return Ok(written);
-        }
-        (None, None) => old,
-        (Some(text), _) | (_, Some(text)) => {
-            let nodes = parse(&old);
-            let range = match &args.section {
-                Some(name) => find(&sections(&old, &nodes), name, &id)?.range.clone(),
-                None => 0..old.len(),
-            };
-            let part = if args.storage {
-                text.text.clone()
-            } else {
-                let people = people(ctx, &confluence, &text.text, &mentions(&nodes))?;
-                to_storage(
-                    &text.text,
-                    &Target {
-                        space: &key,
-                        people: &people,
-                    },
-                )
-            };
-            if body.is_some() {
-                if !args.storage {
-                    gate(&old[range.clone()], &id, version, args.section.is_some())?;
-                }
-                format!("{}{part}{}", &old[..range.start], &old[range.end..])
-            } else {
-                format!("{}{part}{}", &old[..range.end], &old[range.end..])
-            }
-        }
-    };
-    let mut next = json!({"number": version + 1});
-    if let Some(message) = &args.message {
-        next["message"] = json!(message);
-    }
-    let url = confluence.v2(&format!("/{}/{id}", content.kind), &[]);
-    let request = json!({
-        "id": id, "status": "current", "title": title,
-        "body": {"representation": "storage", "value": new},
-        "version": next,
+    let mut request = json!({
+        "id": id, "type": content.kind, "title": title,
+        "version": {"number": version + 1},
     });
+    if let Some(parent) = args.parent {
+        let parent = parent.to_string();
+        let there = confluence
+            .content(ctx, &parent, "space", None)?
+            .space()
+            .unwrap_or_default();
+        if !there.eq_ignore_ascii_case(&key) {
+            return Err(Failure::usage(format!(
+                "page {parent} is in space {there} and page {id} in {key}: the REST API moves a page only within its space"
+            ))
+            .hint(format!(
+                "move it in the browser (\u{2026} menu, Move): {}",
+                written.url.clone().unwrap_or_default()
+            ))
+            .into());
+        }
+        request["ancestors"] = json!([{"id": parent}]);
+    } else if let Some(wanted) = args.labels.as_deref().map(labels) {
+        relabel(ctx, &confluence, &id, &content.labels(), &wanted)?;
+        return Ok(written);
+    } else if body.is_some() || append.is_some() {
+        let old = content.storage().to_owned();
+        let text = body.as_ref().or(append.as_ref()).map(|text| &text.text);
+        let text = text.cloned().unwrap_or_default();
+        let nodes = parse(&old);
+        let range = match &args.section {
+            Some(name) => find(&sections(&old, &nodes), name, &id)?.range.clone(),
+            None => 0..old.len(),
+        };
+        let part = if args.storage {
+            text
+        } else {
+            let people = people(ctx, &confluence, &text, &mentions(&nodes))?;
+            to_storage(
+                &text,
+                &Target {
+                    space: &key,
+                    people: &people,
+                },
+            )
+        };
+        let new = if body.is_some() {
+            if !args.storage {
+                gate(&old[range.clone()], &id, version, args.section.is_some())?;
+            }
+            format!("{}{part}{}", &old[..range.start], &old[range.end..])
+        } else {
+            format!("{}{part}{}", &old[..range.end], &old[range.end..])
+        };
+        request["body"] = json!({"storage": {"value": new, "representation": "storage"}});
+        if let Some(message) = &args.message {
+            request["version"]["message"] = json!(message);
+        }
+    }
+    // A title or a move alone sends no body, so nothing read can overwrite
+    // a newer one; the version asserted refuses any change made since.
     let answer = confluence
         .change(ctx, Effect::Write, Method::Put, &url, Some(request))
         .map_err(|error| conflict(error, &id, version))?;
-    written.title = text(&answer["title"]).or(title);
+    written.title = text(&answer["title"]).or(written.title);
     written.version = answer["version"]["number"].as_u64().or(Some(version + 1));
+    written.url = confluence.web_of(&answer).or(written.url);
     Ok(written)
 }
 
@@ -241,15 +221,19 @@ fn changed(id: &str, wanted: u64, now: u64) -> anyhow::Error {
 }
 
 /// A 409 that names the current version is a change made since the read;
-/// any other 409 (a space that requires approval) keeps the service's words.
+/// any other 409 keeps the service's words.
 fn conflict(error: anyhow::Error, id: &str, read: u64) -> anyhow::Error {
     if status_of(&error) != Some(409) {
         return error;
     }
     let said = format!("{error:#}");
     match said
-        .split_once("Current Version: [")
-        .and_then(|(_, rest)| rest.split(']').next())
+        .split_once("Current version is: ")
+        .map(|(_, rest)| {
+            rest.chars()
+                .take_while(char::is_ascii_digit)
+                .collect::<String>()
+        })
         .and_then(|now| now.parse::<u64>().ok())
     {
         Some(now) => changed(id, read, now),
@@ -257,23 +241,22 @@ fn conflict(error: anyhow::Error, id: &str, read: u64) -> anyhow::Error {
     }
 }
 
-/// Labels as asked: v1 adds the missing ones in one call and removes the
-/// rest one by one. Labels make no new version.
-fn relabel(ctx: &Ctx, confluence: &Confluence, content: &Content, wanted: &[String]) -> Result<()> {
-    let id = text(&content.value["id"]).unwrap_or_default();
-    let have: Vec<String> = content.value["labels"]["results"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|label| text(&label["name"]))
-        .collect();
+/// Labels as asked: the missing ones added in one call, the rest removed
+/// one by one. Labels make no new version.
+fn relabel(
+    ctx: &Ctx,
+    confluence: &Confluence,
+    id: &str,
+    have: &[String],
+    wanted: &[String],
+) -> Result<()> {
     let add: Vec<Value> = wanted
         .iter()
         .filter(|name| !have.contains(name))
         .map(|name| json!({"prefix": "global", "name": name}))
         .collect();
     if !add.is_empty() {
-        let url = confluence.v1(&format!("/content/{id}/label"), &[]);
+        let url = confluence.api(&format!("/content/{id}/label"), &[]);
         confluence.change(
             ctx,
             Effect::Write,
@@ -283,7 +266,7 @@ fn relabel(ctx: &Ctx, confluence: &Confluence, content: &Content, wanted: &[Stri
         )?;
     }
     for name in have.iter().filter(|name| !wanted.contains(name)) {
-        let url = confluence.v1(&format!("/content/{id}/label"), &[("name", name.clone())]);
+        let url = confluence.api(&format!("/content/{id}/label"), &[("name", name.clone())]);
         confluence.change(ctx, Effect::Write, Method::Delete, &url, None)?;
     }
     Ok(())
@@ -302,15 +285,17 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{V1, V2, confluence, dry_run, page, piped, space};
+    use crate::testing::{API, BASE, confluence, dry_run, page, piped, user};
 
     const BODY: &str = "<p>intro</p><h2>Steps</h2><p>Fix the order.</p><h2>Notes</h2><ac:structured-macro ac:name=\"jira\"><ac:parameter ac:name=\"key\">OPS-1</ac:parameter></ac:structured-macro>";
 
     fn read(version: u64) -> Vec<Answer> {
-        vec![
-            Answer::json(&page("1101", "Runbook", version, BODY)),
-            Answer::json(&space()),
-        ]
+        vec![Answer::json(&page("1101", "Runbook", version, BODY))]
+    }
+
+    fn put(version: u64) -> Answer {
+        Answer::json(&json!({"id": "1101", "type": "page", "title": "Runbook",
+            "version": {"number": version}, "_links": {"webui": "/spaces/ENG/pages/1101/Runbook", "base": BASE}}))
     }
 
     #[test]
@@ -331,11 +316,11 @@ mod tests {
             read(4),
         );
         assert_eq!(plans[0]["method"], "PUT");
-        assert_eq!(plans[0]["url"], format!("{V2}/pages/1101"));
+        assert_eq!(plans[0]["url"], format!("{API}/content/1101"));
         assert_eq!(
             plans[0]["body"],
-            json!({"id": "1101", "status": "current", "title": "Runbook",
-                "body": {"representation": "storage", "value": BODY.replace("<h2>Steps</h2><p>Fix the order.</p>", "<h2>Steps</h2><p>Retry <strong>once</strong>.</p>")},
+            json!({"id": "1101", "type": "page", "title": "Runbook",
+                "body": {"storage": {"value": BODY.replace("<h2>Steps</h2><p>Fix the order.</p>", "<h2>Steps</h2><p>Retry <strong>once</strong>.</p>"), "representation": "storage"}},
                 "version": {"number": 5, "message": "retry"}})
         );
     }
@@ -353,23 +338,33 @@ mod tests {
                 "--append",
                 "-",
             ],
-            "Then tell @<557058:sam>.",
+            "Then tell @<sam>.",
             [
                 read(4),
-                vec![Answer::json(
-                    &json!({"id": "1101", "title": "Runbook", "version": {"number": 5}}),
-                )],
+                vec![
+                    Answer::json(&json!({"results": [], "totalSize": 0})),
+                    Answer::json(&user("8a80sam", "sam", "Sam Lee")),
+                    put(5),
+                ],
             ]
             .concat(),
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(outcome.json()["version"], 5);
         let sent = transport.sent();
+        assert!(
+            sent[1].url.starts_with(&format!(
+                "{API}/search?cql=type+%3D+user+and+user.fullname+~+%22sam%22"
+            )),
+            "{}",
+            sent[1].url
+        );
+        assert_eq!(sent[2].url, format!("{API}/user?username=sam"));
         assert_eq!(
-            sent[2].body.as_ref().unwrap()["body"]["value"],
+            sent[3].body.as_ref().unwrap()["body"]["storage"]["value"],
             BODY.replace(
                 "<h2>Notes</h2>",
-                "<p>Then tell <ac:link><ri:user ri:account-id=\"557058:sam\" /></ac:link>.</p><h2>Notes</h2>"
+                "<p>Then tell <ac:link><ri:user ri:userkey=\"8a80sam\" /></ac:link>.</p><h2>Notes</h2>"
             )
         );
     }
@@ -434,7 +429,7 @@ mod tests {
     fn a_409_naming_a_newer_version_is_a_conflict() {
         let (outcome, _) = confluence(
             &["confluence", "page", "update", "1101", "--append", "more"],
-            [read(4), vec![Answer::status(409, r#"{"errors":[{"status":409,"code":"CONFLICT","title":"Version must be incremented when updating a page. Current Version: [6]. Provided version: [5]","detail":null}]}"#)]].concat(),
+            [read(4), vec![Answer::status(409, r#"{"statusCode":409,"data":{"authorized":false,"valid":true,"allowedInReadOnlyMode":true,"errors":[],"successful":false},"message":"Version must be incremented on update. Current version is: 6. Log referral number is 00000000-0000-4000-8000-000000000002","reason":"Conflict"}"#)]].concat(),
         );
         assert_eq!(outcome.code, 5, "{outcome:?}");
         assert!(
@@ -459,22 +454,42 @@ mod tests {
             ],
             read(4),
         );
-        assert_eq!(plans[0]["url"], format!("{V2}/pages/1101/title"));
+        assert_eq!(plans[0]["url"], format!("{API}/content/1101"));
         assert_eq!(
             plans[0]["body"],
-            json!({"status": "current", "title": "Runbook v2"})
+            json!({"id": "1101", "type": "page", "title": "Runbook v2", "version": {"number": 5}})
         );
 
         let plans = dry_run(
             &["confluence", "page", "update", "1101", "--parent", "1200"],
-            read(4),
+            [
+                read(4),
+                vec![Answer::json(&page("1200", "Release notes", 2, ""))],
+            ]
+            .concat(),
         );
         assert_eq!(plans[0]["method"], "PUT");
         assert_eq!(
-            plans[0]["url"],
-            format!("{V1}/content/1101/move/append/1200")
+            plans[0]["body"],
+            json!({"id": "1101", "type": "page", "title": "Runbook", "version": {"number": 5},
+                "ancestors": [{"id": "1200"}]})
         );
-        assert!(plans[0].get("body").is_none());
+
+        let mut elsewhere = page("3001", "Pager", 1, "");
+        elsewhere["space"] = json!({"key": "OPS"});
+        let (outcome, transport) = confluence(
+            &["confluence", "page", "update", "1101", "--parent", "3001"],
+            [read(4), vec![Answer::json(&elsewhere)]].concat(),
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("moves a page only within its space"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(transport.sent().iter().all(|sent| sent.method.is_read()));
 
         let plans = dry_run(
             &[
@@ -487,7 +502,7 @@ mod tests {
             ],
             read(4),
         );
-        assert_eq!(plans[0]["url"], format!("{V1}/content/1101/label"));
+        assert_eq!(plans[0]["url"], format!("{API}/content/1101/label"));
         assert_eq!(
             plans[0]["body"],
             json!([{"prefix": "global", "name": "airflow"}])

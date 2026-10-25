@@ -41,6 +41,9 @@ unless `AGENT_CLI_TEST_ADO=1` and `AGENT_CLI_TEST_ADO_CONFIG` names its
 config (`docs/first-live-run.md`).
 `tests/live_airflow.rs`: every airflow command against the Airflow
 `scripts/airflow-up.sh` starts, off unless `AGENT_CLI_TEST_AIRFLOW=1`.
+`tests/live_confluence.rs`: every confluence command against the Data
+Center `scripts/confluence-up.sh` starts, off unless
+`AGENT_CLI_TEST_CONFLUENCE=1`.
 
 ## Never needed
 The domain crates' sources (their cards say where things are),

@@ -32,17 +32,17 @@ pub struct SpaceRow {
 
 fn space_list(ctx: &Ctx, args: SpaceListArgs) -> Result<Vec<SpaceRow>> {
     let confluence = Confluence::load(ctx)?;
-    let url = confluence.v2(
-        "/spaces",
+    let url = confluence.api(
+        "/space",
         &[
             ("type", args.kind),
             ("status", "current".to_owned()),
-            ("sort", "key".to_owned()),
             ("limit", PAGE_MAX.to_string()),
+            ("expand", "homepage".to_owned()),
         ],
     );
     let wanted = args.text.map(|text| text.trim().to_lowercase());
-    // ponytail: a filter reads every space (250 a page); the v2 list has no
+    // ponytail: a filter reads every space (200 a page); the list has no
     // name search, and sites rarely hold more than a few thousand.
     let fetch = if wanted.is_some() {
         usize::MAX
@@ -66,7 +66,7 @@ fn space_list(ctx: &Ctx, args: SpaceListArgs) -> Result<Vec<SpaceRow>> {
                 id: text(&space["key"])?,
                 name: text(&space["name"]),
                 kind: text(&space["type"]),
-                homepage: text(&space["homepageId"]),
+                homepage: text(&space["homepage"]["id"]),
                 url: confluence.web_of(space),
             })
         })
@@ -90,14 +90,16 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{V2, confluence, space, urls};
+    use crate::testing::{API, BASE, confluence, space, urls};
 
     #[test]
     fn spaces_are_filtered_by_key_or_name_across_pages() {
-        let first = json!({"results": [space()],
-            "_links": {"next": "/wiki/api/v2/spaces?cursor=abc&limit=250"}});
-        let second = json!({"results": [{"id": "2002", "key": "OPS", "name": "Operations",
-            "type": "global", "homepageId": "3000", "_links": {"webui": "/spaces/OPS"}}], "_links": {}});
+        let first = json!({"results": [space()], "start": 0, "limit": 200, "size": 1,
+            "_links": {"next": "/rest/api/space?expand=homepage&limit=200&start=200&type=global&status=current",
+                "base": BASE, "context": "/confluence"}});
+        let second = json!({"results": [{"id": 2002, "key": "OPS", "name": "Operations",
+            "type": "global", "homepage": {"id": "3000"}, "_links": {"webui": "/spaces/OPS/overview"}}],
+            "_links": {"base": BASE}});
         let (outcome, transport) = confluence(
             &["confluence", "space", "list", "engin"],
             vec![Answer::json(&first), Answer::json(&second)],
@@ -106,13 +108,15 @@ mod tests {
         assert_eq!(
             outcome.json(),
             json!([{"id": "ENG", "name": "Engineering", "type": "global", "homepage": "1000",
-                "url": "https://contoso.atlassian.net/wiki/spaces/ENG"}])
+                "url": format!("{BASE}/spaces/ENG/overview")}])
         );
         assert_eq!(
             urls(&transport),
             [
-                format!("{V2}/spaces?type=global&status=current&sort=key&limit=250"),
-                "https://contoso.atlassian.net/wiki/api/v2/spaces?cursor=abc&limit=250".to_owned()
+                format!("{API}/space?type=global&status=current&limit=200&expand=homepage"),
+                format!(
+                    "{API}/space?expand=homepage&limit=200&start=200&type=global&status=current"
+                ),
             ]
         );
     }

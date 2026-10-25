@@ -3,7 +3,7 @@ use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::client::{Confluence, PAGE_MAX, note_more, stamp, text};
+use crate::client::{Confluence, EXPERIMENTAL, PAGE_MAX, note_more, person, stamp, text};
 use crate::ids::current_page;
 
 #[derive(clap::Args)]
@@ -28,23 +28,19 @@ pub struct VersionRow {
     minor: bool,
 }
 
+/// Newest first, from `/rest/experimental`: the stable `/rest/api` has no
+/// version list on Data Center (9.2 answers it 404).
 fn version_list(ctx: &Ctx, args: VersionListArgs) -> Result<Vec<VersionRow>> {
     let confluence = Confluence::load(ctx)?;
     let id = current_page(ctx, &confluence, &args.page)?;
-    let content = confluence.content(ctx, &id, &[])?;
-    let url = confluence.v2(
-        &format!("/{}/{id}/versions", content.kind),
-        &[
-            ("sort", "-modified-date".to_owned()),
-            ("limit", args.limit.clamp(1, PAGE_MAX).to_string()),
-        ],
+    // The page is read first so a wrong id is exit 4 with its hint.
+    confluence.content(ctx, &id, "", None)?;
+    let url = confluence.url(
+        EXPERIMENTAL,
+        &format!("/content/{id}/version"),
+        &[("limit", args.limit.clamp(1, PAGE_MAX).to_string())],
     );
     let (found, more) = confluence.list(ctx, url, args.limit)?;
-    let authors: Vec<String> = found
-        .iter()
-        .filter_map(|version| text(&version["authorId"]))
-        .collect();
-    let names = confluence.names(ctx, &authors);
     let rows: Vec<VersionRow> = found
         .iter()
         .filter_map(|version| {
@@ -52,8 +48,8 @@ fn version_list(ctx: &Ctx, args: VersionListArgs) -> Result<Vec<VersionRow>> {
             Some(VersionRow {
                 id: format!("{id}@{number}"),
                 version: number,
-                author: text(&version["authorId"]).map(|id| names.get(&id).cloned().unwrap_or(id)),
-                date: stamp(&version["createdAt"]),
+                author: person(&version["by"]),
+                date: stamp(&version["when"]),
                 message: text(&version["message"]),
                 minor: version["minorEdit"].as_bool().unwrap_or(false),
             })
@@ -76,20 +72,19 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{JANE, SAM, V2, confluence, page, people, urls};
+    use crate::testing::{BASE, JANE, SAM, confluence, page, urls, user};
 
     #[test]
     fn versions_list_newest_first_as_refs_page_get_takes() {
         let versions = json!({"results": [
-            {"number": 3, "authorId": JANE, "createdAt": "2026-09-28T16:20:00.000Z", "message": "v1.4.2 shipped", "minorEdit": false},
-            {"number": 2, "authorId": SAM, "createdAt": "2026-09-27T10:00:00.000Z", "message": "", "minorEdit": true}],
-            "_links": {}});
+            {"by": user(JANE, "jane", "Jane Doe"), "when": "2026-09-28T16:20:00.000Z", "message": "v1.4.2 shipped", "number": 3, "minorEdit": false, "hidden": false},
+            {"by": user(SAM, "sam", "Sam Lee"), "when": "2026-09-27T10:00:00.000Z", "message": "", "number": 2, "minorEdit": true, "hidden": false}],
+            "start": 0, "limit": 50, "size": 2, "_links": {"base": BASE}});
         let (outcome, transport) = confluence(
             &["confluence", "version", "list", "1201"],
             vec![
                 Answer::json(&page("1201", "Release notes", 3, "")),
                 Answer::json(&versions),
-                people(),
             ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
@@ -102,7 +97,7 @@ mod tests {
         );
         assert_eq!(
             urls(&transport)[1],
-            format!("{V2}/pages/1201/versions?sort=-modified-date&limit=50")
+            format!("{BASE}/rest/experimental/content/1201/version?limit=50")
         );
     }
 }

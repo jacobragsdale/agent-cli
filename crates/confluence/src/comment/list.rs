@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
-use agent_cli_core::{Ctx, When, command, now};
+use agent_cli_core::{Ctx, When, command};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::Value;
+use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 
-use crate::client::{Confluence, PAGE_MAX, note_more, stamp, text};
+use crate::client::{Confluence, PAGE_MAX, note_more, person, stamp, text};
 use crate::ids::current_page;
 use crate::markdown::{Context, to_markdown};
 use crate::storage::parse;
@@ -55,57 +57,53 @@ pub struct CommentRow {
 
 /// The most of a comment's body a row prints.
 const BODY: usize = 1000;
-/// CQL's comment search returns at most 50 a page when it carries bodies.
-const SEARCH_PAGE: usize = 50;
+/// ponytail: newest first means reading every comment: up to 1,000 a page.
+const MOST: usize = 1000;
 
-/// Footer and inline comments in one CQL read, newest first. Resolution is
-/// not among what the search can expand for every caller, so it comes from
-/// v2's list of the page's inline comments; a reply has its thread's.
+/// Footer and inline comments, replies included, in one read of the
+/// page's comment tree, newest first: ids grow as comments are made. An
+/// inline reply has its thread's resolution.
 fn comment_list(ctx: &Ctx, args: CommentListArgs) -> Result<Vec<CommentRow>> {
     let confluence = Confluence::load(ctx)?;
     let id = current_page(ctx, &confluence, &args.page)?;
-    // A search on a page that is not there finds nothing; the read says so.
-    let content = confluence.content(ctx, &id, &[])?;
-    let mut cql = format!("container = {id} and type = comment");
-    if let Some(since) = args.since {
-        let minutes = (now() - since.0).whole_minutes().max(0);
-        cql.push_str(&format!(" and created >= now(\"-{minutes}m\")"));
-    }
-    cql.push_str(" order by created desc");
-    // ponytail: --kind and --open filter after the search, which reads up
-    // to 1,000 comments to find them.
-    let filtered = args.kind.is_some() || args.open;
-    let wanted = if filtered { 1000 } else { args.limit };
-    let searched = confluence.search(
-        ctx,
-        "/content/search",
+    // The page is read first so a wrong id is exit 4 with its hint.
+    confluence.content(ctx, &id, "", None)?;
+    let url = confluence.api(
+        &format!("/content/{id}/child/comment"),
         &[
-            ("cql", cql),
+            ("depth", "all".to_owned()),
             (
                 "expand",
-                "body.storage,version,ancestors,extensions.inlineProperties".to_owned(),
+                "body.storage,history,ancestors,extensions.inlineProperties,extensions.resolution"
+                    .to_owned(),
             ),
-            ("limit", wanted.clamp(1, SEARCH_PAGE).to_string()),
+            ("limit", PAGE_MAX.to_string()),
         ],
-        wanted,
-    )?;
-    let inline = searched
-        .rows
+    );
+    let (mut found, cut) = confluence.list(ctx, url, MOST)?;
+    let resolutions: HashMap<String, String> = found
         .iter()
-        .any(|row| row["extensions"]["location"] == "inline");
-    let resolutions = if inline {
-        resolutions(ctx, &confluence, &format!("/{}/{id}", content.kind))?
-    } else {
-        HashMap::new()
-    };
+        .filter_map(|row| {
+            Some((
+                text(&row["id"])?,
+                text(&row["extensions"]["resolution"]["status"])?,
+            ))
+        })
+        .collect();
+    found.sort_by_key(|row| {
+        std::cmp::Reverse(text(&row["id"]).and_then(|id| id.parse::<u64>().ok()))
+    });
     let names = HashMap::new();
     let context = Context {
         space: "",
         names: &names,
     };
-    let mut rows: Vec<CommentRow> = searched
-        .rows
+    let since = args.since.map(|since| since.0);
+    let mut rows: Vec<CommentRow> = found
         .iter()
+        .filter(|found| {
+            since.is_none_or(|since| created(found).is_some_and(|created| created >= since))
+        })
         .filter_map(|found| row(found, &resolutions, &context))
         .filter(|row| {
             args.kind.is_none_or(|kind| {
@@ -118,23 +116,17 @@ fn comment_list(ctx: &Ctx, args: CommentListArgs) -> Result<Vec<CommentRow>> {
         })
         .filter(|row| !args.open || matches!(row.resolution.as_deref(), Some("open" | "reopened")))
         .collect();
-    let more = rows.len() > args.limit || (searched.more && !filtered);
+    let more = rows.len() > args.limit || cut;
     rows.truncate(args.limit);
     note_more(ctx, rows.len(), None, more);
     Ok(rows)
 }
 
-/// Each root inline comment's resolution, by id.
-fn resolutions(ctx: &Ctx, confluence: &Confluence, page: &str) -> Result<HashMap<String, String>> {
-    let url = confluence.v2(
-        &format!("{page}/inline-comments"),
-        &[("limit", PAGE_MAX.to_string())],
-    );
-    let (rows, _) = confluence.list(ctx, url, usize::MAX)?;
-    Ok(rows
-        .iter()
-        .filter_map(|row| Some((text(&row["id"])?, text(&row["resolutionStatus"])?)))
-        .collect())
+fn created(found: &Value) -> Option<OffsetDateTime> {
+    let raw = found["history"]["createdDate"]
+        .as_str()
+        .or_else(|| found["version"]["when"].as_str())?;
+    OffsetDateTime::parse(raw, &Rfc3339).ok()
 }
 
 fn row(
@@ -160,10 +152,8 @@ fn row(
     let body = to_markdown(&parse(storage), context).text;
     Some(CommentRow {
         kind,
-        // An unedited comment's version is its author and its time.
-        author: text(&found["version"]["by"]["displayName"])
-            .or_else(|| text(&found["version"]["by"]["publicName"])),
-        date: stamp(&found["version"]["when"]),
+        author: person(&found["history"]["createdBy"]).or_else(|| person(&found["version"]["by"])),
+        date: stamp(&found["history"]["createdDate"]).or_else(|| stamp(&found["version"]["when"])),
         parent: thread.first().cloned(),
         selection: inline
             .then(|| text(&found["extensions"]["inlineProperties"]["originalSelection"]))
@@ -196,7 +186,7 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{V1, V2, confluence, page, urls};
+    use crate::testing::{API, SAM, confluence, page, urls, user};
 
     fn found(
         id: &str,
@@ -204,11 +194,12 @@ mod tests {
         ancestors: &[&str],
         extra: serde_json::Value,
     ) -> serde_json::Value {
-        let mut row = json!({"id": id, "type": "comment",
-            "body": {"storage": {"value": "<p>only once the CRM fix has <strong>synced</strong></p>"}},
-            "version": {"by": {"displayName": "Sam Lee"}, "when": "2026-09-28T09:15:00.000Z"},
+        let mut row = json!({"id": id, "type": "comment", "status": "current", "title": "Re: Runbook",
+            "body": {"storage": {"value": "<p>only once the CRM fix has <strong>synced</strong></p>", "representation": "storage"}},
+            "history": {"latest": true, "createdBy": user(SAM, "sam", "Sam Lee"), "createdDate": "2026-09-28T09:15:00.000Z"},
             "ancestors": ancestors.iter().map(|a| json!({"id": a, "type": "comment"})).collect::<Vec<_>>(),
-            "extensions": {"location": location}});
+            "extensions": {"location": location,
+                "resolution": {"status": "open", "lastModifier": {"type": "anonymous"}, "lastModifiedDate": 0}}});
         if let Some(properties) = extra.as_object() {
             row["extensions"]["inlineProperties"] = json!(properties);
         }
@@ -217,17 +208,23 @@ mod tests {
 
     #[test]
     fn comments_carry_their_thread_selection_and_resolution() {
-        let search = json!({"results": [
-            found("5003", "inline", &["5002"], json!({"originalSelection": "", "markerRef": ""})),
+        let mut reply = found(
+            "5003",
+            "inline",
+            &["5002"],
+            json!({"originalSelection": "retry the load", "markerRef": "r1"}),
+        );
+        reply["extensions"]["resolution"]["status"] = json!("resolved");
+        let tree = json!({"results": [
+            found("5001", "footer", &[], json!(null)),
             found("5002", "inline", &[], json!({"originalSelection": "retry the load", "markerRef": "r1"})),
-            found("5001", "footer", &[], json!(null))], "_links": {}});
-        let inline = json!({"results": [{"id": "5002", "resolutionStatus": "open"}], "_links": {}});
+            reply],
+            "start": 0, "limit": 200, "size": 3, "_links": {}});
         let (outcome, transport) = confluence(
             &["confluence", "comment", "list", "1101", "--open"],
             vec![
                 Answer::json(&page("1101", "Runbook", 4, "")),
-                Answer::json(&search),
-                Answer::json(&inline),
+                Answer::json(&tree),
             ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
@@ -236,18 +233,41 @@ mod tests {
             outcome.json(),
             json!([
                 {"id": "5003", "kind": "inline", "author": "Sam Lee", "date": "2026-09-28T09:15:00Z",
-                    "parent": "5002", "resolution": "open", "body": body},
+                    "parent": "5002", "selection": "retry the load", "resolution": "open", "body": body},
                 {"id": "5002", "kind": "inline", "author": "Sam Lee", "date": "2026-09-28T09:15:00Z",
                     "selection": "retry the load", "resolution": "open", "body": body}])
         );
         assert_eq!(
-            urls(&transport)[1..],
-            [
-                format!(
-                    "{V1}/content/search?cql=container+%3D+1101+and+type+%3D+comment+order+by+created+desc&expand=body.storage%2Cversion%2Cancestors%2Cextensions.inlineProperties&limit=50"
-                ),
-                format!("{V2}/pages/1101/inline-comments?limit=250"),
-            ]
+            urls(&transport)[1],
+            format!(
+                "{API}/content/1101/child/comment?depth=all&expand=body.storage%2Chistory%2Cancestors%2Cextensions.inlineProperties%2Cextensions.resolution&limit=200"
+            )
         );
+    }
+
+    #[test]
+    fn since_keeps_the_comments_made_after_it() {
+        let mut old = found("5001", "footer", &[], json!(null));
+        old["history"]["createdDate"] = json!("2026-08-01T09:00:00.000Z");
+        let tree =
+            json!({"results": [old, found("5004", "footer", &[], json!(null))], "_links": {}});
+        let (outcome, _) = confluence(
+            &[
+                "confluence",
+                "comment",
+                "list",
+                "1101",
+                "--since",
+                "2026-09-01",
+            ],
+            vec![
+                Answer::json(&page("1101", "Runbook", 4, "")),
+                Answer::json(&tree),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let rows = outcome.json();
+        assert_eq!(rows.as_array().unwrap().len(), 1, "{rows}");
+        assert_eq!(rows[0]["id"], "5004");
     }
 }

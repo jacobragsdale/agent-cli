@@ -6,13 +6,13 @@ use serde::Serialize;
 use serde_json::Value;
 use time::OffsetDateTime;
 
-use crate::client::{Confluence, PAGE_MAX, note_more, stamp, text};
+use crate::client::{Confluence, note_more, person, stamp, text};
 use crate::ids::space_key;
 use crate::storage::{collapse, decode_entities};
 
 #[derive(clap::Args)]
 pub struct PageListArgs {
-    /// Words to search for, ranked as the web search ranks them (the index trails edits by about a minute)
+    /// Words to search for, ranked as the web search ranks them (the index trails edits by a few seconds)
     text: Option<String>,
     /// Only in this space (its key or URL); repeatable
     #[arg(long)]
@@ -84,11 +84,9 @@ fn page_list(ctx: &Ctx, args: PageListArgs) -> Result<Vec<PageRow>> {
     let cql = cql(&args, &spaces, now())?;
     let searched = confluence.search(
         ctx,
-        "/search",
         &[
             ("cql", cql),
             ("expand", "content.space,content.version".to_owned()),
-            ("limit", args.limit.clamp(1, PAGE_MAX).to_string()),
         ],
         args.limit,
     )?;
@@ -111,8 +109,7 @@ fn row(found: &Value) -> Option<PageRow> {
         title: text(&content["title"]),
         space: text(&content["space"]["key"]),
         updated: stamp(&found["lastModified"]),
-        updated_by: text(&content["version"]["by"]["displayName"])
-            .or_else(|| text(&content["version"]["by"]["publicName"])),
+        updated_by: person(&content["version"]["by"]),
         excerpt: text(&found["excerpt"]).map(|excerpt| cut(&excerpt)),
     })
 }
@@ -223,7 +220,7 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::testing::{V1, confluence, urls};
+    use crate::testing::{API, BASE, confluence, urls};
 
     #[derive(clap::Parser)]
     struct Line {
@@ -279,10 +276,12 @@ mod tests {
     fn a_search_reads_content_titles_and_cuts_excerpts() {
         let answer = json!({"results": [{
             "content": {"id": "1101", "type": "page", "title": "Runbook: etl_nightly",
-                "space": {"key": "ENG"}, "version": {"by": {"displayName": "Jane Doe"}}},
+                "space": {"key": "ENG"}, "version": {"by": {"type": "known", "username": "jane", "displayName": "Jane Doe"}}},
             "title": "Runbook: @@@hl@@@etl_nightly@@@endhl@@@",
-            "excerpt": "When @@@hl@@@etl_nightly@@@endhl@@@ fails &amp; the load stops", "lastModified": "2026-09-28T16:20:00.000Z"}],
-            "totalSize": 590, "_links": {"next": "/rest/api/search?next=true&cursor=x&limit=1&cql=t"}});
+            "excerpt": "When @@@hl@@@etl_nightly@@@endhl@@@ fails &amp; the load stops", "lastModified": "2026-09-28T16:20:00.000Z",
+            "url": "/spaces/ENG/pages/1101/Runbook+etl_nightly", "entityType": "content"}],
+            "start": 0, "limit": 1, "size": 1, "totalSize": 590, "cqlQuery": "…",
+            "_links": {"base": BASE, "context": "/confluence"}});
         let (outcome, transport) = confluence(
             &["confluence", "page", "list", "etl_nightly", "--limit", "1"],
             vec![Answer::json(&answer)],
@@ -299,9 +298,17 @@ mod tests {
             "{}",
             outcome.stderr
         );
-        assert!(urls(&transport)[0].starts_with(&format!("{V1}/search?cql=siteSearch")));
+        assert!(urls(&transport)[0].starts_with(&format!("{API}/search?cql=siteSearch")));
+        assert!(
+            urls(&transport)[0].ends_with("&limit=1"),
+            "{:?}",
+            urls(&transport)
+        );
         let (outcome, transport) = confluence(&["confluence", "page", "list", " "], vec![]);
-        assert_eq!(outcome.code, 2, "a blank siteSearch is a 500 on the server");
+        assert_eq!(
+            outcome.code, 2,
+            "a blank siteSearch is refused before it goes out"
+        );
         assert!(transport.sent().is_empty());
     }
 }

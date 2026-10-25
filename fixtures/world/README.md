@@ -118,7 +118,7 @@ agent-cli entra audit list --target 00000000-0000-4000-8000-000000005d02 --since
 ```
 config.toml       the config agent-cli reads
 http/ado.json     Azure DevOps answers
-http/confluence.json Confluence Cloud answers (contoso.atlassian.net)
+http/confluence.json Confluence Data Center answers (wiki.contoso.example)
 http/azure.json   Resource Graph, Key Vault and ACR answers
 http/aisearch.json AI Search's data plane and its admin key (ARM)
 http/lake.json    Data Lake answers and Graph's groups, written with files/ by scripts/seed/lake.py

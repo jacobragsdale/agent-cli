@@ -1,6 +1,6 @@
 [package]
 name = "agent-cli-confluence"
-description = "The confluence domain of agent-cli: Confluence Cloud spaces, pages as Markdown, trees, comments, attachments and versions"
+description = "The confluence domain of agent-cli: self-hosted Confluence (Data Center and Server) spaces, pages as Markdown, trees, comments, attachments and versions"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

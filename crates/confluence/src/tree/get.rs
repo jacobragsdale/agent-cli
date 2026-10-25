@@ -2,9 +2,8 @@ use agent_cli_core::{Ctx, command};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
-use serde_json::Value;
 
-use crate::client::{Confluence, PAGE_MAX, text};
+use crate::client::{Confluence, PAGE_MAX, segment, text};
 use crate::ids::{PageRef, space_key};
 
 #[derive(clap::Args)]
@@ -31,9 +30,6 @@ pub struct Node {
     /// What page get takes, for a page.
     id: String,
     title: Option<String>,
-    /// page, folder, whiteboard, database or embed.
-    #[serde(rename = "type")]
-    kind: Option<String>,
     parent: Option<String>,
     /// 1 is directly below.
     depth: u64,
@@ -50,15 +46,15 @@ fn tree_get(ctx: &Ctx, args: TreeGetArgs) -> Result<Tree> {
         Ok(PageRef::Space(_)) | Err(_) => None,
         Ok(page) => Some(page),
     };
+    let mut nodes = Vec::new();
     let mut tree = match page {
         Some(page) => {
             let (id, _) = page.resolve(ctx, &confluence)?;
-            let found = confluence.content(ctx, &id, &[])?;
-            let space_id = text(&found.value["spaceId"]).unwrap_or_default();
-            let nodes = descendants(ctx, &confluence, &id, args.depth, 0)?;
+            let found = confluence.content(ctx, &id, "space", None)?;
+            below(ctx, &confluence, &id, args.depth, 1, &mut nodes)?;
             Tree {
                 title: text(&found.value["title"]),
-                space: Some(confluence.space_key(ctx, &space_id, &mut Default::default())?),
+                space: found.space(),
                 id,
                 nodes,
             }
@@ -66,36 +62,34 @@ fn tree_get(ctx: &Ctx, args: TreeGetArgs) -> Result<Tree> {
         None => {
             let key = space_key(&confluence.site, raw)?;
             let space = confluence.space(ctx, &key)?;
-            let space_id = text(&space["id"]).unwrap_or_default();
-            let home = text(&space["homepageId"]);
-            let url = confluence.v2(
-                &format!("/spaces/{space_id}/pages"),
+            let key = text(&space["key"]).unwrap_or(key);
+            let home = text(&space["homepage"]["id"]);
+            let url = confluence.api(
+                &format!("/space/{}/content/page", segment(&key)),
                 &[
                     ("depth", "root".to_owned()),
                     ("limit", PAGE_MAX.to_string()),
                 ],
             );
             let (roots, _) = confluence.list(ctx, url, MAX_NODES + 1)?;
-            let mut nodes = Vec::new();
             for root in &roots {
                 let Some(id) = text(&root["id"]) else {
                     continue;
                 };
                 nodes.push(Node {
                     title: text(&root["title"]),
-                    kind: Some("page".to_owned()),
                     parent: None,
                     depth: 1,
                     id: id.clone(),
                 });
                 if home.as_deref() == Some(id.as_str()) && args.depth > 1 {
-                    nodes.extend(descendants(ctx, &confluence, &id, args.depth - 1, 1)?);
+                    below(ctx, &confluence, &id, args.depth - 1, 2, &mut nodes)?;
                 }
             }
             Tree {
-                id: text(&space["key"]).unwrap_or(key),
+                id: key.clone(),
                 title: text(&space["name"]),
-                space: text(&space["key"]),
+                space: Some(key),
                 nodes,
             }
         }
@@ -109,34 +103,42 @@ fn tree_get(ctx: &Ctx, args: TreeGetArgs) -> Result<Tree> {
     Ok(tree)
 }
 
-/// A page's descendants in tree order (pages, folders, whiteboards,
-/// databases and embeds alike), their depth counted from `offset`.
-fn descendants(
+/// The pages below `id`, `levels` deep, in tree order: each page's
+/// children as the space orders them, then theirs. Data Center has no
+/// descendants call for pages, so it is one child list a page with room
+/// below it.
+fn below(
     ctx: &Ctx,
     confluence: &Confluence,
     id: &str,
-    depth: u8,
-    offset: u64,
-) -> Result<Vec<Node>> {
-    let url = confluence.v2(
-        &format!("/pages/{id}/descendants"),
-        &[
-            ("depth", depth.to_string()),
-            ("limit", PAGE_MAX.to_string()),
-        ],
+    levels: u8,
+    depth: u64,
+    nodes: &mut Vec<Node>,
+) -> Result<()> {
+    if levels == 0 || nodes.len() > MAX_NODES {
+        return Ok(());
+    }
+    let url = confluence.api(
+        &format!("/content/{id}/child/page"),
+        &[("limit", PAGE_MAX.to_string())],
     );
-    let (rows, _) = confluence.list(ctx, url, MAX_NODES + 1)?;
-    Ok(rows.iter().filter_map(|row| node(row, offset)).collect())
-}
-
-fn node(row: &Value, offset: u64) -> Option<Node> {
-    Some(Node {
-        id: text(&row["id"])?,
-        title: text(&row["title"]),
-        kind: text(&row["type"]),
-        parent: text(&row["parentId"]),
-        depth: row["depth"].as_u64().unwrap_or(1) + offset,
-    })
+    let (children, _) = confluence.list(ctx, url, MAX_NODES + 1)?;
+    for child in &children {
+        let Some(child_id) = text(&child["id"]) else {
+            continue;
+        };
+        nodes.push(Node {
+            title: text(&child["title"]),
+            parent: Some(id.to_owned()),
+            depth,
+            id: child_id.clone(),
+        });
+        below(ctx, confluence, &child_id, levels - 1, depth + 1, nodes)?;
+        if nodes.len() > MAX_NODES {
+            break;
+        }
+    }
+    Ok(())
 }
 
 command! {
@@ -152,56 +154,74 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{V2, confluence, page, space, spaces, urls};
+    use crate::testing::{API, confluence, page, space, urls};
+
+    fn children(ids: &[(&str, &str)]) -> Answer {
+        let results: Vec<_> = ids
+            .iter()
+            .map(|(id, title)| json!({"id": id, "type": "page", "status": "current", "title": title}))
+            .collect();
+        Answer::json(
+            &json!({"results": results, "start": 0, "limit": 200, "size": ids.len(), "_links": {}}),
+        )
+    }
 
     #[test]
     fn a_page_tree_is_its_descendants_flat_in_tree_order() {
-        let descendants = json!({"results": [
-            {"id": "1101", "title": "Runbook: etl_nightly", "type": "page", "parentId": "1100", "depth": 1},
-            {"id": "1102", "title": "Runbook: worker crash loop", "type": "page", "parentId": "1100", "depth": 1}],
-            "_links": {}});
         let (outcome, transport) = confluence(
             &["confluence", "tree", "get", "1100"],
             vec![
                 Answer::json(&page("1100", "Runbooks", 2, "")),
-                Answer::json(&descendants),
-                Answer::json(&space()),
+                children(&[
+                    ("1101", "Runbook: etl_nightly"),
+                    ("1102", "Runbook: worker crash loop"),
+                ]),
+                children(&[("1105", "Backfill")]),
+                children(&[]),
             ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(
             outcome.json(),
             json!({"id": "1100", "title": "Runbooks", "space": "ENG", "nodes": [
-                {"id": "1101", "title": "Runbook: etl_nightly", "type": "page", "parent": "1100", "depth": 1},
-                {"id": "1102", "title": "Runbook: worker crash loop", "type": "page", "parent": "1100", "depth": 1}]})
+                {"id": "1101", "title": "Runbook: etl_nightly", "parent": "1100", "depth": 1},
+                {"id": "1105", "title": "Backfill", "parent": "1101", "depth": 2},
+                {"id": "1102", "title": "Runbook: worker crash loop", "parent": "1100", "depth": 1}]})
         );
         assert_eq!(
-            urls(&transport)[1],
-            format!("{V2}/pages/1100/descendants?depth=2&limit=250")
+            urls(&transport)[1..],
+            [
+                format!("{API}/content/1100/child/page?limit=200"),
+                format!("{API}/content/1101/child/page?limit=200"),
+                format!("{API}/content/1102/child/page?limit=200"),
+            ],
+            "depth 2 asks no page at the bottom for its children"
         );
     }
 
     #[test]
     fn a_space_tree_is_its_root_pages_and_its_homepage_below() {
-        let roots = json!({"results": [{"id": "1000", "title": "Engineering"}, {"id": "1900", "title": "Scratch"}], "_links": {}});
-        let below = json!({"results": [{"id": "1100", "title": "Runbooks", "type": "page", "parentId": "1000", "depth": 1}], "_links": {}});
         let (outcome, transport) = confluence(
             &["confluence", "tree", "get", "ENG"],
-            vec![spaces(), Answer::json(&roots), Answer::json(&below)],
+            vec![
+                Answer::json(&space()),
+                children(&[("1000", "Engineering"), ("1900", "Scratch")]),
+                children(&[("1100", "Runbooks")]),
+            ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
         let tree = outcome.json();
         assert_eq!(tree["id"], "ENG");
         assert_eq!(
             tree["nodes"][1],
-            json!({"id": "1100", "title": "Runbooks", "type": "page", "parent": "1000", "depth": 2})
+            json!({"id": "1100", "title": "Runbooks", "parent": "1000", "depth": 2})
         );
         assert_eq!(tree["nodes"][2]["id"], "1900");
         assert_eq!(
             urls(&transport)[1..],
             [
-                format!("{V2}/spaces/2001/pages?depth=root&limit=250"),
-                format!("{V2}/pages/1000/descendants?depth=1&limit=250"),
+                format!("{API}/space/ENG/content/page?depth=root&limit=200"),
+                format!("{API}/content/1000/child/page?limit=200"),
             ]
         );
     }

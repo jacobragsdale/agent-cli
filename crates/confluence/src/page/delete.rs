@@ -24,8 +24,8 @@ pub struct Trashed {
 fn page_delete(ctx: &Ctx, args: PageDeleteArgs) -> Result<Trashed> {
     let confluence = Confluence::load(ctx)?;
     let id = current_page(ctx, &confluence, &args.page)?;
-    let content = confluence.content(ctx, &id, &[])?;
-    let url = confluence.v2(&format!("/{}/{id}", content.kind), &[]);
+    let content = confluence.content(ctx, &id, "", None)?;
+    let url = confluence.api(&format!("/content/{id}"), &[]);
     confluence.change(ctx, Effect::Destructive, Method::Delete, &url, None)?;
     Ok(Trashed {
         title: text(&content.value["title"]),
@@ -47,7 +47,7 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{V2, confluence, dry_run, page};
+    use crate::testing::{API, confluence, dry_run, page};
 
     #[test]
     fn a_page_goes_to_the_trash_with_yes() {
@@ -56,7 +56,7 @@ mod tests {
             vec![Answer::json(&page("1102", "Old runbook", 2, ""))],
         );
         assert_eq!(plans[0]["method"], "DELETE");
-        assert_eq!(plans[0]["url"], format!("{V2}/pages/1102"));
+        assert_eq!(plans[0]["url"], format!("{API}/content/1102"));
         let (outcome, _) = confluence(&["confluence", "page", "delete", "1102"], vec![]);
         assert_eq!(outcome.code, 2, "a delete needs --yes: {outcome:?}");
         let (outcome, _) = confluence(

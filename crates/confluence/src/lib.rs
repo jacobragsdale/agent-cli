@@ -1,11 +1,12 @@
-//! The confluence domain: Confluence Cloud spaces, pages read as bounded
-//! Markdown and written from it, page trees, comments, attachments and
-//! versions, over the v2 REST API with v1 where v2 has no call.
+//! The confluence domain: self-hosted Confluence (Data Center and Server)
+//! spaces, pages read as bounded Markdown and written from it, page trees,
+//! comments, attachments and versions, over the v1 REST API with a personal
+//! access token.
 //!
 //! Bodies are converted locally from storage (Markdown that names what it
 //! simplified in `lossy`) and back, writes assert the version that was read,
-//! and a replace never overwrites what Markdown cannot carry. Data Center is
-//! not supported. Why each choice: crates/confluence/AGENTS.md.
+//! and a replace never overwrites what Markdown cannot carry. Confluence
+//! Cloud is not supported. Why each choice: crates/confluence/AGENTS.md.
 
 mod attachment;
 mod client;
@@ -28,7 +29,7 @@ use agent_cli_core::Domain;
 
 pub const DOMAIN: Domain = Domain {
     name: "confluence",
-    summary: "Confluence Cloud",
+    summary: "Confluence Data Center",
     commands: &[
         space::list::SPACE_LIST,
         page::list::PAGE_LIST,

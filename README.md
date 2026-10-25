@@ -36,7 +36,7 @@ any key, for example `AGENT_CLI_ADO_PROJECT=web`.
 | Domain | Section | Sign-in |
 |---|---|---|
 | ado | `[ado]` org, project, team | `pat`, else `AZURE_DEVOPS_EXT_PAT`, else your `az login` |
-| confluence | `[confluence]` url, email | an API token: `token` |
+| confluence | `[confluence]` url | a personal access token: `token` |
 | kv, acr, aks, aisearch, arm, net, lake, entra | `[azure]` (optional allowlists) | your `az login` (aisearch: a token, or an admin key it fetches, per service; lake: a data role or ACLs; entra: a member of the tenant, the logs a reader role) |
 | k8s | `[[k8s.scope]]` per cluster | your kubeconfig; `agent-cli aks cluster connect NAME` fetches it for AKS |
 | sql | `[[sql.connection]]` per database | `user` and `password` |
@@ -93,7 +93,7 @@ role, a read-only database login, an Airflow Viewer.
 | Domain | Service | Commands |
 |---|---|---|
 | ado | Azure DevOps: work items, pull requests, pipelines, runs, approvals, service connections | 59 |
-| confluence | Confluence Cloud pages as Markdown, page trees, comments, attachments, versions | 14 |
+| confluence | Confluence Data Center pages as Markdown, page trees, comments, attachments, versions | 15 |
 | kv | Key Vault secrets and versions (metadata; values only with `--reveal`) | 4 |
 | acr | Container Registry repositories, tags, manifests | 4 |
 | aks | AKS clusters, node pools, upgrades, credentials, kubectl through ARM | 8 |

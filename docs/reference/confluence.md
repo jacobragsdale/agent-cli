@@ -1,4 +1,4 @@
-# confluence — Confluence Cloud (15 commands)
+# confluence — Confluence Data Center (15 commands)
 
 | Command | Effect | Summary |
 |---|---|---|
@@ -34,7 +34,7 @@ e.g. agent-cli confluence space list eng --fields id,name,homepage
 
 ```text
 agent-cli confluence page list — Search Confluence pages (runbooks, designs) by words, space, label, title, date
-  <text> str              Words to search for, ranked as the web search ranks them (the index trails edits by about a minute)
+  <text> str              Words to search for, ranked as the web search ranks them (the index trails edits by a few seconds)
   --space str[]           Only in this space (its key or URL); repeatable
   --label str[]           Only pages carrying this label; repeatable, each one required
   --title str             Words in the title
@@ -111,7 +111,7 @@ agent-cli confluence page update — Edit a page: replace or append to its body 
   --append str        Markdown to add at the end of the page, or of --section; - reads stdin
   --append-file path  What to append, from a file
   --section str       The section --body replaces or --append extends: its heading's text, any case
-  --parent int        Move the page under this page id, in any space
+  --parent int        Move the page under this page id, in the same space (the REST API moves no page to another)
   --labels str        The labels it should have, comma-separated (replaces them; "" removes all)
   --message str       The version comment
   --storage           --body or --append is storage XHTML, sent as it is
@@ -152,7 +152,7 @@ e.g. agent-cli confluence page delete 1102 --yes
 agent-cli confluence tree get — Show the pages below a page, or at the top of a space, as flat rows
  *<target> str  A page (id, KEY:Title or URL) for what is below it, or a space (its key or URL) for its top
   --depth int   How many levels down, 1 to 10 (default 2)
-Returns: {id,title,space,nodes[{id,title,type,parent,depth}]}
+Returns: {id,title,space,nodes[{id,title,parent,depth}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli confluence tree get 1100 --depth 1 --fields nodes
 ```
@@ -199,7 +199,7 @@ e.g. agent-cli confluence attachment list 1201 --fields id,name,size
 
 ```text
 agent-cli confluence attachment get — Show a page attachment's text, or save the file with --output
- *<attachment> str  The attachment: its id (att7001), as attachment list prints it, or its URL. Text up to 1 MiB prints; anything else needs --output FILE
+ *<attachment> str  The attachment: its id, as attachment list prints it, or its URL. Text up to 1 MiB prints; anything else needs --output FILE
 Returns: {id,page,name,media_type,size,text,saved}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli confluence attachment get att7001

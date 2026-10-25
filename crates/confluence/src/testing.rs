@@ -1,16 +1,17 @@
 //! What the crate's tests share: a config with a token, runs of the domain
 //! over it, and the pages and people Confluence answers with.
 
+use agent_cli_core::Setup;
 use agent_cli_core::testing::{Answer, FakeTransport, Outcome, run};
-use agent_cli_core::{Setup, base64};
 use serde_json::{Value, json};
 
-pub(crate) const CONFIG: &str = "[confluence]\nurl = \"https://contoso.atlassian.net/wiki\"\nemail = \"jane@contoso.com\"\ntoken_env = \"CONFLUENCE_TEST_TOKEN\"\n";
-pub(crate) const TOKEN: &str = "atl-fixture-token-5e8c21";
-pub(crate) const V2: &str = "https://contoso.atlassian.net/wiki/api/v2";
-pub(crate) const V1: &str = "https://contoso.atlassian.net/wiki/rest/api";
-pub(crate) const SAM: &str = "557058:00000000-0000-4000-8000-00000000a002";
-pub(crate) const JANE: &str = "557058:00000000-0000-4000-8000-00000000a001";
+pub(crate) const CONFIG: &str = "[confluence]\nurl = \"https://wiki.contoso.example/confluence\"\ntoken_env = \"CONFLUENCE_TEST_TOKEN\"\n";
+pub(crate) const TOKEN: &str = "NjM0fixture-pat-5e8c21";
+pub(crate) const BASE: &str = "https://wiki.contoso.example/confluence";
+pub(crate) const API: &str = "https://wiki.contoso.example/confluence/rest/api";
+/// The user keys Data Center gives people.
+pub(crate) const JANE: &str = "8a8080a1000000000000000000000001";
+pub(crate) const SAM: &str = "8a8080a1000000000000000000000002";
 
 /// Runs `argv` over `answers` with [`CONFIG`] and a token in the
 /// environment; the transport shows what was sent.
@@ -34,13 +35,10 @@ fn confluence_with(setup: Setup, argv: &[&str], answers: Vec<Answer>) -> (Outcom
         .with_env("CONFLUENCE_TEST_TOKEN", TOKEN);
     setup.transport = Box::new(transport.clone());
     let outcome = run(&[crate::DOMAIN], argv, setup);
-    let basic = base64(format!("jane@contoso.com:{TOKEN}").as_bytes());
-    for leaked in [TOKEN, basic.as_str()] {
-        assert!(
-            !outcome.stdout.contains(leaked) && !outcome.stderr.contains(leaked),
-            "the token leaked: {outcome:?}"
-        );
-    }
+    assert!(
+        !outcome.stdout.contains(TOKEN) && !outcome.stderr.contains(TOKEN),
+        "the token leaked: {outcome:?}"
+    );
     (outcome, transport)
 }
 
@@ -72,32 +70,33 @@ pub(crate) fn urls(transport: &FakeTransport) -> Vec<String> {
     transport.sent().into_iter().map(|sent| sent.url).collect()
 }
 
-/// A v2 page as `GET /pages/{id}?body-format=storage` answers it.
+/// A user as v1 embeds one (`version.by`, `history.createdBy`).
+pub(crate) fn user(key: &str, username: &str, name: &str) -> Value {
+    json!({"type": "known", "username": username, "userKey": key, "displayName": name})
+}
+
+/// A page as `GET /content/{id}?expand=body.storage,version,space,ancestors,metadata.labels,history`
+/// answers it: created by Sam Lee, this version by Jane Doe, under 1100.
 pub(crate) fn page(id: &str, title: &str, version: u64, storage: &str) -> Value {
     json!({
-        "id": id, "status": "current", "title": title, "spaceId": "2001", "parentId": "1100",
-        "parentType": "page", "authorId": SAM, "createdAt": "2026-09-01T09:00:00.000Z",
-        "version": {"number": version, "message": "", "minorEdit": false, "authorId": JANE,
-            "createdAt": "2026-09-28T16:20:00.000Z"},
-        "body": {"storage": {"representation": "storage", "value": storage}},
-        "labels": {"results": [{"prefix": "global", "name": "runbook", "id": "3101"}]},
+        "id": id, "type": "page", "status": "current", "title": title,
+        "space": {"id": 2001, "key": "ENG", "name": "Engineering", "type": "global"},
+        "history": {"latest": true, "createdBy": user(SAM, "sam", "Sam Lee"),
+            "createdDate": "2026-09-01T09:00:00.000Z"},
+        "version": {"by": user(JANE, "jane", "Jane Doe"), "when": "2026-09-28T16:20:00.000Z",
+            "message": "", "number": version, "minorEdit": false},
+        "ancestors": [{"id": "1000", "type": "page", "title": "Engineering"},
+            {"id": "1100", "type": "page", "title": "Runbooks"}],
+        "body": {"storage": {"value": storage, "representation": "storage"}},
+        "metadata": {"labels": {"results": [{"prefix": "global", "name": "runbook", "id": "3101"}],
+            "start": 0, "limit": 200, "size": 1}},
         "_links": {"webui": format!("/spaces/ENG/pages/{id}/Page"), "tinyui": "/x/TQQ",
-            "base": "https://contoso.atlassian.net/wiki"}
+            "base": BASE, "context": "/confluence"}
     })
 }
 
 pub(crate) fn space() -> Value {
-    json!({"id": "2001", "key": "ENG", "name": "Engineering", "type": "global", "status": "current",
-        "homepageId": "1000", "_links": {"webui": "/spaces/ENG"}})
-}
-
-pub(crate) fn spaces() -> Answer {
-    Answer::json(&json!({"results": [space()], "_links": {}}))
-}
-
-pub(crate) fn people() -> Answer {
-    Answer::json(&json!({"results": [
-        {"accountId": JANE, "displayName": "Jane Doe"},
-        {"accountId": SAM, "displayName": "Sam Lee"}
-    ]}))
+    json!({"id": 2001, "key": "ENG", "name": "Engineering", "type": "global", "status": "current",
+        "homepage": {"id": "1000", "type": "page", "title": "Engineering"},
+        "_links": {"webui": "/spaces/ENG/overview", "base": BASE, "context": "/confluence"}})
 }

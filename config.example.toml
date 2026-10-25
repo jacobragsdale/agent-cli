@@ -28,17 +28,14 @@
 # pat = "..."                            # or pat_env, pat_cmd
 
 # [confluence]
-# Confluence Cloud only (SITE.atlassian.net); Data Center is not supported.
-# Sign-in: an API token from https://id.atlassian.com/manage-profile/security/api-tokens,
-# sent as Basic email:token to the site and nowhere else. Tokens expire
-# within a year; `agent-cli doctor confluence` says when one stops working.
-# url = "https://contoso.atlassian.net/wiki"
-# email = "jane@contoso.com"             # the account the token belongs to
+# Confluence Data Center or Server, self-hosted; Cloud (*.atlassian.net) is not supported.
+# Sign-in: a personal access token (your profile, Personal Access Tokens, at
+# URL/plugins/personalaccesstokens/usertokens.action), sent as Bearer to URLs
+# under url and nowhere else. Tokens can expire, and an admin can revoke them;
+# `agent-cli doctor confluence` says when one stops working.
+# url = "https://wiki.contoso.example"   # what the browser shows, context path
+#                                        # included: https://contoso.example/confluence
 # token = "..."                          # or token_env, token_cmd
-# cloud_id = "11111111-2222-3333-4444-555555555555"  # a scoped token or service
-#                                        # account: calls go through api.atlassian.com
-#                                        # (https://SITE.atlassian.net/_edge/tenant_info
-#                                        # prints it); with no email, Bearer
 
 # [azure]
 # kv, acr, aks, aisearch, arm, net, lake and entra sign in with your `az login`; nothing is

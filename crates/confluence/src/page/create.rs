@@ -52,32 +52,35 @@ fn page_create(ctx: &Ctx, args: PageCreateArgs) -> Result<Written> {
         .as_deref()
         .map(|space| space_key(&confluence.site, space))
         .transpose()?;
-    let (space, parent) = match (key, args.parent) {
+    let (key, parent) = match (key, args.parent) {
         (None, None) => {
             return Err(Failure::usage("say where: --space KEY or --parent ID")
                 .hint("agent-cli confluence space list")
                 .into());
         }
-        (Some(key), None) => (confluence.space(ctx, &key)?, None),
+        (Some(key), None) => {
+            let space = confluence.space(ctx, &key)?;
+            (
+                text(&space["key"]).unwrap_or(key),
+                text(&space["homepage"]["id"]),
+            )
+        }
         (key, Some(parent)) => {
             let parent = parent.to_string();
-            let found = confluence.content(ctx, &parent, &[])?;
-            let space_id = text(&found.value["spaceId"]).unwrap_or_default();
-            let space = confluence.get(ctx, &confluence.v2(&format!("/spaces/{space_id}"), &[]))?;
+            let found = confluence.content(ctx, &parent, "space", None)?;
+            let in_space = found.space().unwrap_or_default();
             if let Some(key) = key
-                && !text(&space["key"]).is_some_and(|known| known.eq_ignore_ascii_case(&key))
+                && !in_space.eq_ignore_ascii_case(&key)
             {
                 return Err(Failure::usage(format!(
-                    "page {parent} is in space {}, not {key}",
-                    text(&space["key"]).unwrap_or_default()
+                    "page {parent} is in space {in_space}, not {key}"
                 ))
                 .hint("drop --space, or pick a parent in that space")
                 .into());
             }
-            (space, Some(parent))
+            (in_space, Some(parent))
         }
     };
-    let key = text(&space["key"]).unwrap_or_default();
     let storage = match &body {
         None => String::new(),
         Some(body) if args.storage => body.text.clone(),
@@ -93,20 +96,20 @@ fn page_create(ctx: &Ctx, args: PageCreateArgs) -> Result<Written> {
         }
     };
     let mut request = json!({
-        "spaceId": text(&space["id"]),
-        "status": "current",
+        "type": "page",
         "title": title,
-        "body": {"representation": "storage", "value": storage},
+        "space": {"key": key},
+        "body": {"storage": {"value": storage, "representation": "storage"}},
     });
     if let Some(parent) = &parent {
-        request["parentId"] = json!(parent);
+        request["ancestors"] = json!([{"id": parent}]);
     }
     let created = confluence
         .change(
             ctx,
             Effect::Write,
             Method::Post,
-            &confluence.v2("/pages", &[]),
+            &confluence.api("/content", &[]),
             Some(request),
         )
         .map_err(|error| duplicate(error, &key, &title))?;
@@ -117,7 +120,7 @@ fn page_create(ctx: &Ctx, args: PageCreateArgs) -> Result<Written> {
             .iter()
             .map(|name| json!({"prefix": "global", "name": name}))
             .collect();
-        let url = confluence.v1(&format!("/content/{id}/label"), &[]);
+        let url = confluence.api(&format!("/content/{id}/label"), &[]);
         confluence.change(
             ctx,
             Effect::Write,
@@ -163,12 +166,13 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{V1, V2, confluence, dry_run, page, space, spaces, urls};
+    use crate::testing::{API, BASE, confluence, dry_run, page, space, urls};
 
     fn created() -> Answer {
         Answer::json(
-            &json!({"id": "1401", "title": "Postmortem", "spaceId": "2001", "version": {"number": 1},
-            "_links": {"webui": "/spaces/ENG/pages/1401/Postmortem"}}),
+            &json!({"id": "1401", "type": "page", "status": "current", "title": "Postmortem",
+            "space": {"key": "ENG"}, "version": {"number": 1},
+            "_links": {"webui": "/spaces/ENG/pages/1401/Postmortem", "base": BASE}}),
         )
     }
 
@@ -186,18 +190,16 @@ mod tests {
                 "--body",
                 "# What broke\n\nThe *load*.",
             ],
-            vec![
-                Answer::json(&page("1100", "Runbooks", 3, "")),
-                Answer::json(&space()),
-            ],
+            vec![Answer::json(&page("1100", "Runbooks", 3, ""))],
         );
         assert_eq!(plans[0]["method"], "POST");
-        assert_eq!(plans[0]["url"], format!("{V2}/pages"));
+        assert_eq!(plans[0]["url"], format!("{API}/content"));
         assert_eq!(plans[0]["headers"]["Authorization"], "***");
         assert_eq!(
             plans[0]["body"],
-            json!({"spaceId": "2001", "status": "current", "title": "Postmortem", "parentId": "1100",
-                "body": {"representation": "storage", "value": "<h1>What broke</h1><p>The <em>load</em>.</p>"}})
+            json!({"type": "page", "title": "Postmortem", "space": {"key": "ENG"},
+                "ancestors": [{"id": "1100"}],
+                "body": {"storage": {"value": "<h1>What broke</h1><p>The <em>load</em>.</p>", "representation": "storage"}}})
         );
 
         let (outcome, transport) = confluence(
@@ -212,23 +214,35 @@ mod tests {
                 "--labels",
                 "postmortem, etl",
             ],
-            vec![spaces(), created(), Answer::json(&json!({"results": []}))],
+            vec![
+                Answer::json(&space()),
+                created(),
+                Answer::json(&json!({"results": []})),
+            ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(
             outcome.json(),
             json!({"id": "1401", "title": "Postmortem", "space": "ENG", "version": 1,
-                "url": "https://contoso.atlassian.net/wiki/spaces/ENG/pages/1401/Postmortem"})
+                "url": format!("{BASE}/spaces/ENG/pages/1401/Postmortem")})
         );
         let sent = transport.sent();
-        assert_eq!(sent[2].url, format!("{V1}/content/1401/label"));
+        assert_eq!(
+            sent[1].body.as_ref().unwrap()["ancestors"],
+            json!([{"id": "1000"}]),
+            "a page with no parent goes under the space's homepage"
+        );
+        assert_eq!(sent[2].url, format!("{API}/content/1401/label"));
         assert_eq!(
             sent[2].body,
             Some(
                 json!([{"prefix": "global", "name": "postmortem"}, {"prefix": "global", "name": "etl"}])
             )
         );
-        assert_eq!(urls(&transport)[0], format!("{V2}/spaces?keys=ENG"));
+        assert_eq!(
+            urls(&transport)[0],
+            format!("{API}/space/ENG?expand=homepage")
+        );
     }
 
     #[test]
@@ -244,10 +258,10 @@ mod tests {
                 "ENG",
             ],
             vec![
-                spaces(),
+                Answer::json(&space()),
                 Answer::status(
                     400,
-                    r#"{"errors":[{"status":400,"code":"INVALID_REQUEST_PARAMETER","title":"A page with this title already exists: A page already exists with the same TITLE in this space","detail":null}]}"#,
+                    r#"{"statusCode":400,"data":{"authorized":false,"valid":true,"allowedInReadOnlyMode":true,"errors":[],"successful":false},"message":"A page with this title already exists: A page already exists with the title Runbook: etl_nightly in the space with key ENG. Log referral number is 00000000-0000-4000-8000-000000000001","reason":"Bad Request"}"#,
                 ),
             ],
         );

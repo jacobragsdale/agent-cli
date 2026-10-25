@@ -1,6 +1,5 @@
-//! Markdown as storage, for the bodies and comments agents write. v2 writes
-//! take storage, ADF or wiki markup but never Markdown, and Confluence's own
-//! Markdown converter is an undocumented input to a deprecated endpoint.
+//! Markdown as storage, for the bodies and comments agents write. The REST
+//! API takes storage, wiki markup or the editor's HTML but never Markdown.
 //!
 //! The mapping is `markdown`'s read backwards: an alert is an info, tip, note
 //! or warning macro, a fence a code macro, `[text](<KEY:Title>)` a page link,
@@ -16,7 +15,7 @@ use crate::storage::{decode_entities, escape};
 use crate::syntax::{cdata, emoticons, text_escape};
 
 /// Where a body goes: its space (a page link into it needs no key) and the
-/// account ids of the people it mentions, by the name written.
+/// user keys of the people it mentions, by the name written.
 pub(crate) struct Target<'a> {
     pub(crate) space: &'a str,
     pub(crate) people: &'a HashMap<String, String>,
@@ -418,7 +417,7 @@ impl Composer<'_> {
     fn mention(&self, name: &str) -> String {
         match self.target.people.get(name) {
             Some(id) => format!(
-                "<ac:link><ri:user ri:account-id=\"{}\" /></ac:link>",
+                "<ac:link><ri:user ri:userkey=\"{}\" /></ac:link>",
                 escape(id)
             ),
             None => text_escape(&format!("@<{name}>")),
@@ -574,9 +573,10 @@ mod tests {
     use super::*;
     use crate::markdown::{Context, to_markdown};
     use crate::storage::parse;
+    use crate::testing::SAM;
 
     fn people() -> HashMap<String, String> {
-        HashMap::from([("Sam Lee".to_owned(), "557058:sam".to_owned())])
+        HashMap::from([("Sam Lee".to_owned(), SAM.to_owned())])
     }
 
     fn storage(markdown: &str) -> String {
@@ -621,7 +621,7 @@ mod tests {
             "<ac:task-list><ac:task><ac:task-status>complete</ac:task-status><ac:task-body>Fix the order</ac:task-body></ac:task><ac:task><ac:task-status>incomplete</ac:task-status><ac:task-body>Retry <strong>once</strong></ac:task-body></ac:task></ac:task-list>",
             "<p>See <ac:link><ri:page ri:content-title=\"Runbook: etl_nightly\" /><ac:plain-text-link-body><![CDATA[the runbook]]></ac:plain-text-link-body></ac:link>, <ac:link><ri:page ri:space-key=\"OPS\" ri:content-title=\"Pager (on call)\" /><ac:plain-text-link-body><![CDATA[Pager (on call)]]></ac:plain-text-link-body></ac:link> and <a href=\"https://contoso.example/a?b=1&amp;c=2\">docs <em>here</em></a>.</p>",
             "<p><ac:link><ri:attachment ri:filename=\"changes v1.4.2.txt\" /><ac:plain-text-link-body><![CDATA[the changes]]></ac:plain-text-link-body></ac:link> <ac:link ac:anchor=\"Rollback\"><ac:plain-text-link-body><![CDATA[rollback]]></ac:plain-text-link-body></ac:link></p>",
-            "<p>Ask <ac:link><ri:user ri:account-id=\"557058:sam\" /></ac:link> first <ac:emoticon ac:name=\"tick\" /></p>",
+            "<p>Ask <ac:link><ri:user ri:userkey=\"8a8080a1000000000000000000000002\" /></ac:link> first <ac:emoticon ac:name=\"tick\" /></p>",
             "<p><ac:image ac:alt=\"rollout\"><ri:attachment ri:filename=\"rollout.png\" /></ac:image><ac:image><ri:url ri:value=\"https://contoso.example/x.png\" /></ac:image></p>",
             "<p>line<br />break H<sub>2</sub>O <u>under</u></p>",
         ] {
@@ -635,7 +635,7 @@ mod tests {
             storage(
                 "# Rollback\n\nUndo it, then tell @<Sam Lee> and @<Nobody>.\n\n> [!CAUTION]\n> Prod only.\n\n```\nkubectl rollout undo\n```"
             ),
-            "<h1>Rollback</h1><p>Undo it, then tell <ac:link><ri:user ri:account-id=\"557058:sam\" /></ac:link> and @&lt;Nobody&gt;.</p><ac:structured-macro ac:name=\"warning\"><ac:rich-text-body><p>Prod only.</p></ac:rich-text-body></ac:structured-macro><ac:structured-macro ac:name=\"code\"><ac:plain-text-body><![CDATA[kubectl rollout undo]]></ac:plain-text-body></ac:structured-macro>"
+            "<h1>Rollback</h1><p>Undo it, then tell <ac:link><ri:user ri:userkey=\"8a8080a1000000000000000000000002\" /></ac:link> and @&lt;Nobody&gt;.</p><ac:structured-macro ac:name=\"warning\"><ac:rich-text-body><p>Prod only.</p></ac:rich-text-body></ac:structured-macro><ac:structured-macro ac:name=\"code\"><ac:plain-text-body><![CDATA[kubectl rollout undo]]></ac:plain-text-body></ac:structured-macro>"
         );
         assert_eq!(
             storage("- loose\n\n- items\n\n`@<Sam Lee>` stays"),

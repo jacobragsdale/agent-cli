@@ -35,9 +35,10 @@ pub struct Attached {
 /// limit (site-configured) stops anything that would hurt.
 const MAX_BYTES: u64 = 100 * 1024 * 1024;
 
-/// v1's `PUT …/child/attachment` (v2 has no upload) creates the file or
-/// adds a version of one with its name, as multipart built here, with the
-/// `X-Atlassian-Token: no-check` header its XSRF check wants.
+/// A new file is a `POST …/child/attachment`; one of the same name gets
+/// a new version through `POST …/child/attachment/{id}/data`, since a
+/// second upload of a name is refused. Both are multipart, built here,
+/// with the `X-Atlassian-Token: no-check` header the XSRF check wants.
 fn attachment_create(ctx: &Ctx, args: AttachmentCreateArgs) -> Result<Attached> {
     let confluence = Confluence::load(ctx)?;
     let path = Path::new(&args.file);
@@ -59,10 +60,21 @@ fn attachment_create(ctx: &Ctx, args: AttachmentCreateArgs) -> Result<Attached> 
     let bytes = std::fs::read(path).map_err(unreadable)?;
     let id = current_page(ctx, &confluence, &args.page)?;
     // The page is read first so a wrong id is exit 4, not an upload's 404.
-    confluence.content(ctx, &id, &[])?;
+    confluence.content(ctx, &id, "", None)?;
+    let files = confluence.api(
+        &format!("/content/{id}/child/attachment"),
+        &[("filename", name.clone())],
+    );
+    let existing = confluence.get(ctx, &files)?["results"]
+        .as_array()
+        .and_then(|files| files.first())
+        .and_then(|file| text(&file["id"]));
+    let url = match &existing {
+        Some(file) => confluence.api(&format!("/content/{id}/child/attachment/{file}/data"), &[]),
+        None => confluence.api(&format!("/content/{id}/child/attachment"), &[]),
+    };
     let (boundary, body) = multipart(&name, &bytes, args.comment.as_deref());
-    let url = confluence.v1(&format!("/content/{id}/child/attachment"), &[]);
-    let call = Call::new(Method::Put, &url)
+    let call = Call::new(Method::Post, &url)
         .header(
             "Content-Type",
             &format!("multipart/form-data; boundary={boundary}"),
@@ -75,7 +87,7 @@ fn attachment_create(ctx: &Ctx, args: AttachmentCreateArgs) -> Result<Attached> 
         .and_then(|files| files.first())
         .unwrap_or(&answer);
     Ok(Attached {
-        id: text(&file["id"]).unwrap_or_default(),
+        id: text(&file["id"]).or(existing).unwrap_or_default(),
         page: id,
         name: text(&file["title"]).unwrap_or(name),
         size: bytes.len(),
@@ -135,7 +147,7 @@ mod tests {
     use serde_json::json;
 
     use super::multipart;
-    use crate::testing::{V1, confluence, dry_run, page};
+    use crate::testing::{API, confluence, dry_run, page};
 
     #[test]
     fn a_file_goes_up_as_multipart_with_the_xsrf_header() {
@@ -143,6 +155,7 @@ mod tests {
         let path = dir.path().join("changes.txt");
         std::fs::write(&path, "retry on 429").unwrap();
         let file = path.to_str().unwrap();
+        let none = || Answer::json(&json!({"results": [], "size": 0}));
         let plans = dry_run(
             &[
                 "confluence",
@@ -154,12 +167,12 @@ mod tests {
                 "--comment",
                 "Changelog",
             ],
-            vec![Answer::json(&page("1201", "Release notes", 3, ""))],
+            vec![Answer::json(&page("1201", "Release notes", 3, "")), none()],
         );
-        assert_eq!(plans[0]["method"], "PUT");
+        assert_eq!(plans[0]["method"], "POST");
         assert_eq!(
             plans[0]["url"],
-            format!("{V1}/content/1201/child/attachment")
+            format!("{API}/content/1201/child/attachment")
         );
         // Masked as every header named like a token is; it is sent as no-check.
         assert_eq!(plans[0]["headers"]["X-Atlassian-Token"], "***");
@@ -168,23 +181,58 @@ mod tests {
             "multipart/form-data; boundary=agent-cli-boundary-0"
         );
 
-        let answer = json!({"results": [{"id": "att7003", "title": "changes.txt", "version": {"number": 1}}]});
+        let answer = json!({"results": [{"id": "7003", "type": "attachment", "title": "changes.txt", "version": {"number": 1}}]});
         let (outcome, transport) = confluence(
             &["confluence", "attachment", "create", "1201", "--file", file],
             vec![
                 Answer::json(&page("1201", "Release notes", 3, "")),
+                none(),
                 Answer::json(&answer),
             ],
         );
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(
             outcome.json(),
-            json!({"id": "att7003", "page": "1201", "name": "changes.txt", "size": 12, "version": 1})
+            json!({"id": "7003", "page": "1201", "name": "changes.txt", "size": 12, "version": 1})
         );
         let sent = transport.sent();
-        let body = sent[1].body.as_ref().unwrap().as_str().unwrap().to_owned();
+        assert_eq!(
+            sent[1].url,
+            format!("{API}/content/1201/child/attachment?filename=changes.txt")
+        );
+        let body = sent[2].body.as_ref().unwrap().as_str().unwrap().to_owned();
         assert!(body.contains("filename=\"changes.txt\"\r\nContent-Type: application/octet-stream\r\n\r\nretry on 429\r\n"), "{body}");
         assert!(body.contains("name=\"minorEdit\"\r\n\r\ntrue"), "{body}");
+    }
+
+    #[test]
+    fn a_file_of_the_same_name_gets_a_new_version() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("changes.txt");
+        std::fs::write(&path, "retry on 429").unwrap();
+        let (outcome, transport) = confluence(
+            &[
+                "confluence",
+                "attachment",
+                "create",
+                "1201",
+                "--file",
+                path.to_str().unwrap(),
+            ],
+            vec![
+                Answer::json(&page("1201", "Release notes", 3, "")),
+                Answer::json(&json!({"results": [{"id": "7001", "title": "changes.txt"}]})),
+                Answer::json(
+                    &json!({"id": "7001", "type": "attachment", "title": "changes.txt", "version": {"number": 2}}),
+                ),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()["version"], 2);
+        assert_eq!(
+            transport.sent()[2].url,
+            format!("{API}/content/1201/child/attachment/7001/data")
+        );
     }
 
     #[test]

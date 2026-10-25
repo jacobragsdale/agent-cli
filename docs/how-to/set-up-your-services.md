@@ -368,8 +368,9 @@ the wrong `site` or a missing scope.
 
 ## 9. Confluence (confluence)
 
-Confluence Cloud only: a site at `SITE.atlassian.net`. Data Center and
-Server are not supported.
+A self-hosted Confluence: Data Center or Server, 7.9 or later (the first
+with personal access tokens). Confluence Cloud (`SITE.atlassian.net`) is
+not supported.
 
 ```sh
 agent-cli config example confluence
@@ -377,31 +378,32 @@ agent-cli config example confluence
 
 ```toml
 [confluence]
-url = "https://contoso.atlassian.net/wiki"
-email = "jane@contoso.com"
+url = "https://wiki.contoso.example"
 token = "..."
 ```
 
-Make an API token at
-https://id.atlassian.com/manage-profile/security/api-tokens ("Create API
-token") while signed in as the account in `email`; it is sent as Basic
-`email:token` to the site and nowhere else. Every token expires within a
-year, so make a note of when.
+`url` is the wiki's address as the browser shows it, before `/display` or
+`/spaces`, with its context path when it has one
+(`https://contoso.example/confluence`). Make a personal access token in
+Confluence: your avatar, Profile, Personal Access Tokens, Create token (or
+open `URL/plugins/personalaccesstokens/usertokens.action`). It is sent as
+`Bearer` to addresses under `url` and nowhere else. Give it an expiry you
+will notice, or none if your admin allows it; an admin can also revoke it
+or turn tokens off for the site. The token can do what your account can,
+so agents publish and comment as you.
 
-A token made with "Create API token with scopes", or a service account's,
-works only through Atlassian's gateway: add the site's `cloud_id`, which
-`https://SITE.atlassian.net/_edge/tenant_info` prints with no sign-in. Calls
-then go to `api.atlassian.com`, as Bearer when there is no `email`. Give
-such a token the read scopes for pages, spaces, comments, attachments and
-users, and the write scopes only where agents may publish.
+A wiki whose certificate comes from your company's own certificate
+authority needs that CA in the system's store (on Ubuntu or WSL,
+`/usr/local/share/ca-certificates/`, then `sudo update-ca-certificates`).
 
 ```sh
 agent-cli doctor confluence
 ```
 
-The connection row must say "signed in as" your name. A site that lets
-anyone read answers a wrong or expired token as the anonymous user instead
-of refusing it, and doctor reports that as a failure.
+The connection row must say "signed in as" your name. A wrong or expired
+token is refused with 401, and the hint names the token page; a site that
+lets anyone read may instead answer as the anonymous user, which doctor
+also reports as a failure.
 
 ## 10. Control-M (controlm)
 

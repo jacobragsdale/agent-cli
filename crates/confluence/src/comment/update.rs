@@ -2,9 +2,8 @@ use agent_cli_core::{Ctx, Effect, Failure, Method, command, status_of};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::Serialize;
-use serde_json::json;
 
-use crate::client::{Confluence, text};
+use crate::client::{Confluence, INLINE, text};
 use crate::ids::comment;
 
 #[derive(clap::Args)]
@@ -30,41 +29,73 @@ pub struct Resolved {
     resolution: Option<String>,
 }
 
-/// Only inline comments resolve. The body is sent back as it was read, so
-/// the call changes the resolution and nothing else.
+/// Only inline comments resolve, a thread at a time through its first
+/// comment. The plugin would mark a footer comment too, so the comment is
+/// read first.
 fn comment_update(ctx: &Ctx, args: CommentUpdateArgs) -> Result<Resolved> {
     let confluence = Confluence::load(ctx)?;
     let id = comment(&confluence.site, &args.comment)?;
-    let url = confluence.v2(&format!("/inline-comments/{id}"), &[]);
-    let read = confluence.get(ctx, &format!("{url}?body-format=storage"));
-    let found = match read {
-        Ok(found) => found,
-        Err(error) if status_of(&error) == Some(404) => {
-            return Err(Failure::not_found(format!(
-                "no inline comment {id}: only inline comments resolve, and a footer comment is not one"
-            ))
+    let url = confluence.api(
+        &format!("/content/{id}"),
+        &[("expand", "container,ancestors".to_owned())],
+    );
+    let missing = || -> anyhow::Error {
+        Failure::not_found(format!("no comment {id}, or you may not see it"))
             .hint("agent-cli confluence comment list PAGE --kind inline")
-            .into());
-        }
+            .into()
+    };
+    let found = match confluence.get(ctx, &url) {
+        Ok(found) if found["type"] == "comment" => found,
+        Ok(_) => return Err(missing()),
+        Err(error) if status_of(&error) == Some(404) => return Err(missing()),
         Err(error) => return Err(error),
     };
-    let page = text(&found["pageId"]).or_else(|| text(&found["blogPostId"]));
+    let page = text(&found["container"]["id"]);
+    let on = page.clone().unwrap_or_else(|| "PAGE".to_owned());
+    if found["extensions"]["location"] != "inline" {
+        return Err(Failure::usage(format!(
+            "comment {id} is a footer comment: only inline comments resolve"
+        ))
+        .hint(format!(
+            "agent-cli confluence comment list {on} --kind inline"
+        ))
+        .into());
+    }
+    let root = found["ancestors"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|ancestor| ancestor["type"] == "comment")
+        .filter_map(|ancestor| text(&ancestor["id"]))
+        .next_back();
+    if let Some(root) = root {
+        return Err(Failure::usage(format!(
+            "comment {id} is a reply, and its thread resolves as one, by comment {root}"
+        ))
+        .hint(format!(
+            "agent-cli confluence comment update {root} --status {}",
+            if args.status == Status::Resolved {
+                "resolved"
+            } else {
+                "open"
+            }
+        ))
+        .into());
+    }
     let resolved = args.status == Status::Resolved;
-    let version = found["version"]["number"].as_u64().unwrap_or(1);
-    let body = found["body"]["storage"]["value"]
-        .as_str()
-        .unwrap_or_default();
-    let request = json!({
-        "version": {"number": version + 1},
-        "body": {"representation": "storage", "value": body},
-        "resolved": resolved,
-    });
-    let answer = confluence.change(ctx, Effect::Write, Method::Put, &url, Some(request))?;
+    let url = confluence.url(
+        INLINE,
+        &format!("/comments/{id}/resolve/{resolved}/dangling/false"),
+        &[],
+    );
+    let answer = confluence.change(ctx, Effect::Write, Method::Put, &url, None)?;
+    let now = answer["resolveProperties"]["resolved"]
+        .as_bool()
+        .unwrap_or(resolved);
     Ok(Resolved {
         id,
         page,
-        resolution: text(&answer["resolutionStatus"])
-            .or_else(|| Some(if resolved { "resolved" } else { "reopened" }.to_owned())),
+        resolution: Some(if now { "resolved" } else { "reopened" }.to_owned()),
     })
 }
 
@@ -81,12 +112,18 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{V2, confluence, dry_run};
+    use crate::testing::{API, confluence, dry_run};
+
+    fn found(location: &str, ancestors: serde_json::Value) -> Answer {
+        Answer::json(
+            &json!({"id": "5002", "type": "comment", "status": "current",
+            "container": {"id": "1101", "type": "page"}, "ancestors": ancestors,
+            "extensions": {"location": location}}),
+        )
+    }
 
     #[test]
-    fn resolving_bumps_the_comments_version_and_keeps_its_body() {
-        let found = json!({"id": "5002", "pageId": "1101", "resolutionStatus": "open",
-            "version": {"number": 1}, "body": {"storage": {"value": "<p>only once</p>"}}});
+    fn resolving_goes_through_the_inline_comments_plugin() {
         let plans = dry_run(
             &[
                 "confluence",
@@ -96,31 +133,74 @@ mod tests {
                 "--status",
                 "resolved",
             ],
-            vec![Answer::json(&found)],
+            vec![found("inline", json!([]))],
         );
         assert_eq!(plans[0]["method"], "PUT");
-        assert_eq!(plans[0]["url"], format!("{V2}/inline-comments/5002"));
         assert_eq!(
-            plans[0]["body"],
-            json!({"version": {"number": 2}, "body": {"representation": "storage", "value": "<p>only once</p>"}, "resolved": true})
+            plans[0]["url"],
+            "https://wiki.contoso.example/confluence/rest/inlinecomments/1.0/comments/5002/resolve/true/dangling/false"
         );
+        let (outcome, transport) = confluence(
+            &[
+                "confluence",
+                "comment",
+                "update",
+                "5002",
+                "--status",
+                "open",
+            ],
+            vec![
+                found("inline", json!([])),
+                Answer::json(&json!({"resolveProperties": {"resolved": false, "resolvedTime": 0}})),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(
+            outcome.json(),
+            json!({"id": "5002", "page": "1101", "resolution": "reopened"})
+        );
+        assert_eq!(
+            transport.sent()[0].url,
+            format!("{API}/content/5002?expand=container%2Cancestors")
+        );
+    }
+
+    #[test]
+    fn a_footer_comment_or_a_reply_does_not_resolve() {
+        let (outcome, transport) = confluence(
+            &[
+                "confluence",
+                "comment",
+                "update",
+                "5002",
+                "--status",
+                "resolved",
+            ],
+            vec![found("footer", json!([]))],
+        );
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("only inline comments resolve"),
+            "{}",
+            outcome.stderr
+        );
+        assert_eq!(transport.sent().len(), 1);
         let (outcome, _) = confluence(
             &[
                 "confluence",
                 "comment",
                 "update",
-                "5001",
+                "5002",
                 "--status",
                 "resolved",
             ],
-            vec![Answer::status(
-                404,
-                r#"{"errors":[{"status":404,"title":"Not found"}]}"#,
-            )],
+            vec![found("inline", json!([{"id": "5001", "type": "comment"}]))],
         );
-        assert_eq!(outcome.code, 4, "{outcome:?}");
+        assert_eq!(outcome.code, 2, "{outcome:?}");
         assert!(
-            outcome.stderr.contains("only inline comments resolve"),
+            outcome
+                .stderr
+                .contains("agent-cli confluence comment update 5001 --status resolved"),
             "{}",
             outcome.stderr
         );

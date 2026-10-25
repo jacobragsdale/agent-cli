@@ -8,8 +8,7 @@ project = "Fabrikam"
 team = "Fabrikam Team"
 
 [confluence]
-url = "https://contoso.atlassian.net/wiki"
-email = "jane@contoso.com"
+url = "https://wiki.contoso.example"
 token_cmd = "echo stand-in"
 
 [azure]

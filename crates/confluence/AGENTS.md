@@ -1,53 +1,55 @@
-# confluence: Confluence Cloud
+# confluence: Confluence Data Center and Server
 
 Spaces, pages (as bounded Markdown), trees, comments, attachments and
-versions over v2 (`/wiki/api/v2`), v1 (`/wiki/rest/api`) only where v2 has
-no call: search, `user/current`, user search, labels, upload, download,
-move. Cloud only: a host not under `atlassian.net` with no `cloud_id` is
-exit 3. https://developer.atlassian.com/cloud/confluence/rest/v2/
+versions on a self-hosted Confluence, over v1 (`/rest/api`) under the base;
+versions from `/rest/experimental`, inline comments from the plugin's
+`/rest/inlinecomments/1.0` (v1 has neither). Checked against 9.2 live.
+Cloud is exit 3. https://developer.atlassian.com/server/confluence/rest/v923/
 
 ## Config
-`[confluence]`: `url` (the site), `email`, `token`, `token_env` or
-`token_cmd` (an API token, sent as Basic email:token to exactly the site's
-host), `cloud_id` (scoped tokens: calls go to exactly `api.atlassian.com`,
-Bearer when there is no email). Doctor needs `user/current` to be `known`:
-a bad token on an open site reads as anonymous, never 401.
+`[confluence]`: `url` (what the browser shows, context path included;
+`check_base_url`), `token`, `token_env` or `token_cmd` (a personal access
+token, Bearer, only under the base: `same_origin`). Doctor needs
+`user/current` to be `known`.
 
 ## Ids
-Page `1101`, `1101@3` (a version), `KEY:Title`, or any web URL (`ids.rs`:
-`PageRef`; tiny `/x/` links decoded by `tiny`). Space: its key. Comment
-`5002` or `focusedCommentId`. Attachment `att7001`, or its URLs. A URL on
-another host is exit 2; share links can't be read.
+Page `1101`, `1101@3`, `KEY:Title` (`~user:Title`), or a web URL
+(`ids.rs`: `PageRef`, `tiny` for `/x/`). Space: its key. Comment `5002` or
+`focusedCommentId`. Attachment `7001` (or `att7001`). A URL off the base is
+exit 2. Mentions are `ri:userkey` in storage, `@<Name>` in Markdown.
 
 ## Where things are (`src/`)
-- `lib.rs`: `DOMAIN`. `doctor.rs`. `config.rs`: `Section`, `Site` (the
-  Cloud check). `client.rs`: `Confluence::load`, `v2`,
-  `v1`, `get`, `query`, `change`, `read`/`write` (a `Call`), `list` (v2
-  paging), `search` (v1 paging), `names` (users-bulk), `space`,
-  `space_key`, `content` (a page, else a blog post); rows `text`, `stamp`,
-  `note_more`.
-- `storage.rs`: a lenient storage tree with byte spans, `sections`, `find`.
-  `markdown.rs`: storage to Markdown with `lossy`. `compose.rs`: Markdown
-  to storage (pulldown-cmark). `syntax.rs`: escapes, fences, links.
-- `page/mod.rs`: `Written`, `people` (mentions to account ids), `labels`.
+- `lib.rs`: `DOMAIN`. `doctor.rs`. `config.rs`: `Section`, `Site`.
+- `client.rs`: `Confluence::load`, `api`, `url` (`INLINE`,
+  `EXPERIMENTAL`), `web`, `get`, `change`, `read`/`write` (a `Call`),
+  `list` (`next` paging), `search` (CQL, `start` paging), `names`,
+  `space`, `content` (`PAGE` expands); rows `text`, `person`, `stamp`.
+- `storage.rs`: storage tree with byte spans, `sections`, `find`.
+  `markdown.rs` (with `lossy`) and `compose.rs`: storage to Markdown and
+  back. `syntax.rs`: escapes, fences, links.
+- `page/mod.rs`: `Written`, `people` (mentions to user keys), `labels`.
 - `testing.rs`: `confluence`, `piped`, `dry_run`, `urls`, `page`, `space`.
 
 ## Fixtures
 `fixtures/world/http/confluence.json`, `fixtures/world/facts/confluence.md`,
-`crates/cli/tests/world_confluence.rs`; queries `search.toml`.
+`crates/cli/tests/world_confluence.rs`; queries `search.toml`. Live:
+`scripts/confluence-up.sh`, then `AGENT_CLI_TEST_CONFLUENCE=1 cargo test
+-p agent-cli --test live_confluence`.
 
 ## Quirks
-- v2 answers 404 for missing and for not permitted alike.
-- v2 `next` links start with `/wiki`; v1's are relative to it and drop
-  parameters, which `search` adds back. Stop only when `next` is absent.
-- CQL: `siteSearch` only counts first; `text ~` is its floor; dates are
-  `now("-Nm")`, since absolute ones read in the caller's time zone.
-- Section edits splice storage bytes: what is kept is never re-serialized.
-  Only headings at the root or in a layout cell rule sections.
-- A download redirects to a pre-signed media URL: fetched with no
-  credential, never printed (`attachment/get.rs`).
-- Comment resolution comes from v2's inline list, not CQL's expand, which
-  needs profile visibility.
+- Missing and not permitted are both a 404.
+- `next` is relative to the base; `/search` has none (`start` to
+  `totalSize`). Limits drop silently, so a short page never ends a list.
+- CQL: `siteSearch` only first, `text ~` its floor; dates as `now("-Nm")`.
+  People: `type = user and user.fullname ~ "…"`.
+- Section edits splice storage bytes; only root or layout-cell headings
+  rule sections.
+- A PUT without a body keeps it (titles, moves). Moves stay in the space.
+- Inline: the plugin finds the text by count and index and marks the page;
+  without `serializedHighlights` it saves no comment. Inline replies go to
+  the plugin (v1 makes them footer comments); resolving checks the kind.
+- A file name uploads once; versions go to `…/{id}/data`.
+- The tree walks `child/page`: no descendants call works.
 
 ## Never needed
 Other crates' sources, `docs/plans/`, `docs/reference/`.

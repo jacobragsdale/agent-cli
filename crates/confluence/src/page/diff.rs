@@ -8,7 +8,7 @@ use agent_cli_core::{Ctx, Diff, DiffArgs, Failure, Rules, Side, command, diff};
 use anyhow::Result;
 use serde_json::json;
 
-use crate::client::{Confluence, text};
+use crate::client::{Confluence, PAGE, text};
 use crate::ids;
 use crate::markdown::{Context, to_markdown};
 use crate::storage::parse;
@@ -35,22 +35,11 @@ const RULES: Rules = Rules {
 fn page_diff(ctx: &Ctx, args: PageDiffArgs) -> Result<Diff> {
     let confluence = Confluence::load(ctx)?;
     let read = |id: &str, version: Option<u64>| -> Result<Side> {
-        // As page get asks, so one recording answers both.
-        let mut query = vec![
-            ("body-format", "storage".to_owned()),
-            ("include-labels", "true".to_owned()),
-        ];
-        if let Some(version) = version {
-            query.push(("version", version.to_string()));
-        }
-        let content = confluence.content(ctx, id, &query)?;
+        let content = confluence.content(ctx, id, PAGE, version)?;
         let value = &content.value;
-        let storage = value["body"]["storage"]["value"]
-            .as_str()
-            .unwrap_or_default();
         let names = HashMap::new();
         let body = to_markdown(
-            &parse(storage),
+            &parse(content.storage()),
             &Context {
                 space: "",
                 names: &names,
@@ -109,7 +98,7 @@ mod tests {
     use agent_cli_core::testing::Answer;
     use serde_json::json;
 
-    use crate::testing::{V2, confluence, page, urls};
+    use crate::testing::{API, confluence, page, urls};
 
     #[test]
     fn a_page_compares_with_the_version_before_by_lines() {
@@ -143,7 +132,9 @@ mod tests {
         );
         assert_eq!(
             urls(&transport)[1],
-            format!("{V2}/pages/1101?body-format=storage&include-labels=true&version=3")
+            format!(
+                "{API}/content/1101?expand=body.storage%2Cversion%2Cspace%2Cancestors%2Cmetadata.labels%2Chistory&version=3"
+            )
         );
         let (outcome, _) = confluence(
             &[

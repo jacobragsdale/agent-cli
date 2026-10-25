@@ -1,6 +1,5 @@
-//! A page's storage as Markdown, converted here rather than by the server:
-//! `body-format=markdown` is undocumented and drops images, panel types and
-//! expand titles, and ADF exists only on Cloud.
+//! A page's storage as Markdown, converted here: the server's only other
+//! forms of a body are its rendered HTML and the editor's.
 //!
 //! What Markdown cannot carry is named in `lossy` (`layout`, `jira ×2`,
 //! `inline comment marks ×3`) and shown as a marker such as `⟦toc⟧`, so an
@@ -21,7 +20,7 @@ use crate::syntax::{
 pub(crate) struct Context<'a> {
     /// The page's space key: a page link with no `ri:space-key` is in it.
     pub(crate) space: &'a str,
-    /// Display names by account id, for mentions.
+    /// Display names by user key, for mentions.
     pub(crate) names: &'a HashMap<String, String>,
 }
 
@@ -73,13 +72,13 @@ pub(crate) fn to_markdown(nodes: &[Node], context: &Context) -> Markdown {
     }
 }
 
-/// Every account id a body mentions, for one users-bulk call.
+/// Every user key a body mentions, each once, for their names.
 pub(crate) fn mentions(nodes: &[Node]) -> Vec<String> {
     let mut found = Vec::new();
     for node in nodes {
         if let Node::Element(element) = node {
             if element.name == "ri:user"
-                && let Some(id) = element.attr("ri:account-id")
+                && let Some(id) = element.attr("ri:userkey")
                 && !found.iter().any(|known| known == id)
             {
                 found.push(id.to_owned());
@@ -532,13 +531,14 @@ impl Writer<'_> {
         }
     }
 
-    fn mention(&mut self, user: &Element) -> String {
-        if let Some(id) = user.attr("ri:account-id") {
-            let name = self.context.names.get(id).map_or(id, String::as_str);
-            return format!("@<{name}>");
-        }
-        self.lose("user key mention");
-        format!("@<{}>", user.attr("ri:userkey").unwrap_or_default())
+    /// `@<Name>` by the user key's name; a username (older pages) stands
+    /// for itself, as compose takes it back.
+    fn mention(&self, user: &Element) -> String {
+        let name = match user.attr("ri:userkey") {
+            Some(key) => self.context.names.get(key).map_or(key, String::as_str),
+            None => user.attr("ri:username").unwrap_or_default(),
+        };
+        format!("@<{name}>")
     }
 
     fn image(&mut self, image: &Element) -> String {
@@ -601,9 +601,10 @@ fn is_block(element: &Element) -> bool {
 mod tests {
     use super::*;
     use crate::storage::parse;
+    use crate::testing::SAM;
 
     pub(crate) fn md(storage: &str) -> Markdown {
-        let names = HashMap::from([("557058:sam".to_owned(), "Sam Lee".to_owned())]);
+        let names = HashMap::from([(SAM.to_owned(), "Sam Lee".to_owned())]);
         to_markdown(
             &parse(storage),
             &Context {
@@ -651,14 +652,14 @@ mod tests {
         let read = md(concat!(
             "<p><ac:link><ri:page ri:content-title=\"Runbook: etl_nightly\" /></ac:link> and ",
             "<ac:link><ri:page ri:space-key=\"OPS\" ri:content-title=\"Pager\" /><ac:plain-text-link-body><![CDATA[the pager]]></ac:plain-text-link-body></ac:link>, ",
-            "ask <ac:link><ri:user ri:account-id=\"557058:sam\" /></ac:link> or <ac:link><ri:user ri:account-id=\"557058:who\" /></ac:link>, ",
+            "ask <ac:link><ri:user ri:userkey=\"8a8080a1000000000000000000000002\" /></ac:link>, <ac:link><ri:user ri:username=\"priya\" /></ac:link> or <ac:link><ri:user ri:userkey=\"8a80who\" /></ac:link>, ",
             "<a href=\"https://contoso.example/x\">docs</a> <ac:link><ri:attachment ri:filename=\"changes v2.txt\" /></ac:link></p>",
             "<ac:image ac:alt=\"rollout\"><ri:attachment ri:filename=\"rollout.png\" /></ac:image>",
             "<ac:task-list><ac:task><ac:task-id>1</ac:task-id><ac:task-status>complete</ac:task-status><ac:task-body>Fix the order</ac:task-body></ac:task><ac:task><ac:task-status>incomplete</ac:task-status><ac:task-body>Retry</ac:task-body></ac:task></ac:task-list>",
         ));
         assert_eq!(
             read.text,
-            "[Runbook: etl_nightly](<ENG:Runbook: etl_nightly>) and [the pager](OPS:Pager), ask @<Sam Lee> or @<557058:who>, [docs](https://contoso.example/x) [changes v2.txt](<attachment:changes v2.txt>)\n\n![rollout](attachment:rollout.png)\n\n- [x] Fix the order\n- [ ] Retry"
+            "[Runbook: etl_nightly](<ENG:Runbook: etl_nightly>) and [the pager](OPS:Pager), ask @<Sam Lee>, @<priya> or @<8a80who>, [docs](https://contoso.example/x) [changes v2.txt](<attachment:changes v2.txt>)\n\n![rollout](attachment:rollout.png)\n\n- [x] Fix the order\n- [ ] Retry"
         );
         assert!(read.lossy.is_empty(), "{:?}", read.lossy);
     }
@@ -700,7 +701,7 @@ mod tests {
     #[test]
     fn mentions_are_listed_once() {
         let nodes = parse(
-            "<p><ac:link><ri:user ri:account-id=\"a\" /></ac:link><ac:link><ri:user ri:account-id=\"a\" /></ac:link><ac:link><ri:user ri:account-id=\"b\" /></ac:link></p>",
+            "<p><ac:link><ri:user ri:userkey=\"a\" /></ac:link><ac:link><ri:user ri:userkey=\"a\" /></ac:link><ac:link><ri:user ri:username=\"c\" /></ac:link><ac:link><ri:user ri:userkey=\"b\" /></ac:link></p>",
         );
         assert_eq!(mentions(&nodes), ["a", "b"]);
     }
