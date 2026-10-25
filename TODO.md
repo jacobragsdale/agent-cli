@@ -5,8 +5,20 @@ Open work only. What is built is in the code, the crate cards and
 
 ## Live runs
 
-- [ ] Work through `docs/first-live-run.md`: sql, ado (a sandbox organization, 2026-10-02), airflow (local 2.9.3 and 3.3.2, `scripts/airflow-up.sh`, 2026-10-03) and confluence (local Data Center 9.2, `scripts/confluence-up.sh`, 2026-10-25) have run against real services; kv, acr, aks, aisearch, arm, net, lake, k8s and dd have not
-- [ ] Then the one-line global CLAUDE.md note that agent-cli exists (the README gives the line)
+- [ ] Work through `docs/first-live-run.md`: sql, ado (a sandbox organization, 2026-10-02), airflow (local 2.9.3 and 3.3.2, `scripts/airflow-up.sh`, 2026-10-03) confluence (local Data Center 9.2, `scripts/confluence-up.sh`, 2026-10-25), sql's Postgres (local 18, `scripts/db-up.sh`, 2026-10-25) and keeper (local Artifact Keeper 1.11.7, `scripts/keeper-up.sh`, 2026-10-25) have run against real services; kv, acr, aks, aisearch, arm, net, lake, entra, k8s, controlm and dd have not
+- [ ] Then the one-line note that agent-cli exists in the system prompt (the README and `install.sh` give the line, which names no services)
+
+## Team rollout (`docs/plans/team-rollout.md`)
+
+Built at home 2026-10-25: team config include, `read_only`, `KEY_kv` and `config pull`, hidden domains, the usage log, Postgres, keeper, `install.sh`, the release scripts and `azure-pipelines.yml`. The rest happens at work, after the repository is hard-forked into ADO (GitHub is not tracked after that).
+
+- [ ] Fork into ADO and fill in `team/team.toml`: real hosts, `*_kv` vault and secret names, `read_only = true` on every prod entry, `[core] releases`
+- [ ] Pipeline: the self-hosted pool and variable group names in `azure-pipelines.yml`; that the agent user can run Docker; whether the workers reach crates.io and static.rust-lang.org (else Keeper's crates.io proxy or `cargo vendor`); the Keeper token's read, write and delete rights; then a `v0.1.0` tag
+- [ ] Run `doctor` and the reads of all seventeen domains against the work services and settle each `VERIFY(work)` marker below; Control-M's Automation API answering at all; the Keeper version (built against 1.11.7: a private repository answering 404, a proxy's cache only under `simple/NAME/`, the 30-a-minute download limit behind the office NAT)
+- [ ] Teammates' WSL: Oracle's download site reachable (else `AGENT_CLI_ORACLE_ZIP_URL`), Key Vault Secrets User on the team vault for every teammate, `~/.local/bin` on PATH
+- [ ] Postgres: Entra sign-in against the Flexible Server (the `ossrdbms-aad` token accepted, a group role, whether a refused token is 28P01); whether a PgBouncer in front refuses the read-only startup setting
+- [ ] Prod SQL Server: a read-only login, since SQL Server has no read-only session for `read_only` to add
+- [ ] Then teammates install, and their weekly `agent-cli usage` summaries go to the internal ADO board
 
 ## Confluence and AI Search
 
@@ -78,7 +90,7 @@ Run end to end on 2026-10-17 against SQL Server 2022 and Oracle 23ai Free (two d
 
 Projects of thousands of work items and hundreds of people. Measure first, then cut.
 
-- [ ] Count the requests and bytes each command sends (a stderr note under a debug env var through `ctx.env`), then run the pm skill's sweep and the trial tasks against the work org to find the expensive commands
+- [ ] Find the expensive commands from the usage log (`agent-cli usage`: requests and bytes per command, since the rollout's core) after the team's first two weeks and the pm sweep against the work org
 - [ ] `workitem list` asks WIQL for `$top=20000` ids only to print `[50 of N]`: a broad query returns thousands of ids every call. Try `$top=limit+1` with `[50 of 51+]`, or keep the exact count only when it is cheap
 - [ ] `workitemsbatch` asks for only the fields the row prints (check `fields` against `--fields`), 200 ids a call
 - [ ] Cache identity lookups (`@me`, `--assignee` names) like types and sprints, so a sweep doesn't search identities on every call
