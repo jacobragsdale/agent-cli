@@ -29,7 +29,8 @@ pub(crate) const BIG_LISTING: usize = 40;
 const SHAPE_DEPTH: usize = 3;
 const WRAP: usize = 100;
 
-pub(crate) fn overview(domains: &[Domain], config: &Config) -> String {
+/// The overview of `domains`: those a person can use (see `hidden.rs`).
+pub(crate) fn overview(domains: &[&Domain], config: &Config) -> String {
     let mut statuses: Vec<String> = domains
         .iter()
         .map(|domain| status_line(&(domain.status)(config)))
@@ -48,7 +49,7 @@ pub(crate) fn overview_at_most(domains: &[Domain]) -> String {
         .iter()
         .map(|domain| status_line(&format!("{} {}", domain.name, "x".repeat(STATUS_MAX))))
         .collect();
-    render_overview(domains, statuses)
+    render_overview(&domains.iter().collect::<Vec<_>>(), statuses)
 }
 
 /// The status lines joined, cut at a separator once they pass
@@ -77,7 +78,7 @@ fn status_line(status: &str) -> String {
     format!("{kept}\u{2026}")
 }
 
-fn render_overview(domains: &[Domain], mut statuses: Vec<String>) -> String {
+fn render_overview(domains: &[&Domain], mut statuses: Vec<String>) -> String {
     let total: usize = domains.iter().map(|domain| domain.commands.len()).sum();
     let summaries: Vec<&str> = domains.iter().map(|domain| domain.summary).collect();
     let title = match summaries.join(", ") {
@@ -128,7 +129,7 @@ fn render_overview(domains: &[Domain], mut statuses: Vec<String>) -> String {
 }
 
 /// A search worth trying, taken from the first list command's summary.
-fn sample_search(domains: &[Domain]) -> String {
+fn sample_search(domains: &[&Domain]) -> String {
     let summary = domains
         .iter()
         .flat_map(|domain| domain.commands)

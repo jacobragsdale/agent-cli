@@ -171,6 +171,8 @@ impl Live {
             .args(args)
             .env("XDG_CACHE_HOME", self.cache.path())
             .env("AGENT_CLI_CONFIG", &self.config)
+            // Never a person's usage log or denied.json.
+            .env("XDG_STATE_HOME", "/nonexistent/agent-cli-state")
             .output()
             .unwrap();
         Ran {

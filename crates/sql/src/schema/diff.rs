@@ -36,7 +36,7 @@ fn schema_diff(ctx: &Ctx, args: SchemaDiffArgs) -> Result<Diff> {
     let named = |raw: &str| -> Result<(&Connection, String)> {
         let (scope, rest) = scoped(raw);
         Ok((
-            sql.connection(scope.or(args.conn.as_deref()))?,
+            sql.connection(ctx, scope.or(args.conn.as_deref()))?,
             rest.to_owned(),
         ))
     };

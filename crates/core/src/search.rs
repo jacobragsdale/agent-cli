@@ -328,8 +328,24 @@ fn doc(command: &Command) -> Doc<'_> {
 
 /// The lines `agent-cli search` prints. When the best hit matched fewer than
 /// half the words, a first line says the hits are guesses.
-pub(crate) fn search_lines(domains: &[Domain], query: &str, limit: usize) -> Vec<String> {
-    let hits = rank(domains, query);
+/// The lines `agent-cli search` prints, leaving out the domains in
+/// `left_out`, and the commands from those that would have been among the
+/// first `limit`. Ranked over every domain either way, so leaving some out
+/// never reorders the rest.
+pub(crate) fn search_lines<'a>(
+    domains: &'a [Domain],
+    query: &str,
+    limit: usize,
+    left_out: &[&str],
+) -> (Vec<String>, Vec<&'a Command>) {
+    let mut hits = rank(domains, query);
+    let missed: Vec<&Command> = hits
+        .iter()
+        .take(limit)
+        .map(|hit| hit.command)
+        .filter(|command| left_out.contains(&command.path[0]))
+        .collect();
+    hits.retain(|hit| !left_out.contains(&hit.command.path[0]));
     let mut lines: Vec<String> = setup_line(domains, query, &hits).into_iter().collect();
     lines.extend(health_line(domains, query));
     if hits.first().is_some_and(|hit| hit.coverage < 0.5) {
@@ -342,7 +358,7 @@ pub(crate) fn search_lines(domains: &[Domain], query: &str, limit: usize) -> Vec
             hits.len()
         ));
     }
-    lines
+    (lines, missed)
 }
 
 /// Words that ask how to set a domain up. No command answers that; the

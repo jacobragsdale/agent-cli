@@ -66,6 +66,8 @@ impl Live {
         command
             .args(args)
             .env("AGENT_CLI_CONFIG", self.dir.path().join("config.toml"))
+            // Never a person's usage log or denied.json.
+            .env("XDG_STATE_HOME", "/nonexistent/agent-cli-state")
             .env("XDG_CACHE_HOME", self.dir.path().join("cache"))
             .env("AGENT_CLI_TEST_CONFLUENCE_TOKEN", token)
             .current_dir(self.dir.path());

@@ -18,8 +18,13 @@ fn fake(answers: Vec<Answer>) -> (Setup, FakeTransport) {
     (Setup::fake(transport.clone()), transport)
 }
 
+/// Runs `argv` with the tracker set up, so search and the overview show
+/// every synthetic domain.
 fn go(argv: &[&str]) -> agent_cli_core::testing::Outcome {
-    run(DOMAINS, argv, fake(Vec::new()).0)
+    let setup = fake(Vec::new())
+        .0
+        .with_config("[tracker]\norg = \"contoso\"\n");
+    run(DOMAINS, argv, setup)
 }
 
 #[test]
@@ -43,7 +48,7 @@ fn the_overview_is_small_and_counts_domains_not_resources() {
     );
     assert_eq!(
         lines[5],
-        "Config:      tracker not set up \u{b7} db 1 connection    Check: agent-cli doctor \u{b7} agent-cli config"
+        "Config:      tracker \u{2713} \u{b7} db 1 connection    Check: agent-cli doctor \u{b7} agent-cli config"
     );
     assert!(lines[6].starts_with("Now:         20") && lines[6].ends_with('Z'));
     assert_eq!(
@@ -608,7 +613,7 @@ fn http_failures_map_to_exit_codes_and_their_text_is_redacted() {
 
 #[test]
 fn doctor_reports_every_check_as_json_and_a_broken_section_stays_local() {
-    let outcome = go(&["doctor"]);
+    let outcome = run(DOMAINS, &["doctor"], fake(Vec::new()).0);
     assert_eq!(outcome.code, 1, "the db check fails");
     let rows = outcome.json();
     assert_eq!(rows[0]["domain"], "core");
@@ -622,7 +627,7 @@ fn doctor_reports_every_check_as_json_and_a_broken_section_stays_local() {
         json!({"domain": "vault", "check": "config", "ok": true, "detail": "not set up", "hint": "agent-cli config example vault"}),
         "a domain with nothing to check says so, without failing doctor"
     );
-    let named = go(&["doctor", "vault"]);
+    let named = run(DOMAINS, &["doctor", "vault"], fake(Vec::new()).0);
     assert_eq!(named.code, 1, "asked for by name, not set up fails");
     assert_eq!(named.json()[1]["ok"], false);
 

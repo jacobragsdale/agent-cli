@@ -8,21 +8,22 @@
 use std::io::{IsTerminal, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
-use std::time::Duration;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use clap::ArgMatches;
-use serde_json::{Value, json};
+use serde_json::json;
 
-use crate::config::{self, Config};
-use crate::ctx::{Ctx, Globals, Setup};
+use crate::config;
+use crate::ctx::{Ctx, Globals, Meter, Setup};
 use crate::discover::{self, did_you_mean};
 use crate::error::{Exit, Failure, data_of, describe};
 pub(crate) use crate::leaf::parse_leaf;
 use crate::output::{self, dumps};
 use crate::registry::{Command, Domain, Effect, GLOBAL_FLAGS};
 use crate::search;
-use crate::secret::redact_value;
+use crate::{doctor, hidden, usage};
 
 /// The whole program: `fn main() -> ExitCode { agent_cli_core::run(DOMAINS) }`.
 #[must_use]
@@ -47,7 +48,8 @@ pub fn run(domains: &[Domain]) -> ExitCode {
 }
 
 /// [`run`] with its surroundings passed in, so tests run the real thing in
-/// process. Returns the exit code.
+/// process. Returns the exit code, and appends the run to the usage log
+/// when the setup keeps one.
 pub fn run_with(
     domains: &[Domain],
     argv: &[String],
@@ -56,11 +58,20 @@ pub fn run_with(
     err: &mut dyn Write,
     tty: bool,
 ) -> u8 {
-    let result = dispatch(domains, argv, setup, out, err, tty).and_then(|exit| {
+    let started = Instant::now();
+    let off = match &setup.env {
+        Some(pairs) => pairs
+            .iter()
+            .any(|(name, value)| name == "AGENT_CLI_USAGE" && value.trim() == "off"),
+        None => std::env::var("AGENT_CLI_USAGE").is_ok_and(|value| value.trim() == "off"),
+    };
+    let log = usage::log_path(setup.state_dir.as_deref(), off);
+    let mut run = Run::default();
+    let result = dispatch(domains, argv, setup, out, err, tty, &mut run).and_then(|exit| {
         out.flush()?;
         Ok(exit)
     });
-    match result {
+    let code = match result {
         Ok(exit) => exit.code(),
         // The reader (`| head`) has gone, which is what it asked for.
         Err(error) if is_broken_pipe(&error) => 0,
@@ -72,6 +83,28 @@ pub fn run_with(
             }
             exit.code()
         }
+    };
+    if let Some(log) = log {
+        let flags = usage::flag_names(argv);
+        let path = run.path.join(" ");
+        usage::append(&log, &path, &flags, code, started.elapsed(), &run.meter);
+    }
+    code
+}
+
+/// What the usage log needs from a run: the path as far as it resolved
+/// (never a word the registry does not know), and the meter its `Ctx` counts on.
+#[derive(Default)]
+struct Run {
+    path: Vec<&'static str>,
+    meter: Arc<Meter>,
+}
+
+impl Run {
+    fn ctx(&self, globals: Globals, setup: Setup, command_line: String) -> Ctx {
+        let mut ctx = Ctx::new(globals, setup, command_line);
+        ctx.meter = Arc::clone(&self.meter);
+        ctx
     }
 }
 
@@ -90,6 +123,7 @@ fn dispatch(
     out: &mut dyn Write,
     err: &mut dyn Write,
     tty: bool,
+    run: &mut Run,
 ) -> Result<Exit> {
     let (mut globals, words) = split_globals(argv)?;
     let command_line = std::iter::once("agent-cli".to_owned())
@@ -102,12 +136,14 @@ fn dispatch(
         words = &words[1..];
     }
     let Some(first) = words.first() else {
-        let overview = discover::overview(domains, &setup.config);
+        let hidden = hidden::hidden(domains, &setup.config, setup.state_dir.as_deref());
+        let overview = hidden::overview(domains, &setup.config, &hidden);
         writeln!(out, "{overview}")?;
         return Ok(Exit::Ok);
     };
     match first.as_str() {
         "search" => {
+            run.path = vec!["search"];
             // Taken quietly, `search --fields id` would look like it worked.
             let ignored = argv.iter().take_while(|arg| *arg != "--").find_map(|arg| {
                 let name = arg.split('=').next()?.strip_prefix("--")?;
@@ -115,17 +151,31 @@ fn dispatch(
             });
             if let Some(flag) = ignored {
                 let refusal = Failure::usage(format!("search does not take --{flag}"));
-                return Err(refusal.hint("search takes words and --limit N").into());
+                return Err(refusal
+                    .hint("search takes words, --limit N and --all")
+                    .into());
             }
-            return search_builtin(domains, &words[1..], globals.help, out);
+            let hidden = hidden::hidden(domains, &setup.config, setup.state_dir.as_deref());
+            return search_builtin(domains, &hidden, &words[1..], globals.help, out, err);
         }
         "doctor" => {
-            let ctx = Ctx::new(globals, setup, command_line);
-            return doctor_builtin(domains, &words[1..], &ctx, out, err, tty);
+            run.path = vec!["doctor"];
+            let ctx = run.ctx(globals, setup, command_line);
+            return doctor::builtin(domains, &words[1..], &ctx, out, err, tty);
         }
         "config" => {
-            let ctx = Ctx::new(globals, setup, command_line);
+            run.path = match words.get(1).map(String::as_str) {
+                Some("pull") => vec!["config", "pull"],
+                Some("example") => vec!["config", "example"],
+                _ => vec!["config"],
+            };
+            let ctx = run.ctx(globals, setup, command_line);
             return config::builtin(&words[1..], &ctx, out, err, tty);
+        }
+        "usage" => {
+            run.path = vec!["usage"];
+            let ctx = run.ctx(globals, setup, command_line);
+            return usage::builtin(&words[1..], &ctx, out, err, tty);
         }
         flag if flag.starts_with('-') => {
             return Err(Failure::usage(format!("unknown flag {flag} before the command"))
@@ -141,7 +191,7 @@ fn dispatch(
         let names = domains
             .iter()
             .map(|domain| domain.name)
-            .chain(["search", "doctor", "config"]);
+            .chain(["search", "doctor", "config", "usage"]);
         return Err(unknown("domain", first, "", names, domains, words, None));
     };
     if let Some(flag) = words[1..words.len().min(3)]
@@ -157,6 +207,7 @@ fn dispatch(
                 .into(),
         );
     }
+    run.path = vec![domain.name];
     let Some(resource) = words.get(1) else {
         writeln!(out, "{}", discover::domain_listing(domain))?;
         return Ok(Exit::Ok);
@@ -178,6 +229,7 @@ fn dispatch(
             "resource", resource, &scope, resources, domains, words, None,
         ));
     }
+    run.path.push(members[0].path[1]);
     let Some(verb) = words.get(2) else {
         writeln!(out, "{}", discover::resource_listing(domain, resource))?;
         return Ok(Exit::Ok);
@@ -194,6 +246,7 @@ fn dispatch(
             .and_then(|get| Some((*get, get_line(get, verb)?)));
         return Err(unknown("verb", verb, &scope, verbs, domains, words, get));
     };
+    run.path = command.path.to_vec();
     if globals.help {
         writeln!(out, "{}", discover::command_help(command))?;
         return Ok(Exit::Ok);
@@ -204,7 +257,8 @@ fn dispatch(
         output::check_output(path)?;
     }
     globals.timeout = globals.timeout.or(command.timeout.map(Duration::from_secs));
-    let ctx = Ctx::new(globals, setup, command_line);
+    let mut ctx = run.ctx(globals, setup, command_line);
+    ctx.command = Some(command.path);
     let result = (command.run)(&ctx, &matches);
     let plans = ctx.take_plans();
     let keep_tail = command.path[2] == "logs";
@@ -351,7 +405,7 @@ fn get_line(get: &Command, id: &str) -> Option<String> {
 /// An unknown word: the close names, and the closest commands by search,
 /// reads before changes (a failed lookup is rarely a request to delete
 /// something). `first`, when given, leads the list.
-fn unknown<'a>(
+pub(crate) fn unknown<'a>(
     kind: &str,
     word: &str,
     scope: &str,
@@ -403,12 +457,15 @@ fn unknown<'a>(
 
 fn search_builtin(
     domains: &[Domain],
+    hidden: &[(&str, hidden::Why)],
     args: &[String],
     help: bool,
     out: &mut dyn Write,
+    err: &mut dyn Write,
 ) -> Result<Exit> {
-    let usage = "usage: agent-cli search <words> [--limit N]   e.g. agent-cli search \"list my work items\"";
+    let usage = "usage: agent-cli search <words> [--limit N] [--all]   e.g. agent-cli search \"list my work items\"; --all includes domains not set up here or denied";
     let mut limit = 6;
+    let mut all = false;
     let mut words = Vec::new();
     let mut args = args.iter();
     while let Some(arg) = args.next() {
@@ -425,6 +482,7 @@ fn search_builtin(
                     .filter(|limit| *limit > 0)
                     .ok_or_else(|| Failure::usage("--limit needs a whole number").hint(usage))?;
             }
+            None if arg == "--all" => all = true,
             None => words.push(arg.as_str()),
         }
     }
@@ -436,7 +494,12 @@ fn search_builtin(
         return Err(Failure::usage("search needs some words").hint(usage).into());
     }
     let query = words.join(" ");
-    let lines = search::search_lines(domains, &query, limit);
+    let left_out: Vec<&str> = if all {
+        Vec::new()
+    } else {
+        hidden.iter().map(|(name, _)| *name).collect()
+    };
+    let (lines, missed) = search::search_lines(domains, &query, limit, &left_out);
     if lines.is_empty() {
         writeln!(
             out,
@@ -445,94 +508,31 @@ fn search_builtin(
     } else {
         writeln!(out, "{}", lines.join("\n"))?;
     }
-    Ok(Exit::Ok)
-}
-
-fn doctor_builtin(
-    domains: &[Domain],
-    args: &[String],
-    ctx: &Ctx,
-    out: &mut dyn Write,
-    err: &mut dyn Write,
-    tty: bool,
-) -> Result<Exit> {
-    if ctx.globals().help {
-        writeln!(
-            out,
-            "usage: agent-cli doctor [domain]   live checks as JSON [{{domain,check,ok,detail,hint}}]; exit 1 if any failed"
-        )?;
-        return Ok(Exit::Ok);
-    }
-    let selected: Vec<&Domain> = match args {
-        [] => domains.iter().collect(),
-        [name] => match domains.iter().find(|domain| domain.name == name) {
-            Some(domain) => vec![domain],
-            None => {
-                let names = domains.iter().map(|domain| domain.name);
-                return Err(unknown("domain", name, "", names, domains, args, None));
+    if !missed.is_empty() {
+        let mut names: Vec<&str> = Vec::new();
+        for command in &missed {
+            if !names.contains(&command.path[0]) {
+                names.push(command.path[0]);
             }
-        },
-        _ => return Err(Failure::usage("usage: agent-cli doctor [domain]").into()),
-    };
-    let mut rows = vec![config_row(ctx.config())];
-    let named = !args.is_empty();
-    for domain in selected {
-        let checks = (domain.doctor)(ctx);
-        // A domain's doctor checks nothing until its section is there. Not
-        // set up fails only a doctor that was asked for that domain.
-        if checks.is_empty() {
-            rows.push(json!({
-                "domain": domain.name,
-                "check": "config",
-                "ok": !named,
-                "detail": "not set up",
-                "hint": format!("agent-cli config example {}", domain.name),
-            }));
         }
-        for check in checks {
-            rows.push(json!({
-                "domain": domain.name,
-                "check": check.check,
-                "ok": check.ok,
-                "detail": check.detail,
-                "hint": check.hint,
-            }));
-        }
+        let why = if hidden
+            .iter()
+            .filter(|(name, _)| names.contains(name))
+            .all(|(_, why)| *why == hidden::Why::NotSetUp)
+        {
+            "not set up here"
+        } else {
+            "not set up here or denied"
+        };
+        writeln!(
+            err,
+            "[{} more in domains {why}: {}; agent-cli search --all {}]",
+            missed.len(),
+            names.join(", "),
+            shell_quote(&query)
+        )?;
     }
-    let failed = rows.iter().any(|row| row["ok"] == false);
-    output::emit(
-        redact_value(Value::Array(rows)),
-        ctx.globals(),
-        false,
-        out,
-        err,
-        tty,
-    )?;
-    Ok(if failed { Exit::Failed } else { Exit::Ok })
-}
-
-/// The config file's row, naming the build too: is the binary current?
-fn config_row(config: &Config) -> Value {
-    let path = config.path().display().to_string();
-    let mut row = match config.problem() {
-        Some(problem) => json!({
-            "domain": "core", "check": "config", "ok": false, "detail": problem,
-            "hint": format!("fix {path}; `agent-cli config example` shows every key"),
-        }),
-        None if config.found() => {
-            json!({"domain": "core", "check": "config", "ok": true, "detail": path})
-        }
-        None => json!({
-            "domain": "core", "check": "config", "ok": true,
-            "detail": format!("{path} does not exist, so every section is empty"),
-        }),
-    };
-    let version = concat!("agent-cli ", env!("CARGO_PKG_VERSION"), " \u{b7} ");
-    row["detail"] = json!(format!(
-        "{version}{}",
-        row["detail"].as_str().unwrap_or_default()
-    ));
-    row
+    Ok(Exit::Ok)
 }
 
 /// `word` as a shell would need it typed, for "run it again" hints.

@@ -41,7 +41,7 @@ pub struct QueryResult {
 fn query_run(ctx: &Ctx, args: RunArgs) -> Result<QueryResult> {
     let started = Instant::now();
     let sql = Sql::load(ctx.config())?;
-    let spec = sql.connection(args.conn.as_deref())?;
+    let spec = sql.connection(ctx, args.conn.as_deref())?;
     let statements = statements(ctx, args.sql.as_deref(), args.sql_file.as_deref(), spec)?;
     let keep = usize::try_from(args.max_rows).unwrap_or(usize::MAX);
     let deadline = ctx.deadline();
@@ -179,5 +179,128 @@ mod tests {
             outcome.stderr
         );
         assert!(!outcome.stderr.contains("s3cret-literal"));
+    }
+
+    /// `prod` takes `[sql] read_only`; `dev` lifts it for itself. Both sign
+    /// in through Key Vault, so a request on the transport is a connection
+    /// that began to open.
+    const READ_ONLY: &str = r#"
+[sql]
+read_only = true
+
+[[sql.connection]]
+name = "prod"
+kind = "mssql"
+host = "127.0.0.1"
+port = 9
+database = "bench"
+user = "app"
+password_kv = "contoso-kv/prod-db"
+
+[[sql.connection]]
+name = "dev"
+kind = "mssql"
+host = "127.0.0.1"
+port = 9
+database = "bench"
+user = "app"
+password_kv = "contoso-kv/dev-db"
+read_only = false
+"#;
+
+    fn read_only(
+        argv: &[&str],
+    ) -> (
+        agent_cli_core::testing::Outcome,
+        Vec<agent_cli_core::testing::Sent>,
+    ) {
+        use agent_cli_core::testing::{Answer, FakeTransport};
+        let transport =
+            FakeTransport::answering([Answer::json(&serde_json::json!({"value": "pw"}))]);
+        let outcome = sql(
+            argv,
+            agent_cli_core::Setup::fake(transport.clone()).with_config(READ_ONLY),
+        );
+        (outcome, transport.sent())
+    }
+
+    #[test]
+    fn a_write_on_a_read_only_connection_is_refused_before_anything_opens() {
+        let update = [
+            "sql",
+            "query",
+            "run",
+            "--conn",
+            "prod",
+            "update t set a = 1",
+            "--yes",
+        ];
+        let (outcome, sent) = read_only(&update);
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("sql connection prod is read-only in the config ([sql] read_only)"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(
+            outcome.stderr.contains("agent-cli config"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(sent.is_empty(), "not even the password was read: {sent:?}");
+
+        let (outcome, sent) = read_only(&[&update[..], &["--dry-run"]].concat());
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()["dry_run"], true);
+        assert_eq!(outcome.json()["would"][0]["conn"], "prod", "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("[this change would be refused: sql connection prod"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(sent.is_empty(), "{sent:?}");
+    }
+
+    #[test]
+    fn a_read_on_a_read_only_connection_still_runs_and_the_entry_can_lift_the_section() {
+        for argv in [
+            [
+                "sql",
+                "query",
+                "run",
+                "--conn",
+                "prod",
+                "select 1",
+                "--timeout",
+                "5",
+            ]
+            .as_slice(),
+            &[
+                "sql",
+                "query",
+                "run",
+                "--conn",
+                "dev",
+                "update t set a = 1",
+                "--yes",
+                "--timeout",
+                "5",
+            ],
+        ] {
+            let (outcome, sent) = read_only(argv);
+            assert_eq!(outcome.code, 1, "port 9 does not answer: {outcome:?}");
+            assert!(
+                outcome
+                    .stderr
+                    .starts_with("error: cannot connect to 127.0.0.1:9"),
+                "{}",
+                outcome.stderr
+            );
+            assert_eq!(sent.len(), 1, "the vault read: {sent:?}");
+        }
     }
 }

@@ -419,9 +419,10 @@ impl Op for Request<'_> {
         let mut token = self.auth.map(|mint| mint(false)).transpose()?;
         let (mut reminted, mut waited) = (false, false);
         loop {
-            let mut response = ctx
+            let sent = ctx
                 .transport()
-                .send(&self, token.as_ref(), ctx.remaining()?)?;
+                .send(&self, token.as_ref(), ctx.remaining()?);
+            let mut response = ctx.meter.sent(sent)?;
             response.url.clone_from(&self.url);
             if response.status == 401
                 && !reminted

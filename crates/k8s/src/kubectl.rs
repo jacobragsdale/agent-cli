@@ -3,10 +3,10 @@
 
 use std::process::Command;
 
-use agent_cli_core::{Config, Ctx, Effect, Exit, Failure, Output, pick};
+use agent_cli_core::{Ctx, Effect, Exit, Failure, Output, pick};
 use anyhow::{Context, Result, bail};
 use schemars::JsonSchema;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::Serialize;
 use serde_json::Value;
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
@@ -15,66 +15,7 @@ use time::format_description::well_known::Rfc3339;
 /// the whole call, credential plugin included.
 const REQUEST_TIMEOUT: &str = "--request-timeout=10s";
 
-/// The `[k8s]` section.
-///
-/// ```toml
-/// [[k8s.scope]]
-/// name = "dev"                   # what --cluster takes
-/// context = "aks-contoso-dev"    # the kubeconfig context; the name when left out
-/// namespaces = ["web", "jobs"]   # or one string; left out: every namespace
-/// ```
-#[derive(Debug, Default, Deserialize)]
-#[serde(default, deny_unknown_fields)]
-struct K8s {
-    scope: Vec<Scope>,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct Scope {
-    pub(crate) name: String,
-    #[serde(default)]
-    context: Option<String>,
-    #[serde(default, deserialize_with = "one_or_many")]
-    pub(crate) namespaces: Vec<String>,
-}
-
-impl Scope {
-    pub(crate) fn context(&self) -> &str {
-        self.context.as_deref().unwrap_or(&self.name)
-    }
-}
-
-fn one_or_many<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Vec<String>, D::Error> {
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum OneOrMany {
-        One(String),
-        Many(Vec<String>),
-    }
-    Ok(match OneOrMany::deserialize(deserializer)? {
-        OneOrMany::One(one) => vec![one],
-        OneOrMany::Many(many) => many,
-    })
-}
-
-pub(crate) fn scopes(config: &Config) -> Result<Vec<Scope>> {
-    let section: K8s = config.section("k8s")?;
-    if let Some(blank) = section
-        .scope
-        .iter()
-        .find(|scope| scope.name.trim().is_empty())
-    {
-        return Err(Failure::setup(format!(
-            "a [[k8s.scope]] in {} has a blank name (context {:?})",
-            config.path().display(),
-            blank.context()
-        ))
-        .hint("give every [[k8s.scope]] a name")
-        .into());
-    }
-    Ok(section.scope)
-}
+pub(crate) use crate::scope::{Scope, scopes};
 
 /// Where every k8s command reads or changes something.
 #[derive(Clone, clap::Args)]
@@ -236,6 +177,7 @@ impl At {
                 _ => failure,
             },
         )?;
+        ctx.enter_scope("k8s scope", &scope.name, scope.read_only);
         Ok(scope.clone())
     }
 

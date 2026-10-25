@@ -18,6 +18,7 @@ use crate::config::Config;
 use crate::ctx::Ctx;
 use crate::discover::{self, BIG_LISTING};
 use crate::dispatch::{parse_leaf, shell_words, split_globals};
+use crate::doctor::Check;
 use crate::error::Failure;
 
 /// The closed verb vocabulary. A new verb is a deliberate one-line edit here,
@@ -29,7 +30,7 @@ pub const VERBS: &[&str] = &[
 ];
 
 /// Words core owns; no domain may take one.
-pub const BUILTINS: &[&str] = &["search", "doctor", "config", "help"];
+pub const BUILTINS: &[&str] = &["search", "doctor", "config", "usage", "help"];
 
 /// Flags core strips from anywhere on the line; no command may declare one.
 pub const GLOBAL_FLAGS: &[&str] = &[
@@ -127,41 +128,6 @@ pub struct Domain {
     pub status: fn(&Config) -> String,
     /// Live checks for `agent-cli doctor`.
     pub doctor: fn(&Ctx) -> Vec<Check>,
-}
-
-/// One line of `agent-cli doctor`.
-#[derive(Clone, Debug, Serialize)]
-pub struct Check {
-    pub check: String,
-    pub ok: bool,
-    pub detail: String,
-    pub hint: Option<String>,
-}
-
-impl Check {
-    #[must_use]
-    pub fn ok(check: impl Into<String>, detail: impl Into<String>) -> Self {
-        Self {
-            check: check.into(),
-            ok: true,
-            detail: detail.into(),
-            hint: None,
-        }
-    }
-
-    #[must_use]
-    pub fn failed(
-        check: impl Into<String>,
-        detail: impl Into<String>,
-        hint: impl Into<String>,
-    ) -> Self {
-        Self {
-            check: check.into(),
-            ok: false,
-            detail: detail.into(),
-            hint: Some(hint.into()),
-        }
-    }
 }
 
 /// Makes a [`Command`] constant from a typed handler.
@@ -341,7 +307,7 @@ pub fn check_registry(domains: &[Domain]) -> Vec<String> {
         problems.extend(check_listings(domain));
         problems.extend(check_synonyms(domain, domains));
     }
-    let overview = discover::overview(domains, &Config::empty());
+    let overview = discover::overview(&domains.iter().collect::<Vec<_>>(), &Config::empty());
     let crowded = discover::overview_at_most(domains);
     for (text, when) in [
         (overview, "with no config"),

@@ -14,6 +14,7 @@ pub(crate) struct Section {
     pub(crate) token: Option<String>,
     pub(crate) token_env: Option<String>,
     pub(crate) token_cmd: Option<String>,
+    pub(crate) token_kv: Option<String>,
 }
 
 impl Section {

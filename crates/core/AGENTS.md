@@ -1,59 +1,60 @@
 # agent-cli-core: the API a domain uses
 
 `src/lib.rs` re-exports each name below, and `anyhow`, `clap`, `schemars`,
-`serde_json` at core's versions. Jump to definitions.
+`serde_json` at core's versions.
 
 ## Registry
-- `command!` makes a `Command` from `fn(&Ctx, Args) -> Result<Row>` (Args:
-  `clap::Args`; Row: `Serialize + JsonSchema`). `args_of`, `invoke`,
-  `returns_of` are its internals.
+- `command!` makes a `Command` from `fn(&Ctx, Args) -> Result<Row>`;
+  `args_of`, `invoke`, `returns_of` are its internals.
 - `Domain` (name, summary, commands, synonyms, status, doctor); `Effect`:
-  Read, Write, Destructive, Reveal, Varies; `Check`: one doctor line.
-- `VERBS`, `SHARED_WORDS`, `SYNONYM_FLAGS`, `GLOBAL_FLAGS`, `BUILTINS`: the
-  closed vocabularies `check_registry` enforces. `check_layout`: each
-  command in `src/<resource>/<verb>.rs` (its `source`, from `file!()`).
-- `run`, `run_with`: the program, in process too; `command_help`:
-  one command's `--help`. `Quality`, `quality`: search over labeled queries.
+  Read, Write, Destructive, Reveal, Varies; `Check`: a doctor line,
+  `.denied()` for a 403 (core marks `answered 403` itself). A status
+  ending `not set up`, or a denied domain, is left out of search.
+- `VERBS`, `SHARED_WORDS`, `SYNONYM_FLAGS`, `GLOBAL_FLAGS`, `BUILTINS`:
+  for `check_registry`; `check_layout`: `src/<resource>/<verb>.rs`.
+- `run`, `run_with`; `command_help`; `Quality`, `quality`.
 
 ## Ctx: every effect goes through it
-- `Ctx`: `read(op)`, `write(effect, op)` (--dry-run and --yes enforced),
+- `Ctx`: `read(op)`, `write(effect, op)` (--dry-run, --yes, `read_only`),
   `note`, `env`, `section`, `config`, `cache`, `deadline`, `remaining`,
-  `long_text` (a `LongText`), `save` (bytes to `--output`). `Op`: what
-  read and write perform.
-- `Globals`, `Setup`, `DEFAULT_TIMEOUT`: the run's surroundings.
-- `Config`; `pick`: the rule for scope flags; `Cache`: keyed, with a TTL.
-  A doctor with no checks reads as not set up.
+  `long_text` (a `LongText`), `save` (to `--output`); `Op`.
+- `enter_scope(noun, name, entry.read_only)` where a domain picks its
+  scope; `read_only()`: changes refused there (the entry's key, else the
+  section's, which core owns).
+- `Globals`, `Setup` (`state_dir`, `secrets`), `DEFAULT_TIMEOUT`.
+- `Config` (`[core] include`, merged by name); `pick`: scope flags;
+  `Cache`. A doctor with no checks is not set up.
 
 ## HTTP and processes
 - `Request` (`get`, `query` = a POST that only reads, `.json`, `.form`,
-  `.bytes`, `.header`, `.auth(Mint)`, `.keep_redirect()`: a 3xx is the
-  answer, `.quota_429()`: a 429 is final), `Response` (`bytes` when not
-  UTF-8, `into_bytes`), `Method`, `Body`, `Mint`.
-- `Transport`, `Https`: the seam tests fake; the real one.
-- `host_under(url, suffix)` before a token goes out; for a configured
-  server, `same_origin` under `check_base_url`. `percent_encode`,
-  `form_encode`, `base64`; `failure_message`: the service's own words.
-- `run_until`, `Output`: a child process under the deadline.
-- `on_stop`, `OnStop`: what a signal must stop (a DB call) until dropped.
+  `.bytes`, `.header`, `.auth(Mint)`, `.keep_redirect()`, `.quota_429()`),
+  `Response` (`bytes`, `into_bytes`), `Method`, `Body`, `Mint`.
+- `Transport`, `Https`: the test seam; the real one.
+- `host_under(url, suffix)` before a token goes out; `same_origin` under
+  `check_base_url`. `percent_encode`, `form_encode`, `base64`;
+  `failure_message`.
+- `run_until`, `Output`: a child process by the deadline.
+- `on_stop`, `OnStop`: what a signal stops (a DB call) until dropped.
 
 ## Diff
-`diff(ctx, &DiffArgs, &Rules, left, right)`: two `Side`s (id, `get`'s row,
-`secrets` by path) to a `Diff` of `Change`s; `Rules::PLAIN`; `scoped`.
+`diff(ctx, &DiffArgs, &Rules, left, right)`: two `Side`s (id, row,
+`secrets`) to a `Diff` of `Change`s; `Rules::PLAIN`; `scoped`.
 
 ## Errors and secrets
 - `Failure`: `usage` 2, `setup` 3, `not_found` 4, `conflict` 5, `timed_out`
-  124; `.hint(cmd)`, `.with_data(v)`. `Exit`; `status_of`: a refusal's HTTP
-  status.
+  124; `.hint(cmd)`, `.with_data(v)`. `Exit`; `status_of`: an HTTP status.
 - `Secret` (no Serialize; `expose`), `redact`, `redact_value`, `sensitive_key`.
-- `Credential::from_keys(key, value, env, cmd)`, `.resolve(ctx)`, `.source()`.
+- `Credential::from_keys(key, value, env, cmd, kv)`, `.resolve(ctx)`,
+  `.source()`; `.refresh(ctx)` after a refused sign-in: a changed `KEY_kv`
+  value to retry once with, else `None` (the refusal stands).
 
 ## Time
 `When` (`--since`, `--until`; `.utc()`, `.unix()`), `Span` (a length),
-`now` (fixtures freeze it), `utc` (a service's stamp), `utc_time`.
+`now` (fixtures freeze it), `utc` (a service's time), `utc_time`.
 
 ## Testing (`agent_cli_core::testing`)
 - `run(DOMAINS, argv, Setup::fake(FakeTransport::answering([Answer::json(&v)])))`
-  gives an `Outcome` (`code`, `.json()`); `transport.sent()` is what went out.
-- `Setup::with_env`, `with_stdin`, `with_config`; `assert_dry_run`,
-  `assert_search_quality`, `printed_command_problems`, `non_utc_times`,
-  `next_command` (a `[next: …]` note's argv).
+  gives an `Outcome` (`code`, `.json()`); `transport.sent()`: the requests.
+- `Setup::with_env`, `with_stdin`, `with_config`, `with_state_dir`,
+  `with_secrets`; `assert_dry_run`, `assert_search_quality`,
+  `printed_command_problems`, `non_utc_times`, `next_command`.

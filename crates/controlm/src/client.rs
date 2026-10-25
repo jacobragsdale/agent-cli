@@ -11,7 +11,7 @@ use std::cell::RefCell;
 
 use agent_cli_core::{
     Config, Credential, Ctx, Effect, Exit, Failure, Method, Op, Request, Response, Secret, When,
-    check_base_url, percent_encode, pick, same_origin, utc, utc_time,
+    check_base_url, percent_encode, pick, same_origin, status_of, utc, utc_time,
 };
 use anyhow::{Context, Result, bail};
 use serde::Deserialize;
@@ -35,9 +35,13 @@ struct Raw {
     password: Option<String>,
     password_env: Option<String>,
     password_cmd: Option<String>,
+    password_kv: Option<String>,
     token: Option<String>,
     token_env: Option<String>,
     token_cmd: Option<String>,
+    token_kv: Option<String>,
+    /// Refuses every change in this instance; overrides `[controlm] read_only`.
+    read_only: Option<bool>,
     utc_offset: Option<String>,
 }
 
@@ -67,6 +71,8 @@ pub(crate) struct Instance {
     /// The clock of the Control-M/Servers, which every time the API prints
     /// and takes is on.
     pub(crate) offset: UtcOffset,
+    /// The entry's own `read_only`, which core weighs against the section's.
+    pub(crate) read_only: Option<bool>,
 }
 
 impl Instance {
@@ -93,8 +99,15 @@ impl Raw {
             self.password,
             self.password_env,
             self.password_cmd,
+            self.password_kv,
         )?;
-        let token = Credential::from_keys("token", self.token, self.token_env, self.token_cmd)?;
+        let token = Credential::from_keys(
+            "token",
+            self.token,
+            self.token_env,
+            self.token_cmd,
+            self.token_kv,
+        )?;
         let auth = match (self.username, password, token) {
             (Some(username), Some(password), None) => Auth::Password { username, password },
             (None, None, Some(token)) => Auth::Token(token),
@@ -117,6 +130,7 @@ impl Raw {
             base_url,
             auth,
             offset,
+            read_only: self.read_only,
         })
     }
 }
@@ -189,6 +203,7 @@ impl ControlM {
                 "add a [[controlm.instance]]; `agent-cli config example controlm` shows the keys",
             ),
         })?;
+        ctx.enter_scope("controlm instance", &instance.name, instance.read_only);
         Ok(Client::new(ctx, instance))
     }
 }
@@ -279,7 +294,9 @@ impl<'a> Client<'a> {
 
     /// `Bearer …` from `POST /session/login`: once, and again after a 401
     /// (a session idles out after 30 minutes by default). A read, as the
-    /// login changes nothing, so it also works under `--dry-run`.
+    /// login changes nothing, so it also works under `--dry-run`. A refused
+    /// `password_kv` is read from Key Vault again and, when it changed there,
+    /// tried once more: the kept value outlives a rotation.
     // VERIFY(work): each command logs in once and never logs out, so a
     // session lives until it idles out. If the Enterprise Manager caps
     // sessions per user, send `POST /session/logout` when a command ends, or
@@ -292,14 +309,21 @@ impl<'a> Client<'a> {
             bail!("a session login needs a username and password");
         };
         let url = format!("{}/session/login", self.instance.base_url);
-        let request = Request::query(
-            &url,
-            json!({"username": username, "password": password.resolve(self.ctx)?.expose()}),
-        )
-        .header("Accept", "application/json");
-        let answer = self
-            .ctx
-            .read(request)
+        let login = || -> Result<Response> {
+            let request = Request::query(
+                &url,
+                json!({"username": username, "password": password.resolve(self.ctx)?.expose()}),
+            )
+            .header("Accept", "application/json");
+            self.ctx.read(request)
+        };
+        let answer = match login() {
+            Err(error) if refused_password(&error) && password.refresh(self.ctx)?.is_some() => {
+                login()
+            }
+            answer => answer,
+        };
+        let answer = answer
             .map_err(|error| match error.downcast::<Failure>() {
                 Ok(failure) if matches!(failure.status, Some(400 | 401 | 403)) => {
                     Failure::setup(failure.message)
@@ -373,9 +397,25 @@ impl Op for Call<'_, '_> {
         }
         let request = self.request();
         match &self.client.instance.auth {
-            Auth::Token(token) => request
-                .header("x-api-key", self.client.key(token)?.expose())
-                .perform(ctx),
+            Auth::Token(token) => {
+                let send = |request: Request| {
+                    request
+                        .header("x-api-key", self.client.key(token)?.expose())
+                        .perform(ctx)
+                };
+                match send(request) {
+                    // A kv token rotated since it was kept: once more with
+                    // the value Key Vault holds now.
+                    Err(error) if status_of(&error) == Some(401) => match token.refresh(ctx)? {
+                        Some(fresh) => {
+                            *self.client.key.borrow_mut() = Some(fresh);
+                            send(self.request())
+                        }
+                        None => Err(error),
+                    },
+                    answer => answer,
+                }
+            }
             Auth::Password { .. } => {
                 let mint = |fresh: bool| self.client.bearer(fresh);
                 request.auth(&mint).perform(ctx)
@@ -391,6 +431,11 @@ impl Op for Call<'_, '_> {
             .into()),
         }
     }
+}
+
+/// What `session/login` answers a wrong username or password with.
+fn refused_password(error: &anyhow::Error) -> bool {
+    matches!(status_of(error), Some(400 | 401 | 403))
 }
 
 /// Control-M's refusals as the next step. Core already reads its
@@ -597,6 +642,109 @@ mod tests {
         assert_eq!(outcome.code, 3, "{outcome:?}");
         assert!(outcome.stderr.contains("Invalid user name or password"));
         assert!(outcome.stderr.contains("doctor controlm"));
+    }
+
+    const VAULT_SECRET: &str =
+        "https://kv-contoso.vault.azure.net/secrets/ctm-agent?api-version=7.4";
+
+    fn kv_config(key: &str) -> String {
+        let user = if key == "password" {
+            "username = \"agent\"\n"
+        } else {
+            ""
+        };
+        format!(
+            "[[controlm.instance]]\nname = \"prod\"\nbase_url = \"{API}\"\n{user}{key}_kv = \"kv-contoso/ctm-agent\"\n"
+        )
+    }
+
+    fn vault(value: &str) -> Answer {
+        Answer::json(&json!({"value": value}))
+    }
+
+    fn login_refused() -> Answer {
+        Answer::status(
+            401,
+            json!({"errors": [{"message": "Invalid user name or password"}]}).to_string(),
+        )
+    }
+
+    #[test]
+    fn a_refused_kv_password_is_read_again_and_the_login_retried_once_with_the_new_one() {
+        let (outcome, transport) = controlm_with(
+            &kv_config("password"),
+            &["controlm", "job", "get", "ctm-prod:00a1b"],
+            vec![
+                vault("rotated-away"),
+                login_refused(),
+                vault("rotated-in"),
+                Answer::json(&json!({"username": "agent", "token": "session-2"})),
+                Answer::json(&job("ctm-prod:00a1b", "load_orders", "Ended OK")),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let sent = transport.sent();
+        assert_eq!(sent[0].url, VAULT_SECRET);
+        assert_eq!(sent[1].body.as_ref().unwrap()["password"], "rotated-away");
+        assert_eq!(sent[2].url, VAULT_SECRET);
+        assert_eq!(sent[3].body.as_ref().unwrap()["password"], "rotated-in");
+        assert_eq!(sent[4].authorization.as_deref(), Some("Bearer session-2"));
+    }
+
+    #[test]
+    fn a_refused_kv_password_key_vault_still_holds_is_the_original_refusal() {
+        let (outcome, transport) = controlm_with(
+            &kv_config("password"),
+            &["controlm", "job", "get", "ctm-prod:00a1b"],
+            vec![vault("wrong"), login_refused(), vault("wrong")],
+        );
+        assert_eq!(outcome.code, 3, "{outcome:?}");
+        assert!(outcome.stderr.contains("Invalid user name or password"));
+        assert!(outcome.stderr.contains("doctor controlm"));
+        assert_eq!(transport.sent().len(), 3);
+    }
+
+    #[test]
+    fn a_refused_kv_api_token_is_read_again_and_the_call_retried_once_with_the_new_one() {
+        let refused = || {
+            Answer::status(
+                401,
+                json!({"errors": [{"message": "Unauthorized"}]}).to_string(),
+            )
+        };
+        let (outcome, transport) = controlm_with(
+            &kv_config("token"),
+            &["controlm", "job", "get", "ctm-prod:00a1b"],
+            vec![
+                vault("old-key"),
+                refused(),
+                vault("new-key"),
+                Answer::json(&job("ctm-prod:00a1b", "load_orders", "Ended OK")),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let key = |at: usize| {
+            transport.sent()[at]
+                .headers
+                .iter()
+                .find(|(name, _)| name == "x-api-key")
+                .map(|(_, value)| value.clone())
+        };
+        assert_eq!(key(1).as_deref(), Some("old-key"));
+        assert_eq!(key(3).as_deref(), Some("new-key"));
+
+        let (outcome, transport) = controlm_with(
+            &kv_config("token"),
+            &["controlm", "job", "get", "ctm-prod:00a1b"],
+            vec![vault("old-key"), refused(), vault("old-key")],
+        );
+        assert_eq!(outcome.code, 3, "{outcome:?}");
+        assert!(
+            outcome.stderr.contains("credential was refused"),
+            "{}",
+            outcome.stderr
+        );
+        assert_eq!(transport.sent().len(), 3);
     }
 
     #[test]

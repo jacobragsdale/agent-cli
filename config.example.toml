@@ -9,10 +9,31 @@
 #
 # Passwords and tokens go in this file too (`chmod 600` it), so one file holds
 # every service. Any credential KEY can instead be KEY_env (a variable that
-# holds it) or KEY_cmd (a command that prints it, such as `pass show NAME`),
-# which lets many connections share one password.
+# holds it), KEY_cmd (a command that prints it, such as `pass show NAME`),
+# which lets many connections share one password, or KEY_kv = "VAULT/SECRET"
+# (a team's shared login in Key Vault, read with your `az login` and kept in
+# secrets.toml beside this file; `agent-cli config pull` reads them all
+# again, and a kept value that stops signing in is read again by itself).
+#
+# read_only = true in a section refuses every change agent-cli would make
+# there (exit 2, before anything is sent); on one entry of a list (a sql
+# connection, a k8s scope, an airflow, controlm or redis instance) it
+# overrides its section's. No flag or variable lifts it: read_only = false
+# on the entry in your own file does.
 #
 # Every key below is commented out: uncomment the ones you need.
+
+# [core]
+# include = ["~/.config/agent-cli/team.toml"]  # a team's shared file (or a list),
+#                                        # read first and this file over it: a key
+#                                        # here wins, and an entry of a list such
+#                                        # as [[sql.connection]] merges by name, so
+#                                        # name = "prod" with read_only = false
+#                                        # changes only that key; a relative path
+#                                        # is beside this file
+# releases = "https://keeper.contoso.example/api/v1/repositories/agent-cli/download"
+#                                        # doctor reads {releases}/latest/VERSION
+#                                        # and says when a newer release is out
 
 # [ado]
 # Sign-in: a personal access token (pat, pat_env or pat_cmd), else
@@ -25,7 +46,8 @@
 # code_project = "web"                   # repos, PRs, pipelines; default: project
 # team = ["web team", "mobile/apps"]     # or one; PROJECT/TEAM for another
 #                                        # project's; `--iteration @current` needs it
-# pat = "..."                            # or pat_env, pat_cmd
+# pat = "..."                            # or pat_env, pat_cmd, pat_kv
+# read_only = true                       # refuse every change in Azure DevOps
 
 # [confluence]
 # Confluence Data Center or Server, self-hosted; Cloud (*.atlassian.net) is not supported.
@@ -35,7 +57,8 @@
 # `agent-cli doctor confluence` says when one stops working.
 # url = "https://wiki.contoso.example"   # what the browser shows, context path
 #                                        # included: https://contoso.example/confluence
-# token = "..."                          # or token_env, token_cmd
+# token = "..."                          # or token_env, token_cmd, token_kv
+# read_only = true                       # refuse every change in the wiki
 
 # [azure]
 # kv, acr, aks, aisearch, arm, net, lake and entra sign in with your `az login`; nothing is
@@ -61,6 +84,7 @@
 #                                        # counts and index fields are cached;
 #                                        # 0 = never
 # parallel = 8                           # vaults, registries, repositories read at once
+# read_only = true                       # refuse every change in all eight
 
 # [[k8s.scope]]
 # One per cluster. `agent-cli aks cluster connect NAME` fetches the
@@ -70,6 +94,7 @@
 # name = "dev"
 # context = "aks-contoso-dev"            # the kubeconfig context; the name when left out
 # namespaces = ["web", "jobs"]           # or one string; left out: every namespace
+# read_only = true                       # refuse every change in this scope
 
 # [sql]
 # Where Oracle's Instant Client is, for Oracle connections only. Precedence:
@@ -78,6 +103,7 @@
 # Linux also needs libaio, and its run path set (patchelf --set-rpath '$ORIGIN')
 # or LD_LIBRARY_PATH. A leading ~/ is your home directory.
 # oracle_client_dir = "~/.local/opt/oracle/instantclient_23_26"
+# read_only = true                       # refuse every change on every connection
 #
 # [[sql.connection]]
 # name = "reporting"                     # what --conn takes; the only one is the default
@@ -88,7 +114,10 @@
 # user = "app_reader"
 # password = "..."                       # or password_env, password_cmd (run
 #                                        # under the command's deadline, its
-#                                        # trailing newline dropped)
+#                                        # trailing newline dropped), password_kv
+# read_only = true                       # refuse every change here (overrides
+#                                        # [sql] read_only); Oracle also runs
+#                                        # reads in SET TRANSACTION READ ONLY
 # trust_cert = false                     # mssql only: accept a self-signed certificate
 # encrypt = true                         # mssql only
 #
@@ -107,8 +136,11 @@
 # service = "LEDGER"                     # oracle only: the service name
 # user = "app_reader"
 # password_env = "CONTOSO_DB_PASSWORD"   # one password shared by connections
+# password_kv = "kv-contoso-team/ledger-reader"  # or a team's, from Key Vault
 #
-# Where an agent must not write, give it a login that can only read.
+# Where an agent must not write, give it a login that can only read too:
+# SQL Server has no read-only session, so read_only there stops agent-cli
+# and nothing else.
 
 # [[redis.instance]]
 # One per Redis an agent reads, usually one per project and environment:
@@ -140,8 +172,8 @@
 # name = "sessions-qa"                   # self-hosted
 # host = "redis-qa.contoso.internal"
 # user = "agent"                         # an ACL user; left out: default
-# password_env = "REDIS_QA_PASSWORD"     # or password, password_cmd; none for an
-#                                        # open dev server
+# password_env = "REDIS_QA_PASSWORD"     # or password, password_cmd,
+#                                        # password_kv; none for an open dev server
 # tls = true
 # trust_cert = true                      # accept a self-signed certificate
 # db = 0                                 # default 0
@@ -166,7 +198,7 @@
 # api = "v1"                             # optional: v1 (Airflow 2) or v2 (3);
 #                                        # asked of the server when left out
 # username = "agent"
-# password = "..."                       # or password_env, password_cmd
+# password = "..."                       # or password_env, password_cmd, password_kv
 # k8s_scope = "dev"                      # the [[k8s.scope]] its KubernetesExecutor
 #                                        # pods run in: task get prints the pod
 #                                        # as the id `k8s pod logs` takes
@@ -188,6 +220,8 @@
 # username = "agent"
 # password = "..."
 # k8s_scope = "prod"
+# read_only = true                       # refuse every change here (overrides
+#                                        # [airflow] read_only)
 
 # [[controlm.instance]]
 # One per BMC Control-M Enterprise Manager (on-prem), over its Automation API.
@@ -200,16 +234,20 @@
 #                                        # the Automation API endpoint, with
 #                                        # /automation-api
 # username = "agent"
-# password = "..."                       # or password_env, password_cmd
+# password = "..."                       # or password_env, password_cmd, password_kv
 # token = "..."                          # instead of username and password:
-#                                        # an API token (or token_env, token_cmd)
+#                                        # an API token (or token_env, token_cmd,
+#                                        # token_kv)
+# read_only = true                       # refuse every change here (overrides
+#                                        # [controlm] read_only)
 # utc_offset = "-05:00"                  # the Control-M/Servers' clock, which
 #                                        # every time the API prints and takes
 #                                        # is on; default +00:00
+
 # [datadog]
 # Also read as [dd]. The credential is a Datadog personal access token (sent
 # as Authorization: Bearer), else the API + application key pair, each as
-# KEY, KEY_env or KEY_cmd. With no key set at all: DD_ACCESS_TOKEN, else
+# KEY, KEY_env, KEY_cmd or KEY_kv. With no key set at all: DD_ACCESS_TOKEN, else
 # DD_API_KEY with DD_APP_KEY.
 # The credential goes only to https://api.<site>.
 # site = "datadoghq.eu"                  # default: DD_SITE, else datadoghq.com
@@ -217,7 +255,8 @@
 # token = "..."                          # or token_cmd = "pup auth token" (reuses
 #                                        # a pup login; run again after a 401)
 # api_key = "..."                        # the fallback pair: both, each also
-# app_key = "..."                        # as _env or _cmd
+# app_key = "..."                        # as _env, _cmd or _kv
+# read_only = true                       # refuse every change (mutes, monitors)
 #
 # The real guard is a token with read scopes only (logs_read_data,
 # timeseries_query, metrics_read, monitors_read, events_read, apm_read,

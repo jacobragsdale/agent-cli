@@ -9,9 +9,10 @@ Managed Redis and self-hosted Redis (Valkey too), over RESP2 on a
 `port` (6380 on `*.redis.cache.windows.net`, 10000 on `*.redis.azure.net`,
 else 6379), `tls` (default true on those hosts), `trust_cert`, `db`,
 `auth` (`az`: a token for `AZURE_REDIS`, sent only to those hosts, signed in
-as the token's `oid` unless `user` names one), `user` (an ACL user).
-Credential: `password`, `password_env` or `password_cmd`, resolved only
-when a connection opens.
+as the token's `oid` unless `user` names one), `user` (an ACL user),
+`read_only` (`on` enters it as the scope). Credential: `password`,
+`password_env`, `password_cmd` or `password_kv` (reread on WRONGPASS),
+resolved when a connection opens.
 
 ## Ids
 An instance is its `name`; `--instance` also takes its host, `host:port`,
@@ -25,16 +26,15 @@ instance's name, else `KEY` on `--instance`.
 A command is `<resource>/<verb>.rs`. Copy a sibling.
 - `lib.rs`: `DOMAIN`. `doctor.rs`: status and doctor (`PING`).
 - `session.rs`: the door. `Session::open` (TCP, TLS, `AUTH`, `SELECT`),
-  `pipeline`, `call`, `refused` (Redis's error to a `Failure`), `READS`
+  `pipeline`, `call`, `refused` (to a `Failure`), `READS`
   (the only commands it sends), `cmd!`, `Reply`, `OnInstance` and `on`
   (the `Op` every command performs through `ctx.read`).
 - `config.rs`: `Redis::load`, `Instance`, `credentials`.
-- `instance/mod.rs`: `Info` (`INFO` parsed: `memory`, `stats`,
-  `needs_room` …).
+- `instance/mod.rs`: `Info` (`INFO` parsed, `needs_room` …).
 - `key/mod.rs`: `read` (one key, as far as a `Reach` goes), `decode` (the
   value by its bytes: IDistributedCache, gzip, zlib, JSON, text, pickle,
   zstd, lz4, xz, base64), `member`, `Key`.
-- `testing.rs`: `serve` (a scripted RESP server on a port of its own;
+- `testing.rs`: `serve` (a scripted RESP server;
   `sent()`), `config`, `redis`, `bulk`, `array`.
 
 ## Fixtures
@@ -47,8 +47,7 @@ read-only ACL user, prod with TLS and LFU; `scripts/seed/redis.py`) and
 ## Quirks
 - Never `KEYS`: `key list` scans, stopped by `--limit`, `--sample` or the
   deadline, and says how far it got.
-- Expiry is `PTTL` from now, which Redis 6 (Azure Cache) has too; Redis
-  keeps no creation time. `OBJECT IDLETIME` fails under an LFU policy, then
+- Expiry is `PTTL` from now (Redis 6 too); Redis keeps no creation time. `OBJECT IDLETIME` fails under an LFU policy, then
   `OBJECT FREQ` answers.
 - A pickle is named, never loaded; `--output FILE` saves a string whole,
   decompressed. `key diff` compares a pickle or a string past 1 MB by

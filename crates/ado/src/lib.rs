@@ -6,6 +6,7 @@
 mod activity;
 mod approval;
 mod attachment;
+mod auth;
 mod backlog;
 mod client;
 mod code;

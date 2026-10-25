@@ -10,7 +10,7 @@ use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 use std::sync::{Arc, mpsc};
 use std::time::{Duration, Instant};
 
-use agent_cli_core::{Ctx, Exit, Failure, Op};
+use agent_cli_core::{Ctx, Exit, Failure, Op, Secret};
 use anyhow::{Result, anyhow, bail};
 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
@@ -190,23 +190,37 @@ impl Session {
         Ok(session)
     }
 
-    /// `AUTH`, once more with a fresh token when Redis refuses an az one
-    /// (it may have expired between mint and use).
+    /// `AUTH`, once more when Redis refuses it and there is something new to
+    /// send: a fresh az token (it may have expired between mint and use), or
+    /// a `password_kv` that changed in Key Vault.
     fn sign_in(&mut self, spec: &Instance, ctx: &Ctx) -> Result<()> {
-        for fresh in [false, true] {
-            let Some((user, password)) = spec.credentials(ctx, fresh)? else {
-                return Ok(());
-            };
-            let mut auth = cmd!("AUTH");
-            auth.extend(user.map(String::into_bytes));
-            auth.push(password.expose().as_bytes().to_vec());
-            match self.pipeline(&[auth])?.remove(0) {
-                Reply::Error(message) if spec.az && !fresh && message.starts_with("WRONGPASS") => {}
-                Reply::Error(message) => return Err(self.refused(&message)),
-                _ => return Ok(()),
-            }
+        let Some(signed) = spec.credentials(ctx, false)? else {
+            return Ok(());
+        };
+        let Some(message) = self.auth(signed)? else {
+            return Ok(());
+        };
+        if !(message.starts_with("WRONGPASS") || message.starts_with("NOAUTH")) {
+            return Err(self.refused(&message));
         }
-        Ok(())
+        let Some(signed) = spec.credentials(ctx, true)? else {
+            return Err(self.refused(&message));
+        };
+        match self.auth(signed)? {
+            Some(message) => Err(self.refused(&message)),
+            None => Ok(()),
+        }
+    }
+
+    /// One `AUTH`: Redis's error when it refuses.
+    fn auth(&mut self, (user, password): (Option<String>, Secret)) -> Result<Option<String>> {
+        let mut auth = cmd!("AUTH");
+        auth.extend(user.map(String::into_bytes));
+        auth.push(password.expose().as_bytes().to_vec());
+        match self.pipeline(&[auth])?.remove(0) {
+            Reply::Error(message) => Ok(Some(message)),
+            _ => Ok(None),
+        }
     }
 
     /// Sends `commands` in one write and reads one reply for each. Error
@@ -390,6 +404,7 @@ pub fn on<T>(
     spec: &Instance,
     work: impl FnOnce(&mut Session) -> Result<T>,
 ) -> Result<T> {
+    ctx.enter_scope("redis instance", &spec.name, spec.read_only);
     ctx.read(OnInstance {
         spec,
         deadline: ctx.deadline(),
@@ -613,5 +628,95 @@ mod tests {
             let message = check_read(&write).unwrap_err().to_string();
             assert!(message.contains("sends only reads"), "{message}");
         }
+    }
+
+    /// Opens `orders-qa` (on `fake`'s port, `password_kv`) with these vault
+    /// answers: whether it signed in, and what the server was asked.
+    fn open_with_kv(script: Vec<(&str, Reply)>, vault: &[&str]) -> (Result<()>, Vec<String>) {
+        use agent_cli_core::testing::{Answer, FakeTransport, ctx};
+        let fake = crate::testing::serve(script);
+        let config = format!(
+            "{}password_kv = \"kv-contoso/orders-qa\"\n",
+            crate::testing::config(&[("orders-qa", fake.port)])
+        );
+        let answers = vault
+            .iter()
+            .map(|value| Answer::json(&serde_json::json!({ "value": value })));
+        let ctx = ctx(
+            agent_cli_core::Setup::fake(FakeTransport::answering(answers)).with_config(&config),
+        );
+        let redis = crate::config::Redis::load(ctx.config()).unwrap();
+        let opened = on(&ctx, redis.instance(None).unwrap(), |_| Ok(()));
+        (opened, fake.sent())
+    }
+
+    #[test]
+    fn a_password_kv_refused_with_wrongpass_is_read_again_and_sent_once_more() {
+        let wrong = || Reply::Error("WRONGPASS invalid username-password pair".into());
+        let script = vec![
+            ("AUTH old-pass", wrong()),
+            ("AUTH new-pass", Reply::Status("OK".into())),
+        ];
+        let (opened, sent) = open_with_kv(script, &["old-pass", "new-pass"]);
+        opened.unwrap();
+        assert_eq!(
+            sent,
+            ["AUTH old-pass", "AUTH new-pass", "CLIENT SETNAME agent-cli"]
+        );
+
+        let (opened, sent) =
+            open_with_kv(vec![("AUTH old-pass", wrong())], &["old-pass", "old-pass"]);
+        let failure = opened.unwrap_err().downcast::<Failure>().unwrap();
+        assert_eq!(
+            failure.exit,
+            Exit::Setup,
+            "unchanged, the refusal stands: {failure:?}"
+        );
+        assert_eq!(sent, ["AUTH old-pass"]);
+    }
+
+    fn probe(ctx: &Ctx, _: ProbeArgs) -> Result<bool> {
+        let redis = crate::config::Redis::load(ctx.config())?;
+        on(ctx, redis.instance(None)?, |_| Ok(()))?;
+        ctx.read_only()
+    }
+
+    #[derive(clap::Args)]
+    struct ProbeArgs {}
+
+    agent_cli_core::command! {
+        PROBE = ["redis", "instance", "probe"], Read,
+        "Say whether the picked instance refuses changes",
+        keywords: [],
+        example: "redis instance probe",
+        run: probe,
+    }
+
+    #[test]
+    fn working_on_a_read_only_instance_enters_it_as_a_read_only_scope() {
+        let fake = crate::testing::serve(Vec::new());
+        let domain = agent_cli_core::Domain {
+            commands: &[PROBE],
+            ..crate::DOMAIN
+        };
+        let config = |extra: &str| {
+            format!(
+                "{}{extra}",
+                crate::testing::config(&[("orders-prod", fake.port)])
+            )
+        };
+        let run = |extra: &str| {
+            let setup =
+                agent_cli_core::Setup::fake(agent_cli_core::testing::FakeTransport::default())
+                    .with_config(&config(extra));
+            agent_cli_core::testing::run(
+                std::slice::from_ref(&domain),
+                &["redis", "instance", "probe"],
+                setup,
+            )
+            .stdout
+        };
+        assert_eq!(run("read_only = true\n").trim(), "true");
+        assert_eq!(run("").trim(), "false");
     }
 }

@@ -6,6 +6,7 @@
 //! pod id). Datadog's own CLI, pup, covers the long tail; `doctor dd` says
 //! so. Why pup is not wrapped: crates/dd/AGENTS.md.
 
+mod auth;
 mod client;
 mod container;
 mod dashboard;

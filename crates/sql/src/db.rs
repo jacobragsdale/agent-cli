@@ -154,18 +154,41 @@ enum Driver {
 }
 
 impl Session {
+    /// Opens `spec` with its password, and once more with a new one when
+    /// the server refused it and the credential has a new one to give (a
+    /// `password_kv` rotated in Key Vault since it was kept).
+    pub fn sign_in(
+        spec: &Connection,
+        ctx: &Ctx,
+        client_dir: Option<&Path>,
+        deadline: Instant,
+        read_only: bool,
+    ) -> Result<Self> {
+        let password = spec.password(ctx)?;
+        match Self::open(spec, &password, client_dir, deadline, read_only) {
+            Err(refused) if refused_login(&refused) => match spec.refreshed(ctx)? {
+                Some(password) => Self::open(spec, &password, client_dir, deadline, read_only),
+                None => Err(refused),
+            },
+            opened => opened,
+        }
+    }
+
+    /// `read_only` makes an Oracle session read only itself; SQL Server has
+    /// no such thing for a session, so there the login is the guard.
     pub fn open(
         spec: &Connection,
         password: &agent_cli_core::Secret,
         client_dir: Option<&Path>,
         deadline: Instant,
+        read_only: bool,
     ) -> Result<Self> {
         let started = Instant::now();
         let driver = match spec.kind {
             Kind::Mssql => Driver::Mssql(mssql::Session::open(spec, password, deadline)?),
-            Kind::Oracle => {
-                Driver::Oracle(oracle::Session::open(spec, password, client_dir, deadline)?)
-            }
+            Kind::Oracle => Driver::Oracle(oracle::Session::open(
+                spec, password, client_dir, deadline, read_only,
+            )?),
         };
         Ok(Self {
             kind: spec.kind,
@@ -220,10 +243,29 @@ impl<T, F: FnOnce(&mut Session) -> Result<T>> Op for OnConnection<'_, F> {
     }
 
     fn perform(self, ctx: &Ctx) -> Result<T> {
-        let password = self.spec.password(ctx)?;
-        let mut session = Session::open(self.spec, &password, self.client_dir, self.deadline)?;
+        self.spec.enter(ctx);
+        let mut session = Session::sign_in(
+            self.spec,
+            ctx,
+            self.client_dir,
+            self.deadline,
+            ctx.read_only()?,
+        )?;
         (self.work)(&mut session)
     }
+}
+
+/// The server refused the login itself: SQL Server error 18456, Oracle
+/// ORA-01017. The drivers make it exit 3 and keep the server's words, which
+/// is what tells it from the other exit 3 an open can be (no Oracle client).
+fn refused_login(error: &anyhow::Error) -> bool {
+    error.chain().any(|cause| {
+        cause.downcast_ref::<Failure>().is_some_and(|failure| {
+            failure.exit == agent_cli_core::Exit::Setup
+                && (failure.message.contains("(error 18456)")
+                    || failure.message.contains("ORA-01017"))
+        })
+    })
 }
 
 /// Exit 124 for a statement still running at the deadline.
@@ -405,6 +447,28 @@ mod tests {
             UnknownObject::quoted("ORA-00942: table or view does not exist"),
             None
         );
+    }
+
+    #[test]
+    fn only_a_refused_login_is_worth_a_new_password() {
+        let setup = |message: &str| anyhow::Error::from(Failure::setup(message.to_owned()));
+        assert!(refused_login(&setup(
+            "cannot connect to db:1433: Login failed for user 'app'. (error 18456)"
+        )));
+        assert!(refused_login(&setup(
+            "cannot connect to db:1521/FREEPDB1: ORA-01017: invalid credential or not authorized"
+        )));
+        assert!(refused_login(
+            &setup("ORA-01017: invalid username/password").context("connection \"ora\"")
+        ));
+        assert!(!refused_login(&setup("Oracle client library not found")));
+        assert!(!refused_login(&anyhow::Error::from(Failure::new(
+            agent_cli_core::Exit::Failed,
+            "cannot connect to db:1433: Connection refused (os error 111)"
+        ))));
+        assert!(!refused_login(&anyhow::anyhow!(
+            "ORA-01017 quoted in a query"
+        )));
     }
 
     #[test]

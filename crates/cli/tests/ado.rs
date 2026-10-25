@@ -15,6 +15,8 @@ fn agent_cli(args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_agent-cli"))
         .args(args)
         .env("AGENT_CLI_CONFIG", &config)
+        // Never a person's usage log or denied.json.
+        .env("XDG_STATE_HOME", "/nonexistent/agent-cli-state")
         .env("AZURE_CONFIG_DIR", dir.path())
         .env("XDG_CACHE_HOME", dir.path())
         .env_remove("AZURE_DEVOPS_EXT_PAT")

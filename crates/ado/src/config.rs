@@ -2,7 +2,6 @@
 //! personal access token comes from.
 
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
 
 use agent_cli_core::{Credential, Ctx, Failure};
 use anyhow::Result;
@@ -31,6 +30,7 @@ pub(crate) struct Section {
     pat: Option<String>,
     pat_env: Option<String>,
     pat_cmd: Option<String>,
+    pat_kv: Option<String>,
 }
 
 /// `team = "Web"` and `team = ["Web", "Data"]` both read, as do projects.
@@ -62,6 +62,7 @@ impl Ado {
             section.pat.clone(),
             section.pat_env.clone(),
             section.pat_cmd.clone(),
+            section.pat_kv.clone(),
         )
         .map_err(|why| Failure::setup(format!("[ado]: {why}")))?;
         let mut ado = Self::resolve(
@@ -72,7 +73,7 @@ impl Ado {
         // The variable the Azure DevOps CLI extension reads too.
         let from_env = || {
             ctx.env("AZURE_DEVOPS_EXT_PAT")?;
-            Credential::from_keys("pat", None, Some("AZURE_DEVOPS_EXT_PAT".into()), None)
+            Credential::from_keys("pat", None, Some("AZURE_DEVOPS_EXT_PAT".into()), None, None)
                 .ok()
                 .flatten()
         };
@@ -196,7 +197,7 @@ impl Ado {
             project,
             projects,
             pat: None,
-            basic: OnceLock::new(),
+            basic: Default::default(),
         })
     }
 }
@@ -384,7 +385,7 @@ mod tests {
         assert_eq!(outcome.code, 0, "{outcome:?}");
         assert_eq!(
             transport.sent()[0].authorization.as_deref(),
-            Some(crate::client::basic("from-cmd").expose()),
+            Some(crate::auth::basic("from-cmd").expose()),
             "pat_cmd wins over AZURE_DEVOPS_EXT_PAT"
         );
 
@@ -412,7 +413,7 @@ mod tests {
         assert!(
             failure
                 .message
-                .contains("give one of pat, pat_env and pat_cmd"),
+                .contains("give one of pat, pat_env, pat_cmd and pat_kv"),
             "{}",
             failure.message
         );

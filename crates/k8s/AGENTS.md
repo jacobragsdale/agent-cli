@@ -4,9 +4,10 @@ A bounded `kubectl` wrapper: `k8s object` reads any kind; a curated command
 adds a join or a bound. Never calls azure: joins are ids it prints.
 
 ## Config
-`[[k8s.scope]]`: `name` (what `--cluster` takes), `context` (the kube
-context; defaults to `name`), `namespaces` (one or a list; empty lists every
-namespace). kubectl's kubeconfig (and `kubelogin` for AKS) signs in.
+`[[k8s.scope]]` (`scope.rs`): `name` (`--cluster`), `context` (the kube
+context, else `name`), `namespaces` (one or a list; empty: all),
+`read_only` (over `[k8s]`'s, entered by `At`). kubectl's kubeconfig
+(and `kubelogin` for AKS) sign in.
 
 ## Ids
 `cluster/namespace/name`, where `cluster` is the scope name (`prod/web/api`);

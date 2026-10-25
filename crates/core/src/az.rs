@@ -37,6 +37,7 @@ impl Ctx {
             return Ok(held.clone());
         }
         let deadline = self.deadline().min(Instant::now() + AZ_CAP);
+        crate::ctx::Meter::count(&self.meter.processes, 1);
         let minted = mint(Command::new("az"), resource, deadline)?;
         locked(&self.tokens).insert(resource.to_owned(), minted.clone());
         Ok(minted)

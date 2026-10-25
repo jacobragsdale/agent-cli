@@ -38,6 +38,13 @@ This round showed why synonyms belong to their domain. ado's "build" meant
 `run`, so "why did the build fail" ranked `airflow run get` first; now a
 domain's synonyms count only for its own commands.
 
+A team's binary carries every domain, and a person without a cluster or a
+role would otherwise see an agent reach for `k8s` or `entra` first. So
+search and the overview leave out domains not set up here and those doctor
+last saw refused with a 403, and a search says how many hits it left out
+and names `search --all`. Ranking still runs over every domain, so leaving
+some out never reorders the rest, and the gate measures all of them.
+
 ## JSON, `--fields` and the guard
 
 Output is compact JSON with nulls and empties dropped: minified JSON is 10 to
@@ -87,9 +94,14 @@ Every HTTP request, child process and SQL batch goes through `ctx.read` or
 change and a destructive command without `--yes` is refused with the exact
 command to re-run. A handler cannot forget a check it never makes, and every
 write command's tests prove that nothing that writes reaches the transport
-under `--dry-run`. There is no read-only mode: an environment variable or a
-config key that refuses writes is a guard the agent's own config can lift,
-and a credential that can only read is one it cannot. Secrets get the same
+under `--dry-run`. `read_only` in the config is the same door refusing: a
+team marks its prod entries in the shared file, and `write` refuses a change
+there before anything is sent. It is a guard against a slip, not against an
+agent set on writing, so it is lifted only where a person decides (their own
+`config.toml`), never by a flag or an `AGENT_CLI_*` variable, which are what
+an agent sets in passing; a credential that can only read is still the guard
+an agent cannot lift, and SQL Server, with no read-only session, relies on
+one. Secrets get the same
 treatment: a value lives in a `Secret` that has no serializer, only a
 `reveal` command prints one, and a token is attached only to its own
 service's hosts. The one exception is `diff`: two secrets' values are

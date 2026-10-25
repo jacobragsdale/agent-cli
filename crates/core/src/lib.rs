@@ -16,8 +16,11 @@ mod ctx;
 mod diff;
 mod discover;
 mod dispatch;
+mod doctor;
 mod error;
+mod hidden;
 mod http;
+mod layers;
 mod leaf;
 mod output;
 mod process;
@@ -31,6 +34,8 @@ mod stop;
 pub mod testing;
 mod throttle;
 mod tls;
+mod usage;
+mod vault;
 mod when;
 
 pub use anyhow;
@@ -46,6 +51,7 @@ pub use ctx::{Ctx, DEFAULT_TIMEOUT, Globals, LongText, Op, Setup};
 pub use diff::{Change, Diff, DiffArgs, Rules, Side, diff, scoped};
 pub use discover::command_help;
 pub use dispatch::{run, run_with};
+pub use doctor::Check;
 pub use error::{Exit, Failure, status_of};
 pub use http::{
     Body, Https, Method, Mint, Request, Response, Transport, base64, form_encode, host_under,
@@ -53,7 +59,7 @@ pub use http::{
 };
 pub use process::{Output, run_until};
 pub use registry::{
-    BUILTINS, Check, Command, Domain, Effect, GLOBAL_FLAGS, SHARED_WORDS, SYNONYM_FLAGS, VERBS,
+    BUILTINS, Command, Domain, Effect, GLOBAL_FLAGS, SHARED_WORDS, SYNONYM_FLAGS, VERBS,
     check_layout, check_registry,
 };
 #[doc(hidden)]

@@ -8,19 +8,18 @@
 //! here: the sign-in page it answers bad credentials with, the headers and
 //! API versions it wants, and where a credential may be sent.
 
-use std::sync::OnceLock;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use agent_cli_core::{
-    Credential, Ctx, Effect, Exit, Failure, Method, Request, Response, Secret, host_under,
-    percent_encode,
+    Credential, Ctx, Effect, Failure, Method, Request, Response, Secret, percent_encode,
 };
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// The resource `az account get-access-token` mints Azure DevOps tokens for.
-const RESOURCE: &str = "499b84ac-1321-427f-aa17-267ca6975798";
+use crate::auth::{SIGN_IN_HINT, refused_sign_in, signed_out, trusted};
+
 pub(crate) const API: &str = "7.1";
 /// Work item comments are still behind a preview flag on every 7.x version.
 pub(crate) const COMMENTS_API: &str = "7.1-preview.4";
@@ -30,7 +29,6 @@ const CONNECTION_DATA_API: &str = "7.1-preview";
 pub(crate) const PREVIEW_API: &str = "7.1-preview.1";
 /// IDs change about never; a day keeps a renamed repository from lingering.
 const CACHE_TTL: Duration = Duration::from_secs(24 * 3600);
-const SIGN_IN_HINT: &str = "set pat_env or pat_cmd under [ado] (or AZURE_DEVOPS_EXT_PAT) to a personal access token, or run `az login`; `agent-cli doctor ado` checks the setup";
 
 /// One organization and its projects, and the credential for them.
 #[derive(Clone)]
@@ -50,30 +48,12 @@ pub(crate) struct Ado {
     /// A personal access token from `pat_env`, `pat_cmd` or
     /// `AZURE_DEVOPS_EXT_PAT`; `None` borrows `az`'s login.
     pub(crate) pat: Option<Credential>,
-    /// The PAT as `Basic …`, read on the first request only.
-    pub(crate) basic: OnceLock<Secret>,
+    /// The PAT as `Basic …`, read on the first request and again only when
+    /// a refused `pat_kv` changed in Key Vault; shared by every copy.
+    pub(crate) basic: Arc<Mutex<Option<Secret>>>,
 }
 
 impl Ado {
-    /// The `Authorization` value: the PAT as `Basic`, or an `az` token as
-    /// `Bearer`, minted afresh when `fresh` says the last one was refused.
-    pub(crate) fn authorization(&self, ctx: &Ctx, fresh: bool) -> Result<Secret> {
-        if let Some(pat) = &self.pat {
-            if let Some(basic) = self.basic.get() {
-                return Ok(basic.clone());
-            }
-            let made = basic(pat.resolve(ctx)?.expose().trim());
-            return Ok(self.basic.get_or_init(|| made).clone());
-        }
-        let token = ctx.az_token(RESOURCE, fresh)?;
-        Ok(Secret::new(format!("Bearer {}", token.expose())))
-    }
-
-    /// Where the PAT comes from, for doctor; `None` for an `az` token.
-    pub(crate) fn pat_source(&self) -> Option<String> {
-        self.pat.as_ref().map(Credential::source)
-    }
-
     /// A read.
     pub(crate) fn get(&self, ctx: &Ctx, url: &str) -> Result<Value> {
         self.send(ctx, Method::Get, url, Body::None, None)?.json()
@@ -118,7 +98,28 @@ impl Ado {
 
     /// The one door: the headers Azure DevOps wants, the credential only for
     /// its own hosts, and its ways of saying "sign in again" read as exit 3.
+    /// Core retries a 401 with a fresh credential; a sign-in page or redirect
+    /// refusing a PAT gets the same one retry here, when a `pat_kv` changed.
     pub(crate) fn send(
+        &self,
+        ctx: &Ctx,
+        method: Method,
+        url: &str,
+        body: Body,
+        effect: Option<Effect>,
+    ) -> Result<Response> {
+        let spare = self.pat.is_some().then(|| body.clone());
+        let error = match self.send_once(ctx, method, url, body, effect) {
+            Err(error) if refused_sign_in(&error) => error,
+            answer => return answer,
+        };
+        match spare {
+            Some(body) if self.renew(ctx)? => self.send_once(ctx, method, url, body, effect),
+            _ => Err(error),
+        }
+    }
+
+    fn send_once(
         &self,
         ctx: &Ctx,
         method: Method,
@@ -523,6 +524,7 @@ impl Kind {
 }
 
 /// What a request carries.
+#[derive(Clone)]
 pub(crate) enum Body {
     None,
     Json(Value),
@@ -564,71 +566,6 @@ impl RepoRef {
             project_id: text(&entry["project"]["id"]),
         })
     }
-}
-
-/// Where an Azure DevOps credential may go: the organization's hosts and the
-/// identity host, never a URL an answer handed back that points elsewhere.
-fn trusted(url: &str) -> bool {
-    host_under(url, "dev.azure.com") || host_under(url, ".visualstudio.com")
-}
-
-/// Core reads a refused credential as needs-setup; this names the two ways to
-/// fix it for Azure DevOps. An organization backed by a Microsoft account
-/// refuses with a redirect to its sign-in page instead of a 401, which is the
-/// same answer.
-fn signed_out(error: anyhow::Error) -> anyhow::Error {
-    match error.downcast::<Failure>() {
-        Ok(failure)
-            if failure.exit == Exit::Setup || failure.message.contains("which is not followed") =>
-        {
-            Failure::setup(failure.message).hint(SIGN_IN_HINT).into()
-        }
-        // What is not there (deleted, a wrong id, another project's) names
-        // the listing that shows what is.
-        Ok(failure) if failure.hint.is_none() && failure.status == Some(404) => {
-            let listing = if failure.message.contains("TF401232") {
-                Some("agent-cli ado workitem list --text WORDS --fields id,title  (its id)")
-            } else if failure.message.contains("TF401019") {
-                Some("agent-cli ado repo list --fields name  (this project's repositories)")
-            } else if failure.message.contains("requested build") {
-                Some("agent-cli ado run list --fields id,pipeline,status")
-            } else {
-                None
-            };
-            match listing {
-                Some(listing) => failure.hint(listing).into(),
-                None => failure.into(),
-            }
-        }
-        Ok(failure) => failure.into(),
-        Err(error) => error,
-    }
-}
-
-/// `Basic` credentials from a personal access token.
-pub(crate) fn basic(pat: &str) -> Secret {
-    // Made a Secret so redaction also masks the bare value.
-    let _ = Secret::new(pat);
-    Secret::new(format!("Basic {}", base64(format!(":{pat}").as_bytes())))
-}
-
-fn base64(bytes: &[u8]) -> String {
-    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut output = String::with_capacity(bytes.len().div_ceil(3) * 4);
-    for chunk in bytes.chunks(3) {
-        let mut buffer = [0_u8; 3];
-        buffer[..chunk.len()].copy_from_slice(chunk);
-        let bits = u32::from(buffer[0]) << 16 | u32::from(buffer[1]) << 8 | u32::from(buffer[2]);
-        for index in 0..4 {
-            if index <= chunk.len() {
-                let value = (bits >> (18 - 6 * index)) & 0x3f;
-                output.push(char::from(TABLE[value as usize]));
-            } else {
-                output.push('=');
-            }
-        }
-    }
-    output
 }
 
 /// A URL path segment: project and repository names carry spaces.
@@ -705,11 +642,12 @@ pub(crate) fn rate_limit_pause(response: &Response) -> Option<Duration> {
 mod tests {
     use std::path::Path;
 
+    use crate::auth::basic;
     use crate::config::Section;
     use crate::{DOMAIN, testing};
     use agent_cli_core::testing::run;
     use agent_cli_core::testing::{Answer, FakeTransport, ctx};
-    use agent_cli_core::{Config, Setup};
+    use agent_cli_core::{Config, Exit, Setup};
     use serde_json::json;
 
     use super::*;
@@ -723,7 +661,6 @@ mod tests {
     #[test]
     fn a_pat_goes_as_basic_and_segments_escape_spaces_and_plus() {
         assert_eq!(basic("abc").expose(), "Basic OmFiYw==");
-        assert_eq!(base64(b"any carnal pleas"), "YW55IGNhcm5hbCBwbGVhcw==");
         assert_eq!(segment("Web Team+1/x"), "Web%20Team%2B1%2Fx");
         assert_eq!(query_value("a b&c"), "a+b%26c");
     }
@@ -822,7 +759,8 @@ mod tests {
     #[test]
     fn a_sign_in_page_or_a_redirect_is_needs_setup_with_the_ado_hint() {
         let ado = Ado {
-            pat: Credential::from_keys("pat", Some("fixture-pat".into()), None, None).unwrap(),
+            pat: Credential::from_keys("pat", Some("fixture-pat".into()), None, None, None)
+                .unwrap(),
             ..Ado::resolve(
                 section("[ado]\norg=\"contoso\"\nproject=\"Fabrikam\"\n"),
                 || (None, None),
@@ -916,7 +854,8 @@ mod tests {
         };
         let ctx = ctx(setup);
         let ado = Ado {
-            pat: Credential::from_keys("pat", Some("fixture-pat".into()), None, None).unwrap(),
+            pat: Credential::from_keys("pat", Some("fixture-pat".into()), None, None, None)
+                .unwrap(),
             ..Ado::resolve(
                 section("[ado]\norg=\"contoso\"\nproject=\"Fabrikam\"\n"),
                 || (None, None),
@@ -978,6 +917,68 @@ mod tests {
             "{}",
             outcome.stderr
         );
+    }
+
+    /// Runs `workitem get 1` with `pat_kv` against these answers: what it
+    /// exited with, and each request's URL and `Authorization`.
+    fn with_pat_kv(answers: Vec<Answer>) -> (u8, Vec<(String, Option<String>)>) {
+        let transport = FakeTransport::answering(answers);
+        let config = format!("{}pat_kv = \"kv-contoso/ado-pat\"\n", testing::CONFIG);
+        let setup = Setup::fake(transport.clone()).with_config(&config);
+        let outcome = run(
+            &[DOMAIN],
+            &["ado", "workitem", "get", "1", "--comments", "0"],
+            setup,
+        );
+        let sent = transport.sent().into_iter();
+        (
+            outcome.code,
+            sent.map(|s| (s.url, s.authorization)).collect(),
+        )
+    }
+
+    fn vault(value: &str) -> Answer {
+        Answer::json(&json!({ "value": value }))
+    }
+
+    #[test]
+    fn a_pat_kv_refused_by_a_401_or_a_sign_in_page_or_redirect_is_read_again_and_sent_once_more() {
+        for refusal in [
+            Answer::status(401, "{}"),
+            Answer::status(203, "<html>Sign in</html>"),
+            Answer::status(302, "").with_header(
+                "Location",
+                "https://spsprodcus1.vssps.visualstudio.com/_signin",
+            ),
+        ] {
+            let item = Answer::json(&json!({"id": 1, "rev": 1}));
+            let (code, sent) = with_pat_kv(vec![vault("old-pat"), refusal, vault("new-pat"), item]);
+            assert_eq!(code, 0, "{sent:?}");
+            let vault_url = "https://kv-contoso.vault.azure.net/secrets/ado-pat?api-version=7.4";
+            assert_eq!(
+                (sent[0].0.as_str(), sent[2].0.as_str()),
+                (vault_url, vault_url)
+            );
+            assert_eq!(sent[1].1.as_deref(), Some(basic("old-pat").expose()));
+            assert_eq!(sent[3].1.as_deref(), Some(basic("new-pat").expose()));
+        }
+    }
+
+    #[test]
+    fn a_pat_kv_unchanged_in_key_vault_leaves_the_refusal_standing() {
+        let (code, sent) = with_pat_kv(vec![
+            vault("old-pat"),
+            Answer::status(203, "<html>Sign in</html>"),
+            vault("old-pat"),
+        ]);
+        assert_eq!((code, sent.len()), (3, 3), "{sent:?}");
+        let (code, sent) = with_pat_kv(vec![
+            vault("old-pat"),
+            Answer::status(401, "{}"),
+            vault("old-pat"),
+            Answer::status(401, "{}"),
+        ]);
+        assert_eq!((code, sent.len()), (3, 4), "core's one resend: {sent:?}");
     }
 
     #[test]

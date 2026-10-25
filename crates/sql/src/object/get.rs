@@ -59,7 +59,7 @@ fn object_get(ctx: &Ctx, args: ObjectGetArgs) -> Result<Object> {
         ))
     })?;
     let sql = Sql::load(ctx.config())?;
-    let spec = sql.connection(scope.or(args.conn.as_deref()))?;
+    let spec = sql.connection(ctx, scope.or(args.conn.as_deref()))?;
     let plan = json!({"conn": spec.name, "read": "object", "object": object});
     let op = OnConnection {
         spec,

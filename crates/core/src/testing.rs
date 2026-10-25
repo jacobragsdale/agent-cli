@@ -171,7 +171,23 @@ impl Setup {
             env: Some(Vec::new()),
             token: Some("token".to_owned()),
             stdin: Some(String::new()),
+            state_dir: None,
+            secrets: None,
         }
+    }
+
+    /// Keeps `denied.json` and the usage log in `dir` (a temporary one).
+    #[must_use]
+    pub fn with_state_dir(mut self, dir: &std::path::Path) -> Self {
+        self.state_dir = Some(dir.to_owned());
+        self
+    }
+
+    /// Keeps `*_kv` values in `path` (a temporary `secrets.toml`).
+    #[must_use]
+    pub fn with_secrets(mut self, path: &std::path::Path) -> Self {
+        self.secrets = Some(path.to_owned());
+        self
     }
 
     /// What was piped to the run's stdin (`Ctx::long_text` reads it for `-`).

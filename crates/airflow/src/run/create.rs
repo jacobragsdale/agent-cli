@@ -318,4 +318,45 @@ mod tests {
         );
         assert_eq!(plans[0]["body"]["logical_date"], "2026-09-01T00:00:00Z");
     }
+
+    #[test]
+    fn a_read_only_instance_refuses_the_trigger_before_sending_it_and_still_reads() {
+        use crate::testing::{CONFIG, airflow_with, dag, dry_run_with};
+
+        let config = format!("{CONFIG}read_only = true\n");
+        let create = ["airflow", "run", "create", "etl_nightly"];
+        let active = || Answer::json(&dag("etl_nightly", false));
+        let (outcome, transport) = airflow_with(&config, &create, vec![active()]);
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("airflow instance prod is read-only in the config"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(transport.sent().iter().all(|sent| sent.method.is_read()));
+
+        let (plans, stderr) = dry_run_with(&config, &create, vec![active()]);
+        assert_eq!(plans[0]["method"], "POST");
+        assert!(stderr.contains("would be refused"), "{stderr}");
+
+        let (outcome, _) = airflow_with(
+            &config,
+            &["airflow", "dag", "get", "etl_nightly"],
+            vec![
+                active(),
+                Answer::json(&json!({"tasks": [], "total_entries": 0})),
+            ],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+
+        let lifted = format!("[airflow]\nread_only = true\n\n{CONFIG}read_only = false\n");
+        let mut created = run("queued");
+        created["dag_run_id"] = json!("manual__2026-09-29T12:00:00+00:00");
+        let (outcome, transport) =
+            airflow_with(&lifted, &create, vec![active(), Answer::json(&created)]);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert!(!transport.sent()[1].method.is_read());
+    }
 }

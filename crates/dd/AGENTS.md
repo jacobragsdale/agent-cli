@@ -12,9 +12,10 @@ and its help is 1 MB.
 ## Config
 `[datadog]` (or `[dd]`): `site` (`datadoghq.eu`, …; else `DD_SITE`, else
 `datadoghq.com`), `env` (the default `env:` tag). Credential, first found:
-`token`, `token_env` or `token_cmd` (a bearer), the pair `api_key*` with
-`app_key*`, `DD_ACCESS_TOKEN`, `DD_API_KEY` with `DD_APP_KEY`. It goes only
-to `api.<site>` (`host_under`).
+`token`, `token_env`, `token_cmd` or `token_kv` (a bearer), the pair
+`api_key*` with `app_key*`, `DD_ACCESS_TOKEN`, `DD_API_KEY` with
+`DD_APP_KEY`. It goes only to `api.<site>` (`host_under`). A `*_kv` refused
+(a 401, or a 403) is read again from Key Vault and sent once more (`renew`).
 
 ## Ids
 Numeric ids (`4711`) or the web URL that shows the thing (`Dd::web_id`: the
@@ -28,6 +29,7 @@ A command is `<resource>/<verb>.rs`: its args, rows, handler, `command!`
 and tests (`log_count/list.rs` is `dd log-count list`). Copy a sibling.
 - `lib.rs`: `DOMAIN`, whose `commands` registers every command (its order
   is the listing's). `doctor.rs`: status and doctor.
+- `auth.rs`: the credential (`Auth`, `resolve`, `renew`), `Call` (the op).
 - `client.rs`: `Dd::load(ctx)`, then `get(ctx, path, query)` a read,
   `search(ctx, path, body)` a POST that only reads, `change(...)` a write,
   `url`, `app` (web links). `Window` (`--since`/`--until` as ms or seconds),
@@ -47,7 +49,7 @@ and the alert trace in `crates/cli/tests/world_cross.rs`; queries
 
 ## Quirks
 - Key headers (`DD-API-KEY`, `DD-APPLICATION-KEY`) attach at send time in
-  `Call::perform`, after the host check; plans show them as `***`, and
+  `Call`, after the host check; plans show them as `***`, and
   `--dry-run` never resolves a `token_cmd`.
 - A downtime (`--for`) lasts at most 7 days, and needs `--yes`.
 - A 403 names the missing scope in Datadog's words, or is bare for a key

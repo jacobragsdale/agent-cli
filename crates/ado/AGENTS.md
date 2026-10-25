@@ -5,10 +5,9 @@ https://learn.microsoft.com/rest/api/azure/devops/
 
 ## Config
 `[ado]`: `org`, `project` and `team` (one or a list; the first project is
-the default; `PROJECT/TEAM`), `code_project`, else
-`az devops configure`. Credential: `pat`, `pat_env` or `pat_cmd`, then
-`AZURE_DEVOPS_EXT_PAT`, then `az`; only to `trusted` hosts. `Ado.project`
-steers URLs, caches:
+the default; `PROJECT/TEAM`), `code_project`, else `az devops configure`.
+Credential: `pat`, `pat_env`, `pat_cmd`, `pat_kv`, then
+`AZURE_DEVOPS_EXT_PAT`, then `az`. `Ado.project` steers URLs, caches:
 lists search all projects in one WIQL, other verbs take `--project` or
 the item's `System.TeamProject`.
 
@@ -22,7 +21,8 @@ a tag. `each` runs a verb over `ID…`.
 ## Where things are (`src/`)
 A command is `<resource>/<verb>.rs`; `<resource>/mod.rs` is shared.
 - `lib.rs`: `DOMAIN` (listing order). `doctor.rs`. `config.rs`:
-  `Ado::load`, `load_in`, `in_project`.
+  `Ado::load`, `load_in`, `in_project`. `auth.rs`: `authorization` (to
+  `trusted` hosts; `renew` rereads a refused `pat_kv`).
 - `client.rs`: `get`, `query` (a POST that reads), `change`,
   `patch_work_item`; URLs `api`, `work`, `code`, `team`; cached `me`,
   `person` (`@me`, a name, an address), `identity`; `repo`, `pipeline_id` (live);
@@ -41,20 +41,19 @@ A command is `<resource>/<verb>.rs`; `<resource>/mod.rs` is shared.
 `crates/cli/tests/world_ado.rs`.
 
 ## Quirks
-- Bad credentials can answer a 203 sign-in page (exit 3). An org backed by
-  a Microsoft account (tenant all zeros) refuses az tokens: set
-  `AZURE_DEVOPS_EXT_PAT`.
+- Bad credentials can answer a 203 sign-in page (exit 3). An MSA-backed
+  org (tenant all zeros) refuses az tokens: set `AZURE_DEVOPS_EXT_PAT`.
 - WIQL answers ids (`$top` at most 20,000), a batch the rows; `--since`
   needs `timePrecision=true`, else dates compare by day. Lists ask `limit + 1`.
 - A field's data type is only in `wit/fields`. Points are Story Points,
-  Effort or Size by process (`POINTS`). A value outside a picklist is a
+  Effort or Size by process (`POINTS`). Off a picklist: a
   RuleValidationException, no TF code.
-- `workitemsorder` needs the team; a 0 `previousId` means the top, so leave
-  it out. Backlog order is `backlogs/{id}/workItems`, not WIQL.
+- `workitemsorder` needs the team; a 0 `previousId` (the top) is left out.
+  Backlog order is `backlogs/{id}/workItems`, not WIQL.
 - `updates` pages by `$top` and `$skip`; a revision's time is its
-  ChangedDate (revisedDate: when the next replaced it).
+  ChangedDate (revisedDate: when the next came).
 - Mentions are `data-vss-mention` anchors in work item HTML, `@<id>` in PRs.
-  Attachments download from the org's URL, upload to the project.
+  Attachments download from the org, upload to the project.
 
 ## Never needed
 Other crates' sources and fixtures, `docs/plans/`, `docs/reference/`.

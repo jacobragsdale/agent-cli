@@ -56,7 +56,7 @@ pub struct Phase {
 
 fn query_bench(ctx: &Ctx, args: BenchArgs) -> Result<Bench> {
     let sql = Sql::load(ctx.config())?;
-    let spec = sql.connection(args.conn.as_deref())?;
+    let spec = sql.connection(ctx, args.conn.as_deref())?;
     let statements = statements(ctx, args.sql.as_deref(), args.sql_file.as_deref(), spec)?;
     let deadline = ctx.deadline();
     let cap = args

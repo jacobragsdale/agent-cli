@@ -1218,3 +1218,151 @@ fn oracle_a_table_against_itself_is_the_same_and_sql_server_is_refused() {
     ]);
     assert_eq!(refused.code, 2, "{refused:?}");
 }
+
+// ---------- read-only connections and a rotated password ----------
+
+/// `config.test.toml` and one more connection to the database `like` names,
+/// with `extra` in place of its password.
+fn with_connection(name: &str, like: &str, extra: &str) -> String {
+    let (kind, rest) = match like {
+        "local-oracle" => (
+            "oracle",
+            "port = 1521\nservice = \"FREEPDB1\"\nuser = \"bench\"",
+        ),
+        _ => (
+            "mssql",
+            "port = 1433\ndatabase = \"bench\"\nuser = \"sa\"\ntrust_cert = true",
+        ),
+    };
+    format!(
+        "{}\n[[sql.connection]]\nname = \"{name}\"\nkind = \"{kind}\"\nhost = \"localhost\"\n{rest}\n{extra}\n",
+        *CONFIG
+    )
+}
+
+#[test]
+fn oracle_a_read_only_connection_reads_inside_a_read_only_transaction_and_refuses_writes() {
+    if !wanted() {
+        return;
+    }
+    let config = with_connection(
+        "ro-oracle",
+        "local-oracle",
+        "password = \"bench\"\nread_only = true",
+    );
+    let on = |argv: &[&str]| {
+        run(
+            &[agent_cli_sql::DOMAIN],
+            argv,
+            Setup::fake(FakeTransport::default()).with_config(&config),
+        )
+    };
+    // A select begins no transaction; SET TRANSACTION READ ONLY does.
+    let transaction = "select nvl(dbms_transaction.local_transaction_id, 'none') t from dual";
+    let id = |conn: &str| {
+        let outcome = on(&["sql", "query", "run", "--conn", conn, transaction]);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        outcome.json()["results"][0]["rows"][0][0].clone()
+    };
+    assert_eq!(id("local-oracle"), "none");
+    assert_ne!(id("ro-oracle"), "none", "the read ran inside a transaction");
+
+    let outcome = on(&[
+        "sql",
+        "query",
+        "run",
+        "--conn",
+        "ro-oracle",
+        "insert into customers (id) values (-1)",
+        "--yes",
+    ]);
+    assert_eq!(outcome.code, 2, "{outcome:?}");
+    assert!(
+        outcome
+            .stderr
+            .contains("sql connection ro-oracle is read-only in the config"),
+        "{}",
+        outcome.stderr
+    );
+    // The catalog reads every other command makes run in it too.
+    for argv in [
+        ["sql", "object", "list", "--conn", "ro-oracle", "customers"].as_slice(),
+        &[
+            "sql",
+            "object",
+            "get",
+            "--conn",
+            "ro-oracle",
+            "bench.customers",
+        ],
+        &["sql", "schema", "list", "--conn", "ro-oracle"],
+        &[
+            "sql",
+            "schema",
+            "diff",
+            "ro-oracle:bench",
+            "local-oracle:bench",
+        ],
+    ] {
+        let outcome = on(argv);
+        assert_eq!(outcome.code, 0, "{argv:?}: {outcome:?}");
+    }
+}
+
+/// A `password_kv` whose kept value is stale and whose Key Vault secret is
+/// right: the refused login reads the vault again, signs in with the new
+/// value and keeps it. An unchanged vault value leaves the refusal standing.
+fn a_rotated_password_is_read_again_and_kept(like: &str, right: &str, select: &str) {
+    use agent_cli_core::testing::Answer;
+    let config = with_connection("rotated", like, "password_kv = \"contoso-kv/bench-db\"");
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = dir.path().join("secrets.toml");
+    let attempt = |vault: &str| {
+        std::fs::write(&secrets, "\"contoso-kv/bench-db\" = \"stale-password\"\n").unwrap();
+        let transport = FakeTransport::answering([Answer::json(&json!({"value": vault}))]);
+        let setup = Setup::fake(transport.clone())
+            .with_config(&config)
+            .with_secrets(&secrets);
+        let outcome = run(
+            &[agent_cli_sql::DOMAIN],
+            &["sql", "query", "run", "--conn", "rotated", select],
+            setup,
+        );
+        (outcome, transport.sent().len())
+    };
+
+    let (outcome, sent) = attempt("stale-password");
+    assert_eq!(outcome.code, 3, "{outcome:?}");
+    assert!(
+        outcome.stderr.contains("ORA-01017") || outcome.stderr.contains("(error 18456)"),
+        "{}",
+        outcome.stderr
+    );
+    assert_eq!(sent, 1, "the vault was read again once");
+
+    let (outcome, sent) = attempt(right);
+    assert_eq!(outcome.code, 0, "{outcome:?}");
+    assert_eq!(outcome.json()["results"][0]["rows"][0][0], 1);
+    assert_eq!(sent, 1);
+    let kept = std::fs::read_to_string(&secrets).unwrap();
+    assert!(
+        kept.contains(right) && !kept.contains("stale-password"),
+        "{kept}"
+    );
+}
+
+#[test]
+fn oracle_a_refused_login_with_a_rotated_password_signs_in_again() {
+    if !wanted() {
+        return;
+    }
+    a_rotated_password_is_read_again_and_kept("local-oracle", "bench", "select 1 from dual");
+}
+
+#[test]
+fn mssql_a_refused_login_with_a_rotated_password_signs_in_again() {
+    if !wanted() {
+        return;
+    }
+    a_rotated_password_is_read_again_and_kept("local-mssql", "Bench_Pass1!", "select 1");
+}

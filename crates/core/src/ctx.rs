@@ -9,7 +9,8 @@
 use std::collections::HashMap;
 use std::io::{IsTerminal as _, Read};
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
 use anyhow::{Result, bail};
@@ -19,7 +20,7 @@ use serde_json::Value;
 use crate::cache::Cache;
 use crate::config::Config;
 use crate::error::Failure;
-use crate::http::{Https, Transport, left_before};
+use crate::http::{Https, Response, Transport, left_before};
 use crate::registry::Effect;
 use crate::secret::{Secret, redact_value};
 
@@ -58,18 +59,29 @@ pub struct Setup {
     /// What [`Ctx::long_text`] reads for `-`: `None` is the process's stdin;
     /// tests pass what was piped in, and empty is nothing.
     pub stdin: Option<String>,
+    /// Where `doctor` keeps `denied.json` and every run appends to
+    /// `usage.jsonl`; `None` (tests, fixtures) keeps neither.
+    pub state_dir: Option<PathBuf>,
+    /// `secrets.toml`, where `*_kv` values are kept between runs; `None`
+    /// keeps them for this run only.
+    pub secrets: Option<PathBuf>,
 }
 
 impl Setup {
     #[must_use]
     pub fn from_env() -> Self {
+        let config = Config::load();
+        let secrets = config.path().parent().map(|dir| dir.join("secrets.toml"));
         let setup = Self {
-            config: Config::load(),
+            config,
             transport: Box::new(Https::default()),
             cache_dir: crate::cache::default_dir(),
             env: None,
             token: None,
             stdin: None,
+            state_dir: crate::config::xdg_dir("XDG_STATE_HOME", ".local/state")
+                .map(|dir| dir.join("agent-cli")),
+            secrets,
         };
         #[cfg(feature = "fixtures")]
         let setup = crate::replay::from_env(setup);
@@ -109,6 +121,42 @@ impl std::fmt::Display for DryRun {
 
 impl std::error::Error for DryRun {}
 
+/// What a run cost, for the usage log: counted at the doors, so no handler
+/// can forget to.
+#[derive(Debug, Default)]
+pub(crate) struct Meter {
+    pub(crate) requests: AtomicU64,
+    pub(crate) bytes: AtomicU64,
+    pub(crate) processes: AtomicU64,
+}
+
+impl Meter {
+    pub(crate) fn count(counter: &AtomicU64, by: u64) {
+        counter.fetch_add(by, Ordering::Relaxed);
+    }
+
+    /// Counts one request and the bytes of its answer, whatever came of it.
+    pub(crate) fn sent(&self, sent: Result<Response>) -> Result<Response> {
+        Self::count(&self.requests, 1);
+        if let Ok(response) = &sent {
+            let size = response
+                .bytes
+                .as_ref()
+                .map_or(response.body.len(), Vec::len);
+            Self::count(&self.bytes, size as u64);
+        }
+        sent
+    }
+}
+
+/// The scope a command entered (`sql connection prod`), for `read_only`.
+#[derive(Clone, Debug)]
+struct Scope {
+    noun: String,
+    name: String,
+    read_only: Option<bool>,
+}
+
 pub struct Ctx {
     globals: Globals,
     deadline: Instant,
@@ -125,6 +173,14 @@ pub struct Ctx {
     /// The handler wrote `--output` itself ([`Ctx::save`]).
     saved: Mutex<bool>,
     pub(crate) tokens: Mutex<HashMap<String, Secret>>,
+    /// The command running, so `write` knows whose `read_only` applies.
+    pub(crate) command: Option<[&'static str; 3]>,
+    scope: Mutex<Option<Scope>>,
+    pub(crate) meter: Arc<Meter>,
+    pub(crate) state_dir: Option<PathBuf>,
+    pub(crate) secrets: Option<PathBuf>,
+    /// `*_kv` values read this run, by `VAULT/SECRET`.
+    pub(crate) kept: Mutex<HashMap<String, Secret>>,
 }
 
 impl Ctx {
@@ -146,6 +202,12 @@ impl Ctx {
             notes: Mutex::new(Vec::new()),
             saved: Mutex::new(false),
             tokens: Mutex::new(HashMap::new()),
+            command: None,
+            scope: Mutex::new(None),
+            meter: Arc::default(),
+            state_dir: setup.state_dir,
+            secrets: setup.secrets,
+            kept: Mutex::new(HashMap::new()),
         }
     }
 
@@ -320,10 +382,31 @@ impl Ctx {
     /// gets: recorded and stopped under `--dry-run` (reads before it have
     /// run), and refused without `--yes` when `effect` is
     /// [`Effect::Destructive`].
+    ///
+    /// A change in a scope the config marks `read_only` is refused with exit
+    /// 2 before anything is sent; under `--dry-run` the plan is still printed,
+    /// with a note that it would be refused. A [`Effect::Reveal`] is a read.
     pub fn write<O: Op>(&self, effect: Effect, op: O) -> Result<O::Output> {
+        let refused = match effect {
+            Effect::Reveal => None,
+            _ => self.refusal()?,
+        };
         if self.globals.dry_run {
             locked(&self.plans).push(redact_value(op.plan()));
+            if let Some(why) = refused {
+                let note =
+                    format!("[this change would be refused: {why}; agent-cli config shows where]");
+                let mut notes = locked(&self.notes);
+                if !notes.contains(&note) {
+                    notes.push(note);
+                }
+            }
             return Err(DryRun.into());
+        }
+        if let Some(why) = refused {
+            return Err(Failure::usage(why)
+                .hint("agent-cli config  (shows where read_only is set; a person lifts it with read_only = false on the entry in their own config.toml)")
+                .into());
         }
         if effect == Effect::Destructive && !self.globals.yes {
             return Err(
@@ -336,6 +419,54 @@ impl Ctx {
             );
         }
         op.perform(self)
+    }
+
+    /// Says which scope this command acts in (`"sql connection"`, `"prod"`)
+    /// and that entry's own `read_only`, which overrides its section's. The
+    /// domain calls it where it picks the scope, before any change.
+    pub fn enter_scope(&self, noun: &str, name: &str, read_only: Option<bool>) {
+        *locked(&self.scope) = Some(Scope {
+            noun: noun.to_owned(),
+            name: name.to_owned(),
+            read_only,
+        });
+    }
+
+    /// True when the config makes changes here refused: the entered scope's
+    /// `read_only`, else its domain's section's. For a session that can be
+    /// read-only itself (Oracle's `SET TRANSACTION READ ONLY`).
+    pub fn read_only(&self) -> Result<bool> {
+        Ok(self.refusal()?.is_some())
+    }
+
+    /// Why a change would be refused, naming the scope; `None` when allowed.
+    fn refusal(&self) -> Result<Option<String>> {
+        let Some([domain, ..]) = self.command else {
+            return Ok(None);
+        };
+        let section = crate::config::EXAMPLE_ALIASES
+            .iter()
+            .find(|(alias, _)| *alias == domain)
+            .map_or(domain, |(_, section)| *section);
+        let scope = locked(&self.scope).clone();
+        let own = scope.as_ref().and_then(|scope| scope.read_only);
+        let mut inherited = self.config.read_only(section)?;
+        if inherited.is_none() && section != domain {
+            inherited = self.config.read_only(domain)?;
+        }
+        if !own.or(inherited).unwrap_or(false) {
+            return Ok(None);
+        }
+        Ok(Some(match (scope, own) {
+            (Some(scope), Some(_)) => {
+                format!("{} {} is read-only in the config", scope.noun, scope.name)
+            }
+            (Some(scope), None) => format!(
+                "{} {} is read-only in the config ([{section}] read_only)",
+                scope.noun, scope.name
+            ),
+            (None, _) => format!("{domain} is read-only in the config ([{section}] read_only)"),
+        }))
     }
 
     pub(crate) fn transport(&self) -> &dyn Transport {

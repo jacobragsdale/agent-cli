@@ -9,18 +9,19 @@
 //! `DD-API-KEY` and `DD-APPLICATION-KEY` pair), and one host a credential may
 //! go to, `api.<site>`.
 
-use std::sync::{Mutex, PoisonError};
+use std::sync::Mutex;
 
 use agent_cli_core::{
-    Config, Credential, Ctx, Effect, Exit, Failure, Method, Op, Request, Response, Secret, Span,
-    When, form_encode, host_under, status_of, utc_time,
+    Config, Credential, Ctx, Effect, Failure, Method, Response, Span, When, form_encode, utc_time,
 };
-use anyhow::{Result, bail};
+use anyhow::Result;
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::Value;
 use time::OffsetDateTime;
 
-const NO_CREDENTIAL_HINT: &str = "export DD_ACCESS_TOKEN (a personal access token), or set token_cmd = \"pup auth token\" under [datadog] to reuse a pup login; `agent-cli doctor dd` checks the setup";
+use crate::auth::{Auth, Call, Resolved, forbidden};
+
+pub(crate) const NO_CREDENTIAL_HINT: &str = "export DD_ACCESS_TOKEN (a personal access token), or set token_cmd = \"pup auth token\" under [datadog] to reuse a pup login; `agent-cli doctor dd` checks the setup";
 
 /// One Datadog site: where its API and its web app live.
 #[derive(Debug)]
@@ -90,12 +91,15 @@ pub(crate) struct Section {
     token: Option<String>,
     token_env: Option<String>,
     token_cmd: Option<String>,
+    token_kv: Option<String>,
     api_key: Option<String>,
     api_key_env: Option<String>,
     api_key_cmd: Option<String>,
+    api_key_kv: Option<String>,
     app_key: Option<String>,
     app_key_env: Option<String>,
     app_key_cmd: Option<String>,
+    app_key_kv: Option<String>,
 }
 
 impl Section {
@@ -137,26 +141,15 @@ pub(crate) fn site(raw: Option<&str>) -> Result<&'static Site> {
     })
 }
 
-enum Auth {
-    Token(Credential),
-    Keys(Credential, Credential),
-}
-
-#[derive(Clone)]
-enum Resolved {
-    Bearer(Secret),
-    Keys(Secret, Secret),
-}
-
 /// One Datadog site, and the credential for it.
 pub(crate) struct Dd {
     pub(crate) site: &'static Site,
     /// `--env` when a command is not given one: `[datadog] env`.
     pub(crate) env: Option<String>,
-    auth: Option<Auth>,
+    pub(crate) auth: Option<Auth>,
     /// Resolved on the first request, so `--dry-run` and `--yes` refusals
     /// never run a `token_cmd`.
-    resolved: Mutex<Option<Resolved>>,
+    pub(crate) resolved: Mutex<Option<Resolved>>,
 }
 
 impl Dd {
@@ -174,14 +167,20 @@ impl Dd {
                 .as_deref(),
         )?;
         let setup = |message: String| Failure::setup(message).hint(NO_CREDENTIAL_HINT);
-        let token =
-            Credential::from_keys("token", section.token, section.token_env, section.token_cmd)
-                .map_err(setup)?;
+        let token = Credential::from_keys(
+            "token",
+            section.token,
+            section.token_env,
+            section.token_cmd,
+            section.token_kv,
+        )
+        .map_err(setup)?;
         let api = Credential::from_keys(
             "api_key",
             section.api_key,
             section.api_key_env,
             section.api_key_cmd,
+            section.api_key_kv,
         )
         .map_err(setup)?;
         let app = Credential::from_keys(
@@ -189,10 +188,11 @@ impl Dd {
             section.app_key,
             section.app_key_env,
             section.app_key_cmd,
+            section.app_key_kv,
         )
         .map_err(setup)?;
         let from_env = |key: &str, variable: &str| {
-            Credential::from_keys(key, None, Some(variable.to_owned()), None)
+            Credential::from_keys(key, None, Some(variable.to_owned()), None, None)
                 .ok()
                 .flatten()
         };
@@ -225,37 +225,6 @@ impl Dd {
             auth,
             resolved: Mutex::new(None),
         })
-    }
-
-    /// Where the credential comes from, never what it is: for doctor.
-    pub(crate) fn source(&self) -> Option<String> {
-        match &self.auth {
-            None => None,
-            Some(Auth::Token(token)) => Some(token.source()),
-            Some(Auth::Keys(api, app)) => Some(format!("{} and {}", api.source(), app.source())),
-        }
-    }
-
-    pub(crate) fn uses_keys(&self) -> bool {
-        matches!(self.auth, Some(Auth::Keys(..)))
-    }
-
-    fn resolve(&self, ctx: &Ctx, fresh: bool) -> Result<Resolved> {
-        let mut held = self.resolved.lock().unwrap_or_else(PoisonError::into_inner);
-        if !fresh && let Some(resolved) = held.as_ref() {
-            return Ok(resolved.clone());
-        }
-        let resolved = match &self.auth {
-            None => {
-                return Err(Failure::setup("no Datadog credential is set up")
-                    .hint(NO_CREDENTIAL_HINT)
-                    .into());
-            }
-            Some(Auth::Token(token)) => Resolved::Bearer(token.resolve(ctx)?),
-            Some(Auth::Keys(api, app)) => Resolved::Keys(api.resolve(ctx)?, app.resolve(ctx)?),
-        };
-        *held = Some(resolved.clone());
-        Ok(resolved)
     }
 
     /// `https://api.<site><path>?<query>`: the only host a credential goes to.
@@ -377,87 +346,6 @@ impl Dd {
             });
         found.ok_or_else(|| wrong(format!("{raw} is not a {noun} URL")))
     }
-}
-
-/// One request with the Datadog credential, attached when it is performed:
-/// after core's `--dry-run` and `--yes` checks, and only to `api.<site>`.
-struct Call<'a> {
-    dd: &'a Dd,
-    method: Method,
-    url: String,
-    body: Option<Value>,
-}
-
-impl Call<'_> {
-    fn request<'r>(&self) -> Request<'r> {
-        let request =
-            Request::new(self.method, self.url.clone()).header("Accept", "application/json");
-        match &self.body {
-            Some(body) => request.json(body.clone()),
-            None => request,
-        }
-    }
-}
-
-impl Op for Call<'_> {
-    type Output = Response;
-
-    /// The request, with each credential header it would carry shown as `***`.
-    fn plan(&self) -> Value {
-        let mut plan = self.request().plan();
-        let headers: &[&str] = match &self.dd.auth {
-            None => &[],
-            Some(Auth::Token(_)) => &["Authorization"],
-            Some(Auth::Keys(..)) => &["DD-API-KEY", "DD-APPLICATION-KEY"],
-        };
-        for name in headers {
-            plan["headers"][*name] = json!("***");
-        }
-        plan
-    }
-
-    fn writes(&self) -> bool {
-        !self.method.is_read()
-    }
-
-    fn perform(self, ctx: &Ctx) -> Result<Response> {
-        let api = format!("api.{}", self.dd.site.name);
-        if !host_under(&self.url, &api) {
-            bail!(
-                "refusing to send the Datadog credential to {}; it goes only to {api}",
-                self.url
-            );
-        }
-        let request = self.request();
-        match self.dd.resolve(ctx, false)? {
-            Resolved::Bearer(_) => {
-                let mint = |fresh: bool| match self.dd.resolve(ctx, fresh)? {
-                    Resolved::Bearer(token) => {
-                        Ok(Secret::new(format!("Bearer {}", token.expose())))
-                    }
-                    Resolved::Keys(..) => bail!("the Datadog credential changed kind"),
-                };
-                request.auth(&mint).perform(ctx)
-            }
-            Resolved::Keys(api_key, app_key) => request
-                .header("DD-API-KEY", api_key.expose())
-                .header("DD-APPLICATION-KEY", app_key.expose())
-                .perform(ctx),
-        }
-    }
-}
-
-/// A `403` names a missing scope in Datadog's words, or is bare for a key
-/// Datadog does not know: the hint names both, and doctor tells which.
-fn forbidden(error: anyhow::Error) -> anyhow::Error {
-    if status_of(&error) != Some(403) {
-        return error;
-    }
-    let mut failure = Failure::new(Exit::Failed, format!("{error:#}")).hint(
-        "the credential lacks a scope this call needs (a read-only token cannot mute), or Datadog does not know the key; `agent-cli doctor dd` checks which",
-    );
-    failure.status = Some(403);
-    failure.into()
 }
 
 // ---------- the time window ----------
@@ -915,6 +803,60 @@ mod tests {
             Some("Bearer pup-oauth-token-1a2b3c")
         );
         assert!(!outcome.stdout.contains("pup-oauth") && !outcome.stderr.contains("pup-oauth"));
+    }
+
+    fn vault(value: &str) -> Answer {
+        Answer::json(&json!({ "value": value }))
+    }
+
+    fn incidents() -> Answer {
+        Answer::json(&json!({"data": {"attributes": {"incidents": []}}}))
+    }
+
+    fn header(sent: &agent_cli_core::testing::Sent, name: &str) -> Option<String> {
+        let mut headers = sent.headers.iter();
+        headers
+            .find(|(key, _)| key == name)
+            .map(|(_, value)| value.clone())
+    }
+
+    #[test]
+    fn a_kv_credential_refused_with_a_403_or_a_keys_401_is_read_again_and_sent_once_more() {
+        let argv = ["dd", "incident", "list", "--fields", "id"];
+        let config = "[datadog]\ntoken_kv = \"kv-contoso/dd-token\"\n";
+        let refused = Answer::status(403, r#"{"errors":["Forbidden"]}"#);
+        let answers = vec![vault("old-token"), refused, vault("new-token"), incidents()];
+        let (outcome, transport) = dd_with(config, &argv, answers);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let sent = transport.sent();
+        assert_eq!(sent[1].authorization.as_deref(), Some("Bearer old-token"));
+        assert_eq!(sent[3].authorization.as_deref(), Some("Bearer new-token"));
+
+        let config = "[datadog]\napi_key_kv = \"kv-contoso/dd-api\"\napp_key = \"app-1\"\n";
+        let refused = Answer::status(401, r#"{"errors":["Unauthorized"]}"#);
+        let answers = vec![vault("old-api"), refused, vault("new-api"), incidents()];
+        let (outcome, transport) = dd_with(config, &argv, answers);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        let sent = transport.sent();
+        assert_eq!(header(&sent[1], "DD-API-KEY").as_deref(), Some("old-api"));
+        assert_eq!(header(&sent[3], "DD-API-KEY").as_deref(), Some("new-api"));
+        assert_eq!(
+            header(&sent[3], "DD-APPLICATION-KEY").as_deref(),
+            Some("app-1")
+        );
+    }
+
+    #[test]
+    fn a_kv_credential_unchanged_in_key_vault_leaves_the_403_standing() {
+        let config = "[datadog]\ntoken_kv = \"kv-contoso/dd-token\"\n";
+        let refused = Answer::status(403, r#"{"errors":["Forbidden"]}"#);
+        let (outcome, transport) = dd_with(
+            config,
+            &["dd", "incident", "list", "--fields", "id"],
+            vec![vault("old-token"), refused, vault("old-token")],
+        );
+        assert_eq!(outcome.code, 1, "{outcome:?}");
+        assert_eq!(transport.sent().len(), 3);
     }
 
     /// Records the headers the fake transport does not.

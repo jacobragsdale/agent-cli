@@ -28,7 +28,7 @@ pub struct ObjectListArgs {
 
 fn object_list(ctx: &Ctx, args: ObjectListArgs) -> Result<Vec<ObjectRow>> {
     let sql = Sql::load(ctx.config())?;
-    let spec = sql.connection(args.conn.as_deref())?;
+    let spec = sql.connection(ctx, args.conn.as_deref())?;
     let query = objects_sql(
         spec.kind,
         &Filter {

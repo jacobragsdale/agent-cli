@@ -54,6 +54,20 @@ database = "reporting"
 user = "agent"
 password_cmd = "echo stand-in"
 
+# No redis or Control-M recordings either: both are here so every domain is
+# set up, as on a team's machines, and search and the overview show them
+# (a domain not set up is left out of both).
+[[redis.instance]]
+name = "sessions"
+host = "redis-sessions.contoso.example"
+password_cmd = "echo stand-in"
+
+[[controlm.instance]]
+name = "prod"
+base_url = "https://ctm.contoso.example:8443/automation-api"
+username = "agent"
+password_cmd = "echo stand-in"
+
 [datadog]
 site = "datadoghq.eu"
 env = "prod"

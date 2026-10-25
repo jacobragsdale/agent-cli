@@ -1,9 +1,11 @@
 //! The ids every command takes: a DAG, a run, a task instance, as their
 //! pieces and their API paths.
 
+use agent_cli_core::{Failure, same_origin};
+use anyhow::Result;
 use serde_json::Value;
 
-use super::segment;
+use super::{Airflow, Instance, segment};
 
 /// What a command's positional names.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -201,9 +203,116 @@ pub(crate) fn ti_id(ti: &Value, with_try: bool) -> String {
     id
 }
 
+impl Airflow {
+    /// An Airflow UI URL under a configured `base_url` as the instance and
+    /// the id it names, read and never fetched.
+    pub(super) fn parse_url(&self, raw: &str, want: Want) -> Result<(&Instance, Ref)> {
+        let url = raw.split('#').next().unwrap_or_default();
+        let (url, query) = url.split_once('?').unwrap_or((url, ""));
+        let Some(instance) = self
+            .instances
+            .iter()
+            .find(|instance| same_origin(&instance.base_url, url))
+        else {
+            let configured: Vec<String> = self
+                .instances
+                .iter()
+                .map(|instance| format!("{} ({})", instance.name, instance.base_url))
+                .collect();
+            return Err(Failure::usage(format!(
+                "{raw} is not under a configured base_url; configured: {}",
+                if configured.is_empty() {
+                    "none".to_owned()
+                } else {
+                    configured.join(", ")
+                }
+            ))
+            .hint("pass the id instead, or add the server as an [[airflow.instance]]")
+            .into());
+        };
+        let rest = &url[instance.base_url.len() + 1..];
+        let parts: Vec<String> = rest
+            .split('/')
+            .filter(|part| !part.is_empty())
+            .map(decode)
+            .collect();
+        let after = |marker: &str| {
+            parts
+                .iter()
+                .position(|part| part == marker)
+                .and_then(|at| parts.get(at + 1))
+                .cloned()
+        };
+        let mut id = Ref {
+            dag: after("dags").unwrap_or_default(),
+            run: after("runs").unwrap_or_default(),
+            task: after("tasks").unwrap_or_default(),
+            map: after("mapped").and_then(|map| map.parse().ok()),
+            attempt: query
+                .split('&')
+                .find_map(|pair| pair.strip_prefix("try_number="))
+                .and_then(|attempt| attempt.parse().ok()),
+        };
+        // A deeper URL than the command needs names its DAG or run too.
+        if want != Want::Task {
+            id.task.clear();
+        }
+        if want == Want::Dag {
+            id.run.clear();
+        }
+        let missing = match want {
+            Want::Dag => id.dag.is_empty(),
+            Want::Run => id.dag.is_empty() || id.run.is_empty(),
+            Want::Task => id.dag.is_empty() || id.run.is_empty() || id.task.is_empty(),
+        };
+        if missing {
+            return Err(Failure::usage(format!(
+                "{raw} does not name a {}; it needs {}",
+                want.noun(),
+                want.url_shape()
+            ))
+            .into());
+        }
+        Ok((instance, id))
+    }
+}
+
+/// A URL path segment with every `%XX` decoded.
+fn decode(raw: &str) -> String {
+    let bytes = raw.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut at = 0;
+    while at < bytes.len() {
+        let hex = bytes
+            .get(at + 1..at + 3)
+            .and_then(|pair| std::str::from_utf8(pair).ok())
+            .and_then(|pair| u8::from_str_radix(pair, 16).ok());
+        match (bytes[at], hex) {
+            (b'%', Some(byte)) => {
+                out.push(byte);
+                at += 3;
+            }
+            (byte, _) => {
+                out.push(byte);
+                at += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_ui_url_decodes_to_the_same_pieces() {
+        assert_eq!(
+            decode("scheduled__2026-09-28T00%3A00%3A00%2B00%3A00"),
+            "scheduled__2026-09-28T00:00:00+00:00"
+        );
+        assert_eq!(decode("100%"), "100%");
+    }
 
     #[test]
     fn ids_take_the_dag_off_the_front_and_the_task_off_the_back() {

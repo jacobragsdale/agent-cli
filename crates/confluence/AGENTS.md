@@ -8,9 +8,10 @@ Cloud is exit 3. https://developer.atlassian.com/server/confluence/rest/v923/
 
 ## Config
 `[confluence]`: `url` (what the browser shows, context path included;
-`check_base_url`), `token`, `token_env` or `token_cmd` (a personal access
-token, Bearer, only under the base: `same_origin`). Doctor needs
-`user/current` to be `known`.
+`check_base_url`), `token`, `token_env`, `token_cmd` or `token_kv` (a
+personal access token, Bearer, only under the base: `same_origin`; a
+`token_kv` refused with a 401 is read again from Key Vault in
+`authorization`). Doctor needs `user/current` to be `known`.
 
 ## Ids
 Page `1101`, `1101@3`, `KEY:Title` (`~user:Title`), or a web URL

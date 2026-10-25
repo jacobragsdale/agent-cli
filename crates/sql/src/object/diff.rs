@@ -41,7 +41,7 @@ fn object_diff(ctx: &Ctx, args: ObjectDiffArgs) -> Result<Diff> {
     let sql = Sql::load(ctx.config())?;
     let named = |raw: &str| -> Result<(&Connection, String, String)> {
         let (scope, rest) = scoped(raw);
-        let spec = sql.connection(scope.or(args.conn.as_deref()))?;
+        let spec = sql.connection(ctx, scope.or(args.conn.as_deref()))?;
         let (schema, name) = object_name(rest).ok_or_else(|| {
             Failure::usage(format!("expected [CONN:]SCHEMA.NAME, got {raw:?}")).hint(format!(
                 "agent-cli sql object list --conn {} --fields id,kind",

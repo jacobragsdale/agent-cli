@@ -16,6 +16,10 @@
 //! it runs: the same as autocommit for DML and DDL, and it lets a `select …
 //! for update` read past its first fetch (an autocommit execute would end
 //! the cursor, ORA-01002) before its commit lets the locks go.
+//!
+//! On a connection the config makes read-only, every statement runs inside
+//! `SET TRANSACTION READ ONLY`, begun at open and again after any commit: a
+//! write the classifier missed is then ORA-01456 from the server itself.
 
 mod cell;
 
@@ -55,6 +59,7 @@ pub struct Session {
     driver: Arc<Driver>,
     /// Held while a call runs, so a break can tell when it has landed.
     busy: Arc<Mutex<()>>,
+    read_only: bool,
     _stop: OnStop,
 }
 
@@ -64,6 +69,7 @@ impl Session {
         password: &Secret,
         client_dir: Option<&Path>,
         deadline: Instant,
+        read_only: bool,
     ) -> Result<Self> {
         init(client_dir)?;
         let seconds = deadline
@@ -112,19 +118,28 @@ impl Session {
             // Logs off when the break landed; otherwise the exit drops it.
             let _ = breaker.close();
         });
-        Ok(Self {
+        let session = Self {
             driver,
             busy,
+            read_only,
             _stop: stop,
-        })
+        };
+        if read_only {
+            let driver = Arc::clone(&session.driver);
+            db::bounded(deadline, move || {
+                budget(&driver, deadline)?;
+                read_only_transaction(&driver)
+            })??;
+        }
+        Ok(session)
     }
 
     pub fn run(&mut self, sql: &str, fetch: Fetch, deadline: Instant) -> Result<Ran> {
         let (driver, busy) = (Arc::clone(&self.driver), Arc::clone(&self.busy));
-        let owned = sql.to_owned();
+        let (owned, read_only) = (sql.to_owned(), self.read_only);
         let ran = db::bounded(deadline + RESET_WAIT, move || {
             let _busy = busy.lock().unwrap_or_else(PoisonError::into_inner);
-            execute(&driver, &owned, fetch, deadline)
+            execute(&driver, &owned, fetch, deadline, read_only)
         });
         match ran {
             // The server did not answer the call timeout's break; one more,
@@ -214,8 +229,23 @@ fn load(dir: Option<&Path>) -> Result<(), String> {
     Ok(())
 }
 
+/// Begins the transaction a read-only connection's statements run in. It
+/// lasts until a commit, and a read never commits.
+fn read_only_transaction(driver: &Driver) -> Result<()> {
+    driver
+        .execute("set transaction read only", &[])
+        .map(drop)
+        .map_err(|why| anyhow!("cannot begin a read-only transaction: {}", complaint(&why)))
+}
+
 /// Runs one statement: a query with its rows, or a statement with its count.
-fn execute(driver: &Driver, sql: &str, fetch: Fetch, deadline: Instant) -> Result<Ran> {
+fn execute(
+    driver: &Driver,
+    sql: &str,
+    fetch: Fetch,
+    deadline: Instant,
+    read_only: bool,
+) -> Result<Ran> {
     let fail = |why: oracle::Error| failure(&why, sql);
     let mut ran = Ran::default();
     budget(driver, deadline)?;
@@ -286,6 +316,10 @@ fn execute(driver: &Driver, sql: &str, fetch: Fetch, deadline: Instant) -> Resul
     if split::writes(sql, Kind::Oracle) {
         budget(driver, deadline)?;
         driver.commit().map_err(fail)?;
+        // A catalog read the classifier counts as a write still commits.
+        if read_only {
+            read_only_transaction(driver)?;
+        }
     }
     Ok(ran)
 }

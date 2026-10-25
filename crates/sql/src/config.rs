@@ -12,7 +12,9 @@
 //! port = 1433            # left out: 1433 for mssql, 1521 for oracle
 //! database = "contoso"   # mssql only
 //! user = "app"
-//! password_env = "VAR"   # or password = "...", or password_cmd = "pass show x"
+//! password_env = "VAR"   # or password = "...", password_cmd = "pass show x",
+//!                        # or password_kv = "VAULT/SECRET" (Key Vault)
+//! read_only = true       # refuse every change here; overrides [sql] read_only
 //! trust_cert = true      # mssql only, default false
 //! encrypt = true         # mssql only, default true
 //!
@@ -72,8 +74,12 @@ pub struct Connection {
     pub service: Option<String>,
     /// Empty for `auth = "az"`.
     pub user: String,
-    /// `password`, `password_env` or `password_cmd`: core's [`Credential`].
+    /// `password`, `password_env`, `password_cmd` or `password_kv`: core's
+    /// [`Credential`].
     pub password: Option<Credential>,
+    /// The entry's own `read_only`; `None` leaves it to `[sql] read_only`,
+    /// which core reads.
+    pub read_only: Option<bool>,
     /// `auth = "az"`: sign in with the az login's Entra ID token.
     pub az: bool,
     pub trust_cert: bool,
@@ -116,6 +122,9 @@ struct Raw {
     password: Option<String>,
     password_env: Option<String>,
     password_cmd: Option<String>,
+    password_kv: Option<String>,
+    /// Refuses every change on this connection; overrides `[sql] read_only`.
+    read_only: Option<bool>,
     trust_cert: Option<bool>,
     encrypt: Option<bool>,
 }
@@ -153,8 +162,10 @@ impl Sql {
 
     /// The connection `--conn` names, or the only one when it names none
     /// (core's rule for every scope flag): exit 2 listing the ones there are,
-    /// or exit 3 when there are none at all.
-    pub fn connection(&self, name: Option<&str>) -> Result<&Connection> {
+    /// or exit 3 when there are none at all. Every command picks its
+    /// connection here, so this is where it enters the connection's scope:
+    /// from then on `ctx.write` refuses a change on a read-only one.
+    pub fn connection(&self, ctx: &Ctx, name: Option<&str>) -> Result<&Connection> {
         if self.connections.is_empty() {
             return Err(Failure::setup(format!(
                 "no [[sql.connection]] in {}",
@@ -163,10 +174,12 @@ impl Sql {
             .hint("agent-cli config example sql  (prints one to paste)")
             .into());
         }
-        pick("connection", "--conn", name, &self.connections, |spec| {
+        let spec = pick("connection", "--conn", name, &self.connections, |spec| {
             &spec.name
         })
-        .map_err(|failure| failure.hint("agent-cli sql connection list").into())
+        .map_err(|failure| failure.hint("agent-cli sql connection list"))?;
+        spec.enter(ctx);
+        Ok(spec)
     }
 }
 
@@ -226,6 +239,7 @@ impl Raw {
             self.password,
             self.password_env,
             self.password_cmd,
+            self.password_kv,
         )?;
         let user = match (az, self.user) {
             (true, None) if password.is_none() => String::new(),
@@ -246,6 +260,7 @@ impl Raw {
             service: self.service,
             user,
             password,
+            read_only: self.read_only,
             az,
             trust_cert: self.trust_cert.unwrap_or(false),
             encrypt: self.encrypt.unwrap_or(true),
@@ -254,6 +269,13 @@ impl Raw {
 }
 
 impl Connection {
+    /// Makes this the connection `ctx.write` checks `read_only` against and
+    /// `ctx.read_only` answers for. A diff picks both sides before reading
+    /// either, so each side's read enters its own again.
+    pub fn enter(&self, ctx: &Ctx) {
+        ctx.enter_scope("sql connection", &self.name, self.read_only);
+    }
+
     /// What the connection signs in with, resolved now that it is opening:
     /// the password (a `password_cmd` runs under the command's deadline like
     /// any other child process; none is an empty one, which is what a trusted
@@ -270,6 +292,18 @@ impl Connection {
             Some(credential) => credential
                 .resolve(ctx)
                 .map_err(|error| error.context(format!("connection {:?}", self.name))),
+        }
+    }
+
+    /// A new password after the server refused this one, when there is one
+    /// to try: a `password_kv` whose secret changed in Key Vault since it was
+    /// kept (a rotation). `None` means the refusal stands.
+    pub fn refreshed(&self, ctx: &Ctx) -> Result<Option<Secret>> {
+        match &self.password {
+            Some(credential) if !self.az => credential
+                .refresh(ctx)
+                .map_err(|error| error.context(format!("connection {:?}", self.name))),
+            _ => Ok(None),
         }
     }
 }
@@ -293,6 +327,12 @@ mod tests {
         Sql::load(&Config::parse("/cfg/config.toml", Some(toml), Vec::new()))
     }
 
+    fn ctx() -> Ctx {
+        agent_cli_core::testing::ctx(agent_cli_core::Setup::fake(
+            agent_cli_core::testing::FakeTransport::default(),
+        ))
+    }
+
     fn failure(toml: &str) -> String {
         format!("{:#}", load(toml).unwrap_err())
     }
@@ -311,7 +351,7 @@ trust_cert = true
     #[test]
     fn a_connection_keeps_what_the_file_says_and_defaults_the_rest() {
         let sql = load(MSSQL).unwrap();
-        let spec = sql.connection(Some("local-mssql")).unwrap();
+        let spec = sql.connection(&ctx(), Some("local-mssql")).unwrap();
         assert_eq!((spec.kind, spec.port), (Kind::Mssql, 1433));
         assert!(spec.trust_cert && spec.encrypt);
         assert_eq!(sql.client_dir, None);
@@ -319,7 +359,7 @@ trust_cert = true
             "[sql]\noracle_client_dir = \"/opt/ic\"\n[[sql.connection]]\nname = \"o\"\nkind = \"oracle\"\nhost = \"h\"\nservice = \"FREEPDB1\"\nuser = \"u\"\n",
         )
         .unwrap();
-        let spec = oracle.connection(Some("o")).unwrap();
+        let spec = oracle.connection(&ctx(), Some("o")).unwrap();
         assert_eq!((spec.kind, spec.port), (Kind::Oracle, 1521));
         assert_eq!(oracle.client_dir, Some(PathBuf::from("/opt/ic")));
     }
@@ -365,7 +405,7 @@ trust_cert = true
             ),
             (
                 base("database = \"d\"\npassword = \"a\"\npassword_env = \"B\""),
-                "give one of password, password_env and password_cmd",
+                "give one of password, password_env, password_cmd and password_kv",
             ),
             (
                 format!("{}{}", base("database = \"d\""), base("database = \"d\"")),
@@ -398,7 +438,7 @@ trust_cert = true
             )
         };
         let sql = load(&synapse("")).unwrap();
-        let spec = sql.connection(None).unwrap();
+        let spec = sql.connection(&ctx(), None).unwrap();
         assert!(spec.az && spec.encrypt && spec.user.is_empty());
         let ctx = agent_cli_core::testing::ctx(agent_cli_core::Setup::fake(
             agent_cli_core::testing::FakeTransport::default(),
@@ -425,21 +465,21 @@ trust_cert = true
     #[test]
     fn an_unknown_connection_lists_the_ones_there_are_and_the_only_one_is_the_default() {
         let sql = load(MSSQL).unwrap();
-        assert_eq!(sql.connection(None).unwrap().name, "local-mssql");
-        let message = format!("{:#}", sql.connection(Some("prod")).unwrap_err());
+        assert_eq!(sql.connection(&ctx(), None).unwrap().name, "local-mssql");
+        let message = format!("{:#}", sql.connection(&ctx(), Some("prod")).unwrap_err());
         assert_eq!(
             message,
             "no connection \"prod\"; --conn takes one of: local-mssql"
         );
         let two = load(&format!("{MSSQL}{}", MSSQL.replace("local-mssql", "other"))).unwrap();
-        let message = format!("{:#}", two.connection(None).unwrap_err());
+        let message = format!("{:#}", two.connection(&ctx(), None).unwrap_err());
         assert_eq!(
             message,
             "more than one connection is configured; name one with --conn: local-mssql, other"
         );
         let none = load("").unwrap();
         assert!(
-            format!("{:#}", none.connection(Some("x")).unwrap_err())
+            format!("{:#}", none.connection(&ctx(), Some("x")).unwrap_err())
                 .starts_with("no [[sql.connection]] in /cfg/config.toml")
         );
     }
@@ -450,7 +490,7 @@ trust_cert = true
         let ctx = ctx(agent_cli_core::Setup::fake(FakeTransport::default())
             .with_env("SQL_TEST_PASSWORD", "from-env-1"));
         let sql = load(MSSQL).unwrap();
-        let spec = sql.connection(Some("local-mssql")).unwrap();
+        let spec = sql.connection(&ctx, Some("local-mssql")).unwrap();
         assert_eq!(spec.password(&ctx).unwrap().expose(), "hunter2hunter2");
 
         let with = |source: (Option<&str>, Option<&str>)| {
@@ -460,6 +500,7 @@ trust_cert = true
                 None,
                 source.0.map(str::to_owned),
                 source.1.map(str::to_owned),
+                None,
             )
             .unwrap();
             spec

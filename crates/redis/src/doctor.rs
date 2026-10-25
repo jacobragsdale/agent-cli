@@ -65,6 +65,13 @@ pub(crate) fn doctor(ctx: &Ctx) -> Vec<Check> {
                     spec.source()
                 ),
             ),
+            // Signed in, but its ACL (or Azure access policy) refuses PING.
+            Err(error) if format!("{error:#}").contains("Redis said: NOPERM") => Check::failed(
+                check,
+                format!("{error:#}"),
+                format!("give {:?}'s user the reads agent-cli sends", spec.name),
+            )
+            .denied(),
             Err(error) => Check::failed(
                 check,
                 format!("{error:#}"),
@@ -124,5 +131,17 @@ mod tests {
             "{:?}",
             checks[1]
         );
+        assert!(!checks[2].denied, "unreachable is not refused");
+    }
+
+    #[test]
+    fn a_user_whose_acl_refuses_ping_is_denied() {
+        let noperm = "NOPERM User reader has no permissions to run the 'ping' command";
+        let fake = serve(vec![("PING", crate::session::Reply::Error(noperm.into()))]);
+        let toml = config(&[("orders-qa", fake.port)]);
+        let checks = doctor(&ctx(
+            Setup::fake(FakeTransport::default()).with_config(&toml)
+        ));
+        assert!(!checks[1].ok && checks[1].denied, "{:?}", checks[1]);
     }
 }

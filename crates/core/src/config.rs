@@ -14,6 +14,7 @@ use toml::{Table, Value};
 
 use crate::ctx::Ctx;
 use crate::error::{Exit, Failure};
+use crate::layers::{Included, Problem, layered};
 use crate::output;
 use crate::secret::{redact, sensitive_key};
 
@@ -32,8 +33,9 @@ const BUILTIN: Option<&str> = Some(include_str!(env!(
 #[cfg(not(feature = "builtin-config"))]
 const BUILTIN: Option<&str> = None;
 
-/// Domains whose keys live in another domain's section of the example.
-const EXAMPLE_ALIASES: &[(&str, &str)] = &[
+/// Domains whose keys live in another domain's section, in the example and
+/// for `read_only`.
+pub(crate) const EXAMPLE_ALIASES: &[(&str, &str)] = &[
     ("kv", "azure"),
     ("acr", "azure"),
     ("aks", "azure"),
@@ -48,8 +50,11 @@ const EXAMPLE_ALIASES: &[(&str, &str)] = &[
 pub struct Config {
     path: PathBuf,
     found: bool,
-    /// The parsed file, or why it could not be read, for whichever domain asks.
-    table: Result<Table, String>,
+    /// The parsed file over what it includes, or why it could not be read,
+    /// for whichever domain asks.
+    table: Result<Table, Problem>,
+    /// What `[core] include` named, found or not.
+    included: Vec<Included>,
     /// `AGENT_CLI_*` variables, captured at load so tests need not touch the
     /// process environment.
     env: Vec<(String, String)>,
@@ -85,24 +90,35 @@ impl Config {
             Err(error) => Self {
                 path,
                 found: true,
-                table: Err(error),
+                table: Err(Problem::plain(error)),
+                included: Vec::new(),
                 env,
             },
         }
     }
 
-    /// A config from text (`None` for a missing file) and a set of variables.
+    /// A config from text (`None` for a missing file) and a set of variables,
+    /// over the files its `[core] include` names (read from disk, beside
+    /// `path` when relative).
     #[must_use]
     pub fn parse(path: impl Into<PathBuf>, text: Option<&str>, env: Vec<(String, String)>) -> Self {
         let path = path.into();
-        let table = text
-            .unwrap_or_default()
-            .parse::<Table>()
-            .map_err(|error| format!("cannot parse {}: {error}", path.display()));
+        let raw = text.unwrap_or_default();
+        let (table, included) = match raw.parse::<Table>() {
+            Ok(table) => layered(&path, raw, table),
+            Err(error) => (
+                Err(Problem::plain(format!(
+                    "cannot parse {}: {error}",
+                    path.display()
+                ))),
+                Vec::new(),
+            ),
+        };
         Self {
             path,
             found: text.is_some(),
             table,
+            included,
             env,
         }
     }
@@ -126,7 +142,10 @@ impl Config {
     /// Why the file could not be used, if it could not.
     #[must_use]
     pub fn problem(&self) -> Option<&str> {
-        self.table.as_ref().err().map(String::as_str)
+        self.table
+            .as_ref()
+            .err()
+            .map(|problem| problem.message.as_str())
     }
 
     /// True when the file has a `[name]` section or a variable overrides one.
@@ -143,16 +162,17 @@ impl Config {
     /// variable replacing that scalar key. A missing section deserializes from
     /// an empty table, so a `T` with defaults works without one. Any problem is
     /// exit 3, naming the section and the file.
+    /// `read_only` at the top of the section is core's (see
+    /// [`Config::read_only`]), so it is taken out before `T` sees it.
     pub fn section<T: DeserializeOwned>(&self, name: &str) -> Result<T> {
+        self.typed(name, true)
+    }
+
+    fn typed<T: DeserializeOwned>(&self, name: &str, strip: bool) -> Result<T> {
         let path = self.path.display();
         let fix =
             format!("fix [{name}] in {path}; `agent-cli config example {name}` shows every key");
-        // A file that cannot be read or parsed stops every section, not one.
-        let table = self.table.as_ref().map_err(|error| {
-            Failure::setup(error.clone()).hint(format!(
-                "fix the file {path} (no section can be read until it parses); `agent-cli config example` shows every key"
-            ))
-        })?;
+        let table = self.table()?;
         let mut section = match table.get(name) {
             Some(Value::Table(section)) => section.clone(),
             None => Table::new(),
@@ -170,6 +190,9 @@ impl Config {
                 continue;
             };
             let key = key.to_ascii_lowercase();
+            if key == "read_only" {
+                return Err(read_only_variable(variable));
+            }
             let value = override_value(section.get(&key), raw).ok_or_else(|| {
                 Failure::setup(format!(
                     "{variable}={raw} does not fit [{name}] {key} in {path}"
@@ -182,6 +205,9 @@ impl Config {
                 guessed.push((key.clone(), raw));
             }
             section.insert(key, value);
+        }
+        if strip {
+            section.remove("read_only");
         }
         let typed = Value::Table(section.clone()).try_into();
         let answer = match typed {
@@ -203,6 +229,65 @@ impl Config {
                 .into()
         })
     }
+}
+
+impl Config {
+    /// The merged file; a file that cannot be read or parsed (or a missing
+    /// include) stops every section, not one.
+    fn table(&self) -> Result<&Table> {
+        let path = self.path.display();
+        self.table.as_ref().map_err(|problem| {
+            let hint = problem.hint.clone().unwrap_or_else(|| format!(
+                "fix the file {path} (no section can be read until it parses); `agent-cli config example` shows every key"
+            ));
+            Failure::setup(problem.message.clone()).hint(hint).into()
+        })
+    }
+
+    /// `read_only` at the top of `[name]`: `None` when it is not set. No
+    /// variable may set it either way, since a variable is what an agent can
+    /// set; a person lifts it in their own file.
+    pub(crate) fn read_only(&self, name: &str) -> Result<Option<bool>> {
+        let prefix = env_prefix(name);
+        if let Some((variable, _)) = self
+            .env
+            .iter()
+            .find(|(variable, _)| variable.strip_prefix(&prefix) == Some("READ_ONLY"))
+        {
+            return Err(read_only_variable(variable));
+        }
+        match self
+            .table()?
+            .get(name)
+            .and_then(|section| section.get("read_only"))
+        {
+            None => Ok(None),
+            Some(Value::Boolean(flag)) => Ok(Some(*flag)),
+            Some(_) => Err(Failure::setup(format!(
+                "[{name}] read_only in {} is not true or false",
+                self.path.display()
+            ))
+            .into()),
+        }
+    }
+
+    /// A string key of `[core]`, such as `releases`.
+    pub(crate) fn core(&self, key: &str) -> Option<String> {
+        let table = self.table.as_ref().ok()?;
+        let value = table.get("core")?.get(key)?.as_str()?.trim();
+        (!value.is_empty()).then(|| value.to_owned())
+    }
+
+    /// The merged file, when it could be read.
+    pub(crate) fn merged(&self) -> Option<&Table> {
+        self.table.as_ref().ok()
+    }
+}
+
+fn read_only_variable(variable: &str) -> anyhow::Error {
+    Failure::setup(format!("{variable} cannot set read_only"))
+        .hint("unset it; only read_only = false on the entry in your own config.toml lifts it (`agent-cli config` shows where it is set)")
+        .into()
 }
 
 impl Config {
@@ -239,17 +324,23 @@ impl Config {
         let sections: serde_json::Map<String, serde_json::Value> = names
             .into_iter()
             .map(|name| {
-                let value = match self.section::<Table>(&name) {
+                let value = match self.typed::<Table>(&name, false) {
                     Ok(table) => mask(serde_json::to_value(table).unwrap_or_default()),
                     Err(error) => json!({"problem": format!("{error:#}")}),
                 };
                 (name, value)
             })
             .collect();
+        let include: Vec<serde_json::Value> = self
+            .included
+            .iter()
+            .map(|file| json!({"path": file.path.display().to_string(), "exists": file.found}))
+            .collect();
         json!({
             "path": self.path.display().to_string(),
             "exists": self.found,
             "problem": self.problem(),
+            "include": include,
             "sections": sections,
             "variables": variables,
         })
@@ -257,7 +348,7 @@ impl Config {
 }
 
 /// A section with every literal credential masked. `*_env` keys name a
-/// variable and stay; `*_cmd` keys are masked, as `Credential::source` does,
+/// variable and `*_kv` keys a vault's secret, and stay; `*_cmd` keys are masked, as `Credential::source` does,
 /// since a command line can carry the secret itself.
 fn mask(value: serde_json::Value) -> serde_json::Value {
     use serde_json::Value as Json;
@@ -268,6 +359,7 @@ fn mask(value: serde_json::Value) -> serde_json::Value {
             map.into_iter()
                 .map(|(key, value)| {
                     let secret = !key.ends_with("_env")
+                        && !key.ends_with("_kv")
                         && (sensitive_key(&key) || key == "pat" || key.ends_with("_cmd"));
                     let value = if secret && !value.is_object() && !value.is_array() {
                         Json::String("***".to_owned())
@@ -343,7 +435,7 @@ pub(crate) fn builtin(
     err: &mut dyn Write,
     tty: bool,
 ) -> Result<Exit> {
-    let usage = "usage: agent-cli config                    the config file, its sections as read (credentials masked) and the AGENT_CLI_* variables set, as JSON\n       agent-cli config example [DOMAIN]  the TOML to paste into the config file: every section, or one domain's";
+    let usage = "usage: agent-cli config                    the config file, what it includes, its sections as read (credentials masked) and the AGENT_CLI_* variables set, as JSON\n       agent-cli config example [DOMAIN]  the TOML to paste into the config file: every section, or one domain's\n       agent-cli config pull              read every *_kv login from Key Vault again and keep it in secrets.toml; one row per key, never a value";
     if ctx.globals().help {
         writeln!(out, "{usage}")?;
         return Ok(Exit::Ok);
@@ -360,6 +452,7 @@ pub(crate) fn builtin(
                 )?;
             }
         }
+        [pull] if pull == "pull" => return crate::vault::pull(ctx, out, err, tty),
         [example] if example == "example" => writeln!(out, "{}", self::example(None)?)?,
         [example, name] if example == "example" => {
             writeln!(out, "{}", self::example(Some(name))?)?;

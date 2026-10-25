@@ -58,6 +58,9 @@ pub(crate) fn from_env(mut setup: Setup) -> Setup {
     let loose = std::env::var("AGENT_CLI_FIXTURES_MATCH").is_ok_and(|mode| mode == "loose");
     setup.transport = Box::new(Replay::load(Path::new(&dir), loose));
     setup.cache_dir = None;
+    // A replayed run is a trial, not a person's use, and its secrets are not.
+    setup.state_dir = None;
+    setup.secrets = None;
     setup
 }
 

@@ -5,16 +5,16 @@ variables, connections over Airflow 3's REST API (`/api/v2`) or 2.9's
 (`/api/v1`): https://airflow.apache.org/docs/apache-airflow/stable/stable-rest-api-ref.html
 
 ## Config
-`[[airflow.instance]]`: `name` (`--instance`; the only one by default,
-`pick`), `base_url`, `api` (`v1` or `v2`; else `probe` asks
-`/api/v2/version` with no credential, a 404 being Airflow 2, cached an
-hour, so a wrong password never reads as a wrong version), `k8s_scope`,
-`k8s_namespace` (a row's `pod` is a k8s id), `dags_repo` (`REPO[:FOLDER]`,
-for `repo_file`).
-Credential: `username` with `password`, `password_env` or `password_cmd`,
-or `token`, `token_env`, `token_cmd`; none: `Auth::Missing`.
-A password is a JWT from `/auth/token` on 3; on 2 HTTP Basic, else (401
-or 403) the web form (`sign_in_form`). Only under `base_url/`
+`[[airflow.instance]]`: `name` (`--instance`, `pick`), `base_url`, `api`
+(`v1`, `v2`; else `probe`: `/api/v2/version`, no credential, 404 means 2,
+cached an hour), `k8s_scope`, `k8s_namespace` (a row's `pod` is
+a k8s id), `dags_repo` (`REPO[:FOLDER]`, for `repo_file`), `read_only`
+(else `[airflow]`'s; `Client::new` enters the scope).
+Credential: `username` with `password`, `password_env`, `password_cmd`,
+`password_kv`, or `token`, `token_env`, `token_cmd`, `token_kv`; none:
+`Auth::Missing`. A password is a JWT from `/auth/token` on 3; on 2 Basic,
+else the web form (`sign_in_form`). A refused kv one is tried once more
+if Key Vault's value changed (`refreshed`). Only under `base_url/`
 (`same_origin`). `connection list` matches
 `[[sql.connection]]` hosts for `sql_conn`.
 
@@ -25,8 +25,7 @@ still parses (`Ref::parse`, `Client::resolve`). A DAG file line:
 `dag:line[-line]`; an XCom: `dag/run/task[:map]@key`.
 
 ## Where things are (`src/`)
-A command is `<resource>/<verb>.rs`: args, rows, handler, `command!`,
-tests. Copy a sibling.
+A command is `<resource>/<verb>.rs`, tests beside. Copy a sibling.
 - `lib.rs`: `DOMAIN`. `doctor.rs`: status and doctor.
 - `client.rs`: `Airflow::load`, `open`, `locate` for a `Client`: `get`,
   `text`, `public`, `health`, `preview` (a POST that reads), `change`,

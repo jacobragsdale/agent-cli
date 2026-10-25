@@ -169,6 +169,7 @@ impl Op for Command {
     }
 
     fn perform(self, ctx: &Ctx) -> Result<Output> {
+        crate::ctx::Meter::count(&ctx.meter.processes, 1);
         run_until(self, ctx.deadline())
     }
 }

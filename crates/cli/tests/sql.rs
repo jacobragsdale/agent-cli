@@ -8,6 +8,8 @@ fn agent_cli(config: &str, args: &[&str], envs: &[(&str, &str)]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_agent-cli"))
         .args(args)
         .env("AGENT_CLI_CONFIG", config)
+        // Never a person's usage log or denied.json.
+        .env("XDG_STATE_HOME", "/nonexistent/agent-cli-state")
         .envs(envs.iter().copied())
         .output()
         .unwrap()
@@ -103,6 +105,8 @@ fn mssql_select_one_through_the_binary_and_sql_from_stdin() {
     let mut child = Command::new(env!("CARGO_BIN_EXE_agent-cli"))
         .args(["sql", "query", "run", "--conn", "local-mssql", "-"])
         .env("AGENT_CLI_CONFIG", test_config())
+        // Never a person's usage log or denied.json.
+        .env("XDG_STATE_HOME", "/nonexistent/agent-cli-state")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -153,6 +157,8 @@ fn stop_midway(
     let child = Command::new(env!("CARGO_BIN_EXE_agent-cli"))
         .args(args)
         .env("AGENT_CLI_CONFIG", config)
+        // Never a person's usage log or denied.json.
+        .env("XDG_STATE_HOME", "/nonexistent/agent-cli-state")
         .stdout(Stdio::null())
         .stderr(Stdio::piped())
         .spawn()

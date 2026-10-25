@@ -5,14 +5,15 @@ tiberius (https://docs.rs/tiberius), Oracle over the `oracle` crate and the
 Instant Client (https://docs.rs/oracle).
 
 ## Config
-`[sql]`: `oracle_client_dir` (optional; `AGENT_CLI_SQL_ORACLE_CLIENT_DIR`
-overrides it). `[[sql.connection]]`: `name` (what `--conn` takes; defaults
-to the only one through `pick`), `kind` (`mssql` or `oracle`), `host`,
-`port`, `database` (mssql), `service` (oracle), `user`, `trust_cert`,
-`encrypt`, `auth` (`az`: an az token for `AZURE_SQL`: Synapse, Azure
-SQL). Credential: `password`, `password_env` or
-`password_cmd`, resolved only when a connection opens; the password or
-token goes only to the connection's own server.
+`[sql]`: `oracle_client_dir` (or `AGENT_CLI_SQL_ORACLE_CLIENT_DIR`),
+`read_only` (core's). `[[sql.connection]]`: `name` (`--conn`, via `pick`),
+`kind` (`mssql`, `oracle`), `host`, `port`, `database` (mssql), `service`
+(oracle), `user`, `trust_cert`, `encrypt`, `auth` (`az`: a token for
+`AZURE_SQL`), `read_only` (beats the section's), `password`,
+`password_env`, `password_cmd` or `password_kv` (resolved as it opens).
+`Session::sign_in` retries a refused login (18456, ORA-01017) once with
+`Credential::refresh`. `Sql::connection` enters the scope `ctx.write`
+checks; a read-only Oracle one reads in `SET TRANSACTION READ ONLY`.
 
 ## Ids
 An object is `schema.name`, folded the way each server folds names (Oracle
@@ -29,7 +30,7 @@ and tests (`query/run.rs` is `sql query run`). Copy a sibling.
   commands share (`objects_sql`, `catalog_read`, `ObjectRow`, …);
   `catalog/detail.rs`: the diffs' (`table_row`, schema-wide reads).
   `object/mod.rs`: `find`, `compared`.
-- `config.rs`: `Sql::load(config)`, `connection(name)`, `Connection`, `Kind`.
+- `config.rs`: `Sql::load(config)`, `connection(ctx, name)`, `Connection`, `Kind`.
 - `db.rs`: `OnConnection` (the `Op` every sql command performs through
   `ctx.read` / `ctx.write`), `Session::run(sql, Fetch, deadline)`,
   `bounded`, cell helpers `int`, `decimal`, `text`, `maybe`, `whole`.
@@ -37,9 +38,8 @@ and tests (`query/run.rs` is `sql query run`). Copy a sibling.
 - `mssql.rs`, `oracle.rs`, `oracle/cell.rs`: drivers. `tests/dbs.rs`: the DBs.
 
 ## Fixtures
-No world recording (trials have no database). Integration tests need
-`scripts/db-up.sh`, then `AGENT_CLI_TEST_DBS=1 cargo test -p agent-cli-sql`;
-without the variable they skip. Queries `crates/sql/search.toml`.
+No world recording. `tests/dbs.rs` needs `scripts/db-up.sh` and
+`AGENT_CLI_TEST_DBS=1`, else skips. Queries `crates/sql/search.toml`.
 
 ## Quirks
 - The classifier decides the effect: a batch holding any write goes through
@@ -56,5 +56,4 @@ without the variable they skip. Queries `crates/sql/search.toml`.
   socket, Oracle's by a break.
 
 ## Never needed
-Other crates' sources, `docs/plans/`, `docs/reference/`,
-`fixtures/world/`.
+Other crates' sources, `docs/plans/`, `docs/reference/`, `fixtures/world/`.

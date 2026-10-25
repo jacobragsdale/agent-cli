@@ -32,6 +32,7 @@ mod pod;
 mod pv;
 mod pvc;
 mod quota;
+mod scope;
 mod secret;
 mod service;
 mod serviceaccount;

@@ -49,6 +49,8 @@ pub struct Instance {
     /// An ACL user, or with `az` the Entra object id (else the token's).
     pub user: Option<String>,
     pub password: Option<Credential>,
+    /// The instance's own `read_only`, over `[redis] read_only` (core's).
+    pub read_only: Option<bool>,
 }
 
 #[derive(Debug, Default)]
@@ -77,6 +79,9 @@ struct Raw {
     password: Option<String>,
     password_env: Option<String>,
     password_cmd: Option<String>,
+    password_kv: Option<String>,
+    /// Overrides `[redis] read_only` for this instance.
+    read_only: Option<bool>,
 }
 
 impl Redis {
@@ -205,6 +210,7 @@ impl Raw {
             self.password,
             self.password_env,
             self.password_cmd,
+            self.password_kv,
         )?;
         let az = match self.auth.as_deref() {
             None | Some("password") => false,
@@ -241,6 +247,7 @@ impl Raw {
             az,
             user: self.user.filter(|user| !user.trim().is_empty()),
             password,
+            read_only: self.read_only,
         })
     }
 }
@@ -258,7 +265,9 @@ impl Instance {
     /// The user and password `AUTH` sends, resolved now that the
     /// connection is open; `None` for an instance with no password. With
     /// `az`, the token for [`AZURE_REDIS`] (minted again when `fresh`), and
-    /// the object id it was issued to unless `user` names one.
+    /// the object id it was issued to unless `user` names one. `fresh`, after
+    /// Redis refused the last: a `password_kv` read again from Key Vault, and
+    /// `None` when nothing changed there or the source cannot change.
     pub fn credentials(&self, ctx: &Ctx, fresh: bool) -> Result<Option<(Option<String>, Secret)>> {
         let named = |error: anyhow::Error| error.context(format!("instance {:?}", self.name));
         if self.az {
@@ -275,13 +284,14 @@ impl Instance {
             };
             return Ok(Some((Some(user), token)));
         }
-        match &self.password {
-            None => Ok(None),
-            Some(credential) => Ok(Some((
-                self.user.clone(),
-                credential.resolve(ctx).map_err(named)?,
-            ))),
-        }
+        let Some(credential) = &self.password else {
+            return Ok(None);
+        };
+        let password = match fresh {
+            true => credential.refresh(ctx).map_err(named)?,
+            false => Some(credential.resolve(ctx).map_err(named)?),
+        };
+        Ok(password.map(|password| (self.user.clone(), password)))
     }
 }
 

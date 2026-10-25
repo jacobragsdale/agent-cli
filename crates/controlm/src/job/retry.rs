@@ -44,7 +44,7 @@ mod tests {
     use agent_cli_core::Method;
     use agent_cli_core::testing::Answer;
 
-    use crate::testing::{controlm, dry_run, job, paths};
+    use crate::testing::{CONFIG, controlm, controlm_with, dry_run, job, paths};
 
     #[test]
     fn job_retry_reruns_the_job_and_names_job_get_next() {
@@ -78,5 +78,46 @@ mod tests {
                 .ends_with("/run/job/ctm-prod:00a1b/rerun")
         );
         assert_eq!(would[0]["headers"]["x-api-key"], "***");
+    }
+
+    #[test]
+    fn a_read_only_instance_refuses_the_rerun_before_sending_it_and_still_reads() {
+        let config = format!("[controlm]\nread_only = true\n\n{CONFIG}");
+        let retry = ["controlm", "job", "retry", "ctm-prod:00a1b"];
+        let (outcome, transport) = controlm_with(&config, &retry, vec![]);
+        assert_eq!(outcome.code, 2, "{outcome:?}");
+        assert!(
+            outcome
+                .stderr
+                .contains("controlm instance prod is read-only in the config"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(outcome.stderr.contains("agent-cli config"));
+        assert!(transport.sent().is_empty());
+
+        let (outcome, transport) =
+            controlm_with(&config, &[&retry[..], &["--dry-run"]].concat(), vec![]);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(outcome.json()["dry_run"], true);
+        assert!(
+            outcome.stderr.contains("would be refused"),
+            "{}",
+            outcome.stderr
+        );
+        assert!(transport.sent().is_empty());
+
+        let answer = job("ctm-prod:00a1b", "load_orders", "Ended OK");
+        let (outcome, _) = controlm_with(
+            &config,
+            &["controlm", "job", "get", "ctm-prod:00a1b"],
+            vec![Answer::json(&answer)],
+        );
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+
+        let lifted = format!("{config}read_only = false\n");
+        let (outcome, transport) = controlm_with(&lifted, &retry, vec![Answer::json(&answer)]);
+        assert_eq!(outcome.code, 0, "{outcome:?}");
+        assert_eq!(paths(&transport), ["run/job/ctm-prod:00a1b/rerun"]);
     }
 }

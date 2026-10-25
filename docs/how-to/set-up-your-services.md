@@ -92,11 +92,89 @@ holds every service: adding one is a block and a doctor run, and rotating a
 password is one line. Each credential `KEY` (`pat`, `password`, `token`) can
 instead be `KEY_env` (the variable that holds it) or `KEY_cmd` (a shell
 command that prints it, run only when a request needs it, such as
-`pass show contoso/db`). Use `KEY_env` when many connections share one
-password, so a rotation is one change.
+`pass show contoso/db`), or `KEY_kv` (a team's shared login in Key Vault,
+below). Use `KEY_env` when many connections share one password, so a
+rotation is one change.
 
 An Airflow or Control-M instance whose credential you do not have yet can
 go in the file anyway: only that instance fails, naming the key to add.
+
+### A team's shared file
+
+A team keeps its connections, instances and sites in one file everyone
+gets, and each person's `config.toml` includes it:
+
+```toml
+[core]
+include = "~/.config/agent-cli/team.toml"     # or a list of files
+```
+
+The included file is read first and yours over it. A key you set wins; a
+table merges key by key; an entry of a list whose entries have a `name`
+(`[[sql.connection]]`, `[[k8s.scope]]`, `[[airflow.instance]]`, …) merges
+with the team's entry of that name, so you set only the keys that differ,
+and a new name adds an entry. Any other list you set replaces the team's.
+Only your own file may include. An included file that is missing stops
+every domain with exit 3, naming the file and the line that includes it:
+rerun the team's `install.sh`, which puts it there. `agent-cli config`
+lists each included file (found or not) and every section as merged.
+
+`[core] releases` (usually in the team's file) names where releases are
+published; `agent-cli doctor`'s first row then says when a newer one is out.
+
+### Shared logins from Key Vault
+
+A login the whole team shares (a read-only database user, a service
+account) can live in Key Vault instead of in anyone's file. Name the vault
+and the secret, `VAULT/SECRET`, with `KEY_kv`:
+
+```toml
+[[sql.connection]]
+name = "ledger"
+# …
+password_kv = "kv-contoso-team/ledger-reader"
+```
+
+The first command that needs it reads the secret with your `az login`
+(which needs the Key Vault Secrets User role on the vault) and keeps it in
+`secrets.toml` beside your config file (mode 0600; agent-cli writes it,
+nobody edits it). When the kept value stops signing in, because someone
+rotated it, the domain reads Key Vault again and, if the value changed,
+retries once. To read every `*_kv` key again at once:
+
+```sh
+agent-cli config pull
+```
+
+It prints one row per key (`section`, `key`, `kv`, `ok`, `changed`), never a
+value; a key that fails keeps its old value. `agent-cli config` shows the
+`*_kv` references and never what `secrets.toml` holds.
+
+### Read only
+
+`read_only = true` in a section (`[sql]`, `[azure]` for all eight Azure
+domains, `[datadog]`, `[ado]`, …) refuses every change agent-cli would
+make there: exit 2 before anything is sent, naming the scope, with
+`--dry-run` still printing what it would have done. On one entry
+(`[[sql.connection]]`, `[[k8s.scope]]`, `[[airflow.instance]]`,
+`[[controlm.instance]]`, `[[redis.instance]]`) it overrides its section's.
+Reading a secret (`kv secret get --reveal`) is a read and still works.
+
+A team's file marks its prod entries read-only. No flag and no
+`AGENT_CLI_*` variable lifts it (a variable that tries is exit 3), since
+those are what an agent can set. A person who needs to change prod adds the
+entry to their own `config.toml` with only the key that differs:
+
+```toml
+[[sql.connection]]
+name = "ledger"
+read_only = false
+```
+
+On a read-only Oracle connection every read also runs inside `SET
+TRANSACTION READ ONLY`. SQL Server has no session equivalent, so a prod SQL
+Server still needs a login that can only read: `read_only` stops agent-cli,
+not the login.
 
 ## 3. Azure DevOps (ado)
 
@@ -537,6 +615,24 @@ credential manager) costs about half a second per connection, every time.
 Keep the password in the config file instead, or in a `chmod 600` env file
 that your shell sources and a `password_env` names.
 
+## The usage log
+
+Every run appends one line to `~/.local/state/agent-cli/usage.jsonl`
+(`$XDG_STATE_HOME`): the time, the version, the command path, the flag names
+given (never their values, never a positional), the exit code, how long it
+took, and the HTTP requests, bytes received and child processes it cost.
+Nothing is sent anywhere; past 5 MB the file keeps its newest half, and
+`AGENT_CLI_USAGE=off` stops it.
+
+```sh
+agent-cli usage --since 7d
+```
+
+prints the summary to paste where the team tracks agent-cli: calls per
+command with their failures by exit code, median and slowest times,
+requests and bytes; the most frequent exit 2s with their flag names; the
+slowest runs and those with the most requests.
+
 ## Check everything
 
 ```sh
@@ -544,7 +640,13 @@ agent-cli doctor
 agent-cli config
 ```
 
-Every domain you set up should show only `"ok":true` rows. Then tell your
+Every domain you set up should show only `"ok":true` rows. Search and the
+overview leave out the domains that are not set up here, and those whose
+reads doctor last saw refused with a 403 (it keeps them in
+`~/.local/state/agent-cli/denied.json`, and a later doctor that passes
+clears them); a search then ends with a note naming them, and
+`agent-cli search --all WORDS` searches every domain. Their commands still
+run. Then tell your
 agents the tool exists; one line in a global `CLAUDE.md` or `AGENTS.md` is
 enough: "agent-cli gives you Azure DevOps, Azure, Kubernetes, SQL, Airflow
 and Datadog; start with `agent-cli`."

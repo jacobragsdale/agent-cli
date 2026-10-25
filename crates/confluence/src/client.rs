@@ -45,9 +45,14 @@ impl Confluence {
     pub(crate) fn load(ctx: &Ctx) -> Result<Self> {
         let section: Section = ctx.section("confluence")?;
         let site = Site::parse(section.url.as_deref())?;
-        let token =
-            Credential::from_keys("token", section.token, section.token_env, section.token_cmd)
-                .map_err(|message| Failure::setup(message).hint(no_token_hint(&site)))?;
+        let token = Credential::from_keys(
+            "token",
+            section.token,
+            section.token_env,
+            section.token_cmd,
+            section.token_kv,
+        )
+        .map_err(|message| Failure::setup(message).hint(no_token_hint(&site)))?;
         Ok(Self {
             site,
             token,
@@ -85,7 +90,17 @@ impl Confluence {
                     .into(),
             );
         };
-        let secret = Secret::new(format!("Bearer {}", token.resolve(ctx)?.expose()));
+        // Refused: a `token_kv` reads Key Vault again; every other source
+        // (and a vault value that did not change) resolves as before.
+        let value = match fresh {
+            true => token.refresh(ctx)?,
+            false => None,
+        };
+        let value = match value {
+            Some(value) => value,
+            None => token.resolve(ctx)?,
+        };
+        let secret = Secret::new(format!("Bearer {}", value.expose()));
         *held = Some(secret.clone());
         Ok(secret)
     }
@@ -593,5 +608,41 @@ mod tests {
             "{}",
             outcome.stderr
         );
+    }
+
+    /// `space list` with `token_kv` over these answers: its exit and each
+    /// request's `Authorization`.
+    fn with_token_kv(answers: Vec<Answer>) -> (u8, Vec<Option<String>>) {
+        let transport = agent_cli_core::testing::FakeTransport::answering(answers);
+        let config =
+            format!("[confluence]\nurl = \"{BASE}\"\ntoken_kv = \"kv-contoso/wiki-pat\"\n");
+        let setup = agent_cli_core::Setup::fake(transport.clone()).with_config(&config);
+        let outcome =
+            agent_cli_core::testing::run(&[crate::DOMAIN], &["confluence", "space", "list"], setup);
+        let sent = transport.sent().into_iter();
+        (outcome.code, sent.map(|sent| sent.authorization).collect())
+    }
+
+    #[test]
+    fn a_token_kv_refused_is_read_again_from_key_vault_and_sent_once_more() {
+        let vault = |value: &str| Answer::json(&json!({ "value": value }));
+        let (code, sent) = with_token_kv(vec![
+            vault("old-pat"),
+            Answer::status(401, "Unauthorized"),
+            vault("new-pat"),
+            Answer::json(&json!({"results": [], "_links": {}})),
+        ]);
+        assert_eq!(code, 0, "{sent:?}");
+        assert_eq!(sent[1].as_deref(), Some("Bearer old-pat"));
+        assert_eq!(sent[3].as_deref(), Some("Bearer new-pat"));
+
+        let (code, sent) = with_token_kv(vec![
+            vault("old-pat"),
+            Answer::status(401, "Unauthorized"),
+            vault("old-pat"),
+            Answer::status(401, "Unauthorized"),
+        ]);
+        assert_eq!(code, 3, "unchanged, the refusal stands: {sent:?}");
+        assert_eq!(sent[3].as_deref(), Some("Bearer old-pat"));
     }
 }

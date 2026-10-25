@@ -6,6 +6,8 @@ use std::process::Command;
 fn no_args_prints_the_overview_and_exits_zero() {
     let output = Command::new(env!("CARGO_BIN_EXE_agent-cli"))
         .env("AGENT_CLI_CONFIG", "/nonexistent/agent-cli/config.toml")
+        // Never a person's usage log or denied.json.
+        .env("XDG_STATE_HOME", "/nonexistent/agent-cli-state")
         .output()
         .unwrap();
     assert!(output.status.success(), "{output:?}");
@@ -20,6 +22,8 @@ fn an_unknown_word_exits_two_with_the_error_on_stderr() {
     let output = Command::new(env!("CARGO_BIN_EXE_agent-cli"))
         .args(["nope", "thing", "list"])
         .env("AGENT_CLI_CONFIG", "/nonexistent/agent-cli/config.toml")
+        // Never a person's usage log or denied.json.
+        .env("XDG_STATE_HOME", "/nonexistent/agent-cli-state")
         .output()
         .unwrap();
     assert_eq!(output.status.code(), Some(2));
@@ -61,6 +65,8 @@ fn a_signal_kills_the_child_process_and_exits_128_plus_it() {
         let child = Command::new(env!("CARGO_BIN_EXE_agent-cli"))
             .args(["sql", "query", "run", "select 1"])
             .env("AGENT_CLI_CONFIG", &config)
+            // Never a person's usage log or denied.json.
+            .env("XDG_STATE_HOME", "/nonexistent/agent-cli-state")
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::piped())
             .spawn()

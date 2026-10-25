@@ -20,7 +20,7 @@ pub struct SchemaListArgs {
 /// account Oracle did not create, and the one logged in as.
 fn schema_list(ctx: &Ctx, args: SchemaListArgs) -> Result<Vec<String>> {
     let sql = Sql::load(ctx.config())?;
-    let spec = sql.connection(args.conn.as_deref())?;
+    let spec = sql.connection(ctx, args.conn.as_deref())?;
     let query = match spec.kind {
         Kind::Mssql => "select s.name from sys.schemas s \
              where s.name not in ('sys', 'INFORMATION_SCHEMA', 'guest') \
