@@ -9,8 +9,19 @@ every change honours `--dry-run` and `--yes`.
 
 ## Install
 
-You need Rust 1.88 or later and a C compiler (the Oracle driver builds a small
-C library).
+From your team's release in Artifact Keeper (Ubuntu or WSL Ubuntu, 22.04 or
+newer): the binary, the team's config and Oracle Instant Client in one step;
+run it again to update:
+
+```sh
+curl -fsSL https://keeper.contoso.example/api/v1/repositories/agent-cli/download/latest/install.sh | bash
+```
+
+[Roll out to a team](docs/how-to/roll-out-to-a-team.md) says how that
+release gets there and what a teammate does next.
+
+From source, you need Rust 1.88 or later and a C compiler (the Oracle driver
+builds a small C library):
 
 ```sh
 cargo install --git https://github.com/jacobragsdale/agent-cli agent-cli
@@ -18,9 +29,9 @@ cargo install --git https://github.com/jacobragsdale/agent-cli agent-cli
 
 Oracle connections also need Oracle Instant Client at run time; nothing else
 does. To tell your agents the tool exists, one line in a global `CLAUDE.md` or
-`AGENTS.md` is enough: "agent-cli gives you Azure DevOps, Confluence, Azure
-(AI Search too), Kubernetes, SQL, Airflow, Control-M and Datadog; start with
-`agent-cli`."
+`AGENTS.md` is enough, and it need name no services: "agent-cli is installed:
+it reaches your work services; run `agent-cli` to see what is configured,
+then `agent-cli search WORDS`."
 
 ## Configure
 
@@ -114,6 +125,7 @@ role, a read-only database login, an Airflow Viewer.
 - [Tutorial: trace a deploy and a failed DAG](docs/tutorial.md), against a
   recorded world with no cloud access.
 - How-to guides: [set up your services](docs/how-to/set-up-your-services.md),
+  [roll out to a team](docs/how-to/roll-out-to-a-team.md),
   [add a command](docs/how-to/add-a-command.md),
   [add a domain](docs/how-to/add-a-domain.md),
   [run agent trials](docs/how-to/run-agent-trials.md),

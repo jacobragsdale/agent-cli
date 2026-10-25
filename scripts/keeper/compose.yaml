@@ -1,0 +1,56 @@
+# A throwaway Artifact Keeper for the distribution scripts
+# (scripts/release-upload.sh, scripts/install.sh) and the keeper domain's live
+# suite, trimmed from the project's docker-compose.yml: the backend and its
+# Postgres only (no web UI, Caddy, OpenSearch or scanners, which nothing here
+# needs), the API on 127.0.0.1 only, Postgres unpublished. Every secret here is
+# throwaway. Start it with scripts/keeper-up.sh.
+name: agent-cli-keeper
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: registry
+      POSTGRES_PASSWORD: registry
+      POSTGRES_DB: artifact_registry
+    volumes:
+      - db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U registry -d artifact_registry"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+  backend:
+    image: ghcr.io/artifact-keeper/artifact-keeper-backend:${KEEPER_VERSION:-1.11.7}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://registry:registry@postgres:5432/artifact_registry?sslmode=disable
+      STORAGE_PATH: /data/storage
+      BACKUP_PATH: /data/backups
+      PLUGINS_DIR: /data/plugins
+      JWT_SECRET: agent-cli-keeper-throwaway-jwt-secret-0123456789abcdef0123456789abcdef
+      # Setting it skips the first-boot setup lock, so the API answers at once.
+      ADMIN_PASSWORD: Keeper_Pass1!
+      ENVIRONMENT: development
+      # Downloads are limited per client IP, 30 a minute by default, which
+      # the install tests run past; at work one NAT can hide a whole team.
+      RATE_LIMIT_PRESIGN_PER_MIN: "10000"
+      RUST_LOG: info
+      HOST: 0.0.0.0
+      PORT: 8080
+    ports:
+      - "127.0.0.1:${KEEPER_PORT:-18070}:8080"
+    volumes:
+      - storage:/data/storage
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/livez"]
+      interval: 2s
+      timeout: 5s
+      retries: 90
+
+volumes:
+  db:
+  storage:

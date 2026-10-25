@@ -1,0 +1,74 @@
+# CI and releases in the team's Azure DevOps (the repository's GitHub CI is
+# .github/workflows/ci.yml). Every step runs in the image ci/Dockerfile
+# builds, on a self-hosted Linux agent with Docker:
+#
+#   a push to main   CI's five checks (scripts/check.sh --all)
+#   a tag v*         the checks, then the release build, uploaded to Artifact
+#                    Keeper; the tag must be v + Cargo.toml's
+#                    [workspace.package] version
+#
+# Fill in the pool and the variable group (docs/how-to/roll-out-to-a-team.md).
+# The cargo registry, target/ and HOME live in $(Pipeline.Workspace)/cache,
+# which stays on the agent between runs, so a run rebuilds only what changed.
+
+trigger:
+  branches:
+    include: [main]
+  tags:
+    include: ['v*']
+
+pr: none
+
+pool:
+  name: contoso-linux                      # the self-hosted agent pool
+
+variables:
+  # The container runs as the agent's user, so everything it writes stays
+  # removable by the agent.
+  docker_run: >-
+    docker run --rm --user "$(id -u):$(id -g)"
+    -v "$(Build.SourcesDirectory):/src" -w /src
+    -v "$(Pipeline.Workspace)/cache:/cache"
+    -e HOME=/cache/home -e CARGO_HOME=/cache/cargo -e CARGO_TARGET_DIR=/cache/target
+    -e CARGO_TERM_COLOR=never
+
+stages:
+  - stage: check
+    jobs:
+      - job: check
+        timeoutInMinutes: 90
+        steps:
+          - checkout: self
+            clean: true
+          - script: |
+              set -euo pipefail
+              docker build -t agent-cli-ci ci
+              mkdir -p "$(Pipeline.Workspace)/cache"
+            displayName: Build the CI image
+          - script: $(docker_run) agent-cli-ci scripts/check.sh --all
+            displayName: scripts/check.sh --all
+
+  - stage: release
+    dependsOn: check
+    condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
+    variables:
+      - group: contoso-agent-cli-release   # KEEPER_URL, and KEEPER_TOKEN as a secret
+    jobs:
+      - job: release
+        steps:
+          - checkout: self
+            clean: true
+          - script: |
+              set -euo pipefail
+              docker build -t agent-cli-ci ci
+              mkdir -p "$(Pipeline.Workspace)/cache"
+            displayName: Build the CI image
+          - script: $(docker_run) agent-cli-ci scripts/release-build.sh "$(Build.SourceBranchName)"
+            displayName: Build and stage the release
+          # A secret variable reaches a step only through env; docker run -e
+          # NAME passes it on by name, so its value is on no command line.
+          - script: $(docker_run) -e KEEPER_URL -e KEEPER_TOKEN agent-cli-ci scripts/release-upload.sh /cache/target/dist
+            displayName: Upload to Artifact Keeper
+            env:
+              KEEPER_URL: $(KEEPER_URL)
+              KEEPER_TOKEN: $(KEEPER_TOKEN)
