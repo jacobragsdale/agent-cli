@@ -1,0 +1,99 @@
+[[query]]
+text = "list the artifact repositories in artifact keeper"
+expect = "keeper repo list"
+
+[[query]]
+text = "which pypi feeds do we have"
+expect = "keeper repo list"
+
+[[query]]
+text = "list the artifactory repositories"
+expect = "keeper repo list"
+
+[[query]]
+text = "which repositories proxy pypi.org"
+expect = "keeper repo list"
+
+[[query]]
+text = "show the pypi proxy repository and its upstream"
+expect = "keeper repo get"
+
+[[query]]
+text = "what members does the virtual pypi repository search"
+expect = "keeper repo get"
+
+[[query]]
+text = "how long does the nexus proxy cache upstream answers"
+expect = "keeper repo get"
+
+[[query]]
+text = "list the python packages in our internal package feed"
+expect = "keeper package list"
+
+[[query]]
+text = "find the contoso pypi package"
+expect = "keeper package list"
+
+[[query]]
+text = "which packages has the pypi proxy cached"
+expect = "keeper package list"
+
+[[query]]
+text = "what versions of the internal pypi package exist"
+expect = "keeper package get"
+
+[[query]]
+text = "is version 2.3.0 of the package published"
+expect = "keeper package get"
+
+[[query]]
+text = "newest version of a python library in artifact keeper"
+expect = "keeper package get"
+
+[[query]]
+text = "has the pypi proxy cached this package"
+expect = "keeper package get"
+
+[[query]]
+text = "why does pip install fail behind the proxy"
+expect = "keeper package get"
+
+[[query]]
+text = "who published this package version and when"
+expect = "keeper version get"
+
+[[query]]
+text = "checksum and files of a package release"
+expect = "keeper version get"
+
+[[query]]
+text = "when was the wheel uploaded and by whom"
+expect = "keeper version get"
+
+[[query]]
+text = "list the build artifacts uploaded for version 1.4.2"
+expect = "keeper version get"
+
+[[query]]
+text = "list the files under api/1.4.2 in the builds repository"
+expect = "keeper file list"
+
+[[query]]
+text = "browse the generic repository folder"
+expect = "keeper file list"
+
+[[query]]
+text = "what files are in the artifact keeper generic repo"
+expect = "keeper file list"
+
+[[query]]
+text = "download the build output from artifact keeper"
+expect = "keeper file get"
+
+[[query]]
+text = "sha256 of an artifact in keeper"
+expect = "keeper file get"
+
+[[query]]
+text = "save the release tarball from the generic repository"
+expect = "keeper file get"

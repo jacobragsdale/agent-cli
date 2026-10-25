@@ -41,7 +41,7 @@ hand it only to the people those credentials are for. Rebuild to change it.
 To build only some domains, name them: `--no-default-features --features
 sql,airflow,builtin-config` gives a binary with only `sql` and `airflow`.
 The features are the domain names (`ado`, `confluence`, `kv`, `acr`, `aks`,
-`aisearch`, `arm`, `net`, `lake`, `entra`, `k8s`, `sql`, `redis`, `airflow`, `controlm`, `dd`). The
+`aisearch`, `arm`, `net`, `lake`, `entra`, `k8s`, `sql`, `redis`, `airflow`, `controlm`, `dd`, `keeper`). The
 config decides which databases, instances and environments the build
 reaches, so give each group its own file: one holding only the dev
 `[[airflow.instance]]` carries nothing for prod. Leave out the sections of
@@ -604,6 +604,36 @@ Each instance answers `PING` or says why not. `redis instance get` reads
 reads, so give the user exactly those: the ACL `+@read -@dangerous +info
 +slowlog|get +client|list +client|id +client|setname +ping +select`, or an
 Azure access policy like it. A user without them exits 3 naming the ACL.
+
+## 12. Artifact Keeper (keeper)
+
+Artifact Keeper, the self-hosted artifact registry: its PyPI, generic and
+other repositories, read only. Public repositories read without signing in,
+so most people need only the address:
+
+```sh
+agent-cli config example keeper
+```
+
+```toml
+[keeper]
+url = "https://keeper.contoso.example"
+token_env = "KEEPER_TOKEN"     # optional: for private repositories
+```
+
+`url` is the address the browser shows, without `/api/v1`. For private
+repositories, make an API token on your profile's Access Tokens page
+(`URL/access-tokens`); it goes as `Bearer` to URLs under `url` and nowhere
+else. Without one, a private repository answers as if it were not there,
+and the error says so.
+
+```sh
+agent-cli doctor keeper
+```
+
+Doctor names the server's version and whether it reads anonymously or as
+the token's user. Keeper limits downloads per address (30 a minute by
+default); `keeper file get --output` waits out one throttle.
 
 ## WSL
 

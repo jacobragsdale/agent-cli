@@ -44,6 +44,9 @@ config (`docs/first-live-run.md`).
 `tests/live_confluence.rs`: every confluence command against the Data
 Center `scripts/confluence-up.sh` starts, off unless
 `AGENT_CLI_TEST_CONFLUENCE=1`.
+`tests/live_keeper.rs`: every keeper command against the Artifact Keeper
+`scripts/keeper-up.sh` starts, anonymous and with its token, off unless
+`AGENT_CLI_TEST_KEEPER=1`.
 
 ## Never needed
 The domain crates' sources (their cards say where things are),

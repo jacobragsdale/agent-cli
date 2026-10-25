@@ -102,6 +102,28 @@ fn the_deploy_trace_runs_from_the_cluster_to_the_work_items() {
 }
 
 #[test]
+fn the_tag_prod_runs_has_its_build_output_in_keeper_from_the_same_run() {
+    let deployments = ok(&[
+        "k8s",
+        "deployment",
+        "list",
+        "--cluster",
+        "prod",
+        "--fields",
+        "id,images",
+    ]);
+    let image = deployments[0]["images"][0]["image"].as_str().unwrap();
+    let tag = image.rsplit_once(":v").unwrap().1;
+    assert_eq!(tag, "1.4.2");
+    let build = ok(&["keeper", "version", "get", &format!("builds/api@{tag}")]);
+    assert_eq!(build["published_by"], "svc-ado-pipelines");
+    assert_eq!(
+        build["created"], "2026-09-28T21:30:05Z",
+        "uploaded by run 8812 before the 21:34 rollout"
+    );
+}
+
+#[test]
 fn last_nights_failed_dag_run_leads_to_its_exception_and_its_pod() {
     let dags = ok(&[
         "airflow",

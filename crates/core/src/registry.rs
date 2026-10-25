@@ -71,7 +71,8 @@ const IDENTITY_FLAGS: &[&str] = &[
 /// `task`: ado's Task, airflow's task instance. `container`, `log`: k8s
 /// synonyms for pod and logs, dd resources. `history`: kv's secret versions,
 /// ado's work item history. `table`: sql's objects, lake's Parquet tables.
-pub const SHARED_WORDS: &[&str] = &["task", "container", "log", "history", "table"];
+/// `package`: sql's Oracle packages, keeper's PyPI and generic packages.
+pub const SHARED_WORDS: &[&str] = &["task", "container", "log", "history", "table", "package"];
 
 /// The longest status line the overview shows for a domain; longer ones are
 /// cut. What keeps the overview under 1 KB with every domain configured.

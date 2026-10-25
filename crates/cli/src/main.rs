@@ -41,6 +41,8 @@ const DOMAINS: &[Domain] = &[
     agent_cli_controlm::DOMAIN,
     #[cfg(feature = "dd")]
     agent_cli_dd::DOMAIN,
+    #[cfg(feature = "keeper")]
+    agent_cli_keeper::DOMAIN,
 ];
 
 fn main() -> ExitCode {
@@ -585,6 +587,10 @@ token_env = "CONTROLM_TEST_TOKEN"
 site = "datadoghq.eu"
 env = "prod"
 token_cmd = "pup auth token"
+
+[keeper]
+url = "https://artifacts.contoso-engineering.example"
+token_env = "KEEPER_TOKEN"
 "#;
         let setup = Setup::fake(FakeTransport::default()).with_config(config);
         let outcome = run(DOMAINS, &[], setup);
@@ -622,6 +628,7 @@ token_cmd = "pup auth token"
             "airflow 2 instances",
             "controlm 2 instances",
             "dd eu",
+            "keeper artifacts.cont\u{2026}",
         ] {
             assert!(
                 statuses

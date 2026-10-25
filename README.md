@@ -2,7 +2,7 @@
 
 One command-line tool that gives AI coding agents Azure DevOps, Confluence
 Cloud, Azure (Key Vault, Container Registry, AKS, AI Search, Data Lake), Kubernetes, SQL
-Server and Oracle, Apache Airflow, BMC Control-M and Datadog. Its only users
+Server and Oracle, Apache Airflow, BMC Control-M, Datadog and Artifact Keeper. Its only users
 are agents: every command is `agent-cli <domain> <resource> <verb>`, output is
 compact JSON that `--fields` narrows, errors name the command to run next, and
 every change honours `--dry-run` and `--yes`.
@@ -55,6 +55,7 @@ any key, for example `AGENT_CLI_ADO_PROJECT=web`.
 | airflow | `[[airflow.instance]]` per server | `username` and `password`, or `token` |
 | controlm | `[[controlm.instance]]` per Enterprise Manager | `username` and `password`, or an API token: `token` |
 | dd | `[datadog]` site and env | `token`, else `DD_ACCESS_TOKEN` |
+| keeper | `[keeper]` url | none for public repositories; an API token, `token`, for private ones |
 
 One file holds every service, credentials included (`chmod 600` it). Any
 credential `KEY` can instead be `KEY_env` (a variable that holds it) or
@@ -119,6 +120,7 @@ role, a read-only database login, an Airflow Viewer.
 | airflow | Apache Airflow 2.9+ and 3 DAGs, runs, task instances, logs, import errors | 21 |
 | controlm | BMC Control-M job runs, their status, output and definitions; rerun and order | 7 |
 | dd | Datadog logs, metrics, monitors, downtimes, events, APM, incidents, SLOs | 20 |
+| keeper | Artifact Keeper repositories, packages and their versions (PyPI, generic …), who published a version and its checksum, files and downloads, what a PyPI proxy has cached (read-only) | 7 |
 
 ## Documentation
 

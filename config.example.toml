@@ -284,3 +284,12 @@
 # incident_read, hosts_read, slos_read, dashboards_read), plus
 # monitors_downtime only where agents may mute. pup (Datadog's CLI) covers
 # what dd does not; run it with PUP_READ_ONLY=1.
+
+# [keeper]
+# Artifact Keeper (artifactkeeper.com), self-hosted: its PyPI, generic and
+# other repositories, read only. Public repositories read anonymously; a
+# token (an API token from URL/access-tokens, sent as Bearer to URLs under url
+# and nowhere else) reads private ones too. `agent-cli doctor keeper` names
+# the server's version and which of the two it is.
+# url = "https://keeper.contoso.example" # what the browser shows, without /api/v1
+# token = "..."                          # optional: or token_env, token_cmd, token_kv

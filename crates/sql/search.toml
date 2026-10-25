@@ -15,6 +15,11 @@
 text = "run a select against the reporting database"
 expect = "sql query run"
 
+# `package` is shared with keeper (a PyPI or generic package there).
+[[query]]
+text = "show the source of the oracle package billing_pkg"
+expect = "sql object get"
+
 [[query]]
 text = "execute a SQL statement on SQL Server"
 expect = "sql query run"

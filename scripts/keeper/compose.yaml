@@ -38,6 +38,9 @@ services:
       # Downloads are limited per client IP, 30 a minute by default, which
       # the install tests run past; at work one NAT can hide a whole team.
       RATE_LIMIT_PRESIGN_PER_MIN: "10000"
+      # The OpenAPI spec at /api/v1/openapi.json (and /swagger-ui/): the
+      # keeper domain's request and answer shapes come from it.
+      ENABLE_SWAGGER: "true"
       RUST_LOG: info
       HOST: 0.0.0.0
       PORT: 8080

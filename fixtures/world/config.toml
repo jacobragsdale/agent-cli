@@ -72,3 +72,7 @@ password_cmd = "echo stand-in"
 site = "datadoghq.eu"
 env = "prod"
 token_cmd = "echo fixture-dd-token"
+
+[keeper]
+url = "https://keeper.contoso.example"
+token_cmd = "echo stand-in"

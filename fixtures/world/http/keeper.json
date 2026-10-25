@@ -1,0 +1,1722 @@
+[
+ {
+  "request": "GET https://keeper.contoso.example/health",
+  "answer": {
+   "status": "healthy",
+   "version": "1.11.7",
+   "demo_mode": false,
+   "checks": {
+    "database": {
+     "status": "healthy"
+    },
+    "storage": {
+     "status": "healthy"
+    }
+   }
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/auth/me",
+  "answer": {
+   "id": "00000000-0000-4000-8000-00000000e002",
+   "username": "agent",
+   "email": "agent@contoso.example",
+   "display_name": null,
+   "is_admin": false,
+   "totp_enabled": false
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories?page=1&per_page=51",
+  "note": "keeper repo list",
+  "answer": {
+   "items": [
+    {
+     "repodata_depth": 0,
+     "repodata_depth_editable": false,
+     "id": "00000000-0000-4000-8000-0000000e0001",
+     "key": "agent-cli",
+     "name": "agent-cli",
+     "description": "agent-cli releases for scripts/install.sh",
+     "format": "generic",
+     "repo_type": "local",
+     "visibility": "public",
+     "is_public": true,
+     "allow_anonymous_access": true,
+     "promotion_only": false,
+     "versioning_enabled": false,
+     "storage_backend": "filesystem",
+     "storage_used_bytes": 31457280,
+     "member_storage_used_bytes": null,
+     "quota_bytes": null,
+     "project_id": null,
+     "has_trusted_gpg_key": false,
+     "upstream_url": null,
+     "upstream_url_has_credentials": false,
+     "upstream_auth_type": null,
+     "upstream_auth_configured": false,
+     "public_with_upstream_credentials": false,
+     "allow_public_with_upstream_credentials": false,
+     "curation_enabled": false,
+     "curation_default_action": "allow",
+     "created_at": "2026-06-02T09:00:00.000000Z",
+     "updated_at": "2026-06-02T09:00:00.000000Z"
+    },
+    {
+     "repodata_depth": 0,
+     "repodata_depth_editable": false,
+     "id": "00000000-0000-4000-8000-0000000e0002",
+     "key": "builds",
+     "name": "builds",
+     "description": "Pipeline build outputs, api-ci and friends",
+     "format": "generic",
+     "repo_type": "local",
+     "visibility": "public",
+     "is_public": true,
+     "allow_anonymous_access": true,
+     "promotion_only": false,
+     "versioning_enabled": false,
+     "storage_backend": "filesystem",
+     "storage_used_bytes": 96468992,
+     "member_storage_used_bytes": null,
+     "quota_bytes": null,
+     "project_id": null,
+     "has_trusted_gpg_key": false,
+     "upstream_url": null,
+     "upstream_url_has_credentials": false,
+     "upstream_auth_type": null,
+     "upstream_auth_configured": false,
+     "public_with_upstream_credentials": false,
+     "allow_public_with_upstream_credentials": false,
+     "curation_enabled": false,
+     "curation_default_action": "allow",
+     "created_at": "2026-06-02T09:00:00.000000Z",
+     "updated_at": "2026-06-02T09:00:00.000000Z"
+    },
+    {
+     "repodata_depth": 0,
+     "repodata_depth_editable": false,
+     "id": "00000000-0000-4000-8000-0000000e0003",
+     "key": "internal",
+     "name": "internal",
+     "description": "Builds not for everyone",
+     "format": "generic",
+     "repo_type": "local",
+     "visibility": "private",
+     "is_public": false,
+     "allow_anonymous_access": false,
+     "promotion_only": false,
+     "versioning_enabled": false,
+     "storage_backend": "filesystem",
+     "storage_used_bytes": 1048576,
+     "member_storage_used_bytes": null,
+     "quota_bytes": null,
+     "project_id": null,
+     "has_trusted_gpg_key": false,
+     "upstream_url": null,
+     "upstream_url_has_credentials": false,
+     "upstream_auth_type": null,
+     "upstream_auth_configured": false,
+     "public_with_upstream_credentials": false,
+     "allow_public_with_upstream_credentials": false,
+     "curation_enabled": false,
+     "curation_default_action": "allow",
+     "created_at": "2026-06-02T09:00:00.000000Z",
+     "updated_at": "2026-06-02T09:00:00.000000Z"
+    },
+    {
+     "repodata_depth": 0,
+     "repodata_depth_editable": false,
+     "id": "00000000-0000-4000-8000-0000000e0004",
+     "key": "pypi",
+     "name": "pypi",
+     "description": "Contoso's own Python packages",
+     "format": "pypi",
+     "repo_type": "local",
+     "visibility": "public",
+     "is_public": true,
+     "allow_anonymous_access": true,
+     "promotion_only": false,
+     "versioning_enabled": false,
+     "storage_backend": "filesystem",
+     "storage_used_bytes": 389120,
+     "member_storage_used_bytes": null,
+     "quota_bytes": null,
+     "project_id": null,
+     "has_trusted_gpg_key": false,
+     "upstream_url": null,
+     "upstream_url_has_credentials": false,
+     "upstream_auth_type": null,
+     "upstream_auth_configured": false,
+     "public_with_upstream_credentials": false,
+     "allow_public_with_upstream_credentials": false,
+     "curation_enabled": false,
+     "curation_default_action": "allow",
+     "created_at": "2026-06-02T09:00:00.000000Z",
+     "updated_at": "2026-06-02T09:00:00.000000Z"
+    },
+    {
+     "repodata_depth": 0,
+     "repodata_depth_editable": false,
+     "id": "00000000-0000-4000-8000-0000000e0005",
+     "key": "pypi-all",
+     "name": "pypi-all",
+     "description": "pip's index-url: pypi, then pypi-proxy",
+     "format": "pypi",
+     "repo_type": "virtual",
+     "visibility": "public",
+     "is_public": true,
+     "allow_anonymous_access": true,
+     "promotion_only": false,
+     "versioning_enabled": false,
+     "storage_backend": "filesystem",
+     "storage_used_bytes": 0,
+     "member_storage_used_bytes": null,
+     "quota_bytes": null,
+     "project_id": null,
+     "has_trusted_gpg_key": false,
+     "upstream_url": null,
+     "upstream_url_has_credentials": false,
+     "upstream_auth_type": null,
+     "upstream_auth_configured": false,
+     "public_with_upstream_credentials": false,
+     "allow_public_with_upstream_credentials": false,
+     "curation_enabled": false,
+     "curation_default_action": "allow",
+     "created_at": "2026-06-02T09:00:00.000000Z",
+     "updated_at": "2026-06-02T09:00:00.000000Z"
+    },
+    {
+     "repodata_depth": 0,
+     "repodata_depth_editable": false,
+     "id": "00000000-0000-4000-8000-0000000e0006",
+     "key": "pypi-proxy",
+     "name": "pypi-proxy",
+     "description": null,
+     "format": "pypi",
+     "repo_type": "remote",
+     "visibility": "public",
+     "is_public": true,
+     "allow_anonymous_access": true,
+     "promotion_only": false,
+     "versioning_enabled": false,
+     "storage_backend": "filesystem",
+     "storage_used_bytes": 187695104,
+     "member_storage_used_bytes": null,
+     "quota_bytes": null,
+     "project_id": null,
+     "has_trusted_gpg_key": false,
+     "upstream_url": "https://pypi.org",
+     "upstream_url_has_credentials": false,
+     "upstream_auth_type": null,
+     "upstream_auth_configured": false,
+     "public_with_upstream_credentials": false,
+     "allow_public_with_upstream_credentials": false,
+     "curation_enabled": false,
+     "curation_default_action": "allow",
+     "created_at": "2026-06-02T09:00:00.000000Z",
+     "updated_at": "2026-06-02T09:00:00.000000Z"
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 51,
+    "total": 6,
+    "total_pages": 1
+   }
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/agent-cli",
+  "answer": {
+   "repodata_depth": 0,
+   "repodata_depth_editable": false,
+   "id": "00000000-0000-4000-8000-0000000e0001",
+   "key": "agent-cli",
+   "name": "agent-cli",
+   "description": "agent-cli releases for scripts/install.sh",
+   "format": "generic",
+   "repo_type": "local",
+   "visibility": "public",
+   "is_public": true,
+   "allow_anonymous_access": true,
+   "promotion_only": false,
+   "versioning_enabled": false,
+   "storage_backend": "filesystem",
+   "storage_used_bytes": 31457280,
+   "member_storage_used_bytes": null,
+   "quota_bytes": null,
+   "project_id": null,
+   "has_trusted_gpg_key": false,
+   "upstream_url": null,
+   "upstream_url_has_credentials": false,
+   "upstream_auth_type": null,
+   "upstream_auth_configured": false,
+   "public_with_upstream_credentials": false,
+   "allow_public_with_upstream_credentials": false,
+   "curation_enabled": false,
+   "curation_default_action": "allow",
+   "created_at": "2026-06-02T09:00:00.000000Z",
+   "updated_at": "2026-06-02T09:00:00.000000Z"
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/builds",
+  "answer": {
+   "repodata_depth": 0,
+   "repodata_depth_editable": false,
+   "id": "00000000-0000-4000-8000-0000000e0002",
+   "key": "builds",
+   "name": "builds",
+   "description": "Pipeline build outputs, api-ci and friends",
+   "format": "generic",
+   "repo_type": "local",
+   "visibility": "public",
+   "is_public": true,
+   "allow_anonymous_access": true,
+   "promotion_only": false,
+   "versioning_enabled": false,
+   "storage_backend": "filesystem",
+   "storage_used_bytes": 96468992,
+   "member_storage_used_bytes": null,
+   "quota_bytes": null,
+   "project_id": null,
+   "has_trusted_gpg_key": false,
+   "upstream_url": null,
+   "upstream_url_has_credentials": false,
+   "upstream_auth_type": null,
+   "upstream_auth_configured": false,
+   "public_with_upstream_credentials": false,
+   "allow_public_with_upstream_credentials": false,
+   "curation_enabled": false,
+   "curation_default_action": "allow",
+   "created_at": "2026-06-02T09:00:00.000000Z",
+   "updated_at": "2026-06-02T09:00:00.000000Z"
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/internal",
+  "answer": {
+   "repodata_depth": 0,
+   "repodata_depth_editable": false,
+   "id": "00000000-0000-4000-8000-0000000e0003",
+   "key": "internal",
+   "name": "internal",
+   "description": "Builds not for everyone",
+   "format": "generic",
+   "repo_type": "local",
+   "visibility": "private",
+   "is_public": false,
+   "allow_anonymous_access": false,
+   "promotion_only": false,
+   "versioning_enabled": false,
+   "storage_backend": "filesystem",
+   "storage_used_bytes": 1048576,
+   "member_storage_used_bytes": null,
+   "quota_bytes": null,
+   "project_id": null,
+   "has_trusted_gpg_key": false,
+   "upstream_url": null,
+   "upstream_url_has_credentials": false,
+   "upstream_auth_type": null,
+   "upstream_auth_configured": false,
+   "public_with_upstream_credentials": false,
+   "allow_public_with_upstream_credentials": false,
+   "curation_enabled": false,
+   "curation_default_action": "allow",
+   "created_at": "2026-06-02T09:00:00.000000Z",
+   "updated_at": "2026-06-02T09:00:00.000000Z"
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi",
+  "answer": {
+   "repodata_depth": 0,
+   "repodata_depth_editable": false,
+   "id": "00000000-0000-4000-8000-0000000e0004",
+   "key": "pypi",
+   "name": "pypi",
+   "description": "Contoso's own Python packages",
+   "format": "pypi",
+   "repo_type": "local",
+   "visibility": "public",
+   "is_public": true,
+   "allow_anonymous_access": true,
+   "promotion_only": false,
+   "versioning_enabled": false,
+   "storage_backend": "filesystem",
+   "storage_used_bytes": 389120,
+   "member_storage_used_bytes": null,
+   "quota_bytes": null,
+   "project_id": null,
+   "has_trusted_gpg_key": false,
+   "upstream_url": null,
+   "upstream_url_has_credentials": false,
+   "upstream_auth_type": null,
+   "upstream_auth_configured": false,
+   "public_with_upstream_credentials": false,
+   "allow_public_with_upstream_credentials": false,
+   "curation_enabled": false,
+   "curation_default_action": "allow",
+   "created_at": "2026-06-02T09:00:00.000000Z",
+   "updated_at": "2026-06-02T09:00:00.000000Z"
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi-all",
+  "answer": {
+   "repodata_depth": 0,
+   "repodata_depth_editable": false,
+   "id": "00000000-0000-4000-8000-0000000e0005",
+   "key": "pypi-all",
+   "name": "pypi-all",
+   "description": "pip's index-url: pypi, then pypi-proxy",
+   "format": "pypi",
+   "repo_type": "virtual",
+   "visibility": "public",
+   "is_public": true,
+   "allow_anonymous_access": true,
+   "promotion_only": false,
+   "versioning_enabled": false,
+   "storage_backend": "filesystem",
+   "storage_used_bytes": 0,
+   "member_storage_used_bytes": null,
+   "quota_bytes": null,
+   "project_id": null,
+   "has_trusted_gpg_key": false,
+   "upstream_url": null,
+   "upstream_url_has_credentials": false,
+   "upstream_auth_type": null,
+   "upstream_auth_configured": false,
+   "public_with_upstream_credentials": false,
+   "allow_public_with_upstream_credentials": false,
+   "curation_enabled": false,
+   "curation_default_action": "allow",
+   "created_at": "2026-06-02T09:00:00.000000Z",
+   "updated_at": "2026-06-02T09:00:00.000000Z"
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi-proxy",
+  "answer": {
+   "repodata_depth": 0,
+   "repodata_depth_editable": false,
+   "id": "00000000-0000-4000-8000-0000000e0006",
+   "key": "pypi-proxy",
+   "name": "pypi-proxy",
+   "description": null,
+   "format": "pypi",
+   "repo_type": "remote",
+   "visibility": "public",
+   "is_public": true,
+   "allow_anonymous_access": true,
+   "promotion_only": false,
+   "versioning_enabled": false,
+   "storage_backend": "filesystem",
+   "storage_used_bytes": 187695104,
+   "member_storage_used_bytes": null,
+   "quota_bytes": null,
+   "project_id": null,
+   "has_trusted_gpg_key": false,
+   "upstream_url": "https://pypi.org",
+   "upstream_url_has_credentials": false,
+   "upstream_auth_type": null,
+   "upstream_auth_configured": false,
+   "public_with_upstream_credentials": false,
+   "allow_public_with_upstream_credentials": false,
+   "curation_enabled": false,
+   "curation_default_action": "allow",
+   "created_at": "2026-06-02T09:00:00.000000Z",
+   "updated_at": "2026-06-02T09:00:00.000000Z"
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi-all/members",
+  "answer": {
+   "members": [
+    {
+     "id": "00000000-0000-4000-8000-0000000f0001",
+     "member_repo_id": "00000000-0000-4000-8000-0000000e0004",
+     "member_repo_key": "pypi",
+     "member_repo_name": "pypi",
+     "member_repo_type": "local",
+     "priority": 1,
+     "created_at": "2026-06-02T09:05:00.000000Z"
+    },
+    {
+     "id": "00000000-0000-4000-8000-0000000f0002",
+     "member_repo_id": "00000000-0000-4000-8000-0000000e0006",
+     "member_repo_key": "pypi-proxy",
+     "member_repo_name": "pypi-proxy",
+     "member_repo_type": "remote",
+     "priority": 2,
+     "created_at": "2026-06-02T09:05:00.000000Z"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi-proxy/cache-ttl",
+  "answer": {
+   "repository_key": "pypi-proxy",
+   "cache_ttl_seconds": 86400
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/packages?page=1&per_page=51",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-00000000c001",
+     "repository_key": "pypi",
+     "name": "contoso-orders-client",
+     "version": "2.3.0",
+     "format": "pypi",
+     "description": "Client for the orders API (retries on 429)",
+     "size_bytes": 18432,
+     "download_count": 69,
+     "created_at": "2026-08-03T10:20:00.000000Z",
+     "updated_at": "2026-09-28T21:31:10.204511Z",
+     "metadata": {
+      "filename": "contoso_orders_client-2.3.0-py3-none-any.whl",
+      "format": "pypi"
+     }
+    },
+    {
+     "id": "00000000-0000-4000-8000-00000000c002",
+     "repository_key": "pypi",
+     "name": "contoso-etl-utils",
+     "version": "0.9.0",
+     "format": "pypi",
+     "description": "Shared helpers for the Airflow DAGs",
+     "size_bytes": 9216,
+     "download_count": 140,
+     "created_at": "2026-07-01T08:00:00.000000Z",
+     "updated_at": "2026-09-10T14:02:31.550000Z",
+     "metadata": {
+      "filename": "contoso_etl_utils-0.9.0-py3-none-any.whl",
+      "format": "pypi"
+     }
+    },
+    {
+     "id": "00000000-0000-4000-8000-00000000c003",
+     "repository_key": "builds",
+     "name": "api",
+     "version": "1.4.2",
+     "format": "generic",
+     "description": null,
+     "size_bytes": 48234496,
+     "download_count": 13,
+     "created_at": "2026-09-15T16:12:40.100250Z",
+     "updated_at": "2026-09-28T21:30:05.913007Z",
+     "metadata": null
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 51,
+    "total": 3,
+    "total_pages": 1
+   }
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/packages?search=contoso&page=1&per_page=51",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-00000000c001",
+     "repository_key": "pypi",
+     "name": "contoso-orders-client",
+     "version": "2.3.0",
+     "format": "pypi",
+     "description": "Client for the orders API (retries on 429)",
+     "size_bytes": 18432,
+     "download_count": 69,
+     "created_at": "2026-08-03T10:20:00.000000Z",
+     "updated_at": "2026-09-28T21:31:10.204511Z",
+     "metadata": {
+      "filename": "contoso_orders_client-2.3.0-py3-none-any.whl",
+      "format": "pypi"
+     }
+    },
+    {
+     "id": "00000000-0000-4000-8000-00000000c002",
+     "repository_key": "pypi",
+     "name": "contoso-etl-utils",
+     "version": "0.9.0",
+     "format": "pypi",
+     "description": "Shared helpers for the Airflow DAGs",
+     "size_bytes": 9216,
+     "download_count": 140,
+     "created_at": "2026-07-01T08:00:00.000000Z",
+     "updated_at": "2026-09-10T14:02:31.550000Z",
+     "metadata": {
+      "filename": "contoso_etl_utils-0.9.0-py3-none-any.whl",
+      "format": "pypi"
+     }
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 51,
+    "total": 2,
+    "total_pages": 1
+   }
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/packages?search=contoso-etl-utils&page=1&per_page=51",
+  "note": "keeper package list contoso-etl-utils: the hint after the proxy's 404",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-00000000c002",
+     "repository_key": "pypi",
+     "name": "contoso-etl-utils",
+     "version": "0.9.0",
+     "format": "pypi",
+     "description": "Shared helpers for the Airflow DAGs",
+     "size_bytes": 9216,
+     "download_count": 140,
+     "created_at": "2026-07-01T08:00:00.000000Z",
+     "updated_at": "2026-09-10T14:02:31.550000Z",
+     "metadata": {
+      "filename": "contoso_etl_utils-0.9.0-py3-none-any.whl",
+      "format": "pypi"
+     }
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 51,
+    "total": 1,
+    "total_pages": 1
+   }
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/packages?repository_key=pypi&search=contoso-orders-client&per_page=100",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-00000000c001",
+     "repository_key": "pypi",
+     "name": "contoso-orders-client",
+     "version": "2.3.0",
+     "format": "pypi",
+     "description": "Client for the orders API (retries on 429)",
+     "size_bytes": 18432,
+     "download_count": 69,
+     "created_at": "2026-08-03T10:20:00.000000Z",
+     "updated_at": "2026-09-28T21:31:10.204511Z",
+     "metadata": {
+      "filename": "contoso_orders_client-2.3.0-py3-none-any.whl",
+      "format": "pypi"
+     }
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 1,
+    "total_pages": 1
+   }
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/packages?repository_key=pypi&search=contoso-etl-utils&per_page=100",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-00000000c002",
+     "repository_key": "pypi",
+     "name": "contoso-etl-utils",
+     "version": "0.9.0",
+     "format": "pypi",
+     "description": "Shared helpers for the Airflow DAGs",
+     "size_bytes": 9216,
+     "download_count": 140,
+     "created_at": "2026-07-01T08:00:00.000000Z",
+     "updated_at": "2026-09-10T14:02:31.550000Z",
+     "metadata": {
+      "filename": "contoso_etl_utils-0.9.0-py3-none-any.whl",
+      "format": "pypi"
+     }
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 1,
+    "total_pages": 1
+   }
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/packages?repository_key=pypi-all&search=contoso-orders-client&per_page=100",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-00000000c001",
+     "repository_key": "pypi-all",
+     "name": "contoso-orders-client",
+     "version": "2.3.0",
+     "format": "pypi",
+     "description": "Client for the orders API (retries on 429)",
+     "size_bytes": 18432,
+     "download_count": 69,
+     "created_at": "2026-08-03T10:20:00.000000Z",
+     "updated_at": "2026-09-28T21:31:10.204511Z",
+     "metadata": {
+      "filename": "contoso_orders_client-2.3.0-py3-none-any.whl",
+      "format": "pypi"
+     }
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 1,
+    "total_pages": 1
+   }
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/packages?repository_key=builds&search=api&per_page=100",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-00000000c003",
+     "repository_key": "builds",
+     "name": "api",
+     "version": "1.4.2",
+     "format": "generic",
+     "description": null,
+     "size_bytes": 48234496,
+     "download_count": 13,
+     "created_at": "2026-09-15T16:12:40.100250Z",
+     "updated_at": "2026-09-28T21:30:05.913007Z",
+     "metadata": null
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 1,
+    "total_pages": 1
+   }
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/packages/00000000-0000-4000-8000-00000000c001/versions",
+  "answer": {
+   "versions": [
+    {
+     "version": "2.3.0",
+     "size_bytes": 18432,
+     "download_count": 12,
+     "created_at": "2026-09-28T21:31:10.204511Z",
+     "checksum_sha256": "4be1c0d2a9f8e7d6c5b4a3928170f6e5d4c3b2a19088f7e6d5c4b3a291807f6e"
+    },
+    {
+     "version": "2.2.0",
+     "size_bytes": 17920,
+     "download_count": 57,
+     "created_at": "2026-09-15T16:14:02.880113Z",
+     "checksum_sha256": "2d8b6f4a0e1c3b5d7f9a2c4e6b8d0f1a3c5e7b9d2f4a6c8e0b1d3f5a7c9e2b4d"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/packages/00000000-0000-4000-8000-00000000c002/versions",
+  "answer": {
+   "versions": [
+    {
+     "version": "0.9.0",
+     "size_bytes": 9216,
+     "download_count": 140,
+     "created_at": "2026-09-10T14:02:31.550000Z",
+     "checksum_sha256": "e09e09e09e09e09e09e09e09e09e09e09e09e09e09e09e09e09e09e09e09e09e"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/packages/00000000-0000-4000-8000-00000000c003/versions",
+  "answer": {
+   "versions": [
+    {
+     "version": "1.4.2",
+     "size_bytes": 45,
+     "download_count": 4,
+     "created_at": "2026-09-28T21:30:05.412318Z",
+     "checksum_sha256": "7d2f0c4b9e1a83f6c5d0b2a4e6f8091a3c5e7b9d1f2a4c6e8b0d2f4a6c8e0b2d"
+    },
+    {
+     "version": "1.4.1",
+     "size_bytes": 45,
+     "download_count": 9,
+     "created_at": "2026-09-15T16:12:40.100250Z",
+     "checksum_sha256": "1cece7572b8e4f6a9d0c3b5e7f9a1c3e5d7f9b1a3c5e7d9f1b3a5c7e9d1f3b5a"
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi/artifacts?path_prefix=contoso-orders-client%2F2.3.0%2F&per_page=100",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-0000000a0004",
+     "repository_key": "pypi",
+     "path": "contoso-orders-client/2.3.0/contoso_orders_client-2.3.0-py3-none-any.whl",
+     "name": "contoso-orders-client",
+     "version": "2.3.0",
+     "size_bytes": 18432,
+     "checksum_sha256": "4be1c0d2a9f8e7d6c5b4a3928170f6e5d4c3b2a19088f7e6d5c4b3a291807f6e",
+     "content_type": "application/zip",
+     "download_count": 12,
+     "created_at": "2026-09-28T21:31:10.204511Z",
+     "uploaded_by": "00000000-0000-4000-8000-00000000e001",
+     "uploaded_by_username": "svc-ado-pipelines",
+     "metadata": null,
+     "analyzable": true,
+     "quarantine_status": "not_quarantined",
+     "origin": {
+      "v": 1,
+      "kind": "hosted",
+      "repository_key": "pypi"
+     },
+     "last_promotion": null
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 1,
+    "total_pages": 1
+   },
+   "has_more": false
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi-all/artifacts?path_prefix=contoso-orders-client%2F2.3.0%2F&per_page=100",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-0000000a0004",
+     "repository_key": "pypi-all",
+     "path": "contoso-orders-client/2.3.0/contoso_orders_client-2.3.0-py3-none-any.whl",
+     "name": "contoso-orders-client",
+     "version": "2.3.0",
+     "size_bytes": 18432,
+     "checksum_sha256": "4be1c0d2a9f8e7d6c5b4a3928170f6e5d4c3b2a19088f7e6d5c4b3a291807f6e",
+     "content_type": "application/zip",
+     "download_count": 12,
+     "created_at": "2026-09-28T21:31:10.204511Z",
+     "uploaded_by": "00000000-0000-4000-8000-00000000e001",
+     "uploaded_by_username": "svc-ado-pipelines",
+     "metadata": null,
+     "analyzable": true,
+     "quarantine_status": "not_quarantined",
+     "origin": {
+      "v": 1,
+      "kind": "hosted",
+      "repository_key": "pypi"
+     },
+     "last_promotion": null
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 1,
+    "total_pages": 1
+   },
+   "has_more": false
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi/artifacts?path_prefix=contoso-orders-client%2F2.2.0%2F&per_page=100",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-0000000a0005",
+     "repository_key": "pypi",
+     "path": "contoso-orders-client/2.2.0/contoso_orders_client-2.2.0-py3-none-any.whl",
+     "name": "contoso-orders-client",
+     "version": "2.2.0",
+     "size_bytes": 17920,
+     "checksum_sha256": "2d8b6f4a0e1c3b5d7f9a2c4e6b8d0f1a3c5e7b9d2f4a6c8e0b1d3f5a7c9e2b4d",
+     "content_type": "application/zip",
+     "download_count": 57,
+     "created_at": "2026-09-15T16:14:02.880113Z",
+     "uploaded_by": "00000000-0000-4000-8000-00000000e001",
+     "uploaded_by_username": "svc-ado-pipelines",
+     "metadata": null,
+     "analyzable": true,
+     "quarantine_status": "not_quarantined",
+     "origin": {
+      "v": 1,
+      "kind": "hosted",
+      "repository_key": "pypi"
+     },
+     "last_promotion": null
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 1,
+    "total_pages": 1
+   },
+   "has_more": false
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/builds/artifacts?path_prefix=api%2F1.4.2%2F&per_page=100",
+  "note": "keeper version get builds/api@1.4.2: api-ci run 8812's upload",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-0000000a0001",
+     "repository_key": "builds",
+     "path": "api/1.4.2/api-1.4.2-linux-x64.tar.gz",
+     "name": "api",
+     "version": "1.4.2",
+     "size_bytes": 45,
+     "checksum_sha256": "7d2f0c4b9e1a83f6c5d0b2a4e6f8091a3c5e7b9d1f2a4c6e8b0d2f4a6c8e0b2d",
+     "content_type": "application/gzip",
+     "download_count": 4,
+     "created_at": "2026-09-28T21:30:05.412318Z",
+     "uploaded_by": "00000000-0000-4000-8000-00000000e001",
+     "uploaded_by_username": "svc-ado-pipelines",
+     "metadata": null,
+     "analyzable": true,
+     "quarantine_status": "not_quarantined",
+     "origin": {
+      "v": 1,
+      "kind": "hosted",
+      "repository_key": "builds"
+     },
+     "last_promotion": null
+    },
+    {
+     "id": "00000000-0000-4000-8000-0000000a0002",
+     "repository_key": "builds",
+     "path": "api/1.4.2/api-1.4.2-linux-x64.tar.gz.sha256",
+     "name": "api",
+     "version": "1.4.2",
+     "size_bytes": 93,
+     "checksum_sha256": "e3a1b5c7d9f0e2a4b6c8d0f1e3a5b7c9d1e3f5a7b9c1d3e5f7a9b1c3d5e7f9a1",
+     "content_type": "text/plain",
+     "download_count": 0,
+     "created_at": "2026-09-28T21:30:05.913007Z",
+     "uploaded_by": "00000000-0000-4000-8000-00000000e001",
+     "uploaded_by_username": "svc-ado-pipelines",
+     "metadata": null,
+     "analyzable": true,
+     "quarantine_status": "not_quarantined",
+     "origin": {
+      "v": 1,
+      "kind": "hosted",
+      "repository_key": "builds"
+     },
+     "last_promotion": null
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 2,
+    "total_pages": 1
+   },
+   "has_more": false
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/builds/artifacts?path_prefix=api%2F1.4.1%2F&per_page=100",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-0000000a0003",
+     "repository_key": "builds",
+     "path": "api/1.4.1/api-1.4.1-linux-x64.tar.gz",
+     "name": "api",
+     "version": "1.4.1",
+     "size_bytes": 45,
+     "checksum_sha256": "1cece7572b8e4f6a9d0c3b5e7f9a1c3e5d7f9b1a3c5e7d9f1b3a5c7e9d1f3b5a",
+     "content_type": "application/gzip",
+     "download_count": 9,
+     "created_at": "2026-09-15T16:12:40.100250Z",
+     "uploaded_by": "00000000-0000-4000-8000-00000000e001",
+     "uploaded_by_username": "svc-ado-pipelines",
+     "metadata": null,
+     "analyzable": true,
+     "quarantine_status": "not_quarantined",
+     "origin": {
+      "v": 1,
+      "kind": "hosted",
+      "repository_key": "builds"
+     },
+     "last_promotion": null
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 1,
+    "total_pages": 1
+   },
+   "has_more": false
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/builds/artifacts?path_prefix=api%2F1.4.2%2F&per_page=51",
+  "note": "keeper file list builds/api/1.4.2/",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-0000000a0001",
+     "repository_key": "builds",
+     "path": "api/1.4.2/api-1.4.2-linux-x64.tar.gz",
+     "name": "api",
+     "version": "1.4.2",
+     "size_bytes": 45,
+     "checksum_sha256": "7d2f0c4b9e1a83f6c5d0b2a4e6f8091a3c5e7b9d1f2a4c6e8b0d2f4a6c8e0b2d",
+     "content_type": "application/gzip",
+     "download_count": 4,
+     "created_at": "2026-09-28T21:30:05.412318Z",
+     "uploaded_by": "00000000-0000-4000-8000-00000000e001",
+     "uploaded_by_username": "svc-ado-pipelines",
+     "metadata": null,
+     "analyzable": true,
+     "quarantine_status": "not_quarantined",
+     "origin": {
+      "v": 1,
+      "kind": "hosted",
+      "repository_key": "builds"
+     },
+     "last_promotion": null
+    },
+    {
+     "id": "00000000-0000-4000-8000-0000000a0002",
+     "repository_key": "builds",
+     "path": "api/1.4.2/api-1.4.2-linux-x64.tar.gz.sha256",
+     "name": "api",
+     "version": "1.4.2",
+     "size_bytes": 93,
+     "checksum_sha256": "e3a1b5c7d9f0e2a4b6c8d0f1e3a5b7c9d1e3f5a7b9c1d3e5f7a9b1c3d5e7f9a1",
+     "content_type": "text/plain",
+     "download_count": 0,
+     "created_at": "2026-09-28T21:30:05.913007Z",
+     "uploaded_by": "00000000-0000-4000-8000-00000000e001",
+     "uploaded_by_username": "svc-ado-pipelines",
+     "metadata": null,
+     "analyzable": true,
+     "quarantine_status": "not_quarantined",
+     "origin": {
+      "v": 1,
+      "kind": "hosted",
+      "repository_key": "builds"
+     },
+     "last_promotion": null
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 2,
+    "total_pages": 1
+   },
+   "has_more": false
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/builds/artifacts?per_page=51",
+  "note": "keeper file list builds",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-0000000a0003",
+     "repository_key": "builds",
+     "path": "api/1.4.1/api-1.4.1-linux-x64.tar.gz",
+     "name": "api",
+     "version": "1.4.1",
+     "size_bytes": 45,
+     "checksum_sha256": "1cece7572b8e4f6a9d0c3b5e7f9a1c3e5d7f9b1a3c5e7d9f1b3a5c7e9d1f3b5a",
+     "content_type": "application/gzip",
+     "download_count": 9,
+     "created_at": "2026-09-15T16:12:40.100250Z",
+     "uploaded_by": "00000000-0000-4000-8000-00000000e001",
+     "uploaded_by_username": "svc-ado-pipelines",
+     "metadata": null,
+     "analyzable": true,
+     "quarantine_status": "not_quarantined",
+     "origin": {
+      "v": 1,
+      "kind": "hosted",
+      "repository_key": "builds"
+     },
+     "last_promotion": null
+    },
+    {
+     "id": "00000000-0000-4000-8000-0000000a0001",
+     "repository_key": "builds",
+     "path": "api/1.4.2/api-1.4.2-linux-x64.tar.gz",
+     "name": "api",
+     "version": "1.4.2",
+     "size_bytes": 45,
+     "checksum_sha256": "7d2f0c4b9e1a83f6c5d0b2a4e6f8091a3c5e7b9d1f2a4c6e8b0d2f4a6c8e0b2d",
+     "content_type": "application/gzip",
+     "download_count": 4,
+     "created_at": "2026-09-28T21:30:05.412318Z",
+     "uploaded_by": "00000000-0000-4000-8000-00000000e001",
+     "uploaded_by_username": "svc-ado-pipelines",
+     "metadata": null,
+     "analyzable": true,
+     "quarantine_status": "not_quarantined",
+     "origin": {
+      "v": 1,
+      "kind": "hosted",
+      "repository_key": "builds"
+     },
+     "last_promotion": null
+    },
+    {
+     "id": "00000000-0000-4000-8000-0000000a0002",
+     "repository_key": "builds",
+     "path": "api/1.4.2/api-1.4.2-linux-x64.tar.gz.sha256",
+     "name": "api",
+     "version": "1.4.2",
+     "size_bytes": 93,
+     "checksum_sha256": "e3a1b5c7d9f0e2a4b6c8d0f1e3a5b7c9d1e3f5a7b9c1d3e5f7a9b1c3d5e7f9a1",
+     "content_type": "text/plain",
+     "download_count": 0,
+     "created_at": "2026-09-28T21:30:05.913007Z",
+     "uploaded_by": "00000000-0000-4000-8000-00000000e001",
+     "uploaded_by_username": "svc-ado-pipelines",
+     "metadata": null,
+     "analyzable": true,
+     "quarantine_status": "not_quarantined",
+     "origin": {
+      "v": 1,
+      "kind": "hosted",
+      "repository_key": "builds"
+     },
+     "last_promotion": null
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 3,
+    "total_pages": 1
+   },
+   "has_more": false
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/builds/artifacts/api/1.4.2/api-1.4.2-linux-x64.tar.gz",
+  "answer": {
+   "id": "00000000-0000-4000-8000-0000000a0001",
+   "repository_key": "builds",
+   "path": "api/1.4.2/api-1.4.2-linux-x64.tar.gz",
+   "name": "api",
+   "version": "1.4.2",
+   "size_bytes": 45,
+   "checksum_sha256": "7d2f0c4b9e1a83f6c5d0b2a4e6f8091a3c5e7b9d1f2a4c6e8b0d2f4a6c8e0b2d",
+   "content_type": "application/gzip",
+   "download_count": 4,
+   "created_at": "2026-09-28T21:30:05.412318Z",
+   "uploaded_by": "00000000-0000-4000-8000-00000000e001",
+   "uploaded_by_username": "svc-ado-pipelines",
+   "metadata": null,
+   "analyzable": true,
+   "quarantine_status": "not_quarantined",
+   "origin": {
+    "v": 1,
+    "kind": "hosted",
+    "repository_key": "builds"
+   },
+   "last_promotion": null
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/builds/artifacts/api/1.4.2/api-1.4.2-linux-x64.tar.gz.sha256",
+  "answer": {
+   "id": "00000000-0000-4000-8000-0000000a0002",
+   "repository_key": "builds",
+   "path": "api/1.4.2/api-1.4.2-linux-x64.tar.gz.sha256",
+   "name": "api",
+   "version": "1.4.2",
+   "size_bytes": 93,
+   "checksum_sha256": "e3a1b5c7d9f0e2a4b6c8d0f1e3a5b7c9d1e3f5a7b9c1d3e5f7a9b1c3d5e7f9a1",
+   "content_type": "text/plain",
+   "download_count": 0,
+   "created_at": "2026-09-28T21:30:05.913007Z",
+   "uploaded_by": "00000000-0000-4000-8000-00000000e001",
+   "uploaded_by_username": "svc-ado-pipelines",
+   "metadata": null,
+   "analyzable": true,
+   "quarantine_status": "not_quarantined",
+   "origin": {
+    "v": 1,
+    "kind": "hosted",
+    "repository_key": "builds"
+   },
+   "last_promotion": null
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/builds/artifacts/api/1.4.1/api-1.4.1-linux-x64.tar.gz",
+  "answer": {
+   "id": "00000000-0000-4000-8000-0000000a0003",
+   "repository_key": "builds",
+   "path": "api/1.4.1/api-1.4.1-linux-x64.tar.gz",
+   "name": "api",
+   "version": "1.4.1",
+   "size_bytes": 45,
+   "checksum_sha256": "1cece7572b8e4f6a9d0c3b5e7f9a1c3e5d7f9b1a3c5e7d9f1b3a5c7e9d1f3b5a",
+   "content_type": "application/gzip",
+   "download_count": 9,
+   "created_at": "2026-09-15T16:12:40.100250Z",
+   "uploaded_by": "00000000-0000-4000-8000-00000000e001",
+   "uploaded_by_username": "svc-ado-pipelines",
+   "metadata": null,
+   "analyzable": true,
+   "quarantine_status": "not_quarantined",
+   "origin": {
+    "v": 1,
+    "kind": "hosted",
+    "repository_key": "builds"
+   },
+   "last_promotion": null
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi/artifacts/contoso-orders-client/2.3.0/contoso_orders_client-2.3.0-py3-none-any.whl",
+  "answer": {
+   "id": "00000000-0000-4000-8000-0000000a0004",
+   "repository_key": "pypi",
+   "path": "contoso-orders-client/2.3.0/contoso_orders_client-2.3.0-py3-none-any.whl",
+   "name": "contoso-orders-client",
+   "version": "2.3.0",
+   "size_bytes": 18432,
+   "checksum_sha256": "4be1c0d2a9f8e7d6c5b4a3928170f6e5d4c3b2a19088f7e6d5c4b3a291807f6e",
+   "content_type": "application/zip",
+   "download_count": 12,
+   "created_at": "2026-09-28T21:31:10.204511Z",
+   "uploaded_by": "00000000-0000-4000-8000-00000000e001",
+   "uploaded_by_username": "svc-ado-pipelines",
+   "metadata": null,
+   "analyzable": true,
+   "quarantine_status": "not_quarantined",
+   "origin": {
+    "v": 1,
+    "kind": "hosted",
+    "repository_key": "pypi"
+   },
+   "last_promotion": null
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi/artifacts/contoso-orders-client/2.2.0/contoso_orders_client-2.2.0-py3-none-any.whl",
+  "answer": {
+   "id": "00000000-0000-4000-8000-0000000a0005",
+   "repository_key": "pypi",
+   "path": "contoso-orders-client/2.2.0/contoso_orders_client-2.2.0-py3-none-any.whl",
+   "name": "contoso-orders-client",
+   "version": "2.2.0",
+   "size_bytes": 17920,
+   "checksum_sha256": "2d8b6f4a0e1c3b5d7f9a2c4e6b8d0f1a3c5e7b9d2f4a6c8e0b1d3f5a7c9e2b4d",
+   "content_type": "application/zip",
+   "download_count": 57,
+   "created_at": "2026-09-15T16:14:02.880113Z",
+   "uploaded_by": "00000000-0000-4000-8000-00000000e001",
+   "uploaded_by_username": "svc-ado-pipelines",
+   "metadata": null,
+   "analyzable": true,
+   "quarantine_status": "not_quarantined",
+   "origin": {
+    "v": 1,
+    "kind": "hosted",
+    "repository_key": "pypi"
+   },
+   "last_promotion": null
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/builds/download/api/1.4.2/api-1.4.2-linux-x64.tar.gz",
+  "text": "stand-in for the api 1.4.2 linux-x64 tarball\n"
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/builds/download/api/1.4.2/api-1.4.2-linux-x64.tar.gz.sha256",
+  "text": "7d2f0c4b9e1a83f6c5d0b2a4e6f8091a3c5e7b9d1f2a4c6e8b0d2f4a6c8e0b2d  api-1.4.2-linux-x64.tar.gz\n"
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/builds/download/api/1.4.1/api-1.4.1-linux-x64.tar.gz",
+  "text": "stand-in for the api 1.4.1 linux-x64 tarball\n"
+ },
+ {
+  "request": "GET https://keeper.contoso.example/pypi/pypi-proxy/pypi/pyarrow/json",
+  "note": "upstream pypi.org's pyarrow, through the proxy",
+  "answer": {
+   "info": {
+    "name": "pyarrow",
+    "version": "17.0.0",
+    "summary": "Python library for Apache Arrow",
+    "requires_python": ">=3.8"
+   },
+   "last_serial": 24260514,
+   "releases": {
+    "16.1.0": [
+     {
+      "comment_text": "",
+      "digests": {
+       "sha256": "a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a"
+      },
+      "downloads": -1,
+      "filename": "pyarrow-16.1.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+      "has_sig": false,
+      "packagetype": "bdist_wheel",
+      "python_version": "cp311",
+      "requires_python": ">=3.9",
+      "size": 40838144,
+      "upload_time": "2024-05-14T09:12:44",
+      "upload_time_iso_8601": "2024-05-14T09:12:44.320075Z",
+      "url": "/pypi/pypi-proxy/simple/pyarrow/pyarrow-16.1.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+      "yanked": false,
+      "yanked_reason": null
+     },
+     {
+      "comment_text": "",
+      "digests": {
+       "sha256": "b16b16b16b16b16b16b16b16b16b16b16b16b16b16b16b16b16b16b16b16b16b"
+      },
+      "downloads": -1,
+      "filename": "pyarrow-16.1.0.tar.gz",
+      "has_sig": false,
+      "packagetype": "sdist",
+      "python_version": "source",
+      "requires_python": ">=3.9",
+      "size": 1080122,
+      "upload_time": "2024-05-14T09:15:01",
+      "upload_time_iso_8601": "2024-05-14T09:15:01.004219Z",
+      "url": "/pypi/pypi-proxy/simple/pyarrow/pyarrow-16.1.0.tar.gz",
+      "yanked": false,
+      "yanked_reason": null
+     }
+    ],
+    "17.0.0": [
+     {
+      "comment_text": "",
+      "digests": {
+       "sha256": "a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a"
+      },
+      "downloads": -1,
+      "filename": "pyarrow-17.0.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+      "has_sig": false,
+      "packagetype": "bdist_wheel",
+      "python_version": "cp311",
+      "requires_python": ">=3.9",
+      "size": 39965568,
+      "upload_time": "2024-07-17T10:41:03",
+      "upload_time_iso_8601": "2024-07-17T10:41:03.155220Z",
+      "url": "/pypi/pypi-proxy/simple/pyarrow/pyarrow-17.0.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+      "yanked": false,
+      "yanked_reason": null
+     },
+     {
+      "comment_text": "",
+      "digests": {
+       "sha256": "b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b"
+      },
+      "downloads": -1,
+      "filename": "pyarrow-17.0.0.tar.gz",
+      "has_sig": false,
+      "packagetype": "sdist",
+      "python_version": "source",
+      "requires_python": ">=3.9",
+      "size": 1112389,
+      "upload_time": "2024-07-17T10:43:22",
+      "upload_time_iso_8601": "2024-07-17T10:43:22.601148Z",
+      "url": "/pypi/pypi-proxy/simple/pyarrow/pyarrow-17.0.0.tar.gz",
+      "yanked": false,
+      "yanked_reason": null
+     }
+    ]
+   },
+   "urls": [
+    {
+     "comment_text": "",
+     "digests": {
+      "sha256": "a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a"
+     },
+     "downloads": -1,
+     "filename": "pyarrow-17.0.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+     "has_sig": false,
+     "packagetype": "bdist_wheel",
+     "python_version": "cp311",
+     "requires_python": ">=3.9",
+     "size": 39965568,
+     "upload_time": "2024-07-17T10:41:03",
+     "upload_time_iso_8601": "2024-07-17T10:41:03.155220Z",
+     "url": "/pypi/pypi-proxy/simple/pyarrow/pyarrow-17.0.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+     "yanked": false,
+     "yanked_reason": null
+    },
+    {
+     "comment_text": "",
+     "digests": {
+      "sha256": "b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b"
+     },
+     "downloads": -1,
+     "filename": "pyarrow-17.0.0.tar.gz",
+     "has_sig": false,
+     "packagetype": "sdist",
+     "python_version": "source",
+     "requires_python": ">=3.9",
+     "size": 1112389,
+     "upload_time": "2024-07-17T10:43:22",
+     "upload_time_iso_8601": "2024-07-17T10:43:22.601148Z",
+     "url": "/pypi/pypi-proxy/simple/pyarrow/pyarrow-17.0.0.tar.gz",
+     "yanked": false,
+     "yanked_reason": null
+    }
+   ],
+   "vulnerabilities": []
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/pypi/pypi-proxy/pypi/pyarrow/17.0.0/json",
+  "answer": {
+   "info": {
+    "name": "pyarrow",
+    "version": "17.0.0",
+    "summary": "Python library for Apache Arrow",
+    "requires_python": ">=3.8"
+   },
+   "last_serial": 24260514,
+   "urls": [
+    {
+     "comment_text": "",
+     "digests": {
+      "sha256": "a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a17a"
+     },
+     "downloads": -1,
+     "filename": "pyarrow-17.0.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+     "has_sig": false,
+     "packagetype": "bdist_wheel",
+     "python_version": "cp311",
+     "requires_python": ">=3.9",
+     "size": 39965568,
+     "upload_time": "2024-07-17T10:41:03",
+     "upload_time_iso_8601": "2024-07-17T10:41:03.155220Z",
+     "url": "/pypi/pypi-proxy/simple/pyarrow/pyarrow-17.0.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+     "yanked": false,
+     "yanked_reason": null
+    },
+    {
+     "comment_text": "",
+     "digests": {
+      "sha256": "b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b17b"
+     },
+     "downloads": -1,
+     "filename": "pyarrow-17.0.0.tar.gz",
+     "has_sig": false,
+     "packagetype": "sdist",
+     "python_version": "source",
+     "requires_python": ">=3.9",
+     "size": 1112389,
+     "upload_time": "2024-07-17T10:43:22",
+     "upload_time_iso_8601": "2024-07-17T10:43:22.601148Z",
+     "url": "/pypi/pypi-proxy/simple/pyarrow/pyarrow-17.0.0.tar.gz",
+     "yanked": false,
+     "yanked_reason": null
+    }
+   ],
+   "vulnerabilities": []
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/pypi/pypi-proxy/pypi/pyarrow/16.1.0/json",
+  "answer": {
+   "info": {
+    "name": "pyarrow",
+    "version": "16.1.0",
+    "summary": "Python library for Apache Arrow",
+    "requires_python": ">=3.8"
+   },
+   "last_serial": 24260514,
+   "urls": [
+    {
+     "comment_text": "",
+     "digests": {
+      "sha256": "a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a"
+     },
+     "downloads": -1,
+     "filename": "pyarrow-16.1.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+     "has_sig": false,
+     "packagetype": "bdist_wheel",
+     "python_version": "cp311",
+     "requires_python": ">=3.9",
+     "size": 40838144,
+     "upload_time": "2024-05-14T09:12:44",
+     "upload_time_iso_8601": "2024-05-14T09:12:44.320075Z",
+     "url": "/pypi/pypi-proxy/simple/pyarrow/pyarrow-16.1.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+     "yanked": false,
+     "yanked_reason": null
+    },
+    {
+     "comment_text": "",
+     "digests": {
+      "sha256": "b16b16b16b16b16b16b16b16b16b16b16b16b16b16b16b16b16b16b16b16b16b"
+     },
+     "downloads": -1,
+     "filename": "pyarrow-16.1.0.tar.gz",
+     "has_sig": false,
+     "packagetype": "sdist",
+     "python_version": "source",
+     "requires_python": ">=3.9",
+     "size": 1080122,
+     "upload_time": "2024-05-14T09:15:01",
+     "upload_time_iso_8601": "2024-05-14T09:15:01.004219Z",
+     "url": "/pypi/pypi-proxy/simple/pyarrow/pyarrow-16.1.0.tar.gz",
+     "yanked": false,
+     "yanked_reason": null
+    }
+   ],
+   "vulnerabilities": []
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/pypi/pypi-proxy/pypi/contoso-etl-utils/json",
+  "note": "pypi.org has no contoso-etl-utils: it is hosted in pypi, so pip through pypi-proxy alone fails",
+  "status": 404,
+  "answer": {
+   "code": "NOT_FOUND",
+   "message": "Package not found"
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi-proxy/artifacts?path_prefix=simple%2Fpyarrow%2F&per_page=100",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-0000000a0011",
+     "repository_key": "pypi-proxy",
+     "path": "simple/pyarrow/pyarrow-16.1.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+     "name": "pyarrow-16.1.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+     "version": null,
+     "size_bytes": 40838144,
+     "checksum_sha256": "a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a",
+     "content_type": "binary/octet-stream",
+     "download_count": 31,
+     "created_at": "2026-08-20T07:58:40.000000Z",
+     "uploaded_by": null,
+     "uploaded_by_username": null,
+     "metadata": null,
+     "analyzable": false,
+     "quarantine_status": "not_quarantined",
+     "origin": null,
+     "last_promotion": null,
+     "cache_cached_at": "2026-08-20T07:58:40.000000Z"
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 1,
+    "total_pages": 1
+   },
+   "has_more": false
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi-proxy/artifacts?path_prefix=simple%2F&per_page=100",
+  "note": "keeper package list --repo pypi-proxy",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-0000000a0010",
+     "repository_key": "pypi-proxy",
+     "path": "simple/pandas/pandas-2.2.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+     "name": "pandas-2.2.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+     "version": null,
+     "size_bytes": 13010554,
+     "checksum_sha256": "c22c22c22c22c22c22c22c22c22c22c22c22c22c22c22c22c22c22c22c22c22c",
+     "content_type": "binary/octet-stream",
+     "download_count": 31,
+     "created_at": "2026-08-20T07:58:12.000000Z",
+     "uploaded_by": null,
+     "uploaded_by_username": null,
+     "metadata": null,
+     "analyzable": false,
+     "quarantine_status": "not_quarantined",
+     "origin": null,
+     "last_promotion": null,
+     "cache_cached_at": "2026-08-20T07:58:12.000000Z"
+    },
+    {
+     "id": "00000000-0000-4000-8000-0000000a0011",
+     "repository_key": "pypi-proxy",
+     "path": "simple/pyarrow/pyarrow-16.1.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+     "name": "pyarrow-16.1.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+     "version": null,
+     "size_bytes": 40838144,
+     "checksum_sha256": "a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a",
+     "content_type": "binary/octet-stream",
+     "download_count": 31,
+     "created_at": "2026-08-20T07:58:40.000000Z",
+     "uploaded_by": null,
+     "uploaded_by_username": null,
+     "metadata": null,
+     "analyzable": false,
+     "quarantine_status": "not_quarantined",
+     "origin": null,
+     "last_promotion": null,
+     "cache_cached_at": "2026-08-20T07:58:40.000000Z"
+    },
+    {
+     "id": "00000000-0000-4000-8000-0000000a0012",
+     "repository_key": "pypi-proxy",
+     "path": "simple/requests/requests-2.32.3-py3-none-any.whl",
+     "name": "requests-2.32.3-py3-none-any.whl",
+     "version": null,
+     "size_bytes": 64928,
+     "checksum_sha256": "d23d23d23d23d23d23d23d23d23d23d23d23d23d23d23d23d23d23d23d23d23d",
+     "content_type": "binary/octet-stream",
+     "download_count": 88,
+     "created_at": "2026-08-20T07:57:55.000000Z",
+     "uploaded_by": null,
+     "uploaded_by_username": null,
+     "metadata": null,
+     "analyzable": false,
+     "quarantine_status": "not_quarantined",
+     "origin": null,
+     "last_promotion": null,
+     "cache_cached_at": "2026-08-20T07:57:55.000000Z"
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 3,
+    "total_pages": 1
+   },
+   "has_more": false
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi-proxy/artifacts/simple/pyarrow/pyarrow-17.0.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+  "note": "a proxy's cached files have no row of their own",
+  "status": 404,
+  "answer": {
+   "code": "NOT_FOUND",
+   "message": "Artifact not found"
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi-proxy/artifacts?path_prefix=simple%2Fpyarrow%2Fpyarrow-17.0.0-cp311-cp311-manylinux_2_28_x86_64.whl&per_page=11",
+  "answer": {
+   "items": [],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 0,
+    "total_pages": 1
+   },
+   "has_more": false
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi-proxy/artifacts/simple/pyarrow/pyarrow-17.0.0.tar.gz",
+  "note": "a proxy's cached files have no row of their own",
+  "status": 404,
+  "answer": {
+   "code": "NOT_FOUND",
+   "message": "Artifact not found"
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi-proxy/artifacts?path_prefix=simple%2Fpyarrow%2Fpyarrow-17.0.0.tar.gz&per_page=11",
+  "answer": {
+   "items": [],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 0,
+    "total_pages": 1
+   },
+   "has_more": false
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi-proxy/artifacts/simple/pyarrow/pyarrow-16.1.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+  "note": "a proxy's cached files have no row of their own",
+  "status": 404,
+  "answer": {
+   "code": "NOT_FOUND",
+   "message": "Artifact not found"
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi-proxy/artifacts?path_prefix=simple%2Fpyarrow%2Fpyarrow-16.1.0-cp311-cp311-manylinux_2_28_x86_64.whl&per_page=11",
+  "answer": {
+   "items": [
+    {
+     "id": "00000000-0000-4000-8000-0000000a0011",
+     "repository_key": "pypi-proxy",
+     "path": "simple/pyarrow/pyarrow-16.1.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+     "name": "pyarrow-16.1.0-cp311-cp311-manylinux_2_28_x86_64.whl",
+     "version": null,
+     "size_bytes": 40838144,
+     "checksum_sha256": "a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a16a",
+     "content_type": "binary/octet-stream",
+     "download_count": 31,
+     "created_at": "2026-08-20T07:58:40.000000Z",
+     "uploaded_by": null,
+     "uploaded_by_username": null,
+     "metadata": null,
+     "analyzable": false,
+     "quarantine_status": "not_quarantined",
+     "origin": null,
+     "last_promotion": null,
+     "cache_cached_at": "2026-08-20T07:58:40.000000Z"
+    }
+   ],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 1,
+    "total_pages": 1
+   },
+   "has_more": false
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi-proxy/artifacts/simple/pyarrow/pyarrow-16.1.0.tar.gz",
+  "note": "a proxy's cached files have no row of their own",
+  "status": 404,
+  "answer": {
+   "code": "NOT_FOUND",
+   "message": "Artifact not found"
+  }
+ },
+ {
+  "request": "GET https://keeper.contoso.example/api/v1/repositories/pypi-proxy/artifacts?path_prefix=simple%2Fpyarrow%2Fpyarrow-16.1.0.tar.gz&per_page=11",
+  "answer": {
+   "items": [],
+   "pagination": {
+    "page": 1,
+    "per_page": 100,
+    "total": 0,
+    "total_pages": 1
+   },
+   "has_more": false
+  }
+ }
+]

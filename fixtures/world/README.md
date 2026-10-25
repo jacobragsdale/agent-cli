@@ -34,7 +34,8 @@ Each domain's facts are in `facts/`: [ado](facts/ado.md),
 [k8s](facts/k8s.md), [kv](facts/kv.md), [aks](facts/aks.md),
 [airflow](facts/airflow.md), [dd](facts/dd.md),
 [aisearch](facts/aisearch.md), [arm](facts/arm.md), [net](facts/net.md),
-[lake](facts/lake.md), [entra](facts/entra.md). They tie the domains together:
+[lake](facts/lake.md), [entra](facts/entra.md),
+[keeper](facts/keeper.md). They tie the domains together:
 the api image the cluster runs is the one the registry and the build hold, the
 worker crash-loops on the password Key Vault let expire, the nightly DAG's pod
 runs in the same namespace, Datadog alerted at the rollout, and the order the
@@ -113,6 +114,16 @@ agent-cli entra app get 00000000-0000-4000-8000-000000005d01          # …5d0a 
 agent-cli entra audit list --target 00000000-0000-4000-8000-000000005d02 --since 30d   # dana added …5d0b on 09-18
 ```
 
+The build behind the image, the newest internal package, and why pip
+fails behind the proxy:
+
+```sh
+agent-cli keeper version get builds/api@1.4.2 --fields created,published_by,files   # run 8812's upload, 21:30:05
+agent-cli keeper package get pypi/contoso-orders-client --fields latest,versions    # 2.3.0, 2026-09-28
+agent-cli keeper package get pypi-proxy/pyarrow --fields versions                    # 17.0.0 not cached
+agent-cli keeper package get pypi-proxy/contoso-etl-utils   # exit 4: pypi.org has none; the hint finds it in pypi
+```
+
 ## Files
 
 ```
@@ -126,6 +137,7 @@ http/entra.json   Microsoft Graph: users, groups, apps, service principals, logs
 files/lake/       the Data Lake's Parquet files, which lake.json's body_file answers serve
 http/airflow.json Airflow's REST API (/api/v2 and /auth/token)
 http/dd.json      Datadog answers (api.datadoghq.eu)
+http/keeper.json  Artifact Keeper answers (keeper.contoso.example)
 kubectl.json      what the fake kubectl knows: objects per context, and logs
 facts/<domain>.md what the recordings say, one file per domain
 ```

@@ -31,6 +31,7 @@ const DOMAINS: &[Domain] = &[
     agent_cli_airflow::DOMAIN,
     agent_cli_controlm::DOMAIN,
     agent_cli_dd::DOMAIN,
+    agent_cli_keeper::DOMAIN,
 ];
 
 pub struct Ran {
