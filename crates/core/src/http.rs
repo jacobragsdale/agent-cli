@@ -7,7 +7,6 @@
 //! every other refusal into the message the service wrote with an exit code
 //! that says what to do about it.
 
-use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, bail};
@@ -16,22 +15,25 @@ use time::OffsetDateTime;
 
 use crate::ctx::{Ctx, Op};
 use crate::error::{Exit, Failure};
+use crate::handshake::{Handshake, Peer};
+use crate::proxy::Via;
 use crate::said::failure_message;
 use crate::secret::Secret;
 use crate::throttle::throttle_wait;
+use crate::tls::Tls;
 
 /// The statuses services shed load with.
 const THROTTLED: [u16; 2] = [429, 503];
 
 /// Long enough for a slow handshake, short enough that a host that never
 /// answers (a firewall that drops) does not look like a hang.
-const CONNECT: Duration = Duration::from_secs(10);
+pub(crate) const CONNECT: Duration = Duration::from_secs(10);
 /// For a write whose answer did not come: the read that tells is the domain's.
 pub const MAY_HAVE_LANDED: &str =
     "the change may have been made before the deadline: read it back before running it again";
 /// A body larger than this is not an answer any command wants; Azure DevOps
 /// keeps attachments up to 60 MB.
-const BODY_LIMIT: u64 = 64 * 1024 * 1024;
+pub(crate) const BODY_LIMIT: u64 = 64 * 1024 * 1024;
 
 /// The verbs a request can use. [`Method::Query`] is a `POST` that only reads
 /// (WIQL, Resource Graph, a token exchange): it is the one POST
@@ -42,6 +44,7 @@ const BODY_LIMIT: u64 = 64 * 1024 * 1024;
 pub enum Method {
     Get,
     Head,
+    Options,
     Query,
     Post,
     Put,
@@ -55,6 +58,7 @@ impl Method {
         match self {
             Self::Get => "GET",
             Self::Head => "HEAD",
+            Self::Options => "OPTIONS",
             Self::Query | Self::Post => "POST",
             Self::Put => "PUT",
             Self::Patch => "PATCH",
@@ -64,7 +68,7 @@ impl Method {
 
     #[must_use]
     pub const fn is_read(self) -> bool {
-        matches!(self, Self::Get | Self::Head | Self::Query)
+        matches!(self, Self::Get | Self::Head | Self::Options | Self::Query)
     }
 }
 
@@ -93,6 +97,8 @@ pub struct Request<'a> {
     pub method: Method,
     pub url: String,
     pub headers: Vec<(String, String)>,
+    /// Headers whose values are secrets (an `X-Api-Key`): sent, never planned.
+    pub secret_headers: Vec<(String, Secret)>,
     pub body: Body,
     pub auth: Option<Mint<'a>>,
     /// A `3xx` is the answer rather than a failure: a form sign-in's `302`
@@ -101,6 +107,14 @@ pub struct Request<'a> {
     /// The service answers `429` for a spent quota, not a rate (AI Search's
     /// object and storage limits), so one is final: nothing to wait out.
     pub quota_429: bool,
+    /// Every status is an answer, a `4xx` or `5xx` included: for a caller
+    /// that reports the status itself (`http request`). Throttles are still
+    /// waited out, and a spent token still minted again.
+    pub any_status: bool,
+    /// How to trust the server, when not as every domain does.
+    pub tls: Option<Tls>,
+    /// The proxy core chose, set as the request goes out.
+    pub via: Option<Via>,
 }
 
 impl<'a> Request<'a> {
@@ -110,10 +124,14 @@ impl<'a> Request<'a> {
             method,
             url: url.into(),
             headers: Vec::new(),
+            secret_headers: Vec::new(),
             body: Body::None,
             auth: None,
             keep_redirect: false,
             quota_429: false,
+            any_status: false,
+            tls: None,
+            via: None,
         }
     }
 
@@ -131,6 +149,12 @@ impl<'a> Request<'a> {
     #[must_use]
     pub fn header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.headers.push((name.into(), value.into()));
+        self
+    }
+
+    #[must_use]
+    pub fn secret_header(mut self, name: impl Into<String>, value: Secret) -> Self {
+        self.secret_headers.push((name.into(), value));
         self
     }
 
@@ -167,6 +191,18 @@ impl<'a> Request<'a> {
     #[must_use]
     pub fn quota_429(mut self) -> Self {
         self.quota_429 = true;
+        self
+    }
+
+    #[must_use]
+    pub fn any_status(mut self) -> Self {
+        self.any_status = true;
+        self
+    }
+
+    #[must_use]
+    pub fn tls(mut self, tls: Tls) -> Self {
+        self.tls = Some(tls);
         self
     }
 }
@@ -220,162 +256,15 @@ pub trait Transport: Send + Sync {
         authorization: Option<&Secret>,
         timeout: Duration,
     ) -> Result<Response>;
-}
 
-/// The real transport. Redirects are not followed: a hop would drop the
-/// `Authorization` header, or worse carry it, and trade a status this code can
-/// read for a sign-in page it cannot.
-#[derive(Default)]
-pub struct Https {
-    /// Built on first use, so a command that never calls out never pays for
-    /// the TLS setup.
-    agent: OnceLock<ureq::Agent>,
-}
-
-impl Transport for Https {
-    fn send(
-        &self,
-        request: &Request<'_>,
-        authorization: Option<&Secret>,
-        timeout: Duration,
-    ) -> Result<Response> {
-        let agent = self.agent.get_or_init(crate::tls::agent);
-        let url = request.url.as_str();
-        let mut headers: Vec<(&str, &str)> = request
-            .headers
-            .iter()
-            .map(|(name, value)| (name.as_str(), value.as_str()))
-            .collect();
-        if let Some(authorization) = authorization {
-            headers.push(("Authorization", authorization.expose()));
-        }
-        let typed = headers
-            .iter()
-            .any(|(name, _)| name.eq_ignore_ascii_case("content-type"));
-        match &request.body {
-            Body::Json(_) if !typed => headers.push(("Content-Type", "application/json")),
-            Body::Form(_) if !typed => {
-                headers.push(("Content-Type", "application/x-www-form-urlencoded"));
-            }
-            Body::Bytes(_) if !typed => headers.push(("Content-Type", "application/octet-stream")),
-            _ => {}
-        }
-        // `ureq` types its builders by whether a body follows, so the verb and
-        // the body are chosen together.
-        let sent = match request.method {
-            Method::Get => prepare(agent.get(url), &headers, timeout).call(),
-            Method::Head => prepare(agent.head(url), &headers, timeout).call(),
-            Method::Delete => prepare(agent.delete(url), &headers, timeout).call(),
-            Method::Query | Method::Post => {
-                send_body(prepare(agent.post(url), &headers, timeout), &request.body)
-            }
-            Method::Put => send_body(prepare(agent.put(url), &headers, timeout), &request.body),
-            Method::Patch => send_body(prepare(agent.patch(url), &headers, timeout), &request.body),
-        };
-        let mut response = sent.map_err(|error| match error {
-            ureq::Error::Timeout(ureq::Timeout::Connect) if timeout > CONNECT => {
-                anyhow::Error::new(Failure::new(
-                    Exit::Failed,
-                    format!(
-                        "{} {url} failed: no connection within {}s",
-                        request.method.wire(),
-                        CONNECT.as_secs()
-                    ),
-                ))
-            }
-            ureq::Error::Timeout(_) => {
-                let late = Failure::timed_out(format!(
-                    "{} {url} did not answer before the deadline",
-                    request.method.wire()
-                ));
-                // A write that was sent may have been made: unanswered is not undone.
-                let late = if request.method.is_read() {
-                    late
-                } else {
-                    late.hint(MAY_HAVE_LANDED)
-                };
-                anyhow::Error::new(late).context(error)
-            }
-            other => {
-                let said = other.to_string();
-                match crate::tls::untrusted(&said) {
-                    Some(hint) => anyhow::Error::new(
-                        Failure::setup(format!(
-                            "{} {url} failed: this machine does not trust the server's certificate ({said})",
-                            request.method.wire()
-                        ))
-                        .hint(hint),
-                    ),
-                    None => anyhow::Error::new(other)
-                        .context(format!("{} {url} failed", request.method.wire())),
-                }
-            }
-        })?;
-        let status = response.status().as_u16();
-        let headers = response
-            .headers()
-            .iter()
-            .filter_map(|(name, value)| {
-                Some((name.as_str().to_owned(), value.to_str().ok()?.to_owned()))
-            })
-            .collect();
-        let read = response
-            .body_mut()
-            .with_config()
-            .limit(BODY_LIMIT)
-            .read_to_vec()
-            .map_err(|error| match error {
-                ureq::Error::Timeout(_) => anyhow::Error::new(Failure::timed_out(format!(
-                    "{url} did not finish its answer before the deadline"
-                ))),
-                ureq::Error::BodyExceedsLimit(limit) => anyhow::Error::new(Failure::new(
-                    Exit::Failed,
-                    format!(
-                        "{url} answered more than {} MiB, the most agent-cli reads",
-                        limit / 1024 / 1024
-                    ),
-                )),
-                other => anyhow::Error::new(other)
-                    .context(format!("failed to read the answer from {url}")),
-            })?;
-        let (body, bytes) = match String::from_utf8(read) {
-            Ok(body) => (body, None),
-            Err(binary) => (String::new(), Some(binary.into_bytes())),
-        };
-        Ok(Response {
-            status,
-            headers,
-            body,
-            bytes,
-            url: url.to_owned(),
-        })
-    }
-}
-
-fn prepare<B>(
-    mut builder: ureq::RequestBuilder<B>,
-    headers: &[(&str, &str)],
-    timeout: Duration,
-) -> ureq::RequestBuilder<B> {
-    for (name, value) in headers {
-        builder = builder.header(*name, *value);
-    }
-    builder
-        .config()
-        .timeout_global(Some(timeout))
-        .timeout_connect(Some(timeout.min(CONNECT)))
-        .build()
-}
-
-fn send_body(
-    builder: ureq::RequestBuilder<ureq::typestate::WithBody>,
-    body: &Body,
-) -> Result<ureq::http::Response<ureq::Body>, ureq::Error> {
-    match body {
-        Body::None => builder.send_empty(),
-        Body::Json(document) => builder.send(document.to_string()),
-        Body::Form(fields) => builder.send(form_encode(fields)),
-        Body::Bytes(bytes) => builder.send(&bytes[..]),
+    /// One TLS handshake, reporting what the server presented. Only the real
+    /// transport and the ones that record handshakes make one.
+    fn handshake(&self, target: &Handshake, timeout: Duration) -> Result<Peer> {
+        let _ = timeout;
+        bail!(
+            "this transport makes no TLS handshakes ({})",
+            target.target()
+        )
     }
 }
 
@@ -384,12 +273,15 @@ impl Op for Request<'_> {
 
     fn plan(&self) -> Value {
         let mut plan = json!({"method": self.method.wire(), "url": self.url});
-        if !self.headers.is_empty() {
-            let headers: Map<String, Value> = self
+        if !self.headers.is_empty() || !self.secret_headers.is_empty() {
+            let mut headers: Map<String, Value> = self
                 .headers
                 .iter()
                 .map(|(name, value)| (name.clone(), Value::String(value.clone())))
                 .collect();
+            for (name, _) in &self.secret_headers {
+                headers.insert(name.clone(), Value::String("***".to_owned()));
+            }
             plan["headers"] = Value::Object(headers);
         }
         match &self.body {
@@ -415,7 +307,8 @@ impl Op for Request<'_> {
     /// token gets a fresh one, and a throttle is waited out when the wait fits
     /// inside the deadline. A wait that does not fit fails now with exit 124
     /// rather than sleeping into the same failure.
-    fn perform(self, ctx: &Ctx) -> Result<Response> {
+    fn perform(mut self, ctx: &Ctx) -> Result<Response> {
+        self.via = ctx.via(&self.url)?;
         let mut token = self.auth.map(|mint| mint(false)).transpose()?;
         let (mut reminted, mut waited) = (false, false);
         loop {
@@ -438,7 +331,20 @@ impl Op for Request<'_> {
                 429 => !self.quota_429,
                 _ => self.method.is_read(),
             };
-            if THROTTLED.contains(&response.status) && retry && !waited {
+            // A caller that reports any status waits only when the answer
+            // says how long: its 503 is the answer it asked for.
+            let says_when = [
+                "retry-after",
+                "x-ratelimit-reset",
+                "x-ms-user-quota-resets-after",
+            ]
+            .iter()
+            .any(|name| response.header(name).is_some());
+            if THROTTLED.contains(&response.status)
+                && retry
+                && !waited
+                && (says_when || !self.any_status)
+            {
                 waited = true;
                 let wait = throttle_wait(&response, OffsetDateTime::now_utc());
                 let left = ctx.remaining()?;
@@ -456,24 +362,24 @@ impl Op for Request<'_> {
                 std::thread::sleep(wait);
                 continue;
             }
-            if self.keep_redirect && (300..400).contains(&response.status) {
+            if self.any_status || (self.keep_redirect && (300..400).contains(&response.status)) {
                 return Ok(response);
             }
-            return checked(self.method, response);
+            return checked(self.method, self.via.as_ref(), response);
         }
     }
 }
 
 /// A `2xx` as it is; anything else as a [`Failure`] whose exit code says what
 /// kind of problem it is.
-fn checked(method: Method, response: Response) -> Result<Response> {
+fn checked(method: Method, via: Option<&Via>, response: Response) -> Result<Response> {
     let status = response.status;
     if (200..300).contains(&status) {
         return Ok(response);
     }
     let exit = match status {
         400 | 422 => Exit::Usage,
-        401 => Exit::Setup,
+        401 | 407 => Exit::Setup,
         404 => Exit::NotFound,
         409 | 412 => Exit::Conflict,
         _ => Exit::Failed,
@@ -499,6 +405,18 @@ fn checked(method: Method, response: Response) -> Result<Response> {
     failure.status = Some(status);
     Err(match status {
         401 => failure.hint("the credential was refused: sign in again or check its scopes; `agent-cli doctor` shows what is set up"),
+        407 => {
+            let schemes = response
+                .headers
+                .iter()
+                .filter(|(name, _)| name.eq_ignore_ascii_case("proxy-authenticate"))
+                .map(|(_, value)| value.clone())
+                .collect::<Vec<_>>();
+            match via {
+                Some(via) => failure.hint(crate::proxy::proxy_refused(via, &schemes)),
+                None => failure.hint("a proxy asked for a sign-in: set [core] proxy, proxy_user and proxy_password_env"),
+            }
+        }
         503 if !method.is_read() => failure.hint(
             "the service may have made the change before it failed: check before running it again",
         ),
@@ -597,6 +515,7 @@ pub(crate) fn left_before(deadline: Instant) -> Result<Duration> {
 
 #[cfg(test)]
 mod tests {
+    use crate::https::Https;
     use std::time::Instant;
 
     use super::*;
@@ -905,5 +824,41 @@ mod tests {
             .unwrap_err();
         assert_eq!(describe(&error).0, Exit::TimedOut, "{error:#}");
         assert_eq!(describe(&error).2.as_deref(), Some(MAY_HAVE_LANDED));
+    }
+
+    #[test]
+    fn any_status_hands_back_a_failure_as_an_answer_and_waits_only_when_told() {
+        let (ctx, transport) = fake(vec![
+            Answer::status(404, "{}"),
+            Answer::status(503, "{}"),
+            Answer::status(429, "{}").with_header("Retry-After", "0"),
+            Answer::ok("{}"),
+        ]);
+        let status = |url: &str| ctx.read(Request::get(url).any_status()).unwrap().status;
+        assert_eq!(status("https://h.example/a"), 404);
+        assert_eq!(
+            status("https://h.example/b"),
+            503,
+            "a 503 that says nothing is the answer"
+        );
+        assert_eq!(
+            status("https://h.example/c"),
+            200,
+            "a 429 that says when is waited out"
+        );
+        assert_eq!(transport.sent().len(), 4);
+    }
+
+    #[test]
+    fn a_secret_header_is_sent_and_never_planned() {
+        let request = Request::get("https://h.example/")
+            .secret_header("X-Api-Key", Secret::new("k3y".to_owned()));
+        assert_eq!(request.plan()["headers"]["X-Api-Key"], "***");
+        let (ctx, transport) = fake(vec![Answer::ok("{}")]);
+        ctx.read(request).unwrap();
+        assert_eq!(
+            transport.sent()[0].secret_headers,
+            [("X-Api-Key".to_owned(), "k3y".to_owned())]
+        );
     }
 }

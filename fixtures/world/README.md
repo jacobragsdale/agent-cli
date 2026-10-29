@@ -35,7 +35,7 @@ Each domain's facts are in `facts/`: [ado](facts/ado.md),
 [airflow](facts/airflow.md), [dd](facts/dd.md),
 [aisearch](facts/aisearch.md), [arm](facts/arm.md), [net](facts/net.md),
 [lake](facts/lake.md), [entra](facts/entra.md),
-[keeper](facts/keeper.md). They tie the domains together:
+[keeper](facts/keeper.md), [http](facts/http.md). They tie the domains together:
 the api image the cluster runs is the one the registry and the build hold, the
 worker crash-loops on the password Key Vault let expire, the nightly DAG's pod
 runs in the same namespace, Datadog alerted at the rollout, and the order the

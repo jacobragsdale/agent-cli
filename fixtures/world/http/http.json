@@ -1,0 +1,695 @@
+[
+ {
+  "request": "GET https://api.contoso.example/healthz",
+  "headers": {
+   "Content-Type": "application/json; charset=utf-8"
+  },
+  "answer": {
+   "status": "ok",
+   "version": "1.4.2"
+  }
+ },
+ {
+  "request": "GET https://api.contoso.example",
+  "status": 404,
+  "text": ""
+ },
+ {
+  "request": "GET https://api.contoso.example/openapi.json",
+  "status": 404,
+  "text": ""
+ },
+ {
+  "request": "GET https://api.contoso.example/swagger/v1/swagger.json",
+  "headers": {
+   "Content-Type": "application/json; charset=utf-8"
+  },
+  "answer": {
+   "openapi": "3.0.1",
+   "info": {
+    "title": "Contoso.Orders.Api",
+    "version": "1.4.2"
+   },
+   "paths": {
+    "/orders": {
+     "get": {
+      "tags": [
+       "Orders"
+      ],
+      "summary": "List orders",
+      "operationId": "ListOrders",
+      "parameters": [
+       {
+        "name": "status",
+        "in": "query",
+        "schema": {
+         "type": "string",
+         "enum": [
+          "open",
+          "shipped",
+          "cancelled"
+         ]
+        }
+       }
+      ],
+      "responses": {
+       "200": {
+        "description": "OK",
+        "content": {
+         "application/json": {
+          "schema": {
+           "type": "array",
+           "items": {
+            "$ref": "#/components/schemas/Order"
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "post": {
+      "tags": [
+       "Orders"
+      ],
+      "summary": "Create an order",
+      "operationId": "CreateOrder",
+      "requestBody": {
+       "required": true,
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/OrderIn"
+         }
+        }
+       }
+      },
+      "responses": {
+       "201": {
+        "description": "Created",
+        "content": {
+         "application/json": {
+          "schema": {
+           "$ref": "#/components/schemas/Order"
+          }
+         }
+        }
+       },
+       "400": {
+        "description": "Bad Request",
+        "content": {
+         "application/problem+json": {
+          "schema": {
+           "$ref": "#/components/schemas/ProblemDetails"
+          }
+         }
+        }
+       },
+       "503": {
+        "description": "The worker is unavailable"
+       }
+      }
+     }
+    },
+    "/orders/{id}": {
+     "get": {
+      "tags": [
+       "Orders"
+      ],
+      "summary": "Get an order",
+      "operationId": "GetOrder",
+      "parameters": [
+       {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+         "type": "integer",
+         "format": "int32"
+        }
+       }
+      ],
+      "responses": {
+       "200": {
+        "description": "OK",
+        "content": {
+         "application/json": {
+          "schema": {
+           "$ref": "#/components/schemas/Order"
+          }
+         }
+        }
+       },
+       "404": {
+        "description": "Not Found"
+       }
+      }
+     }
+    },
+    "/healthz": {
+     "get": {
+      "tags": [
+       "Health"
+      ],
+      "summary": "Liveness and the version serving",
+      "operationId": "Health",
+      "security": [],
+      "responses": {
+       "200": {
+        "description": "OK"
+       }
+      }
+     }
+    },
+    "/orders/{id}/fulfilment": {
+     "get": {
+      "tags": [
+       "Orders"
+      ],
+      "summary": "Where an order's shipment is",
+      "operationId": "GetFulfilment",
+      "parameters": [
+       {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+         "type": "integer",
+         "format": "int32"
+        }
+       }
+      ],
+      "responses": {
+       "200": {
+        "description": "OK"
+       },
+       "404": {
+        "description": "Not Found"
+       }
+      }
+     }
+    }
+   },
+   "components": {
+    "schemas": {
+     "Order": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "integer",
+        "format": "int32"
+       },
+       "status": {
+        "type": "string",
+        "enum": [
+         "open",
+         "shipped",
+         "cancelled"
+        ]
+       },
+       "customerId": {
+        "type": "integer",
+        "format": "int32"
+       },
+       "lines": {
+        "type": "array",
+        "items": {
+         "$ref": "#/components/schemas/OrderLine"
+        }
+       },
+       "note": {
+        "type": "string",
+        "nullable": true
+       }
+      }
+     },
+     "OrderIn": {
+      "type": "object",
+      "required": [
+       "customerId",
+       "lines"
+      ],
+      "properties": {
+       "customerId": {
+        "type": "integer",
+        "format": "int32"
+       },
+       "lines": {
+        "type": "array",
+        "items": {
+         "$ref": "#/components/schemas/OrderLine"
+        }
+       },
+       "note": {
+        "type": "string",
+        "nullable": true
+       }
+      }
+     },
+     "OrderLine": {
+      "type": "object",
+      "properties": {
+       "sku": {
+        "type": "string"
+       },
+       "qty": {
+        "type": "integer",
+        "format": "int32"
+       }
+      },
+      "required": [
+       "sku"
+      ]
+     },
+     "ProblemDetails": {
+      "type": "object",
+      "properties": {
+       "type": {
+        "type": "string",
+        "nullable": true
+       },
+       "title": {
+        "type": "string",
+        "nullable": true
+       },
+       "status": {
+        "type": "integer",
+        "format": "int32",
+        "nullable": true
+       },
+       "detail": {
+        "type": "string",
+        "nullable": true
+       }
+      }
+     }
+    },
+    "securitySchemes": {
+     "Bearer": {
+      "type": "http",
+      "scheme": "bearer",
+      "bearerFormat": "JWT",
+      "description": "An Entra token for api://contoso-orders"
+     }
+    }
+   },
+   "security": [
+    {
+     "Bearer": []
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://api.contoso.example/swagger/index.html",
+  "headers": {
+   "Content-Type": "text/html; charset=utf-8"
+  },
+  "text": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><title>Swagger UI</title><link rel=\"stylesheet\" type=\"text/css\" href=\"./swagger-ui.css\"></head>\n<body><div id=\"swagger-ui\"></div><script src=\"./swagger-ui-bundle.js\" charset=\"utf-8\"></script><script src=\"index.js\" charset=\"utf-8\"></script></body>\n</html>\n"
+ },
+ {
+  "request": "GET https://api.contoso.example/swagger/index.js",
+  "headers": {
+   "Content-Type": "text/javascript"
+  },
+  "text": "var configObject = JSON.parse('{\"urls\":[{\"url\":\"v1/swagger.json\",\"name\":\"Contoso.Orders.Api v1\"}],\"deepLinking\":false}');\n"
+ },
+ {
+  "request": "GET https://api.contoso.example/orders/42",
+  "headers": {
+   "Content-Type": "application/json; charset=utf-8"
+  },
+  "answer": {
+   "id": 42,
+   "status": "shipped",
+   "customerId": 7,
+   "lines": [
+    {
+     "sku": "SKU-1042",
+     "qty": 2
+    }
+   ],
+   "note": "leave at the dock"
+  }
+ },
+ {
+  "request": "GET https://api.contoso.example/orders/9999",
+  "status": 404,
+  "headers": {
+   "Content-Type": "application/problem+json"
+  },
+  "answer": {
+   "type": "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+   "title": "Not Found",
+   "status": 404,
+   "detail": "order 9999 not found"
+  }
+ },
+ {
+  "request": "GET https://api-staging.contoso.example/healthz",
+  "headers": {
+   "Content-Type": "application/json; charset=utf-8"
+  },
+  "answer": {
+   "status": "ok",
+   "version": "1.4.1"
+  }
+ },
+ {
+  "request": "GET https://api-staging.contoso.example",
+  "status": 404,
+  "text": ""
+ },
+ {
+  "request": "GET https://api-staging.contoso.example/openapi.json",
+  "status": 404,
+  "text": ""
+ },
+ {
+  "request": "GET https://api-staging.contoso.example/swagger/v1/swagger.json",
+  "headers": {
+   "Content-Type": "application/json; charset=utf-8"
+  },
+  "answer": {
+   "openapi": "3.0.1",
+   "info": {
+    "title": "Contoso.Orders.Api",
+    "version": "1.4.1"
+   },
+   "paths": {
+    "/orders": {
+     "get": {
+      "tags": [
+       "Orders"
+      ],
+      "summary": "List orders",
+      "operationId": "ListOrders",
+      "parameters": [
+       {
+        "name": "status",
+        "in": "query",
+        "schema": {
+         "type": "string",
+         "enum": [
+          "open",
+          "shipped",
+          "cancelled"
+         ]
+        }
+       }
+      ],
+      "responses": {
+       "200": {
+        "description": "OK",
+        "content": {
+         "application/json": {
+          "schema": {
+           "type": "array",
+           "items": {
+            "$ref": "#/components/schemas/Order"
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "post": {
+      "tags": [
+       "Orders"
+      ],
+      "summary": "Create an order",
+      "operationId": "CreateOrder",
+      "requestBody": {
+       "required": true,
+       "content": {
+        "application/json": {
+         "schema": {
+          "$ref": "#/components/schemas/OrderIn"
+         }
+        }
+       }
+      },
+      "responses": {
+       "201": {
+        "description": "Created",
+        "content": {
+         "application/json": {
+          "schema": {
+           "$ref": "#/components/schemas/Order"
+          }
+         }
+        }
+       },
+       "400": {
+        "description": "Bad Request",
+        "content": {
+         "application/problem+json": {
+          "schema": {
+           "$ref": "#/components/schemas/ProblemDetails"
+          }
+         }
+        }
+       },
+       "503": {
+        "description": "The worker is unavailable"
+       }
+      }
+     }
+    },
+    "/orders/{id}": {
+     "get": {
+      "tags": [
+       "Orders"
+      ],
+      "summary": "Get an order",
+      "operationId": "GetOrder",
+      "parameters": [
+       {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+         "type": "integer",
+         "format": "int32"
+        }
+       }
+      ],
+      "responses": {
+       "200": {
+        "description": "OK",
+        "content": {
+         "application/json": {
+          "schema": {
+           "$ref": "#/components/schemas/Order"
+          }
+         }
+        }
+       },
+       "404": {
+        "description": "Not Found"
+       }
+      }
+     }
+    },
+    "/healthz": {
+     "get": {
+      "tags": [
+       "Health"
+      ],
+      "summary": "Liveness and the version serving",
+      "operationId": "Health",
+      "security": [],
+      "responses": {
+       "200": {
+        "description": "OK"
+       }
+      }
+     }
+    }
+   },
+   "components": {
+    "schemas": {
+     "Order": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "integer",
+        "format": "int32"
+       },
+       "status": {
+        "type": "string",
+        "enum": [
+         "open",
+         "shipped",
+         "cancelled"
+        ]
+       },
+       "customerId": {
+        "type": "integer",
+        "format": "int32"
+       },
+       "lines": {
+        "type": "array",
+        "items": {
+         "$ref": "#/components/schemas/OrderLine"
+        }
+       },
+       "note": {
+        "type": "string",
+        "nullable": true
+       }
+      }
+     },
+     "OrderIn": {
+      "type": "object",
+      "required": [
+       "customerId",
+       "lines"
+      ],
+      "properties": {
+       "customerId": {
+        "type": "integer",
+        "format": "int32"
+       },
+       "lines": {
+        "type": "array",
+        "items": {
+         "$ref": "#/components/schemas/OrderLine"
+        }
+       },
+       "note": {
+        "type": "string",
+        "nullable": true
+       }
+      }
+     },
+     "OrderLine": {
+      "type": "object",
+      "properties": {
+       "sku": {
+        "type": "string"
+       },
+       "qty": {
+        "type": "integer",
+        "format": "int32"
+       }
+      }
+     },
+     "ProblemDetails": {
+      "type": "object",
+      "properties": {
+       "type": {
+        "type": "string",
+        "nullable": true
+       },
+       "title": {
+        "type": "string",
+        "nullable": true
+       },
+       "status": {
+        "type": "integer",
+        "format": "int32",
+        "nullable": true
+       },
+       "detail": {
+        "type": "string",
+        "nullable": true
+       }
+      }
+     }
+    },
+    "securitySchemes": {
+     "Bearer": {
+      "type": "http",
+      "scheme": "bearer",
+      "bearerFormat": "JWT",
+      "description": "An Entra token for api://contoso-orders"
+     }
+    }
+   },
+   "security": [
+    {
+     "Bearer": []
+    }
+   ]
+  }
+ },
+ {
+  "request": "GET https://api-staging.contoso.example/swagger/index.html",
+  "headers": {
+   "Content-Type": "text/html; charset=utf-8"
+  },
+  "text": "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><title>Swagger UI</title><link rel=\"stylesheet\" type=\"text/css\" href=\"./swagger-ui.css\"></head>\n<body><div id=\"swagger-ui\"></div><script src=\"./swagger-ui-bundle.js\" charset=\"utf-8\"></script><script src=\"index.js\" charset=\"utf-8\"></script></body>\n</html>\n"
+ },
+ {
+  "request": "GET https://api-staging.contoso.example/swagger/index.js",
+  "headers": {
+   "Content-Type": "text/javascript"
+  },
+  "text": "var configObject = JSON.parse('{\"urls\":[{\"url\":\"v1/swagger.json\",\"name\":\"Contoso.Orders.Api v1\"}],\"deepLinking\":false}');\n"
+ },
+ {
+  "request": "GET https://api-staging.contoso.example/orders/42",
+  "headers": {
+   "Content-Type": "application/json; charset=utf-8"
+  },
+  "answer": {
+   "id": 42,
+   "status": "open",
+   "customerId": 7,
+   "lines": [
+    {
+     "sku": "SKU-1042",
+     "qty": 2
+    }
+   ],
+   "note": "leave at the dock"
+  }
+ },
+ {
+  "request": "GET https://api-staging.contoso.example/orders/9999",
+  "status": 404,
+  "headers": {
+   "Content-Type": "application/problem+json"
+  },
+  "answer": {
+   "type": "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+   "title": "Not Found",
+   "status": 404,
+   "detail": "order 9999 not found"
+  }
+ },
+ {
+  "request": "POST https://api-staging.contoso.example/orders",
+  "status": 201,
+  "headers": {
+   "Content-Type": "application/json; charset=utf-8",
+   "Location": "https://api-staging.contoso.example/orders/9001"
+  },
+  "answer": {
+   "id": 9001,
+   "status": "open",
+   "customerId": 7,
+   "lines": [
+    {
+     "sku": "SKU-1042",
+     "qty": 2
+    }
+   ],
+   "note": null
+  }
+ },
+ {
+  "request": "POST https://api.contoso.example/orders",
+  "status": 503,
+  "headers": {
+   "Content-Type": "application/json; charset=utf-8",
+   "traceparent": "00-0000000000000000199f1a0de21b4536-6f2a91c04d3e8b17-01",
+   "x-request-id": "req-contoso-7f3a"
+  },
+  "answer": {
+   "error": "upstream worker unavailable"
+  }
+ }
+]

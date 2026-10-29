@@ -101,6 +101,9 @@ pub(crate) fn builtin(
         _ => return Err(Failure::usage("usage: agent-cli doctor [domain]").into()),
     };
     let mut rows = vec![core_row(ctx)];
+    if let Some(row) = proxy_row(ctx) {
+        rows.push(row);
+    }
     let named = !args.is_empty();
     let mut checked = Vec::new();
     for domain in selected {
@@ -170,6 +173,33 @@ fn core_row(ctx: &Ctx) -> Value {
     row
 }
 
+/// The proxy core sends requests through, when one is set anywhere: which,
+/// from where, signed in as whom, and what it exempts. A domain's own checks
+/// say whether it answers through it.
+fn proxy_row(ctx: &Ctx) -> Option<Value> {
+    let named = ctx.config().core("proxy").is_some()
+        || [
+            "HTTPS_PROXY",
+            "https_proxy",
+            "HTTP_PROXY",
+            "http_proxy",
+            "ALL_PROXY",
+            "all_proxy",
+        ]
+        .iter()
+        .any(|name| ctx.env(name).is_some());
+    if !named {
+        return None;
+    }
+    Some(match ctx.proxy_detail() {
+        Ok(detail) => json!({"domain": "core", "check": "proxy", "ok": true, "detail": detail}),
+        Err(error) => json!({
+            "domain": "core", "check": "proxy", "ok": false, "detail": format!("{error:#}"),
+            "hint": "fix [core] proxy (or HTTPS_PROXY); `agent-cli config example` shows the keys",
+        }),
+    })
+}
+
 fn config_row(config: &Config) -> Value {
     let path = config.path().display().to_string();
     match config.problem() {
@@ -192,9 +222,9 @@ fn config_row(config: &Config) -> Value {
 fn latest(ctx: &Ctx, releases: &str) -> Result<String> {
     let url = format!("{}/latest/VERSION", releases.trim_end_matches('/'));
     let wait = ctx.remaining()?.min(RELEASE_WAIT);
-    let response = ctx
-        .meter
-        .sent(ctx.transport().send(&Request::get(&url), None, wait))?;
+    let mut request = Request::get(&url);
+    request.via = ctx.via(&url)?;
+    let response = ctx.meter.sent(ctx.transport().send(&request, None, wait))?;
     if !(200..300).contains(&response.status) {
         anyhow::bail!("{url} answered {}", response.status);
     }

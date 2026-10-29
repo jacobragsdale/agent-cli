@@ -197,7 +197,7 @@ agent-cli k8s service diff — Compare two services across environments: type, p
   --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s service diff staging/web/api prod/web/api
 ```
@@ -239,7 +239,7 @@ agent-cli k8s ingress diff — Compare two ingresses across environments: class,
   --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s ingress diff staging/web/api prod/web/api
 ```
@@ -282,7 +282,7 @@ agent-cli k8s networkpolicy diff — Compare two network policies across environ
   --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s networkpolicy diff staging/web/allow-egress prod/web/allow-egress
 ```
@@ -390,7 +390,7 @@ agent-cli k8s deployment diff — Compare two deployments across environments, o
   --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s deployment diff staging/web/api prod/web/api
 ```
@@ -483,7 +483,7 @@ agent-cli k8s statefulset diff — Compare two statefulsets across environments:
   --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s statefulset diff staging/web/orders-db prod/web/orders-db
 ```
@@ -551,7 +551,7 @@ agent-cli k8s daemonset diff — Compare two daemonsets across environments (CNI
   --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s daemonset diff staging/kube-system/azure-cns prod/kube-system/azure-cns
 ```
@@ -606,7 +606,7 @@ agent-cli k8s job diff — Compare two jobs (a failed run and a good one): image
   --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s job diff prod/web/orders-export-29842620 prod/web/orders-export-29844060
 ```
@@ -661,7 +661,7 @@ agent-cli k8s cronjob diff — Compare two cronjobs across environments: schedul
   --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s cronjob diff staging/web/orders-export prod/web/orders-export
 ```
@@ -842,7 +842,7 @@ agent-cli k8s configmap diff — Compare two configmaps across environments: key
   --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s configmap diff staging/web/api-config prod/web/api-config
 ```
@@ -885,7 +885,7 @@ agent-cli k8s secret diff — Compare two Kubernetes secrets: keys, type, each v
   --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s secret diff staging/web/worker-db prod/web/worker-db
 ```
@@ -966,7 +966,7 @@ agent-cli k8s object diff — Compare two objects of any kind, custom resources 
   --all            Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int      Most differences to print (default 50)
   --exact          Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli k8s object diff secretproviderclass staging/web/worker-kv prod/web/worker-kv
 ```

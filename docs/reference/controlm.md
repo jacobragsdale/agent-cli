@@ -116,7 +116,7 @@ agent-cli controlm definition diff — Compare a Control-M job defined in two pl
   --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli controlm definition diff qa:ctm-qa/NightlyLoads/load_orders prod:ctm-prod/NightlyLoads/load_orders
 ```

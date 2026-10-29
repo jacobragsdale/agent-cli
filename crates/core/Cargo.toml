@@ -17,6 +17,8 @@ serde_json.workspace = true
 strsim.workspace = true
 tempfile.workspace = true
 time.workspace = true
+rustls.workspace = true
+rustls-platform-verifier.workspace = true
 toml.workspace = true
 ureq.workspace = true
 

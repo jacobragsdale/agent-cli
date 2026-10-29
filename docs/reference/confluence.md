@@ -79,7 +79,7 @@ agent-cli confluence page diff — Compare a page with its text before an edit, 
   --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli confluence page diff 1101 --version 2
 ```

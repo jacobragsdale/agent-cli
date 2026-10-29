@@ -56,6 +56,7 @@ any key, for example `AGENT_CLI_ADO_PROJECT=web`.
 | controlm | `[[controlm.instance]]` per Enterprise Manager | `username` and `password`, or an API token: `token` |
 | dd | `[datadog]` site and env | `token`, else `DD_ACCESS_TOKEN` |
 | keeper | `[keeper]` url | none for public repositories; an API token, `token`, for private ones |
+| http | none (`[core] proxy` and `no_proxy` for every domain) | per call: `--bearer-env VAR`, `--az RESOURCE`, `--basic USER:VAR`, `--header-env NAME=VAR` |
 
 One file holds every service, credentials included (`chmod 600` it). Any
 credential `KEY` can instead be `KEY_env` (a variable that holds it) or
@@ -121,6 +122,7 @@ role, a read-only database login, an Airflow Viewer.
 | controlm | BMC Control-M job runs, their status, output and definitions; rerun and order | 7 |
 | dd | Datadog logs, metrics, monitors, downtimes, events, APM, incidents, SLOs | 20 |
 | keeper | Artifact Keeper repositories, packages and their versions (PyPI, generic …), who published a version and its checksum, files and downloads, what a PyPI proxy has cached (read-only) | 7 |
+| http | REST calls to any URL as curl makes them (a 4xx or 5xx fails, bodies bounded and masked, writes guarded), OpenAPI specs found from a base URL or docs page (FastAPI, ASP.NET, Spring, NestJS, Go, Django, Quarkus …), their operations and schemas queried and two specs diffed for breaking changes, the TLS certificates servers present | 13 |
 
 ## Documentation
 

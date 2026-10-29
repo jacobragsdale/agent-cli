@@ -1,0 +1,187 @@
+{
+    "schemes": [],
+    "swagger": "2.0",
+    "info": {
+        "description": "",
+        "title": "Contoso Orders API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "",
+    "basePath": "",
+    "paths": {
+        "/orders": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "List orders",
+                "parameters": [
+                    {
+                        "enum": [
+                            "open",
+                            "shipped",
+                            "cancelled",
+                            "on_hold"
+                        ],
+                        "type": "string",
+                        "description": "Only orders in this status",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.Order"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Create an order",
+                "parameters": [
+                    {
+                        "description": "The order",
+                        "name": "order",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.OrderIn"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.Order"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.Problem"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get an order",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Order id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Order"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.Problem"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "main.Line": {
+            "type": "object",
+            "required": [
+                "qty",
+                "sku"
+            ],
+            "properties": {
+                "qty": {
+                    "type": "integer"
+                },
+                "sku": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.Order": {
+            "type": "object",
+            "properties": {
+                "customer_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lines": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.Line"
+                    }
+                },
+                "note": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "open",
+                        "shipped",
+                        "cancelled",
+                        "on_hold"
+                    ]
+                }
+            }
+        },
+        "main.OrderIn": {
+            "type": "object",
+            "required": [
+                "customer_id",
+                "lines"
+            ],
+            "properties": {
+                "customer_id": {
+                    "type": "integer"
+                },
+                "lines": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/main.Line"
+                    }
+                },
+                "note": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.Problem": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

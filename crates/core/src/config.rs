@@ -684,7 +684,7 @@ mod tests {
         assert_eq!(unknown.exit, Exit::Usage);
         assert!(
             unknown.hint.unwrap().contains(
-                "ado, confluence, azure, k8s, sql, redis, airflow, controlm, datadog, keeper, kv"
+                "ado, confluence, azure, k8s, sql, redis, airflow, controlm, datadog, keeper, http, kv"
             ),
             "every section and alias is named"
         );

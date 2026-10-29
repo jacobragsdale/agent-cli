@@ -18,12 +18,15 @@ mod discover;
 mod dispatch;
 mod doctor;
 mod error;
+mod handshake;
 mod hidden;
 mod http;
+mod https;
 mod layers;
 mod leaf;
 mod output;
 mod process;
+mod proxy;
 mod registry;
 #[cfg(feature = "fixtures")]
 mod replay;
@@ -53,11 +56,14 @@ pub use discover::command_help;
 pub use dispatch::{run, run_with};
 pub use doctor::Check;
 pub use error::{Exit, Failure, status_of};
+pub use handshake::{Handshake, Peer};
 pub use http::{
-    Body, Https, Method, Mint, Request, Response, Transport, base64, form_encode, host_under,
+    Body, Method, Mint, Request, Response, Transport, base64, form_encode, host_under,
     percent_encode,
 };
+pub use https::Https;
 pub use process::{Output, run_until};
+pub use proxy::Via;
 pub use registry::{
     BUILTINS, Command, Domain, Effect, GLOBAL_FLAGS, SHARED_WORDS, SYNONYM_FLAGS, VERBS,
     check_layout, check_registry,
@@ -68,4 +74,5 @@ pub use said::failure_message;
 pub use search::{Quality, quality};
 pub use secret::{Secret, redact, redact_value, sensitive_key};
 pub use stop::{OnStop, on_stop};
+pub use tls::{Tls, untrusted_hint};
 pub use when::{Span, When, now, utc, utc_time};

@@ -1,0 +1,1 @@
+{"configUrl":"/v3/api-docs/swagger-config","oauth2RedirectUrl":"http://127.0.0.1:58084/swagger-ui/oauth2-redirect.html","urls":[{"url":"/v3/api-docs/admin","name":"admin"},{"url":"/v3/api-docs/orders","name":"orders"}],"validatorUrl":""}

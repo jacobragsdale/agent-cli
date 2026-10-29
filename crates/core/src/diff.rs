@@ -60,6 +60,10 @@ pub struct Rules {
     /// runs or versions of one thing, whose differing words are no
     /// environment.
     pub infer: bool,
+    /// Why a change breaks whoever relies on the left side (an API spec's
+    /// clients), printed as the change's `breaking`; `None` for one that
+    /// does not.
+    pub breaking: Option<fn(&Change) -> Option<String>>,
 }
 
 impl Rules {
@@ -70,6 +74,7 @@ impl Rules {
         comments: &[],
         fold_case: false,
         infer: true,
+        breaking: None,
     };
 }
 
@@ -121,6 +126,9 @@ pub struct Change {
     pub same: Option<bool>,
     /// A text's unified hunks (`@@ -40,7 +40,7 @@`, ` kept`, `-left`, `+right`).
     pub lines: Vec<String>,
+    /// Why it breaks whoever relies on the left side, under rules that say.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub breaking: Option<String>,
 }
 
 /// A side's `SCOPE:` prefix and the rest (`qa:dbo.orders`), for domains whose
@@ -147,6 +155,11 @@ pub fn diff(ctx: &Ctx, args: &DiffArgs, rules: &Rules, left: Side, right: Side) 
         ));
     }
     let (mut changes, masked) = compare(args, rules, &pairs, &left, &right);
+    if let Some(classify) = rules.breaking {
+        for change in &mut changes {
+            change.breaking = classify(change);
+        }
+    }
     let differences = changes.len() - masked;
     if masked > 0 {
         ctx.note(format!(
@@ -220,6 +233,7 @@ fn compare(
             redacted: true,
             same,
             lines: Vec::new(),
+            breaking: None,
         };
         match (left.secrets.get(path), right.secrets.get(path)) {
             (Some(Some(a)), Some(Some(b))) if a == b => {}
@@ -395,6 +409,7 @@ impl Walk<'_> {
                             redacted: false,
                             same: None,
                             lines: Vec::new(),
+                            breaking: None,
                         });
                     }
                 }
@@ -415,6 +430,7 @@ impl Walk<'_> {
                 redacted: false,
                 same: None,
                 lines: Vec::new(),
+                breaking: None,
             }),
         }
     }
@@ -442,6 +458,7 @@ impl Walk<'_> {
             redacted: false,
             same: None,
             lines,
+            breaking: None,
         };
         if !a.contains('\n') && !b.contains('\n') {
             out.push(change(

@@ -50,7 +50,7 @@ agent-cli airflow instance diff — Compare two instances' Airflow version and i
   --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow instance diff qa prod
 ```
@@ -77,7 +77,7 @@ agent-cli airflow pool diff — Compare two instances' pools: those missing on o
   --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow pool diff qa prod
 ```
@@ -105,7 +105,7 @@ agent-cli airflow variable diff — Compare two instances' Variables: keys missi
   --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow variable diff qa prod
 ```
@@ -133,7 +133,7 @@ agent-cli airflow connection diff — Compare two instances' Connections: missin
   --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow connection diff qa prod
 ```
@@ -176,7 +176,7 @@ agent-cli airflow dag diff — Compare a DAG on two instances: its source by lin
   --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow dag diff qa:etl_nightly prod:etl_nightly
 ```
@@ -246,7 +246,7 @@ agent-cli airflow run diff — Compare two DAG runs (a good one, a failed one): 
   --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli airflow run diff etl_nightly/latest
 ```

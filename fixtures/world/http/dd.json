@@ -2220,6 +2220,74 @@
   }
  },
  {
+  "request": "POST https://api.datadoghq.eu/api/v2/spans/events/search",
+  "note": "dd span list --trace 1846223019175527734 --since 2026-09-28T21:30:00Z --until 2026-09-28T22:30:00Z: the trace http request run's 503 names",
+  "body": {
+   "data": {
+    "type": "search_request",
+    "attributes": {
+     "filter": {
+      "query": "trace_id:1846223019175527734",
+      "from": "1790631000000",
+      "to": "1790634600000"
+     },
+     "sort": "-timestamp",
+     "page": {
+      "limit": 50
+     }
+    }
+   }
+  },
+  "answer": {
+   "data": [
+    {
+     "id": "AAAAAZIxsp7734",
+     "type": "spans",
+     "attributes": {
+      "trace_id": "1846223019175527734",
+      "span_id": "263746145596503962",
+      "parent_id": "0",
+      "service": "api",
+      "resource_name": "POST /orders",
+      "resource_hash": "a1b2c3d4e5f60718",
+      "env": "prod",
+      "host": "aks-nodepool1-12345678-vmss000001",
+      "type": "web",
+      "start_timestamp": "2026-09-28T21:37:00.401Z",
+      "end_timestamp": "2026-09-28T21:37:02.911Z",
+      "tags": [
+       "env:prod",
+       "kube_cluster_name:prod",
+       "kube_namespace:web",
+       "pod_name:api-7d9f8c6b5-x2k4q",
+       "service:api",
+       "git.commit.sha:4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9",
+       "git.repository_url:https://dev.azure.com/contoso/Fabrikam/_git/api",
+       "version:v1.4.2"
+      ],
+      "custom": {
+       "duration": 2510000000,
+       "operation_name": "aspnet_core.request",
+       "http": {
+        "method": "POST",
+        "status_code": "503",
+        "url": "/orders"
+       },
+       "error": {
+        "type": "HttpRequestException",
+        "message": "Connection refused (worker.web.svc:8080)",
+        "stack": "System.Net.Http.HttpRequestException: Connection refused (worker.web.svc:8080)\n ---> System.Net.Sockets.SocketException (111): Connection refused\n   at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.ThrowException(SocketError error, CancellationToken cancellationToken)\n   at System.Net.Http.HttpConnectionPool.ConnectToTcpHostAsync(String host, Int32 port, HttpRequestMessage initialRequest, Boolean async, CancellationToken cancellationToken)\n   --- End of inner exception stack trace ---\n   at System.Net.Http.HttpConnectionPool.ConnectToTcpHostAsync(String host, Int32 port, HttpRequestMessage initialRequest, Boolean async, CancellationToken cancellationToken)\n   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)\n   at Contoso.Api.Orders.OrderClient.GetAsync(Int32 id, CancellationToken cancel) in /app/src/Orders/OrderClient.cs:line 19\n   at Contoso.Api.Orders.OrdersController.Post(OrderRequest request, CancellationToken cancel) in /app/src/Orders/OrdersController.cs:line 27"
+       }
+      }
+     }
+    }
+   ],
+   "meta": {
+    "page": {}
+   }
+  }
+ },
+ {
   "request": "GET https://api.datadoghq.eu/api/v2/incidents/search?query=state%3A%28active+OR+stable%29&sort=-created&page%5Bsize%5D=50",
   "note": "dd incident list: nobody declared one",
   "answer": {

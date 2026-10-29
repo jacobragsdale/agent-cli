@@ -103,6 +103,8 @@ struct Exchange {
 
 pub(crate) struct Replay {
     exchanges: Vec<Exchange>,
+    /// The world, whose `tls/HOST_PORT.pem` chains answer handshakes.
+    dir: std::path::PathBuf,
     /// Why the recordings could not be read; every request then fails with it.
     problem: Option<String>,
     /// A miss gets the closest recording of its method and path, or a 404.
@@ -117,6 +119,7 @@ impl Replay {
         };
         Self {
             exchanges,
+            dir: dir.to_owned(),
             problem,
             loose,
         }
@@ -272,6 +275,35 @@ fn sent_body(body: &Body) -> Option<Value> {
 }
 
 impl Transport for Replay {
+    /// A recorded chain, `tls/HOST_PORT.pem`, leaf first, trusted.
+    fn handshake(
+        &self,
+        target: &crate::handshake::Handshake,
+        _: Duration,
+    ) -> Result<crate::handshake::Peer> {
+        use rustls::pki_types::CertificateDer;
+        use rustls::pki_types::pem::PemObject;
+        let name = format!("{}_{}.pem", target.host, target.port);
+        let path = self.dir.join("tls").join(&name);
+        let pem = std::fs::read(&path).map_err(|_| {
+            anyhow!(
+                "fixtures: no recorded handshake for {}; add {}",
+                target.target(),
+                Path::new("tls").join(&name).display()
+            )
+        })?;
+        let chain = CertificateDer::pem_slice_iter(&pem)
+            .map(|der| der.map(|der| der.as_ref().to_vec()))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|why| anyhow!("fixtures: {} is not PEM ({why})", path.display()))?;
+        Ok(crate::handshake::Peer {
+            chain,
+            version: Some("TLSv1_3".to_owned()),
+            alpn: Some("h2".to_owned()),
+            ..crate::handshake::Peer::default()
+        })
+    }
+
     fn send(&self, request: &Request<'_>, _: Option<&Secret>, _: Duration) -> Result<Response> {
         if let Some(problem) = &self.problem {
             return Err(anyhow!("{problem}"));
@@ -557,6 +589,31 @@ mod tests {
                 .to_string()
                 .contains("a.json is not a list of exchanges"),
             "{error}"
+        );
+    }
+
+    #[test]
+    fn a_handshake_answers_from_the_worlds_recorded_chain() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join("http")).unwrap();
+        std::fs::create_dir(dir.path().join("tls")).unwrap();
+        let pem = "-----BEGIN CERTIFICATE-----\nMAA=\n-----END CERTIFICATE-----\n";
+        std::fs::write(dir.path().join("tls/api.contoso.example_443.pem"), pem).unwrap();
+        let replay = Replay::load(dir.path(), false);
+        let shake = |host: &str| {
+            replay.handshake(
+                &crate::handshake::Handshake::new(host, 443),
+                Duration::from_secs(1),
+            )
+        };
+        assert_eq!(
+            shake("api.contoso.example").unwrap().chain,
+            [vec![0x30, 0x00]]
+        );
+        let miss = shake("www.contoso.example").unwrap_err();
+        assert!(
+            format!("{miss:#}").contains("no recorded handshake for www.contoso.example:443"),
+            "{miss:#}"
         );
     }
 }

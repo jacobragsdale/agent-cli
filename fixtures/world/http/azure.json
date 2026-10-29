@@ -474,7 +474,7 @@
     },
     {
      "id": "https://kv-contoso-prod.vault.azure.net/certificates/www-contoso-example",
-     "x5t": "B6RF3lKY7t5p5WclJy7lOcusCgg",
+     "x5t": "yaXzQ2mKsBcIC8EK6nmCXbk6Bbs",
      "tags": {
       "owner": "web"
      },
@@ -576,7 +576,7 @@
    "id": "https://kv-contoso-prod.vault.azure.net/certificates/www-contoso-example/9c2e4b7a1d3f4e5a8b6c0d1e2f3a4b5c",
    "kid": "https://kv-contoso-prod.vault.azure.net/keys/www-contoso-example/9c2e4b7a1d3f4e5a8b6c0d1e2f3a4b5c",
    "sid": "https://kv-contoso-prod.vault.azure.net/secrets/www-contoso-example/9c2e4b7a1d3f4e5a8b6c0d1e2f3a4b5c",
-   "x5t": "B6RF3lKY7t5p5WclJy7lOcusCgg",
+   "x5t": "yaXzQ2mKsBcIC8EK6nmCXbk6Bbs",
    "cer": "MIIDstand-in-certificate-bytes",
    "tags": {
     "owner": "web"

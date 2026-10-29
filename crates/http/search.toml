@@ -1,0 +1,194 @@
+# Labeled search queries for http, written as tasks an agent would type.
+# The search gate in crates/cli reads every crates/*/search.toml.
+# `request` is a shared word: dd's synonym for spans, and http's resource;
+# both readings are labeled below.
+
+# ---------- http ----------
+
+[[query]]
+text = "call this rest endpoint and show me the json"
+expect = "http request get"
+
+[[query]]
+text = "curl https://api.contoso.example/orders/42"
+expect = "http request get"
+
+[[query]]
+text = "fetch a url and show the response headers and status code"
+expect = "http request get"
+
+[[query]]
+text = "is the api returning 500 for this url"
+expect = "http request get"
+
+[[query]]
+text = "get the json from an api endpoint with a bearer token from an environment variable"
+expect = "http request get"
+
+[[query]]
+text = "follow redirects from this url and show each hop"
+expect = "http request get"
+
+[[query]]
+text = "send a POST request with a json body to this api"
+expect = "http request run"
+
+[[query]]
+text = "create an order by posting json to the orders endpoint"
+expect = "http request run"
+
+[[query]]
+text = "send a PUT to update a resource over rest"
+expect = "http request run"
+
+[[query]]
+text = "delete a resource with an http DELETE request"
+expect = "http request run"
+
+[[query]]
+text = "curl -X POST with a body"
+expect = "http request run"
+
+[[query]]
+text = "patch a field on the api"
+expect = "http request run"
+
+[[query]]
+text = "compare the response of the same endpoint on staging and prod"
+expect = "http request diff"
+
+[[query]]
+text = "diff two api responses"
+expect = "http request diff"
+
+[[query]]
+text = "wait until the healthz endpoint reports the new version after the deploy"
+expect = "http request wait"
+
+[[query]]
+text = "poll a url until it returns 200"
+expect = "http request wait"
+
+[[query]]
+text = "is the service up yet after the rollout, keep checking"
+expect = "http request wait"
+
+[[query]]
+text = "find the openapi spec for this service"
+expect = "http spec get"
+
+[[query]]
+text = "where is the swagger json for this api"
+expect = "http spec get"
+
+[[query]]
+text = "what does this api's swagger say: title, version, sign-in"
+expect = "http spec get"
+
+[[query]]
+text = "get the openapi document from the swagger ui page"
+expect = "http spec get"
+
+[[query]]
+text = "list the api versions and springdoc groups this service publishes"
+expect = "http spec list"
+
+[[query]]
+text = "which openapi specs does this api have, v1 and v2"
+expect = "http spec list"
+
+[[query]]
+text = "breaking changes between two openapi specs"
+expect = "http spec diff"
+
+[[query]]
+text = "does the new version of the api break existing clients"
+expect = "http spec diff"
+
+[[query]]
+text = "compare the openapi spec on staging with prod"
+expect = "http spec diff"
+
+[[query]]
+text = "what changed in the swagger between versions"
+expect = "http spec diff"
+
+[[query]]
+text = "list the endpoints of this api"
+expect = "http operation list"
+
+[[query]]
+text = "which endpoints take a customer id"
+expect = "http operation list"
+
+[[query]]
+text = "which api operations need no authentication"
+expect = "http operation list"
+
+[[query]]
+text = "find the route for creating an order in the swagger"
+expect = "http operation list"
+
+[[query]]
+text = "deprecated endpoints in the openapi spec"
+expect = "http operation list"
+
+[[query]]
+text = "what does POST /orders take: parameters and body fields"
+expect = "http operation get"
+
+[[query]]
+text = "show the request body schema and an example for an endpoint"
+expect = "http operation get"
+
+[[query]]
+text = "what fields does this endpoint return"
+expect = "http operation get"
+
+[[query]]
+text = "list the models in the openapi spec"
+expect = "http schema list"
+
+[[query]]
+text = "which schemas have an email field"
+expect = "http schema list"
+
+[[query]]
+text = "show the fields of the Order model in the swagger"
+expect = "http schema get"
+
+[[query]]
+text = "what is in the OrderIn dto: types and required fields"
+expect = "http schema get"
+
+[[query]]
+text = "when does the tls certificate on this host expire"
+expect = "http certificate get"
+
+[[query]]
+text = "show the ssl certificate chain a server presents"
+expect = "http certificate get"
+
+[[query]]
+text = "why does this machine not trust the server's certificate"
+expect = "http certificate get"
+
+[[query]]
+text = "is the https certificate valid for this hostname"
+expect = "http certificate get"
+
+[[query]]
+text = "which of these hosts have certificates expiring within 30 days"
+expect = "http certificate list"
+
+[[query]]
+text = "check the tls certificates of several sites"
+expect = "http certificate list"
+
+[[query]]
+text = "failing requests in datadog for the api service"
+expect = "dd span list"
+
+[[query]]
+text = "send a request to this url"
+expect = "http request run"

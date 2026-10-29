@@ -15,7 +15,7 @@ path = "src/main.rs"
 [features]
 # One feature per domain, all on by default. A team build picks its own:
 # --no-default-features --features sql,airflow.
-default = ["ado", "confluence", "kv", "acr", "aks", "aisearch", "arm", "net", "lake", "entra", "k8s", "sql", "redis", "airflow", "controlm", "dd", "keeper"]
+default = ["ado", "confluence", "kv", "acr", "aks", "aisearch", "arm", "net", "lake", "entra", "k8s", "sql", "redis", "airflow", "controlm", "dd", "keeper", "http"]
 ado = ["dep:agent-cli-ado"]
 confluence = ["dep:agent-cli-confluence"]
 kv = ["dep:agent-cli-azure"]
@@ -33,6 +33,7 @@ airflow = ["dep:agent-cli-airflow"]
 controlm = ["dep:agent-cli-controlm"]
 dd = ["dep:agent-cli-dd"]
 keeper = ["dep:agent-cli-keeper"]
+http = ["dep:agent-cli-http"]
 # Trials on recorded worlds: AGENT_CLI_FIXTURES=<dir> replays <dir>/http/*.json
 # instead of the network (see fixtures/world/README.md). Off by default and
 # never in a release install.
@@ -52,6 +53,7 @@ agent-cli-airflow = { workspace = true, optional = true }
 agent-cli-controlm = { workspace = true, optional = true }
 agent-cli-dd = { workspace = true, optional = true }
 agent-cli-keeper = { workspace = true, optional = true }
+agent-cli-http = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_json.workspace = true

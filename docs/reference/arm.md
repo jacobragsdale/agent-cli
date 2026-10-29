@@ -57,7 +57,7 @@ agent-cli arm resource diff — Compare two Azure resources of any type: NSG rul
   --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli arm resource diff nsg-contoso-staging nsg-contoso-prod --type Microsoft.Network/networkSecurityGroups
 ```

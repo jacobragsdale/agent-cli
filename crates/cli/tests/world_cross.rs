@@ -1158,3 +1158,44 @@ fn works_in_staging_fails_in_prod_leads_from_the_deployments_to_the_expired_vaul
         assert!(!ran.stdout.contains("w0rker"), "{}", ran.stdout);
     }
 }
+
+/// A failing call to the api, by its trace: the 503 names the trace in its
+/// hint, Datadog has its spans, and the innermost frame is a line in the repo.
+#[test]
+fn a_failing_api_call_leads_by_its_trace_to_the_line_that_threw() {
+    let ran = agent_cli(&[
+        "http",
+        "request",
+        "run",
+        "POST",
+        "https://api.contoso.example/orders",
+        "--body",
+        r#"{"customerId": 7, "lines": [{"sku": "SKU-1042", "qty": 2}]}"#,
+    ]);
+    assert_eq!(ran.code, 1, "{}", ran.stderr);
+    let trace = ran.json()["trace_id"].as_str().unwrap().to_owned();
+    let spans = ok(&[
+        "dd",
+        "span",
+        "list",
+        "--trace",
+        &trace,
+        "--since",
+        "2026-09-28T21:30:00Z",
+        "--until",
+        "2026-09-28T22:30:00Z",
+        "--fields",
+        "trace_id,at",
+    ]);
+    let at = spans
+        .as_array()
+        .unwrap()
+        .iter()
+        .find_map(|span| span["at"].as_str())
+        .unwrap_or_else(|| panic!("{spans}"));
+    let file = ok(&["ado", "file", "get", at, "--fields", "id"]);
+    assert_eq!(
+        file["id"],
+        "api@4be1c0d2e8f1a9b3c5d7e9f1a2b3c4d5e6f7a8b9:src/Orders/OrderClient.cs"
+    );
+}

@@ -20,7 +20,8 @@ use serde_json::Value;
 use crate::cache::Cache;
 use crate::config::Config;
 use crate::error::Failure;
-use crate::http::{Https, Response, Transport, left_before};
+use crate::http::{Response, Transport, left_before};
+use crate::https::Https;
 use crate::registry::Effect;
 use crate::secret::{Secret, redact_value};
 
@@ -181,6 +182,8 @@ pub struct Ctx {
     pub(crate) secrets: Option<PathBuf>,
     /// `*_kv` values read this run, by `VAULT/SECRET`.
     pub(crate) kept: Mutex<HashMap<String, Secret>>,
+    /// `[core] proxy_password`, once resolved (`Some(None)`: there is none).
+    pub(crate) proxy_password: Mutex<Option<Option<Secret>>>,
 }
 
 impl Ctx {
@@ -208,6 +211,7 @@ impl Ctx {
             state_dir: setup.state_dir,
             secrets: setup.secrets,
             kept: Mutex::new(HashMap::new()),
+            proxy_password: Mutex::new(None),
         }
     }
 

@@ -705,7 +705,7 @@ agent-cli ado variable-group diff — Compare two Azure Pipelines library groups
   --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado variable-group diff orders-staging orders-prod
 ```
@@ -750,7 +750,7 @@ agent-cli ado run diff — Compare two runs of a pipeline: the commits, pull req
   --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli ado run diff 8790 8812
 ```

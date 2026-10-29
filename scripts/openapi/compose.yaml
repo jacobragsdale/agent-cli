@@ -1,0 +1,98 @@
+# The http domain's live harness: one orders API per OpenAPI framework, TLS
+# and proxies in front of them. Every port is on 127.0.0.1 and every secret is
+# throwaway. Start it with scripts/openapi-up.sh, which also writes the
+# certificates and the proxy's password file to target/openapi-up/
+# (OPENAPI_STATE overrides that).
+name: agent-cli-openapi
+
+# fastapi-v2 and echo run fastapi's image. Only fastapi builds it: three
+# builds of one tag move the tag and recreate the containers on every run.
+x-fastapi: &fastapi
+  image: agent-cli-openapi/fastapi:local
+  pull_policy: never
+  depends_on: [fastapi]
+
+services:
+  fastapi:
+    build: fastapi
+    image: agent-cli-openapi/fastapi:local
+    ports: ["127.0.0.1:58080:8000"]
+
+  fastapi-v2:
+    <<: *fastapi
+    environment:
+      ORDERS_API_VERSION: 2.0.0
+    ports: ["127.0.0.1:58081:8000"]
+
+  aspnet-swashbuckle:
+    build: aspnet-swashbuckle
+    image: agent-cli-openapi/aspnet-swashbuckle:local
+    ports: ["127.0.0.1:58082:8080"]
+
+  aspnet-openapi:
+    build: aspnet-openapi
+    image: agent-cli-openapi/aspnet-openapi:local
+    ports: ["127.0.0.1:58083:8080"]
+
+  springdoc:
+    build: springdoc
+    image: agent-cli-openapi/springdoc:local
+    ports: ["127.0.0.1:58084:8080"]
+
+  nestjs:
+    build: nestjs
+    image: agent-cli-openapi/nestjs:local
+    ports: ["127.0.0.1:58085:3000"]
+
+  go-swag:
+    build: go-swag
+    image: agent-cli-openapi/go-swag:local
+    ports: ["127.0.0.1:58086:8080"]
+
+  drf-spectacular:
+    build: drf-spectacular
+    image: agent-cli-openapi/drf-spectacular:local
+    ports: ["127.0.0.1:58087:8000"]
+
+  quarkus:
+    build: quarkus
+    image: agent-cli-openapi/quarkus:local
+    ports: ["127.0.0.1:58088:8080"]
+
+  # A second origin: fastapi's /echo shows which headers survived a
+  # cross-origin redirect from fastapi's /redirect/external.
+  echo:
+    <<: *fastapi
+    ports: ["127.0.0.1:58089:8000"]
+
+  tls:
+    image: nginx:1.29.8-alpine
+    depends_on: [fastapi]
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${OPENAPI_STATE:-../../target/openapi-up}:/certs:ro
+    networks:
+      default:
+        aliases: [api.contoso.test]
+    ports:
+      - "127.0.0.1:58443-58449:58443-58449"
+
+  squid:
+    image: ubuntu/squid:6.6-24.04_edge
+    volumes:
+      - ./squid/squid.conf:/etc/squid/squid.conf:ro
+      - ${OPENAPI_STATE:-../../target/openapi-up}/squid-passwd:/etc/squid/passwd:ro
+    ports: ["127.0.0.1:53128:3128"]
+
+  squid-open:
+    image: ubuntu/squid:6.6-24.04_edge
+    volumes:
+      - ./squid/squid-open.conf:/etc/squid/squid.conf:ro
+    ports: ["127.0.0.1:53129:3128"]
+
+  negotiate:
+    image: python:3.12-slim
+    command: ["python", "-I", "/proxy.py"]
+    volumes:
+      - ./negotiate/proxy.py:/proxy.py:ro
+    ports: ["127.0.0.1:53130:3130"]

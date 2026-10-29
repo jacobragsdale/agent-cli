@@ -303,3 +303,34 @@ fn a_scope_prefix_is_split_off_but_a_run_ids_colon_is_not() {
         (Some("qa"), "etl/scheduled__2026-09-28T00:00:00+00:00")
     );
 }
+
+#[test]
+fn a_breaking_rule_marks_the_changes_it_names() {
+    fn gone(change: &Change) -> Option<String> {
+        change
+            .right
+            .is_none()
+            .then(|| format!("{} is gone", change.path))
+    }
+    let rules = Rules {
+        breaking: Some(gone),
+        ..Rules::PLAIN
+    };
+    let ctx = crate::testing::ctx(crate::ctx::Setup::fake(
+        crate::testing::FakeTransport::default(),
+    ));
+    let compared = diff(
+        &ctx,
+        &args(),
+        &rules,
+        Side::new("a", json!({"x": 1, "y": 1})),
+        Side::new("b", json!({"y": 2})),
+    )
+    .unwrap();
+    let marked: Vec<(&str, Option<&str>)> = compared
+        .changes
+        .iter()
+        .map(|c| (c.path.as_str(), c.breaking.as_deref()))
+        .collect();
+    assert_eq!(marked, [("x", Some("x is gone")), ("y", None)]);
+}

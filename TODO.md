@@ -71,6 +71,15 @@ Run end to end on 2026-10-17 against SQL Server 2022 and Oracle 23ai Free (two d
 - [ ] When a real value shows one: zstd and lz4 decoders (ruzstd, lz4_flex, pure Rust); a pickle reader that never runs code (builtins as JSON, a class as its name and arguments) if pickled Django or Flask-Caching entries turn out common
 - [ ] Clusters (Azure Premium clustering, Managed Redis' OSS cluster policy) fail on `MOVED`; scanning each shard when one is needed
 
+## http (built 2026-10-28; run against eight OpenAPI frameworks, nginx and squid in `scripts/openapi-up.sh`)
+
+- [ ] At work: what the proxy is (explicit, a PAC file, or a client that intercepts), whether WSL reaches it (`networkingMode = mirrored` with `autoProxy`), and `agent-cli doctor http` there; the team's APIs' frameworks and spec paths, each new one an app in the harness and a row in `WELL_KNOWN`
+- [ ] Step 0's trial against curl, az and openssl, three runs each: find what creating an order takes from the base URL alone and create one; which operations take a customer id across the frameworks; what in v2 breaks v1's clients; order 42 on two apps; the 600-order list; a failure down to its trace in dd; the mTLS route through the proxy; an Entra-protected call with the az login. The domain stays if agent-cli wins four
+- [ ] Plain `http://` through a proxy: ureq tunnels it by CONNECT, which proxies refuse past port 443; an absolute-form request if an http:// API outside `no_proxy` needs one
+- [ ] The `WELL_KNOWN` rows the harness does not confirm (drf-yasg, springfox, Django Ninja, Litestar, Fastify, utoipa, Azure Functions, Swashbuckle 5): an app each, or drop them
+- [ ] If trials ask: `--auth DOMAIN` (a configured domain's credential for its own hosts), pagination (`Link: rel=next`, `nextLink`, `@odata.nextLink`) within `--limit`, PKCS#12 client certificates (openssl converts them today), `--cacert` beside the system store rather than instead of it
+- [ ] dd's key headers through `Request::secret_header`, the ponytail in `crates/core/src/secret.rs`
+
 ## Phase 5: consolidate
 
 - [ ] After the live runs, the TUIs depend on agent-cli's domain crates and delete their copies and their CLIs; each TUI's tests pass on the shared crates

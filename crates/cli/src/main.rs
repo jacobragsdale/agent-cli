@@ -43,6 +43,8 @@ const DOMAINS: &[Domain] = &[
     agent_cli_dd::DOMAIN,
     #[cfg(feature = "keeper")]
     agent_cli_keeper::DOMAIN,
+    #[cfg(feature = "http")]
+    agent_cli_http::DOMAIN,
 ];
 
 fn main() -> ExitCode {
@@ -515,6 +517,9 @@ mod tests {
     #[test]
     fn the_overview_fits_with_every_domain_configured() {
         let config = r#"
+[core]
+proxy = "http://proxy-weu.contoso-engineering.example:8080"
+
 [ado]
 org = "contoso-engineering-platform"
 project = "Fabrikam Fiber Commerce"
@@ -633,6 +638,7 @@ token_env = "KEEPER_TOKEN"
             "controlm 2 instances",
             "dd eu",
             "keeper artifacts.cont\u{2026}",
+            "http via proxy-weu.co\u{2026}",
         ] {
             assert!(
                 statuses

@@ -1,0 +1,25 @@
+[package]
+name = "agent-cli-http"
+description = "The http domain of agent-cli: REST calls to any URL, OpenAPI specs found, queried and compared, and the certificates servers present"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+agent-cli-core.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+saphyr.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+time.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

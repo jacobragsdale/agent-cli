@@ -655,9 +655,45 @@ Doctor names the server's version and whether it reads anonymously or as
 the token's user. Keeper limits downloads per address (30 a minute by
 default); `keeper file get --output` waits out one throttle.
 
+## 13. REST APIs and the proxy (http)
+
+The http domain needs no section: a call names its URL and signs in with a
+flag that reads the secret from a variable, so no token is typed.
+
+```sh
+export ORDERS_TOKEN=…            # however your team hands it out
+agent-cli http spec get https://api.contoso.example
+agent-cli http request get https://api.contoso.example/orders/42 --bearer-env ORDERS_TOKEN
+```
+
+An API behind Entra ID takes the az login's token for its app instead
+(`--az api://APP-ID`). To keep agents from changing anything through it,
+set `read_only = true` under `[http]`.
+
+A proxy, if your network has one, is set once for every domain under
+`[core]`; without it, `HTTPS_PROXY` and `NO_PROXY` work as they do for curl:
+
+```toml
+[core]
+proxy = "http://proxy.contoso.example:8080"
+no_proxy = ["localhost", "127.0.0.1", ".contoso.example", "10.0.0.0/8"]
+proxy_user = "svc-agent"                 # only if the proxy asks for a sign-in
+proxy_password_env = "PROXY_PASSWORD"
+```
+
+```sh
+agent-cli doctor http
+```
+
+Doctor names the proxy and where it came from, and says whether something
+on the way intercepts TLS (it re-signs a public host's certificate with a
+company CA); if this machine does not trust that CA, every domain fails
+until it does, as [below](#wsl). A proxy that asks for NTLM or Kerberos
+exits 3 and says so: run px or cntlm on this machine and point `proxy` at it.
+
 ## WSL
 
-On WSL 2 under Windows 11, five things go wrong that do not on Linux.
+On WSL 2 under Windows 11, six things go wrong that do not on Linux.
 
 **The corporate VPN breaks DNS.** Names resolve on Windows but not in WSL.
 Mirror Windows' networking: put this in `%UserProfile%\.wslconfig` on the
@@ -696,6 +732,12 @@ sudo cp company-ca.crt /usr/local/share/ca-certificates/ && sudo update-ca-certi
 
 A server with a self-signed certificate is trusted the same way, with its
 own certificate in place of the CA's.
+
+**The corporate proxy is not used.** Windows' proxy settings do not reach
+WSL unless `.wslconfig` has `autoProxy=true` beside
+`networkingMode=mirrored`; then WSL sets `HTTPS_PROXY`, which agent-cli
+reads. Otherwise set `[core] proxy` as in [section 13](#13-rest-apis-and-the-proxy-http),
+and `agent-cli doctor` shows which is in use.
 
 **`az login` opens no browser.** Use the device code instead, and open the
 link it prints on Windows:

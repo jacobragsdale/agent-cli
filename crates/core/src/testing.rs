@@ -14,6 +14,7 @@ use serde_json::Value;
 use crate::config::Config;
 use crate::ctx::{Ctx, Globals, Setup, locked};
 use crate::dispatch::run_with;
+use crate::handshake::{Handshake, Peer};
 use crate::http::{Body, Method, Request, Response, Transport};
 use crate::registry::Domain;
 use crate::search::quality;
@@ -85,6 +86,12 @@ pub struct Sent {
     pub authorization: Option<String>,
     /// The request's own headers (a `Cookie`, an `Accept`).
     pub headers: Vec<(String, String)>,
+    /// Its secret headers, exposed so a test can assert where one went.
+    pub secret_headers: Vec<(String, String)>,
+    /// The proxy core chose for it (`Via::url`), if any.
+    pub proxy: Option<String>,
+    /// Its TLS setting, when it has its own.
+    pub tls: Option<crate::tls::Tls>,
 }
 
 /// A transport over recorded answers, keeping every request it was handed.
@@ -93,7 +100,13 @@ pub struct Sent {
 pub struct FakeTransport {
     answers: Arc<Mutex<VecDeque<Answer>>>,
     sent: Arc<Mutex<Vec<Sent>>>,
+    peers: Arc<Mutex<VecDeque<Peer>>>,
+    shaken: Arc<Mutex<Vec<Shaken>>>,
 }
+
+/// A handshake as the fake transport saw it: `host:port` and the proxy it
+/// went through.
+pub type Shaken = (String, Option<String>);
 
 impl FakeTransport {
     #[must_use]
@@ -109,6 +122,19 @@ impl FakeTransport {
         locked(&self.sent).clone()
     }
 
+    /// Answers handshakes with these, in order.
+    #[must_use]
+    pub fn with_peers(self, peers: impl IntoIterator<Item = Peer>) -> Self {
+        locked(&self.peers).extend(peers);
+        self
+    }
+
+    /// The handshakes asked for: `host:port` and the proxy each went through.
+    #[must_use]
+    pub fn handshakes(&self) -> Vec<Shaken> {
+        locked(&self.shaken).clone()
+    }
+
     /// Answers not yet asked for; a test that ends with some left asked for
     /// fewer calls than it recorded.
     #[must_use]
@@ -118,6 +144,19 @@ impl FakeTransport {
 }
 
 impl Transport for FakeTransport {
+    fn handshake(&self, target: &Handshake, _: Duration) -> Result<Peer> {
+        locked(&self.shaken).push((
+            target.target(),
+            target.via.as_ref().map(|via| via.url.clone()),
+        ));
+        locked(&self.peers).pop_front().ok_or_else(|| {
+            anyhow::anyhow!(
+                "the fake transport ran out of handshakes at {}",
+                target.target()
+            )
+        })
+    }
+
     fn send(
         &self,
         request: &Request<'_>,
@@ -141,6 +180,13 @@ impl Transport for FakeTransport {
             body,
             authorization: authorization.map(|secret| secret.expose().to_owned()),
             headers: request.headers.clone(),
+            secret_headers: request
+                .secret_headers
+                .iter()
+                .map(|(name, value)| (name.clone(), value.expose().to_owned()))
+                .collect(),
+            proxy: request.via.as_ref().map(|via| via.url.clone()),
+            tls: request.tls.clone(),
         });
         let answer = locked(&self.answers).pop_front().ok_or_else(|| {
             anyhow::anyhow!(

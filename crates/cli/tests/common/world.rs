@@ -32,6 +32,7 @@ const DOMAINS: &[Domain] = &[
     agent_cli_controlm::DOMAIN,
     agent_cli_dd::DOMAIN,
     agent_cli_keeper::DOMAIN,
+    agent_cli_http::DOMAIN,
 ];
 
 pub struct Ran {

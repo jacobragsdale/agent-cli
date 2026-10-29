@@ -58,7 +58,7 @@ agent-cli kv secret diff — Compare two Key Vault secrets: expiry, enabled, val
   --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli kv secret diff kv-contoso-staging/worker-db-password kv-contoso-prod/worker-db-password
 ```
@@ -175,7 +175,7 @@ agent-cli kv vault diff — Compare two key vaults: names on one side only, expi
   --all           Keep what this resource's diff leaves out as noise (ids, times, counts)
   --limit int     Most differences to print (default 50)
   --exact         Texts compare as they are: whitespace, case and comments count
-Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[]}]}
+Returns: {left,right,same,as[],changes[{path,left,right,redacted,same,lines[],breaking}]}
 Read. * required. Globals: --fields --raw --timeout --output
 e.g. agent-cli kv vault diff kv-contoso-staging kv-contoso-prod
 ```

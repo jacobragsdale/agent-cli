@@ -38,6 +38,16 @@
 #                                        # doctor reads {releases}/latest/VERSION
 #                                        # and says when a newer release is out
 # vault = "kv-contoso-dev"                # the Key Vault every KEY_kv = true reads
+# proxy = "http://proxy.contoso.example:8080"  # every request's proxy; else HTTPS_PROXY,
+#                                        # HTTP_PROXY, ALL_PROXY (as curl reads them);
+#                                        # "none" for none. `agent-cli doctor` names it
+# no_proxy = ["localhost", "127.0.0.1", ".contoso.example", "10.0.0.0/8"]
+#                                        # hosts that go direct: names (and their
+#                                        # subdomains), addresses, CIDR ranges; else NO_PROXY
+# proxy_user = "svc-agent"               # Basic sign-in to the proxy, with proxy_password_env
+# proxy_password_env = "PROXY_PASSWORD"  # (or _cmd, _kv); a proxy that wants NTLM or
+#                                        # Kerberos needs px or cntlm on this machine,
+#                                        # and proxy = its address
 
 # [ado]
 # Sign-in: a personal access token (pat, pat_env or pat_cmd), else
@@ -298,3 +308,11 @@
 # the server's version and which of the two it is.
 # url = "https://keeper.contoso.example" # what the browser shows, without /api/v1
 # token = "..."                          # optional: or token_env, token_cmd, token_kv
+
+# [http]
+# REST calls to any URL, OpenAPI specs and TLS certificates. Nothing to set
+# up: a call names its URL and signs in with a flag (--bearer-env VAR, --az
+# RESOURCE, --basic USER:VAR, --header-env NAME=VAR), and goes through
+# [core] proxy. `agent-cli doctor http` names the proxy and says whether it
+# intercepts TLS.
+# read_only = true                       # refuse every POST, PUT, PATCH and DELETE

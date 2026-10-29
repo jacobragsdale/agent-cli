@@ -127,6 +127,20 @@ an AI Search service that takes only keys gets one from ARM for the run,
 held in memory and never printed, so no key sits in a config file or a
 transcript.
 
+The proxy and the trust store are the door's too. ureq would read
+`HTTPS_PROXY` and `NO_PROXY` from the process by itself, and every domain
+went through whatever proxy they named, but doctor could not say which,
+tests could not set it, and a proxy's refusal read as a broken connection.
+Core now picks the proxy per request (`[core] proxy` and `no_proxy`, else
+those variables through `ctx.env`), signs in to it from a credential like any
+other, and turns a `407` into what to do: set the proxy's sign-in, or, for a
+proxy that asks for NTLM or Kerberos, which no HTTP library here speaks,
+run px or cntlm beside it. Certificates are checked against the system store
+for every domain, which is where a company CA and an intercepting proxy's CA
+already go; a TLS handshake that reports rather than refuses goes through the
+transport like a request, so `http certificate get` and doctor's
+interception check are recorded and tested like any other read.
+
 ## Deadlines
 
 Claude Code's shell gives up at two minutes, so every command has a deadline:
@@ -244,9 +258,28 @@ Some words mean different things in different domains:
 | group | an Azure resource group (arm's); an Entra group (entra's) | the domain word decides; arm keeps "resource group" and "rg", entra takes "security group", "ad group"; labeled queries for each reading |
 | role | an Azure RBAC role assignment (arm's); an Entra directory role (entra's) | the domain word decides; entra takes "global admin", "directory role"; labeled queries for each reading |
 | diff | the verb every domain's comparisons share; ado's resource for a pull request's or two refs' code (`ado diff get`) | "compare", "difference", "differ" and "drift" are synonyms of the verb; the domain word decides |
+| request | a traced request (dd's spans); an HTTP call (`http request`) | `SHARED_WORDS`, with labeled queries for each reading |
+| certificate, schema | a certificate Key Vault stores, one a server presents; a database schema, an OpenAPI schema | the domain word decides ("in key vault", "the server presents"; "openapi", "swagger") |
 
 A question that spans domains ("which build made prod's image") has no single
 right first command, so it belongs in a trial, not in `search.toml`.
+
+`http` is the one domain with no service of its own. curl already makes
+requests, so it earns its place by what curl leaves to the agent: a 4xx or
+5xx that exits 0, a 2 MB list in the transcript, a bearer pasted into a
+command line, a POST to prod with nothing to stop it, a proxy and CA guessed
+on every call, and above all specs, which no tool an agent knows reads for
+it. It finds a spec the way each framework serves one (FastAPI, ASP.NET with
+Swashbuckle or `MapOpenApi`, springdoc, NestJS, Go swag, drf-spectacular,
+Quarkus, confirmed against each running in `scripts/openapi-up.sh`, not
+remembered), reads Swagger 2.0 and OpenAPI 3.0 and 3.1 as one shape, and
+answers by field path. `spec diff` is core's diff over specs keyed by
+operation, parameter and field, with a `breaking` rule per change. Joins are
+ids again: a failed call's traceparent becomes the decimal trace id `dd span
+list --trace` takes, and a served certificate's thumbprint is the one `kv
+certificate get` prints. A word gave way twice: `request` is dd's word for
+spans and http's resource (`SHARED_WORDS`), and a spec's endpoints are
+`operation`s, since `endpoint` is net's.
 
 ## One comparison for every diff
 
